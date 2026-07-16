@@ -337,7 +337,7 @@
       "action": "pull",
       "price": 3,
       "rarity": "rare",
-      "condition": "enemyInRange",
+      "condition": "enemyOutOfRange",
       "target": "nearestEnemy",
       "tone": "cyan",
       "params": { "pullDistance": 4, "rangeScale": 4 }

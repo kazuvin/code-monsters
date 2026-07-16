@@ -60,12 +60,11 @@ export function canRunCondition(
   actor: Fighter,
   enemies: Fighter[],
   allies: Fighter[],
-  range = actor.range,
 ): boolean {
   if (condition === 'always') return true;
   if (enemies.length === 0 || allies.length === 0) return false;
   const nearest = priorityEnemy(actor, enemies);
-  const inRange = distanceTo(actor, nearest) <= range;
+  const inRange = distanceTo(actor, nearest) <= actor.range;
   if (condition === 'enemyInRange') return inRange;
   if (condition === 'enemyOutOfRange') return !inRange;
   if (condition === 'enemyHpBelow50')

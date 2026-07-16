@@ -393,13 +393,10 @@ export function planBattleFrame({
       const currentAllies = next.filter((fighter) => fighter.team === current.team && fighter.hp > 0);
       if (currentEnemies.length === 0 || currentAllies.length === 0) break;
       const instruction = instructionById.get(block.actionId);
-      if (
-        !instruction ||
-        !canRunCondition(block.conditionId, current, currentEnemies, currentAllies, actionRange(current, instruction))
-      )
-        continue;
+      if (!instruction || !canRunCondition(block.conditionId, current, currentEnemies, currentAllies)) continue;
       const nearest = priorityEnemy(current, currentEnemies);
       const target = selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest;
+      if (instruction.action === 'pull' && distanceTo(current, target) > actionRange(current, instruction)) continue;
       acted = true;
 
       if (instruction.action === 'taunt') {
@@ -461,41 +458,27 @@ export function planBattleFrame({
           updates: [{ id: current.instanceId, values: { x } }],
         });
       } else if (instruction.action === 'pull') {
-        if (distanceTo(current, target) > actionRange(current, instruction)) {
-          queueStep({
-            flash: {
-              id: current.instanceId,
-              kind: 'miss',
-              attackType: current.attackType,
-              actionLabel: `${instruction.short}｜MISS`,
-              n: 0,
-            },
-            log: { actor: current.name, text: `${instruction.short} → ${target.name}｜空振り（射程外）`, type: 'miss' },
-            updates: [],
-          });
-        } else {
-          const x = pullToward(current, target, instruction.params.pullDistance ?? 0);
-          setNext(target.instanceId, { x });
-          queueStep({
-            flash: {
-              id: current.instanceId,
-              kind: 'pull',
-              targetId: target.instanceId,
-              actionLabel: instruction.short,
-              n: 0,
-            },
-            log: {
-              actor: current.name,
-              text: `${instruction.short} → ${target.name}｜間合い ${Math.round(x)}`,
-              type: 'info',
-            },
-            updates: [],
-          });
-          queueStep({
-            flash: { id: target.instanceId, kind: 'pulled', actionLabel: 'PULL', n: 0 },
-            updates: [{ id: target.instanceId, values: { x } }],
-          });
-        }
+        const x = pullToward(current, target, instruction.params.pullDistance ?? 0);
+        setNext(target.instanceId, { x });
+        queueStep({
+          flash: {
+            id: current.instanceId,
+            kind: 'pull',
+            targetId: target.instanceId,
+            actionLabel: instruction.short,
+            n: 0,
+          },
+          log: {
+            actor: current.name,
+            text: `${instruction.short} → ${target.name}｜間合い ${Math.round(x)}`,
+            type: 'info',
+          },
+          updates: [],
+        });
+        queueStep({
+          flash: { id: target.instanceId, kind: 'pulled', actionLabel: 'PULL', n: 0 },
+          updates: [{ id: target.instanceId, values: { x } }],
+        });
       } else if (instruction.action === 'heal') {
         const amount = Math.round(
           current.role === 'SUPPORT'
