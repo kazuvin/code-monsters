@@ -18,9 +18,26 @@ import {
 import { BattleScene } from './BattleScene';
 import { applyBattleStep, isBattleComplete, planBattleFrame, type BattleStep } from './core/battle-engine';
 import { createBattleFighters, createInventoryUnit, unitById } from './core/roster';
-import { actionCooldown, conditionById, instructionById, instructionMetrics, tickCooldowns } from './core/rules';
+import {
+  actionCooldown,
+  conditionById,
+  instructionById,
+  instructionMetrics,
+  isConditionCompatibleWithTarget,
+  isInstructionCompatibleWithTarget,
+  targetSelectorById,
+  tickCooldowns,
+} from './core/rules';
 import { createShop, type ShopItem } from './core/shop';
-import { BATTLE_CONFIG, DEFAULT_REACTIONS, ECONOMY_CONFIG, REACTION_TRIGGERS, ROSTER_CONFIG } from './data';
+import {
+  BATTLE_CONFIG,
+  DEFAULT_REACTIONS,
+  ECONOMY_CONFIG,
+  REACTION_TRIGGERS,
+  ROSTER_CONFIG,
+  TARGET_SELECTORS,
+  type TargetSelectorDefinition,
+} from './data';
 import type {
   BattleFlash,
   ConditionId,
@@ -31,12 +48,13 @@ import type {
   Rarity,
   ReactionBlock,
   ReactionTrigger,
+  TargetSelectorId,
   UnitDefinition,
   UnitInventoryItem,
 } from './types';
 
 type Phase = 'build' | 'battle' | 'result';
-type EditingSlot = { scope: 'program' | 'reaction'; index: number; field: 'condition' | 'action' } | null;
+type EditingSlot = { scope: 'program' | 'reaction'; index: number; field: 'target' | 'condition' | 'action' } | null;
 
 const rarityLabels: Record<Rarity, string> = { common: 'COMMON', rare: 'RARE', epic: 'EPIC' };
 const reactionTriggerLabels = new Map(REACTION_TRIGGERS.map((trigger) => [trigger.id, trigger.label]));
@@ -48,6 +66,13 @@ const attackTypeLabels: Record<UnitDefinition['attackType'], string> = {
 };
 const actionLabel = (id: string) => instructionById.get(id)?.title ?? id;
 const conditionLabel = (id: ConditionId) => conditionById.get(id)?.label ?? id;
+const targetLabel = (id: TargetSelectorId) => targetSelectorById.get(id)?.label ?? id;
+const actionTargetLabels: Record<Instruction['targetMode'], string> = {
+  selected: '対象スロット',
+  self: '自分固定',
+  allEnemies: '敵全体固定',
+  allAllies: '味方全体固定',
+};
 const actionKindLabels: Record<Instruction['action'], string> = {
   attack: 'ATTACK',
   heavy: 'IMPACT',
@@ -92,6 +117,10 @@ const InstructionChoiceCard = ({
       </span>
       <strong>{instruction.title}</strong>
       <span className="choice-card-flavor">{instruction.flavor}</span>
+      <span className="choice-action-target">
+        <small>対象</small>
+        <b>{actionTargetLabels[instruction.targetMode]}</b>
+      </span>
       <span className="choice-card-ability">
         <small>ABILITY</small>
         <span>
@@ -134,6 +163,31 @@ const ConditionChoiceCard = ({
     <span className="condition-effect">
       <small>判定</small>
       <b>{effect}</b>
+    </span>
+    <span className="choice-card-state">{active ? '選択中' : '選ぶ'}</span>
+  </button>
+);
+
+const TargetChoiceCard = ({
+  target,
+  active,
+  onSelect,
+}: {
+  target: TargetSelectorDefinition;
+  active: boolean;
+  onSelect: () => void;
+}) => (
+  <button
+    className={`target-choice-card target-${target.domain} ${target.cardinality === 'many' ? 'target-many' : ''} ${active ? 'active' : ''}`}
+    aria-pressed={active}
+    onClick={onSelect}
+  >
+    <span className="choice-card-kicker">TARGET / {target.cardinality === 'many' ? 'MULTI' : 'SINGLE'}</span>
+    <strong>{target.label}</strong>
+    <span className="choice-card-flavor">{target.flavor}</span>
+    <span className="condition-effect">
+      <small>対象</small>
+      <b>{target.effect}</b>
     </span>
     <span className="choice-card-state">{active ? '選択中' : '選ぶ'}</span>
   </button>
@@ -281,8 +335,11 @@ export function App() {
       return;
     }
     const action = instructionById.get(actionId)!;
-    updateSelectedProgram((program) => [...program, { conditionId: action.condition, actionId }]);
-    setEditingSlot({ scope: 'program', index: currentProgram.length, field: 'condition' });
+    updateSelectedProgram((program) => [
+      ...program,
+      { targetId: action.defaultTarget, conditionId: action.condition, actionId },
+    ]);
+    setEditingSlot({ scope: 'program', index: currentProgram.length, field: 'target' });
   };
   const addReaction = () => {
     if (currentReaction) return;
@@ -336,6 +393,19 @@ export function App() {
             : { ...reaction, actionId: id }
           : reaction,
       );
+    } else if (editingSlot.field === 'target') {
+      const targetId = id as TargetSelectorId;
+      updateSelectedProgram((program) =>
+        program.map((block, index) => {
+          if (index !== editingSlot.index) return block;
+          const conditionId = isConditionCompatibleWithTarget(block.conditionId, targetId)
+            ? block.conditionId
+            : (ownedConditions.find((condition) => isConditionCompatibleWithTarget(condition, targetId)) ??
+              block.conditionId);
+          return { ...block, targetId, conditionId };
+        }),
+      );
+      setEditingSlot({ ...editingSlot, field: 'condition' });
     } else if (editingSlot.field === 'condition') {
       updateSelectedProgram((program) =>
         program.map((block, index) =>
@@ -547,6 +617,9 @@ export function App() {
             <div className="program-list sentence-list">
               {currentProgram.map((block, index) => {
                 const instruction = instructionById.get(block.actionId)!;
+                const target = targetSelectorById.get(block.targetId)!;
+                const targetActive =
+                  editingSlot?.scope === 'program' && editingSlot.index === index && editingSlot.field === 'target';
                 const conditionActive =
                   editingSlot?.scope === 'program' && editingSlot.index === index && editingSlot.field === 'condition';
                 const actionActive =
@@ -559,6 +632,13 @@ export function App() {
                     <div className="line-no">{index + 1}</div>
                     <div className="sentence-copy">
                       <span>もし</span>
+                      <button
+                        className={`word-slot target-word-slot target-${target.domain} ${target.cardinality === 'many' ? 'target-many' : ''} ${targetActive ? 'active' : ''}`}
+                        onClick={() => setEditingSlot({ scope: 'program', index, field: 'target' })}
+                      >
+                        {targetLabel(block.targetId)}
+                      </button>
+                      <span>が</span>
                       <button
                         className={conditionActive ? 'word-slot active' : 'word-slot'}
                         onClick={() => setEditingSlot({ scope: 'program', index, field: 'condition' })}
@@ -658,54 +738,87 @@ export function App() {
             <div className="choice-panel">
               <div className="choice-head">
                 {editingSlot?.scope === 'reaction' ? 'リアクション' : '通常作戦'} /{' '}
-                {editingSlot?.field === 'condition' ? '条件を選ぶ' : '行動を選ぶ'}
+                {editingSlot?.field === 'target'
+                  ? '対象を選ぶ'
+                  : editingSlot?.field === 'condition'
+                    ? '条件を選ぶ'
+                    : '行動を選ぶ'}
               </div>
               <div className="choice-list">
-                {editingSlot?.field === 'condition'
-                  ? editingSlot.scope === 'reaction'
-                    ? REACTION_TRIGGERS.map((trigger) => (
-                        <ConditionChoiceCard
-                          key={trigger.id}
-                          title={trigger.title}
-                          flavor={trigger.flavor}
-                          effect={trigger.effect}
-                          reaction
-                          active={currentReaction?.trigger === trigger.id}
-                          onSelect={() => replaceFocusedSlot(trigger.id)}
-                        />
-                      ))
-                    : ownedConditions.map((condition) => {
-                        const detail = conditionById.get(condition)!;
-                        return (
+                {editingSlot?.field === 'target'
+                  ? TARGET_SELECTORS.filter((target) => {
+                      const block = currentProgram[editingSlot.index];
+                      const instruction = block ? instructionById.get(block.actionId) : undefined;
+                      return instruction ? isInstructionCompatibleWithTarget(instruction, target.id) : false;
+                    }).map((target) => (
+                      <TargetChoiceCard
+                        key={target.id}
+                        target={target}
+                        active={currentProgram[editingSlot.index]?.targetId === target.id}
+                        onSelect={() => replaceFocusedSlot(target.id)}
+                      />
+                    ))
+                  : editingSlot?.field === 'condition'
+                    ? editingSlot.scope === 'reaction'
+                      ? REACTION_TRIGGERS.map((trigger) => (
                           <ConditionChoiceCard
-                            key={condition}
-                            title={detail.label}
-                            flavor={detail.flavor}
-                            effect={detail.effect}
-                            active={currentProgram[editingSlot.index]?.conditionId === condition}
-                            onSelect={() => replaceFocusedSlot(condition)}
+                            key={trigger.id}
+                            title={trigger.title}
+                            flavor={trigger.flavor}
+                            effect={trigger.effect}
+                            reaction
+                            active={currentReaction?.trigger === trigger.id}
+                            onSelect={() => replaceFocusedSlot(trigger.id)}
                           />
-                        );
-                      })
-                  : ownedActions
-                      .filter((id) => editingSlot?.scope === 'reaction' || !instructionById.get(id)?.reactionOnly)
-                      .map((id) => {
-                        const instruction = instructionById.get(id)!;
-                        return (
-                          <InstructionChoiceCard
-                            key={id}
-                            instruction={instruction}
-                            unit={selectedUnit}
-                            reaction={editingSlot?.scope === 'reaction'}
-                            active={
-                              (editingSlot?.scope === 'reaction'
-                                ? currentReaction?.actionId
-                                : currentProgram[editingSlot?.index ?? 0]?.actionId) === id
-                            }
-                            onSelect={() => replaceFocusedSlot(id)}
-                          />
-                        );
-                      })}
+                        ))
+                      : ownedConditions
+                          .filter((condition) =>
+                            isConditionCompatibleWithTarget(
+                              condition,
+                              currentProgram[editingSlot.index]?.targetId ?? 'currentEnemy',
+                            ),
+                          )
+                          .map((condition) => {
+                            const detail = conditionById.get(condition)!;
+                            return (
+                              <ConditionChoiceCard
+                                key={condition}
+                                title={detail.label}
+                                flavor={detail.flavor}
+                                effect={detail.effect}
+                                active={currentProgram[editingSlot.index]?.conditionId === condition}
+                                onSelect={() => replaceFocusedSlot(condition)}
+                              />
+                            );
+                          })
+                    : ownedActions
+                        .filter((id) => {
+                          if (editingSlot?.scope === 'reaction') return true;
+                          const instruction = instructionById.get(id);
+                          const target = currentProgram[editingSlot?.index ?? 0]?.targetId ?? 'currentEnemy';
+                          return (
+                            Boolean(instruction) &&
+                            !instruction?.reactionOnly &&
+                            isInstructionCompatibleWithTarget(instruction!, target)
+                          );
+                        })
+                        .map((id) => {
+                          const instruction = instructionById.get(id)!;
+                          return (
+                            <InstructionChoiceCard
+                              key={id}
+                              instruction={instruction}
+                              unit={selectedUnit}
+                              reaction={editingSlot?.scope === 'reaction'}
+                              active={
+                                (editingSlot?.scope === 'reaction'
+                                  ? currentReaction?.actionId
+                                  : currentProgram[editingSlot?.index ?? 0]?.actionId) === id
+                              }
+                              onSelect={() => replaceFocusedSlot(id)}
+                            />
+                          );
+                        })}
               </div>
             </div>
             <div className="inventory-grid">

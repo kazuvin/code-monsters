@@ -1964,6 +1964,40 @@ button:focus-visible {
   color: #ffd46a;
   box-shadow: inset 0 -2px var(--amber);
 }
+.target-word-slot {
+  --target-accent: var(--red);
+  position: relative;
+  padding-left: 23px;
+  border-color: color-mix(in srgb, var(--target-accent) 55%, #3b424d);
+  color: color-mix(in srgb, var(--target-accent) 72%, #fff);
+}
+.target-word-slot:before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--target-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--target-accent) 62%, transparent);
+  transform: translateY(-50%);
+}
+.target-word-slot.target-ally {
+  --target-accent: var(--lime);
+}
+.target-word-slot.target-self {
+  --target-accent: var(--amber);
+}
+.target-word-slot.target-many {
+  border-style: double;
+}
+.target-word-slot.active {
+  border-color: var(--target-accent);
+  background: color-mix(in srgb, var(--target-accent) 13%, #12161c);
+  color: #fff;
+  box-shadow: inset 0 -2px var(--target-accent);
+}
 .remove-line {
   height: 100%;
   border: 0;
@@ -2917,7 +2951,8 @@ button:focus-visible {
   letter-spacing: 0.06em;
 }
 .choice-list .instruction-choice-card,
-.choice-list .condition-choice-card {
+.choice-list .condition-choice-card,
+.choice-list .target-choice-card {
   --choice-accent: var(--cyan);
   position: relative;
   min-height: 164px;
@@ -2938,7 +2973,8 @@ button:focus-visible {
     background 0.16s ease;
 }
 .choice-list .instruction-choice-card:before,
-.choice-list .condition-choice-card:before {
+.choice-list .condition-choice-card:before,
+.choice-list .target-choice-card:before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
@@ -2947,13 +2983,15 @@ button:focus-visible {
   opacity: 0.38;
 }
 .choice-list .instruction-choice-card:hover,
-.choice-list .condition-choice-card:hover {
+.choice-list .condition-choice-card:hover,
+.choice-list .target-choice-card:hover {
   transform: translateY(-1px);
   border-color: #58616e;
   background: linear-gradient(145deg, #282d36 0, #1c2027 72%);
 }
 .choice-list .instruction-choice-card.active,
-.choice-list .condition-choice-card.active {
+.choice-list .condition-choice-card.active,
+.choice-list .target-choice-card.active {
   border-color: var(--choice-accent);
   background: linear-gradient(145deg, #20313a 0, #182128 72%);
   color: #f7fbfd;
@@ -2985,7 +3023,8 @@ button:focus-visible {
   letter-spacing: 0.09em;
 }
 .choice-list .instruction-choice-card > strong,
-.choice-list .condition-choice-card > strong {
+.choice-list .condition-choice-card > strong,
+.choice-list .target-choice-card > strong {
   display: block;
   margin-top: 5px;
   font-size: 16px;
@@ -2998,6 +3037,25 @@ button:focus-visible {
   font-size: 10px;
   line-height: 1.55;
   font-weight: 500;
+}
+.choice-action-target {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 9px;
+  padding: 6px 8px;
+  border: 1px solid #343a44;
+  background: #15191f;
+}
+.choice-action-target small {
+  color: #737c88;
+  font: 600 7px "IBM Plex Mono";
+  letter-spacing: 0.06em;
+}
+.choice-action-target b {
+  color: var(--choice-accent);
+  font: 600 10px "IBM Plex Mono";
 }
 .choice-card-state {
   position: absolute;
@@ -3057,9 +3115,28 @@ button:focus-visible {
   color: #eff4f7;
   font: 600 12px "IBM Plex Mono";
 }
-.choice-list .condition-choice-card {
+.choice-list .condition-choice-card,
+.choice-list .target-choice-card {
   min-height: 136px;
   grid-template-rows: auto auto 1fr auto;
+}
+.choice-list .target-choice-card {
+  --choice-accent: var(--red);
+}
+.choice-list .target-choice-card.target-ally {
+  --choice-accent: var(--lime);
+}
+.choice-list .target-choice-card.target-self {
+  --choice-accent: var(--amber);
+}
+.choice-list .target-choice-card.target-many:after {
+  content: "MULTI";
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  color: var(--choice-accent);
+  font: 600 7px "IBM Plex Mono";
+  letter-spacing: 0.08em;
 }
 .condition-effect {
   align-self: end;
@@ -3116,13 +3193,15 @@ button:focus-visible {
 }
 @media (max-width: 800px) {
   .choice-list .instruction-choice-card,
-  .choice-list .condition-choice-card {
+  .choice-list .condition-choice-card,
+  .choice-list .target-choice-card {
     min-height: 142px;
   }
   .choice-card-flavor {
     min-height: 0;
   }
-  .choice-list .condition-choice-card {
+  .choice-list .condition-choice-card,
+  .choice-list .target-choice-card {
     min-height: 126px;
   }
 }
@@ -3145,11 +3224,13 @@ button:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .choice-list .instruction-choice-card,
-  .choice-list .condition-choice-card {
+  .choice-list .condition-choice-card,
+  .choice-list .target-choice-card {
     transition: none;
   }
   .choice-list .instruction-choice-card:hover,
-  .choice-list .condition-choice-card:hover {
+  .choice-list .condition-choice-card:hover,
+  .choice-list .target-choice-card:hover {
     transform: none;
   }
 }

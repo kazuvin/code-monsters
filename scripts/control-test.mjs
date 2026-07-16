@@ -21,23 +21,31 @@ await pullCard.getByRole('button', { name: /購入/ }).click();
 
 const program = page.locator('.workbench > .program-list').first();
 const firstBlock = program.locator('.sentence-block').first();
-await firstBlock.locator('.word-slot').first().click();
-await page.locator('.choice-list .condition-choice-card').filter({ hasText: 'いつでも' }).click();
 await firstBlock.locator('.word-slot').last().click();
-await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '挑発する' }).click();
+await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '引き寄せる' }).click();
+await firstBlock.locator('.word-slot').nth(1).click();
+await page.locator('.choice-list .condition-choice-card').filter({ hasText: '攻撃射程外' }).click();
+await firstBlock.locator('.word-slot').first().click();
+const pullTargetChoices = await page.locator('.choice-list .target-choice-card').allInnerTexts();
 
 const secondBlock = program.locator('.sentence-block').nth(1);
-await secondBlock.locator('.word-slot').first().click();
-await page.locator('.choice-list .condition-choice-card').filter({ hasText: '射程範囲外' }).click();
 await secondBlock.locator('.word-slot').last().click();
-await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '引き寄せる' }).click();
+await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '挑発する' }).click();
+await secondBlock.locator('.word-slot').first().click();
+await page.locator('.choice-list .target-choice-card').filter({ hasText: '敵全体' }).click();
+await page.locator('.choice-list .condition-choice-card').filter({ hasText: 'いつでも' }).click();
+await secondBlock.locator('.word-slot').last().click();
+const allEnemiesActionChoices = await page.locator('.choice-list .instruction-choice-card').allInnerTexts();
 
 await program.locator('.add-block').click();
-await page.locator('.choice-list .condition-choice-card').filter({ hasText: '射程範囲外' }).click();
+await page.locator('.choice-list .target-choice-card').filter({ hasText: '現在の標的' }).click();
+await page.locator('.choice-list .condition-choice-card').filter({ hasText: '攻撃射程外' }).click();
 const thirdBlock = program.locator('.sentence-block').nth(2);
 await thirdBlock.locator('.word-slot').last().click();
 await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '前進する' }).click();
 const configuredProgram = (await program.innerText()).replace(/\s+/g, ' ').trim();
+await secondBlock.locator('.word-slot').first().click();
+await page.screenshot({ path: '/tmp/code-monsters-target-slots.png', fullPage: true });
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
@@ -121,6 +129,8 @@ const result = {
   tauntShopText,
   pullShopText,
   configuredProgram,
+  allEnemiesActionChoices,
+  pullTargetChoices,
   teamLabelCount,
   teamColors,
   teamOutlineFilters,
@@ -139,7 +149,7 @@ console.log(JSON.stringify(result, null, 2));
 
 if (
   !tauntShopText.includes('RARE / TAUNT') ||
-  !tauntShopText.includes('標的 自分に固定') ||
+  !tauntShopText.includes('効果 敵の標的→自分') ||
   !tauntShopText.includes('持続 5 s')
 )
   throw new Error('挑発のショップ表示が不正です');
@@ -150,11 +160,22 @@ if (
 )
   throw new Error('引き寄せのショップ表示が不正です');
 if (
-  !configuredProgram.includes('いつでも なら 挑発する') ||
-  !configuredProgram.includes('射程範囲外 なら 引き寄せる') ||
-  !configuredProgram.includes('射程範囲外 なら 前進する')
+  !configuredProgram.includes('敵全体 が いつでも なら 挑発する') ||
+  !configuredProgram.includes('現在の標的 が 攻撃射程外 なら 引き寄せる') ||
+  !configuredProgram.includes('現在の標的 が 攻撃射程外 なら 前進する')
 )
   throw new Error('挑発と引き寄せを通常作戦へ設定できません');
+if (
+  !allEnemiesActionChoices.some((text) => text.includes('挑発する')) ||
+  allEnemiesActionChoices.some((text) => text.includes('引き寄せる'))
+)
+  throw new Error('敵全体の対象に応じて行動候補が絞り込まれていません');
+if (
+  !pullTargetChoices.some((text) => text.includes('現在の標的')) ||
+  !pullTargetChoices.some((text) => text.includes('HPが最も低い敵')) ||
+  pullTargetChoices.some((text) => text.includes('敵全体') || text.includes('自分'))
+)
+  throw new Error('引き寄せる行動に応じて対象候補が絞り込まれていません');
 if (teamLabelCount !== 0) throw new Error('敵味方ラベルが戦闘フィールドに残っています');
 if (teamColors.length !== 2) throw new Error('敵味方の足元リングが同じ色です');
 if (teamOutlineFilters.length < 2 || teamOutlineFilters.includes('none'))

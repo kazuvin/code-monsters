@@ -1,15 +1,16 @@
-import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS } from '../data.ts';
+import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, TARGET_SELECTORS } from '../data.ts';
 import { resolveImpact, type ImpactResult } from './combat.ts';
-import type { ConditionId, Fighter, Instruction, UnitDefinition } from '../types.ts';
+import type { ConditionId, Fighter, Instruction, TargetSelectorId, UnitDefinition } from '../types.ts';
 
 export const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
 export const conditionById = new Map(CONDITIONS.map((condition) => [condition.id, condition]));
+export const targetSelectorById = new Map(TARGET_SELECTORS.map((target) => [target.id, target]));
 
 export const clampStage = (x: number) => Math.max(BATTLE_CONFIG.wallLeft, Math.min(BATTLE_CONFIG.wallRight, x));
 export const distanceTo = (a: Pick<Fighter, 'x'>, b: Pick<Fighter, 'x'>) => Math.abs(a.x - b.x);
 export const nearestEnemy = (actor: Fighter, enemies: Fighter[]) =>
   [...enemies].sort((a, b) => distanceTo(actor, a) - distanceTo(actor, b))[0];
-export const lowestHp = (fighters: Fighter[]) => [...fighters].sort((a, b) => a.hp - b.hp)[0];
+export const lowestHpRatio = (fighters: Fighter[]) => [...fighters].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
 
 export const forcedEnemy = (actor: Fighter, enemies: Fighter[]) =>
   actor.tauntSeconds > 0 && actor.tauntTargetId
@@ -55,24 +56,52 @@ export function knockbackPosition(target: Fighter, source: Fighter, distance: nu
   return clampStage(target.x + directionToward(source, target) * distance);
 }
 
-export function canRunCondition(
-  condition: ConditionId,
+export function selectConditionTargets(
+  selector: TargetSelectorId,
   actor: Fighter,
   enemies: Fighter[],
   allies: Fighter[],
-): boolean {
-  if (condition === 'always') return true;
-  if (enemies.length === 0 || allies.length === 0) return false;
-  const nearest = priorityEnemy(actor, enemies);
-  const inRange = distanceTo(actor, nearest) <= actor.range;
-  if (condition === 'enemyInRange') return inRange;
-  if (condition === 'enemyOutOfRange') return !inRange;
+): Fighter[] {
+  if (selector === 'self') return [actor];
+  if (selector === 'currentEnemy') {
+    const target = priorityEnemy(actor, enemies);
+    return target ? [target] : [];
+  }
+  if (selector === 'lowestHpEnemy') {
+    const target = lowestHpRatio(enemies);
+    return target ? [target] : [];
+  }
+  if (selector === 'lowestHpAlly') {
+    const target = lowestHpRatio(allies);
+    return target ? [target] : [];
+  }
+  if (selector === 'allEnemies') return enemies;
+  return allies;
+}
+
+export function matchCondition(condition: ConditionId, actor: Fighter, targets: Fighter[]): Fighter[] {
+  if (condition === 'always') return targets;
+  if (condition === 'enemyInRange') return targets.filter((target) => distanceTo(actor, target) <= actor.range);
+  if (condition === 'enemyOutOfRange') return targets.filter((target) => distanceTo(actor, target) > actor.range);
   if (condition === 'enemyHpBelow50')
-    return lowestHp(enemies).hp / lowestHp(enemies).maxHp <= BATTLE_CONFIG.enemyLowHpThreshold;
-  if (condition === 'selfHpBelow30') return actor.hp / actor.maxHp <= BATTLE_CONFIG.lowHpThreshold;
+    return targets.filter((target) => target.hp / target.maxHp <= BATTLE_CONFIG.enemyLowHpThreshold);
+  if (condition === 'selfHpBelow30')
+    return targets.filter((target) => target.hp / target.maxHp <= BATTLE_CONFIG.lowHpThreshold);
   if (condition === 'allyHpBelow50')
-    return lowestHp(allies).hp / lowestHp(allies).maxHp <= BATTLE_CONFIG.allyLowHpThreshold;
-  return enemies.some((fighter) => fighter.poison > 0);
+    return targets.filter((target) => target.hp / target.maxHp <= BATTLE_CONFIG.allyLowHpThreshold);
+  return targets.filter((target) => target.poison > 0);
+}
+
+export function canRunCondition(condition: ConditionId, actor: Fighter, targets: Fighter[]): boolean {
+  return matchCondition(condition, actor, targets).length > 0;
+}
+
+export function isConditionCompatibleWithTarget(condition: ConditionId, target: TargetSelectorId): boolean {
+  return conditionById.get(condition)?.compatibleTargets.includes(target) ?? false;
+}
+
+export function isInstructionCompatibleWithTarget(instruction: Instruction, target: TargetSelectorId): boolean {
+  return instruction.targetMode !== 'selected' || instruction.compatibleTargets.includes(target);
 }
 
 export function actionCooldown(speed: number): number {
@@ -133,8 +162,8 @@ export function selectInstructionTarget(
   if (instruction.target === 'self') return actor;
   const forced = forcedEnemy(actor, enemies);
   if (forced) return forced;
-  if (instruction.target === 'lowestHpEnemy') return lowestHp(enemies);
-  if (instruction.target === 'lowestHpAlly') return lowestHp(allies);
+  if (instruction.target === 'lowestHpEnemy') return lowestHpRatio(enemies);
+  if (instruction.target === 'lowestHpAlly') return lowestHpRatio(allies);
   return nearestEnemy(actor, enemies);
 }
 
@@ -159,7 +188,7 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
   }
   if (instruction.action === 'taunt')
     return [
-      { label: '標的', value: '自分に固定' },
+      { label: '効果', value: '敵の標的→自分' },
       { label: '持続', value: `${metricNumber(instruction.params.durationSeconds ?? 0)} s` },
     ];
   if (instruction.action === 'pull')

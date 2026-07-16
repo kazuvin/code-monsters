@@ -1,5 +1,15 @@
 import rawGameData from '../game-data/game-balance.json' with { type: 'json' };
-import type { ConditionId, Instruction, Rarity, ReactionBlock, ReactionTrigger, UnitDefinition } from './types.ts';
+import type {
+  ConditionId,
+  Instruction,
+  Rarity,
+  ReactionBlock,
+  ReactionTrigger,
+  TargetCardinality,
+  TargetDomain,
+  TargetSelectorId,
+  UnitDefinition,
+} from './types.ts';
 
 export type BattleConfig = {
   tickSeconds: number;
@@ -55,7 +65,21 @@ export type BalanceAnalysisConfig = {
   maxSameRarityPowerSpread: number;
 };
 
-export type ConditionDefinition = { id: ConditionId; label: string; flavor: string; effect: string };
+export type TargetSelectorDefinition = {
+  id: TargetSelectorId;
+  label: string;
+  flavor: string;
+  effect: string;
+  domain: TargetDomain;
+  cardinality: TargetCardinality;
+};
+export type ConditionDefinition = {
+  id: ConditionId;
+  label: string;
+  flavor: string;
+  effect: string;
+  compatibleTargets: TargetSelectorId[];
+};
 export type ReactionTriggerDefinition = {
   id: ReactionTrigger;
   label: string;
@@ -76,6 +100,7 @@ export type GameBalanceData = {
     startingConditionIds: ConditionId[];
   };
   balanceAnalysis: BalanceAnalysisConfig;
+  targetSelectors: TargetSelectorDefinition[];
   conditions: ConditionDefinition[];
   reactionTriggers: ReactionTriggerDefinition[];
   units: UnitDefinition[];
@@ -96,6 +121,7 @@ export const ECONOMY_CONFIG = GAME_DATA.economy;
 export const SHOP_CONFIG = GAME_DATA.shop;
 export const ROSTER_CONFIG = GAME_DATA.roster;
 export const BALANCE_ANALYSIS_CONFIG = GAME_DATA.balanceAnalysis;
+export const TARGET_SELECTORS = GAME_DATA.targetSelectors;
 export const CONDITIONS = GAME_DATA.conditions;
 export const REACTION_TRIGGERS = GAME_DATA.reactionTriggers;
 export const UNITS = GAME_DATA.units;

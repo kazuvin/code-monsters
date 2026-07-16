@@ -5,16 +5,16 @@ import {
   actionRange,
   activateBerserker,
   advanceToward,
-  canRunCondition,
   distanceTo,
   instructionById,
   jumpToward,
-  lowestHp,
+  matchCondition,
   knockbackPosition,
   priorityEnemy,
   pullToward,
   resolveActionImpact,
   retreatFrom,
+  selectConditionTargets,
   selectInstructionTarget,
   throwBehind,
   tickCooldowns,
@@ -375,6 +375,7 @@ export function planBattleFrame({
     const enemyProgram = (DEFAULT_PROGRAMS[actor.id] ?? []).map((actionId) => ({
       actionId,
       conditionId: instructionById.get(actionId)?.condition ?? 'always',
+      targetId: instructionById.get(actionId)?.defaultTarget ?? 'currentEnemy',
     }));
     const program =
       actor.team === 'ally'
@@ -393,9 +394,15 @@ export function planBattleFrame({
       const currentAllies = next.filter((fighter) => fighter.team === current.team && fighter.hp > 0);
       if (currentEnemies.length === 0 || currentAllies.length === 0) break;
       const instruction = instructionById.get(block.actionId);
-      if (!instruction || !canRunCondition(block.conditionId, current, currentEnemies, currentAllies)) continue;
+      if (!instruction) continue;
+      const conditionTargets = selectConditionTargets(block.targetId, current, currentEnemies, currentAllies);
+      const matchedTargets = matchCondition(block.conditionId, current, conditionTargets);
+      if (matchedTargets.length === 0) continue;
       const nearest = priorityEnemy(current, currentEnemies);
-      const target = selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest;
+      const target =
+        instruction.targetMode === 'selected'
+          ? matchedTargets[0]
+          : (selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest);
       if (instruction.action === 'pull' && distanceTo(current, target) > actionRange(current, instruction)) continue;
       acted = true;
 
@@ -416,14 +423,14 @@ export function planBattleFrame({
           updates,
         });
       } else if (instruction.action === 'move') {
-        if (distanceTo(current, nearest) <= current.range) {
+        if (distanceTo(current, target) <= current.range) {
           queueStep({
             flash: { id: current.instanceId, kind: 'wait', actionLabel: '待機', n: 0 },
-            log: { actor: current.name, text: `${nearest.name}と対峙｜前線を維持`, type: 'info' },
+            log: { actor: current.name, text: `${target.name}と対峙｜前線を維持`, type: 'info' },
             updates: [],
           });
         } else {
-          const x = advanceToward(current, nearest, instruction.params.moveDistance ?? 0);
+          const x = advanceToward(current, target, instruction.params.moveDistance ?? 0);
           setNext(current.instanceId, { x });
           queueStep({
             flash: {
@@ -434,7 +441,7 @@ export function planBattleFrame({
             },
             log: {
               actor: current.name,
-              text: `${nearest.name}へ${instruction.short}｜戦線 ${Math.round(x)}`,
+              text: `${target.name}へ${instruction.short}｜戦線 ${Math.round(x)}`,
               type: 'info',
             },
             updates: [{ id: current.instanceId, values: { x } }],
@@ -504,7 +511,7 @@ export function planBattleFrame({
           },
           log: {
             actor: current.name,
-            text: `${nearest.name}から${instruction.short}｜戦線 ${Math.round(x)}`,
+            text: `${target.name}から${instruction.short}｜戦線 ${Math.round(x)}`,
             type: 'info',
           },
           updates: [{ id: current.instanceId, values: { x } }],

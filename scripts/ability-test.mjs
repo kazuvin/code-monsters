@@ -30,7 +30,8 @@ const fixedNormalInstruction = async () => {
   const block = page.locator('.program-list .fixed-action').first();
   return {
     text: (await block.innerText()).replace(/\s+/g, ' ').trim(),
-    conditionDisabled: await block.locator('.word-slot').first().isDisabled(),
+    targetDisabled: await block.locator('.word-slot').first().isDisabled(),
+    conditionDisabled: await block.locator('.word-slot').nth(1).isDisabled(),
     actionDisabled: await block.locator('.word-slot').last().isDisabled(),
     deleteDisabled: await block.getByRole('button', { name: '削除' }).isDisabled(),
   };

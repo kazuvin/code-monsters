@@ -7,12 +7,12 @@ The prototype now separates game definitions, deterministic rules, and rendering
 `game-data/game-balance.json` owns every adjustable gameplay value:
 
 - unit stats, rarity, price, role, attack type, and program capacity
-- instruction conditions, targets, effects, movement, damage, knockback, healing, and buffs
+- target selectors, condition compatibility, instruction target modes, effects, movement, damage, knockback, healing, and buffs
 - fixed reactions and default programs
 - battle timing, walls, cooldowns, damage/knockback formulas, overheat, economy, and shop weights
 - static-analysis weights and allowed balance spreads
 
-Stable IDs such as `enemyInRange`, `nearestEnemy`, and `berserker-mode` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
+Stable IDs such as `currentEnemy`, `allEnemies`, `enemyInRange`, and `berserker-mode` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
 
 For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and generate ScriptableObjects if inspector editing is preferred. Keep JSON as the canonical reviewed asset; generated ScriptableObjects should not become a second source of truth.
 
@@ -21,7 +21,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | TypeScript | Unity destination | Responsibility |
 | --- | --- | --- |
 | `src/core/combat.ts` | `CombatResolver.cs` | damage and knockback math |
-| `src/core/rules.ts` | `BattleRules.cs` | conditions, targets, cooldowns, movement, action effects |
+| `src/core/rules.ts` | `BattleRules.cs` | target selection, per-target condition matching, cooldowns, movement, action effects |
 | `src/core/battle-engine.ts` | `BattleEngine.cs` | deterministic frame planning and serializable battle steps |
 | `src/core/roster.ts` | `RosterFactory.cs` | inventory units and battle-state construction |
 | `src/core/shop.ts` | `ShopGenerator.cs` | seeded shop generation |
@@ -40,3 +40,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 6. Keep `pnpm balance:check` available until the analyzer itself is ported to an editor tool or .NET CLI.
 
 When adding a parameter, add it under an instruction's `params` or a named configuration section, update the TypeScript type, add a focused test, then mirror the DTO in Unity. Breaking schema changes require a `schemaVersion` increment and migration note.
+
+## Schema version 2 migration
+
+Normal-program blocks now serialize `{ targetId, conditionId, actionId }`. Instructions add `defaultTarget`, `targetMode`, and `compatibleTargets`; conditions add `compatibleTargets`; and `targetSelectors` defines the selectable subject slots. Importers upgrading version 1 saves should derive `targetId` from the instruction's version 2 `defaultTarget` before validating the block. Conditions now return the matching subset of selected fighters, so a future multi-target action can consume the full array without changing the program schema.

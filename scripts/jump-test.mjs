@@ -54,7 +54,7 @@ console.log(JSON.stringify(result, null, 2));
 
 if (!shopText.includes('RARE / JUMP') || !shopText.includes('跳躍 14 m') || !shopText.includes('通過 可能'))
   throw new Error('ジャンプ指示のショップ表示が不正です');
-if (!configuredProgram.includes('射程範囲内') || !configuredProgram.includes('跳び越える'))
+if (!configuredProgram.includes('現在の標的 が 攻撃射程内') || !configuredProgram.includes('跳び越える'))
   throw new Error('ジャンプ指示を通常作戦へ設定できません');
 if (!jumpSeen || !jumpAnimation.startsWith('ability-jump-'))
   throw new Error('ジャンプの戦闘アニメーションを確認できません');

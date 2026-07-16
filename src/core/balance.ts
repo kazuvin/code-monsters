@@ -95,6 +95,10 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.conditions.map((condition) => condition.id),
   );
   unique(
+    'targetSelector',
+    data.targetSelectors.map((target) => target.id),
+  );
+  unique(
     'defaultPrograms',
     data.defaultPrograms.map((entry) => entry.unitId),
   );
@@ -105,6 +109,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const units = new Set(data.units.map((unit) => unit.id));
   const instructions = new Set(data.instructions.map((instruction) => instruction.id));
   const conditions = new Set(data.conditions.map((condition) => condition.id));
+  const targetSelectors = new Set<string>(data.targetSelectors.map((target) => target.id));
   const supportedConditions = new Set([
     'always',
     'enemyInRange',
@@ -133,13 +138,25 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'wait',
   ]);
   const supportedTargets = new Set(['nearestEnemy', 'lowestHpEnemy', 'lowestHpAlly', 'self']);
+  const supportedTargetSelectors = new Set([
+    'currentEnemy',
+    'lowestHpEnemy',
+    'lowestHpAlly',
+    'self',
+    'allEnemies',
+    'allAllies',
+  ]);
+  const supportedTargetModes = new Set(['selected', 'self', 'allEnemies', 'allAllies']);
   const requireUnit = (id: string, context: string) => {
     if (!units.has(id)) error('UNKNOWN_UNIT', `${context} が未定義ユニット "${id}" を参照しています`);
   };
   const requireInstruction = (id: string, context: string) => {
     if (!instructions.has(id)) error('UNKNOWN_INSTRUCTION', `${context} が未定義スキル "${id}" を参照しています`);
   };
-  if (data.schemaVersion < 1) error('INVALID_SCHEMA_VERSION', 'schemaVersion は1以上である必要があります');
+  const requireTargetSelector = (id: string, context: string) => {
+    if (!targetSelectors.has(id)) error('UNKNOWN_TARGET', `${context} が未定義対象 "${id}" を参照しています`);
+  };
+  if (data.schemaVersion < 2) error('INVALID_SCHEMA_VERSION', 'schemaVersion は2以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.baseActionCooldownSeconds <= 0 ||
@@ -165,6 +182,18 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     )
       error('INVALID_UNIT_STAT', `${unit.id} に0以下または不正な戦闘パラメータがあります`);
   }
+  for (const target of data.targetSelectors) {
+    if (!supportedTargetSelectors.has(target.id))
+      error('UNSUPPORTED_TARGET', `対象セレクタ "${target.id}" はエンジン未対応です`);
+    if (!['enemy', 'ally', 'self'].includes(target.domain) || !['one', 'many'].includes(target.cardinality))
+      error('INVALID_TARGET', `${target.id} の domain または cardinality が不正です`);
+  }
+  for (const condition of data.conditions) {
+    if (condition.compatibleTargets.length === 0)
+      error('MISSING_TARGET_COMPATIBILITY', `${condition.id} に対応対象がありません`);
+    for (const targetId of condition.compatibleTargets)
+      requireTargetSelector(targetId, `条件 ${condition.id}.compatibleTargets`);
+  }
   for (const instruction of data.instructions) {
     if (!conditions.has(instruction.condition))
       error('UNKNOWN_CONDITION', `${instruction.id} が未定義条件 "${instruction.condition}" を参照しています`);
@@ -174,6 +203,16 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('UNSUPPORTED_ACTION', `${instruction.id} の action "${instruction.action}" はエンジン未対応です`);
     if (!supportedTargets.has(instruction.target))
       error('UNSUPPORTED_TARGET', `${instruction.id} の target "${instruction.target}" はエンジン未対応です`);
+    requireTargetSelector(instruction.defaultTarget, `スキル ${instruction.id}.defaultTarget`);
+    if (!supportedTargetModes.has(instruction.targetMode))
+      error('UNSUPPORTED_TARGET_MODE', `${instruction.id} の targetMode "${instruction.targetMode}" は未対応です`);
+    for (const targetId of instruction.compatibleTargets)
+      requireTargetSelector(targetId, `スキル ${instruction.id}.compatibleTargets`);
+    if (instruction.targetMode === 'selected' && !instruction.compatibleTargets.includes(instruction.defaultTarget))
+      error('INVALID_DEFAULT_TARGET', `${instruction.id} の defaultTarget がアクション対象と互換ではありません`);
+    const defaultCondition = data.conditions.find((condition) => condition.id === instruction.condition);
+    if (defaultCondition && !defaultCondition.compatibleTargets.includes(instruction.defaultTarget))
+      error('INVALID_DEFAULT_TARGET', `${instruction.id} の defaultTarget が既定条件と互換ではありません`);
     if (!instruction.params) {
       error('MISSING_PARAMETER', `${instruction.id} に params がありません`);
       continue;

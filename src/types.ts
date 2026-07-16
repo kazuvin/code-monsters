@@ -28,6 +28,10 @@ export type ConditionId =
   | 'allyHpBelow50'
   | 'enemyHasStatus';
 export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'lowestHpAlly' | 'self';
+export type TargetSelectorId = 'currentEnemy' | 'lowestHpEnemy' | 'lowestHpAlly' | 'self' | 'allEnemies' | 'allAllies';
+export type TargetDomain = 'enemy' | 'ally' | 'self';
+export type TargetCardinality = 'one' | 'many';
+export type ActionTargetMode = 'selected' | 'self' | 'allEnemies' | 'allAllies';
 export type ImpactProfile = { damageScale?: number; knockbackPower?: number };
 export type ActionParameters = {
   attackScale?: number;
@@ -80,6 +84,9 @@ export type Instruction = {
   rarity: Rarity;
   condition: ConditionId;
   target: TargetType;
+  defaultTarget: TargetSelectorId;
+  targetMode: ActionTargetMode;
+  compatibleTargets: TargetSelectorId[];
   tone: 'cyan' | 'amber' | 'lime' | 'violet';
   params: ActionParameters;
   fixedFor?: string;
@@ -105,7 +112,12 @@ export type Fighter = UnitDefinition & {
   tauntSeconds: number;
 };
 
-export type ProgramBlock = { conditionId: ConditionId; actionId: string; fixedAction?: boolean };
+export type ProgramBlock = {
+  targetId: TargetSelectorId;
+  conditionId: ConditionId;
+  actionId: string;
+  fixedAction?: boolean;
+};
 export type ReactionBlock = { trigger: ReactionTrigger; actionId: string; fixedReaction?: boolean };
 export type UnitInventoryItem = UnitDefinition & {
   inventoryId: string;

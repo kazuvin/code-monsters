@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "battle": {
     "tickSeconds": 0.22,
     "actionStepMs": 260,
@@ -79,38 +79,105 @@
     "maxCostEfficiencySpread": 1.9,
     "maxSameRarityPowerSpread": 1.8
   },
+  "targetSelectors": [
+    {
+      "id": "currentEnemy",
+      "label": "現在の標的",
+      "flavor": "挑発中は固定された敵、それ以外は一番近い敵。",
+      "effect": "敵 / 単体",
+      "domain": "enemy",
+      "cardinality": "one"
+    },
+    {
+      "id": "lowestHpEnemy",
+      "label": "HPが最も低い敵",
+      "flavor": "残りHP割合が最も低い敵を選ぶ。",
+      "effect": "敵 / 単体",
+      "domain": "enemy",
+      "cardinality": "one"
+    },
+    {
+      "id": "allEnemies",
+      "label": "敵全体",
+      "flavor": "生存しているすべての敵を監視する。",
+      "effect": "敵 / 複数",
+      "domain": "enemy",
+      "cardinality": "many"
+    },
+    {
+      "id": "self",
+      "label": "自分",
+      "flavor": "この作戦を実行するユニット自身。",
+      "effect": "自分 / 単体",
+      "domain": "self",
+      "cardinality": "one"
+    },
+    {
+      "id": "lowestHpAlly",
+      "label": "HPが最も低い味方",
+      "flavor": "自分を含む味方から残りHP割合が最も低い1体を選ぶ。",
+      "effect": "味方 / 単体",
+      "domain": "ally",
+      "cardinality": "one"
+    },
+    {
+      "id": "allAllies",
+      "label": "味方全体",
+      "flavor": "自分を含む生存中の味方すべてを監視する。",
+      "effect": "味方 / 複数",
+      "domain": "ally",
+      "cardinality": "many"
+    }
+  ],
   "conditions": [
-    { "id": "always", "label": "いつでも", "flavor": "迷わず、いつでも実行。", "effect": "常時" },
-    { "id": "enemyInRange", "label": "射程範囲内", "flavor": "手が届くなら、話は早い。", "effect": "敵との距離 ≤ RNG" },
+    {
+      "id": "always",
+      "label": "いつでも",
+      "flavor": "迷わず、いつでも実行。",
+      "effect": "常時",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy", "allEnemies", "self", "lowestHpAlly", "allAllies"]
+    },
+    {
+      "id": "enemyInRange",
+      "label": "攻撃射程内",
+      "flavor": "手が届くなら、話は早い。",
+      "effect": "対象との距離 ≤ RNG",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy", "allEnemies"]
+    },
     {
       "id": "enemyOutOfRange",
-      "label": "射程範囲外",
+      "label": "攻撃射程外",
       "flavor": "まだ届かない。なら、次の手を。",
-      "effect": "敵との距離 > RNG"
+      "effect": "対象との距離 > RNG",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy", "allEnemies"]
     },
     {
       "id": "enemyHpBelow50",
-      "label": "敵HP 50%以下",
+      "label": "HP 50%以下",
       "flavor": "弱ったところを、見逃さない。",
-      "effect": "敵のHP ≤ 50%"
+      "effect": "対象のHP ≤ 50%",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy", "allEnemies"]
     },
     {
       "id": "selfHpBelow30",
-      "label": "自分HP 30%以下",
+      "label": "HP 30%以下",
       "flavor": "あとがないので、ここから本気。",
-      "effect": "自分のHP ≤ 30%"
+      "effect": "対象のHP ≤ 30%",
+      "compatibleTargets": ["self"]
     },
     {
       "id": "allyHpBelow50",
-      "label": "味方HP 50%以下",
+      "label": "HP 50%以下",
       "flavor": "仲間の危機には、すぐ反応。",
-      "effect": "味方のHP ≤ 50%"
+      "effect": "対象のHP ≤ 50%",
+      "compatibleTargets": ["lowestHpAlly", "allAllies"]
     },
     {
       "id": "enemyHasStatus",
-      "label": "状態異常の敵あり",
+      "label": "状態異常あり",
       "flavor": "仕込み済みなら、畳みかける。",
-      "effect": "状態異常の敵が1体以上"
+      "effect": "対象が状態異常",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy", "allEnemies"]
     }
   ],
   "reactionTriggers": [
@@ -246,6 +313,9 @@
       "rarity": "common",
       "condition": "enemyInRange",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "cyan",
       "showAttackTypeLabel": true,
       "params": { "attackScale": 1, "minimumDamage": 4 }
@@ -260,6 +330,9 @@
       "rarity": "rare",
       "condition": "enemyInRange",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "amber",
       "params": { "attackScale": 1, "flatDamage": 10, "minimumDamage": 4, "knockbackPower": 120 }
     },
@@ -273,6 +346,9 @@
       "rarity": "common",
       "condition": "enemyOutOfRange",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "amber",
       "params": { "moveDistance": 5.2 }
     },
@@ -286,6 +362,9 @@
       "rarity": "common",
       "condition": "enemyInRange",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "violet",
       "params": { "moveDistance": 6.5 }
     },
@@ -299,6 +378,9 @@
       "rarity": "rare",
       "condition": "enemyInRange",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "amber",
       "visualKind": "jump",
       "params": { "moveDistance": 14 }
@@ -313,6 +395,9 @@
       "rarity": "rare",
       "condition": "enemyInRange",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "amber",
       "params": { "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 0, "throwDistance": 6 }
     },
@@ -326,6 +411,9 @@
       "rarity": "rare",
       "condition": "always",
       "target": "self",
+      "defaultTarget": "allEnemies",
+      "targetMode": "allEnemies",
+      "compatibleTargets": [],
       "tone": "violet",
       "params": { "durationSeconds": 5 }
     },
@@ -339,6 +427,9 @@
       "rarity": "rare",
       "condition": "enemyOutOfRange",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "cyan",
       "params": { "pullDistance": 4, "rangeScale": 4 }
     },
@@ -352,6 +443,9 @@
       "rarity": "rare",
       "condition": "selfHpBelow30",
       "target": "self",
+      "defaultTarget": "self",
+      "targetMode": "self",
+      "compatibleTargets": [],
       "tone": "amber",
       "fixedFor": "wrath",
       "reactionOnly": true,
@@ -367,6 +461,9 @@
       "rarity": "common",
       "condition": "always",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "cyan",
       "fixedFor": "volt",
       "params": { "attackScale": 0.58, "minimumDamage": 3, "knockbackPower": 0 }
@@ -381,6 +478,9 @@
       "rarity": "common",
       "condition": "always",
       "target": "self",
+      "defaultTarget": "self",
+      "targetMode": "self",
+      "compatibleTargets": [],
       "tone": "lime",
       "fixedFor": "bastion",
       "params": { "incomingDamageScale": 0.82, "incomingKnockbackScale": 0.7 }
@@ -395,6 +495,9 @@
       "rarity": "common",
       "condition": "enemyOutOfRange",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "amber",
       "fixedFor": "relay",
       "visualKind": "dash",
@@ -410,6 +513,9 @@
       "rarity": "common",
       "condition": "always",
       "target": "nearestEnemy",
+      "defaultTarget": "currentEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["currentEnemy", "lowestHpEnemy"],
       "tone": "violet",
       "fixedFor": "arrow",
       "visualKind": "retreat",
