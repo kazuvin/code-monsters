@@ -49,7 +49,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
         const animationKey=(isActor||isTarget)&&flash ? flash.n : 'idle';
         const fighterLane=laneIndex(fighter,fighters);
         return <div
-          className={`sprite ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk?'berserk-active':''} ${state}`}
+          className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk?'berserk-active':''} ${state}`}
           key={fighter.instanceId}
           style={{
             left:`${fighter.x}%`,

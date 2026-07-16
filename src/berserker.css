@@ -1,3 +1,98 @@
+.shop-unit-trait {
+  display: grid;
+  gap: 2px;
+  margin: -2px 0 10px;
+  padding: 7px 8px;
+  border: 1px solid #4b3d58;
+  background: #17131d;
+}
+
+.shop-unit-trait small {
+  color: #b995dc;
+  font: 700 7px 'IBM Plex Mono';
+  letter-spacing: .08em;
+}
+
+.shop-unit-trait b {
+  color: #e6d9f2;
+  font-size: 9px;
+}
+
+.shop-unit-trait span {
+  color: #8f8499;
+  font: 600 8px 'IBM Plex Mono';
+}
+
+.shop-unit-trait.berserk {
+  border-color: #803d36;
+  background: linear-gradient(90deg, #2c1215, #18151a);
+  box-shadow: inset 2px 0 #ff6570;
+}
+
+.shop-unit-trait.berserk small,
+.shop-unit-trait.berserk b { color: #ffc071; }
+
+.shop-unit-trait.berserk span { color: #e18b80; }
+
+.sprite.unit-wrath .sprite-body {
+  width: 58px;
+  height: 62px;
+  border-color: #ffd2ad;
+  border-bottom-color: #762128;
+  background: linear-gradient(145deg, #ff6657 0 28%, #7d2930 29% 48%, #21151a 78%);
+  clip-path: polygon(50% 0, 64% 12%, 89% 9%, 83% 27%, 98% 40%, 87% 78%, 66% 76%, 50% 100%, 34% 76%, 13% 78%, 2% 40%, 17% 27%, 11% 9%, 36% 12%);
+  box-shadow: 0 12px 22px #0009, 0 0 18px #ff594d55;
+}
+
+.sprite.unit-wrath .antenna {
+  left: 50%;
+  top: -15px;
+  width: 44px;
+  height: 24px;
+  transform: translateX(-50%);
+  border: 0;
+  background: none;
+}
+
+.sprite.unit-wrath .antenna::before,
+.sprite.unit-wrath .antenna::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 18px;
+  height: 24px;
+  background: linear-gradient(180deg, #ffd09a, #ff594d 62%, #43151a 63%);
+  clip-path: polygon(0 0, 100% 100%, 20% 80%);
+  filter: drop-shadow(0 0 5px #ff594d88);
+}
+
+.sprite.unit-wrath .antenna::before { left: 0; }
+.sprite.unit-wrath .antenna::after { right: 0; transform: scaleX(-1); }
+
+.sprite.unit-wrath .face {
+  left: 16px;
+  top: 25px;
+  width: 22px;
+  height: 8px;
+  background: repeating-linear-gradient(90deg, #fff4de 0 7px, #ff775f 7px 10px);
+  clip-path: polygon(0 0, 46% 18%, 50% 100%, 54% 18%, 100% 0, 88% 100%, 12% 100%);
+  box-shadow: 0 0 11px #ffdfb8;
+}
+
+.sprite.unit-wrath .arm {
+  border-color: #ffad85;
+  background: #592027;
+}
+
+.unit-status-card.unit-wrath:not(.berserk) {
+  border-left-color: #9a4b42;
+}
+
+.unit-status-card.unit-wrath .status-avatar i {
+  background: linear-gradient(145deg, #ff6657, #6e252c 58%, #181217 80%);
+  clip-path: polygon(50% 0, 65% 15%, 94% 8%, 82% 36%, 96% 62%, 69% 77%, 50% 100%, 31% 77%, 4% 62%, 18% 36%, 6% 8%, 35% 15%);
+}
+
 .sprite.berserk-active .sprite-body {
   z-index: 1;
   filter: saturate(1.35) contrast(1.08);
@@ -102,6 +197,11 @@
 }
 
 @media (max-width: 800px) {
+  .sprite.unit-wrath .sprite-body { width: 43px; height: 48px; }
+  .sprite.unit-wrath .face { left: 11px; top: 19px; width: 18px; }
+  .sprite.unit-wrath .antenna { top: -12px; width: 34px; height: 19px; }
+  .sprite.unit-wrath .antenna::before,
+  .sprite.unit-wrath .antenna::after { width: 14px; height: 19px; }
   .berserk-aura { bottom: -13px; width: 70px; height: 70px; }
   .berserk-chip { bottom: 54px; font-size: 7px; padding: 2px 5px; }
 }

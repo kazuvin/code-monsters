@@ -1,4 +1,4 @@
-export type Role = 'STRIKER' | 'TANK' | 'SUPPORT' | 'VENOM' | 'CHASE' | 'HACKER';
+export type Role = 'STRIKER' | 'TANK' | 'SUPPORT' | 'VENOM' | 'CHASE' | 'HACKER' | 'BERSERKER';
 export type ActionType = 'attack' | 'heavy' | 'move' | 'retreat' | 'heal' | 'guard' | 'buff' | 'berserk' | 'poison' | 'burn' | 'follow' | 'wait';
 export type AttackType = 'melee' | 'blunt' | 'sniper';
 export type Rarity = 'common' | 'rare' | 'epic';
