@@ -1,0 +1,73 @@
+import type { BattleFlash, Fighter } from './types';
+
+type Props = { fighters: Fighter[]; flash: BattleFlash | null; running: boolean };
+
+const laneIndex=(fighter:Fighter,fighters:Fighter[])=>fighters
+  .filter(other=>other.team===fighter.team)
+  .findIndex(other=>other.instanceId===fighter.instanceId)%2;
+const depthIndex=(fighter:Fighter,fighters:Fighter[])=>40-laneIndex(fighter,fighters)*10;
+
+const colorHex=(value:number)=>`#${value.toString(16).padStart(6,'0')}`;
+const attackKinds=['attack','heavy','poison','burn','follow'] as const;
+const nearestOpponent=(fighter:Fighter,fighters:Fighter[])=>fighters
+  .filter(other=>other.team!==fighter.team&&other.hp>0)
+  .sort((a,b)=>Math.abs(fighter.x-a.x)-Math.abs(fighter.x-b.x))[0];
+
+export function BattleScene({ fighters, flash, running }: Props) {
+  const aliveAllies=fighters.filter(f=>f.team==='ally'&&f.hp>0);
+  const aliveEnemies=fighters.filter(f=>f.team==='enemy'&&f.hp>0);
+  const allyFront=aliveAllies.reduce((n,f)=>n+f.x,0)/(aliveAllies.length||1);
+  const enemyFront=aliveEnemies.reduce((n,f)=>n+f.x,0)/(aliveEnemies.length||1);
+
+  return <div className={`side-battlefield ${running?'is-running':'is-paused'}`} aria-label="2D戦闘フィールド">
+    <div className="stage-wall wall-ally" />
+    <div className="stage-wall wall-enemy" />
+    <div className="base base-ally"><span>ALLY CORE</span></div>
+    <div className="base base-enemy"><span>ENEMY CORE</span></div>
+    <div className="battle-road">
+      <div className="frontline" style={{left:`${Math.max(14,Math.min(86,(allyFront+enemyFront)/2))}%`}} />
+      {fighters.map(fighter=>{
+        const isActor=flash?.id===fighter.instanceId;
+        const isTarget=flash?.targetId===fighter.instanceId;
+        const isAttack=isActor&&attackKinds.some(kind=>kind===flash?.kind);
+        const attackType=isActor&&flash?.attackType?flash.attackType:fighter.attackType;
+        const attackEffect=flash?.kind==='follow'?'follow':attackType;
+        const abilityEffect=isActor&&(flash?.kind==='dash'||flash?.kind==='retreat'||flash?.kind==='guard')?flash.kind:null;
+        const state=fighter.hp<=0?'is-dead':isActor?`is-${flash?.kind}`:isTarget?'is-hit':'';
+        const hpRatio=Math.max(0,fighter.hp/fighter.maxHp);
+        const opponent=nearestOpponent(fighter,fighters);
+        const facingClass=opponent ? opponent.x < fighter.x ? 'face-left' : 'face-right' : fighter.team==='enemy' ? 'face-left' : 'face-right';
+        const animationKey=(isActor||isTarget)&&flash ? flash.n : 'idle';
+        const fighterLane=laneIndex(fighter,fighters);
+        return <div
+          className={`sprite ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${state}`}
+          key={fighter.instanceId}
+          style={{
+            left:`${fighter.x}%`,
+            zIndex:depthIndex(fighter,fighters),
+            ['--unit-color' as string]:colorHex(fighter.color),
+            ['--lane-offset' as string]:`${fighterLane*18}px`,
+          }}
+        >
+          <div className="sprite-label"><b>{fighter.code}</b><span>{fighter.name}</span></div>
+          <div className="sprite-body" key={`body-${animationKey}`}>
+            <i className="antenna" />
+            <i className="face" />
+            <i className="arm arm-a" />
+            <i className="arm arm-b" />
+            <i className="leg leg-a" />
+            <i className="leg leg-b" />
+            {isAttack&&<i className={`attack-fx fx-${attackEffect}`} key={`fx-${animationKey}`} />}
+            {isTarget&&<i className="hit-spark" key={`hit-${animationKey}`} />}
+          </div>
+          {isActor&&flash?.reaction&&<i className="reaction-pulse" key={`reaction-${animationKey}`} />}
+          {abilityEffect&&<i className={`ability-fx fx-${abilityEffect}`} key={`ability-${animationKey}`} />}
+          <div className="sprite-hp"><i style={{width:`${hpRatio*100}%`}} /></div>
+          {fighter.hp<=0&&<div className="ko-chip">DOWN</div>}
+          {isActor&&flash?.kind==='guard'&&<div className="status-chip">HOLD</div>}
+          {isActor&&flash?.kind==='heal'&&<div className="status-chip heal">PATCH</div>}
+        </div>;
+      })}
+    </div>
+  </div>;
+}
