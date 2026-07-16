@@ -95,7 +95,6 @@ export function BattleScene({ fighters, flash, running }: Props) {
               <i className="team-ring" aria-hidden="true" />
               {fighter.berserk && <i className="berserk-aura" aria-hidden="true" />}
               <div className="sprite-label">
-                <em className="team-chip">{fighter.team === 'ally' ? 'ALLY' : 'ENEMY'}</em>
                 <b>{fighter.code}</b>
                 <span>{fighter.name}</span>
               </div>

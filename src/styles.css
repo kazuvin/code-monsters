@@ -3300,11 +3300,9 @@ button:focus-visible {
 /* Team IFF and control abilities */
 .sprite.ally {
   --team-accent: #39d9ff;
-  --team-surface: #102932;
 }
 .sprite.enemy {
   --team-accent: #ff5f6d;
-  --team-surface: #32161c;
 }
 .team-ring {
   position: absolute;
@@ -3326,18 +3324,6 @@ button:focus-visible {
 .sprite-body {
   filter: drop-shadow(0 0 1px var(--team-accent))
     drop-shadow(0 0 5px color-mix(in srgb, var(--team-accent) 72%, transparent));
-}
-.team-chip {
-  display: inline-block;
-  min-width: 43px;
-  margin-bottom: 2px;
-  padding: 2px 5px;
-  border: 1px solid var(--team-accent);
-  background: color-mix(in srgb, var(--team-surface) 92%, transparent);
-  color: var(--team-accent);
-  box-shadow: 0 0 9px color-mix(in srgb, var(--team-accent) 26%, transparent);
-  font: normal 800 7px "IBM Plex Mono";
-  letter-spacing: 0.12em;
 }
 .taunt-chip,
 .berserk-chip {
@@ -3473,10 +3459,6 @@ button:focus-visible {
     bottom: -8px;
     width: 62px;
     height: 18px;
-  }
-  .team-chip {
-    min-width: 37px;
-    font-size: 6px;
   }
   .taunt-chip,
   .berserk-chip {

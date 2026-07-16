@@ -2,6 +2,7 @@ import { BATTLE_CONFIG, DEFAULT_PROGRAMS, DEFAULT_REACTIONS } from '../data.ts';
 import type { BattleFlash, Fighter, LogItem, ReactionBlock, ReactionTrigger, UnitInventoryItem } from '../types.ts';
 import {
   actionCooldown,
+  actionRange,
   activateBerserker,
   advanceToward,
   canRunCondition,
@@ -203,7 +204,7 @@ export function planBattleFrame({
     if (!target || target.hp <= 0) return;
     if (instruction.action === 'pull') {
       const reactionCooldown = BATTLE_CONFIG.reactionCooldownSeconds;
-      if (distanceTo(reactor, target) > reactor.range) {
+      if (distanceTo(reactor, target) > actionRange(reactor, instruction)) {
         const values = { reactionCooldown };
         setNext(reactor.instanceId, values);
         queueStep({
@@ -392,7 +393,11 @@ export function planBattleFrame({
       const currentAllies = next.filter((fighter) => fighter.team === current.team && fighter.hp > 0);
       if (currentEnemies.length === 0 || currentAllies.length === 0) break;
       const instruction = instructionById.get(block.actionId);
-      if (!instruction || !canRunCondition(block.conditionId, current, currentEnemies, currentAllies)) continue;
+      if (
+        !instruction ||
+        !canRunCondition(block.conditionId, current, currentEnemies, currentAllies, actionRange(current, instruction))
+      )
+        continue;
       const nearest = priorityEnemy(current, currentEnemies);
       const target = selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest;
       acted = true;
@@ -456,7 +461,7 @@ export function planBattleFrame({
           updates: [{ id: current.instanceId, values: { x } }],
         });
       } else if (instruction.action === 'pull') {
-        if (distanceTo(current, target) > current.range) {
+        if (distanceTo(current, target) > actionRange(current, instruction)) {
           queueStep({
             flash: {
               id: current.instanceId,

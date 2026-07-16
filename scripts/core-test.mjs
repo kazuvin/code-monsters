@@ -4,6 +4,7 @@ import { analyzeBalance } from '../src/core/balance.ts';
 import { createBattleFighters, createInventoryUnit } from '../src/core/roster.ts';
 import {
   actionCooldown,
+  actionRange,
   advanceToward,
   canRunCondition,
   instructionById,
@@ -162,9 +163,12 @@ assert.equal(expiredTaunt.tauntSeconds, 0, '挑発の残り時間が0未満に�
 
 const pullTeam = [createInventoryUnit('volt', 'pull-volt')];
 pullTeam[0].program = [{ conditionId: 'enemyInRange', actionId: 'pull-in' }];
+const pullInstruction = instructionById.get('pull-in');
+assert.ok(pullInstruction);
+assert.equal(actionRange(volt, pullInstruction), 20, '引き寄せの射程がユニットRNGの2倍になっていません');
 const pullFighters = createBattleFighters(pullTeam).map((fighter) => ({
   ...fighter,
-  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 48 : 72,
+  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 58 : 72,
   cooldown: fighter.team === 'ally' ? 0 : 10,
 }));
 const pullPlan = planBattleFrame({

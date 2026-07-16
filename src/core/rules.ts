@@ -43,6 +43,10 @@ export function pullToward(actor: Fighter, target: Fighter, distance: number): n
   return clampStage(actor.x + directionToward(actor, target) * distance);
 }
 
+export function actionRange(actor: Fighter, instruction: Instruction): number {
+  return actor.range * (instruction.params.rangeScale ?? 1);
+}
+
 export function retreatFrom(actor: Fighter, target: Fighter, distance: number): number {
   return clampStage(actor.x - directionToward(actor, target) * distance);
 }
@@ -56,11 +60,12 @@ export function canRunCondition(
   actor: Fighter,
   enemies: Fighter[],
   allies: Fighter[],
+  range = actor.range,
 ): boolean {
   if (condition === 'always') return true;
   if (enemies.length === 0 || allies.length === 0) return false;
   const nearest = priorityEnemy(actor, enemies);
-  const inRange = distanceTo(actor, nearest) <= actor.range;
+  const inRange = distanceTo(actor, nearest) <= range;
   if (condition === 'enemyInRange') return inRange;
   if (condition === 'enemyOutOfRange') return !inRange;
   if (condition === 'enemyHpBelow50')
@@ -160,7 +165,10 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
     ];
   if (instruction.action === 'pull')
     return [
-      { label: '対象', value: '射程内' },
+      {
+        label: '射程',
+        value: `${metricNumber(unit.range * (instruction.params.rangeScale ?? 1))} m`,
+      },
       { label: '着地', value: `手前 ${metricNumber(instruction.params.pullDistance ?? 0)} m` },
     ];
   if (instruction.action === 'retreat')

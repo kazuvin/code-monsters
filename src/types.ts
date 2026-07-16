@@ -39,6 +39,7 @@ export type ActionParameters = {
   moveDistance?: number;
   throwDistance?: number;
   pullDistance?: number;
+  rangeScale?: number;
   durationSeconds?: number;
   healAmount?: number;
   supportHealAmount?: number;

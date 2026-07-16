@@ -188,6 +188,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_PARAMETER', `${instruction.id} には正の throwDistance が必要です`);
     if (instruction.action === 'pull' && (instruction.params.pullDistance ?? 0) <= 0)
       error('MISSING_PARAMETER', `${instruction.id} には正の pullDistance が必要です`);
+    if (instruction.action === 'pull' && (instruction.params.rangeScale ?? 0) <= 0)
+      error('MISSING_PARAMETER', `${instruction.id} には正の rangeScale が必要です`);
     if (instruction.action === 'taunt' && (instruction.params.durationSeconds ?? 0) <= 0)
       error('MISSING_PARAMETER', `${instruction.id} には正の durationSeconds が必要です`);
     if (

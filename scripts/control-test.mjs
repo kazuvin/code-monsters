@@ -26,25 +26,35 @@ await page.locator('.choice-list .condition-choice-card').filter({ hasText: 'い
 await firstBlock.locator('.word-slot').last().click();
 await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '挑発する' }).click();
 
-await program.locator('.add-block').click();
+const secondBlock = program.locator('.sentence-block').nth(1);
+await secondBlock.locator('.word-slot').first().click();
 await page.locator('.choice-list .condition-choice-card').filter({ hasText: '射程範囲内' }).click();
+await secondBlock.locator('.word-slot').last().click();
+await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '引き寄せる' }).click();
+
+await program.locator('.add-block').click();
+await page.locator('.choice-list .condition-choice-card').filter({ hasText: '射程範囲外' }).click();
 const thirdBlock = program.locator('.sentence-block').nth(2);
 await thirdBlock.locator('.word-slot').last().click();
-await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '引き寄せる' }).click();
+await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '前進する' }).click();
 const configuredProgram = (await program.innerText()).replace(/\s+/g, ' ').trim();
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
 
-const teamLabels = await page.locator('.team-chip').allTextContents();
+const teamLabelCount = await page.locator('.team-chip').count();
 const teamColors = await page
   .locator('.team-ring')
   .evaluateAll((elements) => [...new Set(elements.map((element) => getComputedStyle(element).borderTopColor))]);
+const teamOutlineFilters = await page
+  .locator('.sprite-body')
+  .evaluateAll((elements) => [...new Set(elements.map((element) => getComputedStyle(element).filter))]);
 
 let tauntSeen = false;
 let tauntLocked = false;
 let pullSeen = false;
 let pulledSeen = false;
+let pullActivationDistance = Number.POSITIVE_INFINITY;
 let pullDistance = Number.POSITIVE_INFINITY;
 let tauntAnimation = '';
 let pullAnimation = '';
@@ -65,6 +75,17 @@ for (let tick = 0; tick < 900; tick += 1) {
     pullAnimation = await pullActor
       .locator('.sprite-body')
       .evaluate((element) => getComputedStyle(element).animationName);
+    const pullTarget = page
+      .locator('.sprite.enemy')
+      .filter({ has: page.locator('.hit-spark') })
+      .first();
+    if ((await pullTarget.count()) > 0) {
+      const actorX = Number.parseFloat((await pullActor.getAttribute('style'))?.match(/left:\s*([\d.]+)%/)?.[1] ?? '0');
+      const targetX = Number.parseFloat(
+        (await pullTarget.getAttribute('style'))?.match(/left:\s*([\d.]+)%/)?.[1] ?? '100',
+      );
+      pullActivationDistance = Math.abs(targetX - actorX);
+    }
   }
   const pulledTarget = page.locator('.sprite.enemy.is-pulled').first();
   if ((await pulledTarget.count()) > 0) {
@@ -80,7 +101,16 @@ for (let tick = 0; tick < 900; tick += 1) {
     );
     pullDistance = Math.abs(targetX - actorX);
   }
-  if (tauntSeen && tauntLocked && pullSeen && pulledSeen && pullDistance <= 4.01) break;
+  if (
+    tauntSeen &&
+    tauntLocked &&
+    pullSeen &&
+    pulledSeen &&
+    pullActivationDistance > 10 &&
+    pullActivationDistance <= 20.01 &&
+    pullDistance <= 4.01
+  )
+    break;
   await page.waitForTimeout(35);
 }
 
@@ -91,12 +121,14 @@ const result = {
   tauntShopText,
   pullShopText,
   configuredProgram,
-  teamLabels,
+  teamLabelCount,
   teamColors,
+  teamOutlineFilters,
   tauntSeen,
   tauntLocked,
   pullSeen,
   pulledSeen,
+  pullActivationDistance,
   pullDistance,
   tauntAnimation,
   pullAnimation,
@@ -113,21 +145,24 @@ if (
   throw new Error('挑発のショップ表示が不正です');
 if (
   !pullShopText.includes('RARE / PULL') ||
-  !pullShopText.includes('対象 射程内') ||
+  !pullShopText.includes('射程 20 m') ||
   !pullShopText.includes('着地 手前 4 m')
 )
   throw new Error('引き寄せのショップ表示が不正です');
-if (!configuredProgram.includes('いつでも なら 挑発する') || !configuredProgram.includes('射程範囲内 なら 引き寄せる'))
-  throw new Error('挑発と引き寄せを通常作戦へ設定できません');
 if (
-  teamLabels.filter((label) => label === 'ALLY').length !== 2 ||
-  teamLabels.filter((label) => label === 'ENEMY').length !== 2
+  !configuredProgram.includes('いつでも なら 挑発する') ||
+  !configuredProgram.includes('射程範囲内 なら 引き寄せる') ||
+  !configuredProgram.includes('射程範囲外 なら 前進する')
 )
-  throw new Error('敵味方ラベルが全ユニットへ表示されていません');
+  throw new Error('挑発と引き寄せを通常作戦へ設定できません');
+if (teamLabelCount !== 0) throw new Error('敵味方ラベルが戦闘フィールドに残っています');
 if (teamColors.length !== 2) throw new Error('敵味方の足元リングが同じ色です');
+if (teamOutlineFilters.length < 2 || teamOutlineFilters.includes('none'))
+  throw new Error('敵味方の輪郭光が区別できません');
 if (!tauntSeen || !tauntLocked || !tauntAnimation.startsWith('ability-control-'))
   throw new Error('挑発の状態固定または戦闘アニメーションを確認できません');
-if (!pullSeen || !pulledSeen || pullDistance > 4.01) throw new Error('引き寄せで対象を使用者の近くへ移動できません');
+if (!pullSeen || !pulledSeen || pullActivationDistance <= 10 || pullActivationDistance > 20.01 || pullDistance > 4.01)
+  throw new Error('引き寄せがRNG×2の範囲から対象を使用者の近くへ移動できません');
 if (!pullAnimation.startsWith('ability-control-') || !pulledAnimation.startsWith('ability-pulled-'))
   throw new Error('引き寄せの専用アニメーションを確認できません');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);
