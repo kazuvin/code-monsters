@@ -340,7 +340,7 @@
       "condition": "enemyInRange",
       "target": "nearestEnemy",
       "tone": "cyan",
-      "params": { "pullDistance": 4, "rangeScale": 2 }
+      "params": { "pullDistance": 4, "rangeScale": 4 }
     },
     {
       "id": "berserker-mode",

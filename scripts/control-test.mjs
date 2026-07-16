@@ -54,7 +54,7 @@ let tauntSeen = false;
 let tauntLocked = false;
 let pullSeen = false;
 let pulledSeen = false;
-let pullActivationDistance = Number.POSITIVE_INFINITY;
+let pullActivationDistance = 0;
 let pullDistance = Number.POSITIVE_INFINITY;
 let tauntAnimation = '';
 let pullAnimation = '';
@@ -84,7 +84,7 @@ for (let tick = 0; tick < 900; tick += 1) {
       const targetX = Number.parseFloat(
         (await pullTarget.getAttribute('style'))?.match(/left:\s*([\d.]+)%/)?.[1] ?? '100',
       );
-      pullActivationDistance = Math.abs(targetX - actorX);
+      pullActivationDistance = Math.max(pullActivationDistance, Math.abs(targetX - actorX));
     }
   }
   const pulledTarget = page.locator('.sprite.enemy.is-pulled').first();
@@ -106,8 +106,8 @@ for (let tick = 0; tick < 900; tick += 1) {
     tauntLocked &&
     pullSeen &&
     pulledSeen &&
-    pullActivationDistance > 10 &&
-    pullActivationDistance <= 20.01 &&
+    pullActivationDistance > 20 &&
+    pullActivationDistance <= 40.01 &&
     pullDistance <= 4.01
   )
     break;
@@ -145,7 +145,7 @@ if (
   throw new Error('挑発のショップ表示が不正です');
 if (
   !pullShopText.includes('RARE / PULL') ||
-  !pullShopText.includes('射程 20 m') ||
+  !pullShopText.includes('射程 40 m') ||
   !pullShopText.includes('着地 手前 4 m')
 )
   throw new Error('引き寄せのショップ表示が不正です');
@@ -161,8 +161,8 @@ if (teamOutlineFilters.length < 2 || teamOutlineFilters.includes('none'))
   throw new Error('敵味方の輪郭光が区別できません');
 if (!tauntSeen || !tauntLocked || !tauntAnimation.startsWith('ability-control-'))
   throw new Error('挑発の状態固定または戦闘アニメーションを確認できません');
-if (!pullSeen || !pulledSeen || pullActivationDistance <= 10 || pullActivationDistance > 20.01 || pullDistance > 4.01)
-  throw new Error('引き寄せがRNG×2の範囲から対象を使用者の近くへ移動できません');
+if (!pullSeen || !pulledSeen || pullActivationDistance <= 20 || pullActivationDistance > 40.01 || pullDistance > 4.01)
+  throw new Error('引き寄せがRNG×4の範囲から対象を使用者の近くへ移動できません');
 if (!pullAnimation.startsWith('ability-control-') || !pulledAnimation.startsWith('ability-pulled-'))
   throw new Error('引き寄せの専用アニメーションを確認できません');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

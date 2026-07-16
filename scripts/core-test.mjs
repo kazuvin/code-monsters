@@ -165,10 +165,10 @@ const pullTeam = [createInventoryUnit('volt', 'pull-volt')];
 pullTeam[0].program = [{ conditionId: 'enemyInRange', actionId: 'pull-in' }];
 const pullInstruction = instructionById.get('pull-in');
 assert.ok(pullInstruction);
-assert.equal(actionRange(volt, pullInstruction), 20, '引き寄せの射程がユニットRNGの2倍になっていません');
+assert.equal(actionRange(volt, pullInstruction), 40, '引き寄せの射程がユニットRNGの4倍になっていません');
 const pullFighters = createBattleFighters(pullTeam).map((fighter) => ({
   ...fighter,
-  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 58 : 72,
+  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 78 : 80,
   cooldown: fighter.team === 'ally' ? 0 : 10,
 }));
 const pullPlan = planBattleFrame({
