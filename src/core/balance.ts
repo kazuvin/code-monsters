@@ -1,0 +1,194 @@
+import type { GameBalanceData } from '../data.ts';
+import type { Instruction, Rarity, ReactionTrigger, UnitDefinition } from '../types.ts';
+
+export type BalanceSeverity='error'|'warning';
+export type BalanceIssue={severity:BalanceSeverity;code:string;message:string};
+export type UnitBalanceMetric={
+  id:string;
+  name:string;
+  rarity:Rarity;
+  price:number;
+  baseDps:number;
+  effectiveHp:number;
+  reactionFactor:number;
+  power:number;
+  powerIndex:number;
+  costEfficiency:number;
+};
+export type BalanceReport={schemaVersion:number;metrics:UnitBalanceMetric[];issues:BalanceIssue[];errors:number;warnings:number};
+
+const round=(value:number,digits=2)=>Number.isFinite(value)?Number(value.toFixed(digits)):0;
+const ratio=(values:number[])=>{
+  const comparable=values.filter(value=>Number.isFinite(value)&&value>0);
+  return comparable.length<2?1:Math.max(...comparable)/Math.min(...comparable);
+};
+
+function defaultAttack(data:GameBalanceData):Instruction|undefined{
+  return data.instructions.find(instruction=>instruction.id===data.balanceAnalysis.baselineActionId)
+    ?? data.instructions.find(instruction=>instruction.action==='attack');
+}
+
+function expectedDamage(data:GameBalanceData,unit:UnitDefinition,instruction:Instruction):number{
+  const params=instruction.params??{};
+  const raw=unit.attack*(params.attackScale??1)+(params.flatDamage??0);
+  const base=Math.round(raw-data.balanceAnalysis.referenceDefense*data.battle.defenseDamageFactor);
+  const scale=params.damageScale??1;
+  return scale<=0?0:Math.max(params.minimumDamage??0,Math.round(base*scale));
+}
+
+function cooldown(data:GameBalanceData,speed:number):number{
+  if(speed<=0)return Number.POSITIVE_INFINITY;
+  return Math.max(data.battle.minimumActionCooldownSeconds,data.battle.baseActionCooldownSeconds/speed);
+}
+
+function reactionContribution(data:GameBalanceData,unit:UnitDefinition,baseDps:number,effectiveHp:number){
+  const reaction=data.defaultReactions.find(entry=>entry.unitId===unit.id&&entry.trigger&&entry.actionId);
+  if(!reaction?.trigger||!reaction.actionId)return {dps:baseDps,effectiveHp,factor:1};
+  const instruction=data.instructions.find(candidate=>candidate.id===reaction.actionId);
+  if(!instruction)return {dps:baseDps,effectiveHp,factor:1};
+  const params=instruction.params??{};
+  const uptime=data.balanceAnalysis.reactionUptime[reaction.trigger as ReactionTrigger]??0;
+  if(instruction.action==='berserk'){
+    const boosted=(params.attackScale??1)*(params.speedScale??1);
+    const factor=1+uptime*(boosted-1);
+    return {dps:baseDps*factor,effectiveHp,factor};
+  }
+  if(instruction.action==='guard'){
+    const damageScale=params.incomingDamageScale??1;
+    const factor=1+uptime*(1/damageScale-1);
+    return {dps:baseDps,effectiveHp:effectiveHp*factor,factor};
+  }
+  if(['attack','heavy','follow','poison','burn'].includes(instruction.action)){
+    const reactionDps=expectedDamage(data,unit,instruction)/cooldown(data,unit.speed)*uptime;
+    const factor=baseDps===0?1:(baseDps+reactionDps)/baseDps;
+    return {dps:baseDps+reactionDps,effectiveHp,factor};
+  }
+  return {dps:baseDps,effectiveHp,factor:1};
+}
+
+function validateData(data:GameBalanceData):BalanceIssue[]{
+  const issues:BalanceIssue[]=[];
+  const error=(code:string,message:string)=>issues.push({severity:'error',code,message});
+  const unique=(kind:string,ids:string[])=>{
+    for(const id of new Set(ids))if(ids.filter(candidate=>candidate===id).length>1)error('DUPLICATE_ID',`${kind} id "${id}" が重複しています`);
+  };
+  unique('unit',data.units.map(unit=>unit.id));
+  unique('instruction',data.instructions.map(instruction=>instruction.id));
+  unique('condition',data.conditions.map(condition=>condition.id));
+  unique('defaultPrograms',data.defaultPrograms.map(entry=>entry.unitId));
+  unique('defaultReactions',data.defaultReactions.map(entry=>entry.unitId));
+  const units=new Set(data.units.map(unit=>unit.id));
+  const instructions=new Set(data.instructions.map(instruction=>instruction.id));
+  const conditions=new Set(data.conditions.map(condition=>condition.id));
+  const supportedConditions=new Set(['always','enemyInRange','enemyOutOfRange','enemyHpBelow50','selfHpBelow30','allyHpBelow50','enemyHasStatus']);
+  const supportedActions=new Set(['attack','heavy','move','retreat','heal','guard','buff','berserk','poison','burn','follow','wait']);
+  const supportedTargets=new Set(['nearestEnemy','lowestHpEnemy','lowestHpAlly','self']);
+  const requireUnit=(id:string,context:string)=>{if(!units.has(id))error('UNKNOWN_UNIT',`${context} が未定義ユニット "${id}" を参照しています`);};
+  const requireInstruction=(id:string,context:string)=>{if(!instructions.has(id))error('UNKNOWN_INSTRUCTION',`${context} が未定義スキル "${id}" を参照しています`);};
+  if(data.schemaVersion<1)error('INVALID_SCHEMA_VERSION','schemaVersion は1以上である必要があります');
+  if(data.battle.tickSeconds<=0||data.battle.baseActionCooldownSeconds<=0||data.battle.minimumActionCooldownSeconds<=0)error('INVALID_BATTLE_CONFIG','戦闘のtick/cooldown設定は正数である必要があります');
+  if(data.balanceAnalysis.warningThresholdRatio<=0||data.balanceAnalysis.warningThresholdRatio>=1)error('INVALID_BALANCE_CONFIG','warningThresholdRatio は0より大きく1未満である必要があります');
+  if(data.balanceAnalysis.maxCostEfficiencySpread<=1||data.balanceAnalysis.maxSameRarityPowerSpread<=1)error('INVALID_BALANCE_CONFIG','バランス差の上限は1より大きい必要があります');
+  for(const [trigger,uptime] of Object.entries(data.balanceAnalysis.reactionUptime))if(uptime<0||uptime>1)error('INVALID_BALANCE_CONFIG',`${trigger} の reactionUptime は0〜1で指定してください`);
+  for(const unit of data.units){
+    if(unit.maxHp<=0||unit.attack<0||unit.defense<0||unit.speed<=0||unit.price<=0||unit.range<0||unit.weight<=0)error('INVALID_UNIT_STAT',`${unit.id} に0以下または不正な戦闘パラメータがあります`);
+  }
+  for(const instruction of data.instructions){
+    if(!conditions.has(instruction.condition))error('UNKNOWN_CONDITION',`${instruction.id} が未定義条件 "${instruction.condition}" を参照しています`);
+    if(!supportedConditions.has(instruction.condition))error('UNSUPPORTED_CONDITION',`${instruction.id} の条件 "${instruction.condition}" はエンジン未対応です`);
+    if(!supportedActions.has(instruction.action))error('UNSUPPORTED_ACTION',`${instruction.id} の action "${instruction.action}" はエンジン未対応です`);
+    if(!supportedTargets.has(instruction.target))error('UNSUPPORTED_TARGET',`${instruction.id} の target "${instruction.target}" はエンジン未対応です`);
+    if(!instruction.params){error('MISSING_PARAMETER',`${instruction.id} に params がありません`);continue;}
+    if(instruction.fixedFor)requireUnit(instruction.fixedFor,`スキル ${instruction.id}`);
+    if((instruction.action==='move'||instruction.action==='retreat')&&(instruction.params.moveDistance??0)<=0)error('MISSING_PARAMETER',`${instruction.id} には正の moveDistance が必要です`);
+    if(instruction.action==='berserk'&&((instruction.params.attackScale??1)<1||(instruction.params.speedScale??1)<1))error('MISSING_PARAMETER',`${instruction.id} のバーサーカーバフ倍率が不正です`);
+    if(instruction.action==='guard'&&((instruction.params.incomingDamageScale??0)<=0||(instruction.params.incomingDamageScale??1)>1||(instruction.params.incomingKnockbackScale??0)<=0||(instruction.params.incomingKnockbackScale??1)>1))error('INVALID_PARAMETER',`${instruction.id} のガード倍率は0より大きく1以下で指定してください`);
+    if(['attack','heavy','follow','poison','burn'].includes(instruction.action)&&(instruction.params.minimumDamage??0)<0)error('INVALID_PARAMETER',`${instruction.id} の minimumDamage が負です`);
+  }
+  for(const entry of data.defaultPrograms){
+    requireUnit(entry.unitId,'defaultPrograms');
+    for(const actionId of entry.actionIds)requireInstruction(actionId,`defaultPrograms.${entry.unitId}`);
+    const unit=data.units.find(candidate=>candidate.id===entry.unitId);
+    if(unit&&entry.actionIds.length>unit.programLimit)error('PROGRAM_OVER_CAPACITY',`${entry.unitId} のデフォルト作戦が容量 ${unit.programLimit} を超えています`);
+  }
+  for(const entry of data.defaultReactions){
+    requireUnit(entry.unitId,'defaultReactions');
+    if(entry.actionId)requireInstruction(entry.actionId,`defaultReactions.${entry.unitId}`);
+    if(Boolean(entry.trigger)!==Boolean(entry.actionId))error('INCOMPLETE_REACTION',`defaultReactions.${entry.unitId} は trigger と actionId を両方指定する必要があります`);
+    const instruction=data.instructions.find(candidate=>candidate.id===entry.actionId);
+    if(instruction?.fixedFor&&instruction.fixedFor!==entry.unitId)error('REACTION_OWNER_MISMATCH',`${entry.unitId} が ${instruction.fixedFor} 固有スキル ${instruction.id} を参照しています`);
+  }
+  for(const unit of data.units){
+    if(!data.defaultPrograms.some(entry=>entry.unitId===unit.id))error('MISSING_DEFAULT_PROGRAM',`${unit.id} にデフォルト作戦がありません`);
+    if(!data.defaultReactions.some(entry=>entry.unitId===unit.id))error('MISSING_DEFAULT_REACTION',`${unit.id} にデフォルトリアクション定義がありません`);
+  }
+  for(const id of [...data.roster.startingUnitIds,...data.roster.enemyUnitIds])requireUnit(id,'roster');
+  for(const id of data.roster.startingActionIds)requireInstruction(id,'roster.startingActionIds');
+  for(const id of data.roster.startingConditionIds)if(!conditions.has(id))error('UNKNOWN_CONDITION',`roster が未定義条件 "${id}" を参照しています`);
+  for(const pick of data.shop.initialPicks){
+    if(pick.slot<0||pick.slot>=data.shop.size)error('INVALID_SHOP_SLOT',`shop.initialPicks の slot ${pick.slot} はショップ範囲外です`);
+    if(pick.kind==='unit')requireUnit(pick.id,'shop.initialPicks');else requireInstruction(pick.id,'shop.initialPicks');
+  }
+  return issues;
+}
+
+export function analyzeBalance(data:GameBalanceData):BalanceReport{
+  const issues=validateData(data);
+  const attack=defaultAttack(data);
+  if(!attack)issues.push({severity:'error',code:'NO_BASE_ATTACK',message:'基準となる通常攻撃がありません'});
+  const weights=data.balanceAnalysis.powerWeights;
+  const rawMetrics=data.units.map(unit=>{
+    const baseDps=attack?expectedDamage(data,unit,attack)/cooldown(data,unit.speed):0;
+    const baseEffectiveHp=unit.maxHp+unit.defense*data.balanceAnalysis.effectiveHpDefenseWeight;
+    const reaction=reactionContribution(data,unit,baseDps,baseEffectiveHp);
+    const knockbackPerSecond=unit.knockbackPower/cooldown(data,unit.speed);
+    const power=reaction.dps*weights.dps
+      +reaction.effectiveHp*weights.effectiveHp
+      +unit.range*weights.range
+      +knockbackPerSecond*weights.knockbackPerSecond
+      +unit.programLimit*weights.programLimit;
+    return {unit,baseDps,reaction,power};
+  });
+  const medianPower=[...rawMetrics].map(metric=>metric.power).sort((a,b)=>a-b)[Math.floor(rawMetrics.length/2)]||1;
+  const metrics=rawMetrics.map(({unit,baseDps,reaction,power})=>({
+    id:unit.id,
+    name:unit.name,
+    rarity:unit.rarity,
+    price:unit.price,
+    baseDps:round(baseDps),
+    effectiveHp:round(reaction.effectiveHp),
+    reactionFactor:round(reaction.factor),
+    power:round(power),
+    powerIndex:round(power/medianPower*100,1),
+    costEfficiency:round(unit.price>0?power/unit.price:0),
+  }));
+  const efficiencySpread=ratio(metrics.map(metric=>metric.costEfficiency));
+  const mostEfficient=[...metrics].sort((a,b)=>b.costEfficiency-a.costEfficiency)[0];
+  const leastEfficient=[...metrics].sort((a,b)=>a.costEfficiency-b.costEfficiency)[0];
+  const efficiencyDetail=`${mostEfficient.id} ${mostEfficient.costEfficiency} / ${leastEfficient.id} ${leastEfficient.costEfficiency}`;
+  if(efficiencySpread>data.balanceAnalysis.maxCostEfficiencySpread){
+    issues.push({severity:'error',code:'COST_EFFICIENCY_SPREAD',message:`価格効率の最大差 ${efficiencySpread.toFixed(2)}x (${efficiencyDetail}) が上限 ${data.balanceAnalysis.maxCostEfficiencySpread.toFixed(2)}x を超えています`});
+  }else if(efficiencySpread>data.balanceAnalysis.maxCostEfficiencySpread*data.balanceAnalysis.warningThresholdRatio){
+    issues.push({severity:'warning',code:'COST_EFFICIENCY_NEAR_LIMIT',message:`価格効率の最大差 ${efficiencySpread.toFixed(2)}x (${efficiencyDetail}) が上限に近づいています`});
+  }
+  for(const rarity of ['common','rare','epic'] as const){
+    const group=metrics.filter(metric=>metric.rarity===rarity);
+    const spread=ratio(group.map(metric=>metric.power));
+    if(group.length<2)continue;
+    const strongest=[...group].sort((a,b)=>b.power-a.power)[0];
+    const weakest=[...group].sort((a,b)=>a.power-b.power)[0];
+    const detail=`${strongest.id} ${strongest.power} / ${weakest.id} ${weakest.power}`;
+    if(spread>data.balanceAnalysis.maxSameRarityPowerSpread){
+      issues.push({severity:'error',code:'RARITY_POWER_SPREAD',message:`${rarity} 内の戦力差 ${spread.toFixed(2)}x (${detail}) が上限 ${data.balanceAnalysis.maxSameRarityPowerSpread.toFixed(2)}x を超えています`});
+    }else if(spread>data.balanceAnalysis.maxSameRarityPowerSpread*data.balanceAnalysis.warningThresholdRatio){
+      issues.push({severity:'warning',code:'RARITY_POWER_NEAR_LIMIT',message:`${rarity} 内の戦力差 ${spread.toFixed(2)}x (${detail}) が上限に近づいています`});
+    }
+  }
+  return {
+    schemaVersion:data.schemaVersion,
+    metrics,
+    issues,
+    errors:issues.filter(issue=>issue.severity==='error').length,
+    warnings:issues.filter(issue=>issue.severity==='warning').length,
+  };
+}

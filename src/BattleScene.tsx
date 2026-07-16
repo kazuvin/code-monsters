@@ -8,7 +8,7 @@ const laneIndex=(fighter:Fighter,fighters:Fighter[])=>fighters
   .findIndex(other=>other.instanceId===fighter.instanceId)%2;
 const depthIndex=(fighter:Fighter,fighters:Fighter[])=>40-laneIndex(fighter,fighters)*10;
 
-const colorHex=(value:number)=>`#${value.toString(16).padStart(6,'0')}`;
+const colorHex=(value:string)=>value;
 const attackKinds=['attack','heavy','poison','burn','follow','miss'] as const;
 const nearestOpponent=(fighter:Fighter,fighters:Fighter[])=>fighters
   .filter(other=>other.team!==fighter.team&&other.hp>0)

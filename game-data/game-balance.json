@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "battle": {
+    "tickSeconds": 0.22,
+    "actionStepMs": 260,
+    "reactionCooldownSeconds": 2.6,
+    "baseActionCooldownSeconds": 1.45,
+    "minimumActionCooldownSeconds": 0.45,
+    "rangeStopRatio": 0.78,
+    "initialPositionInset": 2,
+    "teamPositionSpacing": 4,
+    "initialCooldownStaggerSeconds": 0.18,
+    "enemyCooldownOffsetSeconds": 0.08,
+    "wallLeft": 10,
+    "wallRight": 90,
+    "lowHpThreshold": 0.3,
+    "enemyLowHpThreshold": 0.5,
+    "allyLowHpThreshold": 0.5,
+    "defenseDamageFactor": 0.55,
+    "minimumKnockbackDistance": 1.5,
+    "weightKnockbackFactor": 0.45,
+    "tankKnockbackScale": 0.5,
+    "overheatStartSeconds": 60,
+    "overheatWarningSeconds": 10,
+    "overheatStepSeconds": 5,
+    "overheatBaseDamageRate": 0.01,
+    "resultDelayMs": 420,
+    "maxLogEntries": 36
+  },
+  "economy": {
+    "startingCoins": 10,
+    "refreshCost": 1,
+    "roundReward": 5,
+    "minimumSellPrice": 2,
+    "sellPricePenalty": 1
+  },
+  "shop": {
+    "size": 5,
+    "unitSlots": [0, 3],
+    "rarityWeights": {
+      "common": 72,
+      "rare": 23,
+      "epic": 5
+    },
+    "initialPicks": [
+      { "slot": 0, "kind": "unit", "id": "relay" },
+      { "slot": 3, "kind": "unit", "id": "wrath" },
+      { "slot": 4, "kind": "instruction", "id": "knock-away" }
+    ]
+  },
+  "roster": {
+    "startingUnitIds": ["volt", "bastion"],
+    "enemyUnitIds": ["relay", "bastion"],
+    "startingActionIds": ["attack-low", "approach"],
+    "startingConditionIds": ["enemyInRange", "enemyOutOfRange"]
+  },
+  "balanceAnalysis": {
+    "baselineActionId": "attack-low",
+    "referenceDefense": 8,
+    "effectiveHpDefenseWeight": 5,
+    "powerWeights": {
+      "dps": 4,
+      "effectiveHp": 0.12,
+      "range": 2,
+      "knockbackPerSecond": 0.7,
+      "programLimit": 1.5
+    },
+    "reactionUptime": {
+      "selfAttackHit": 1,
+      "selfHit": 0.65,
+      "allyAttackHit": 0.5,
+      "selfHpLow": 0.3
+    },
+    "warningThresholdRatio": 0.85,
+    "maxCostEfficiencySpread": 1.9,
+    "maxSameRarityPowerSpread": 1.8
+  },
+  "conditions": [
+    { "id": "always", "label": "いつでも", "flavor": "迷わず、いつでも実行。", "effect": "常時" },
+    { "id": "enemyInRange", "label": "射程範囲内", "flavor": "手が届くなら、話は早い。", "effect": "敵との距離 ≤ RNG" },
+    { "id": "enemyOutOfRange", "label": "射程範囲外", "flavor": "まだ届かない。なら、次の手を。", "effect": "敵との距離 > RNG" },
+    { "id": "enemyHpBelow50", "label": "敵HP 50%以下", "flavor": "弱ったところを、見逃さない。", "effect": "敵のHP ≤ 50%" },
+    { "id": "selfHpBelow30", "label": "自分HP 30%以下", "flavor": "あとがないので、ここから本気。", "effect": "自分のHP ≤ 30%" },
+    { "id": "allyHpBelow50", "label": "味方HP 50%以下", "flavor": "仲間の危機には、すぐ反応。", "effect": "味方のHP ≤ 50%" },
+    { "id": "enemyHasStatus", "label": "状態異常の敵あり", "flavor": "仕込み済みなら、畳みかける。", "effect": "状態異常の敵が1体以上" }
+  ],
+  "reactionTriggers": [
+    { "id": "selfAttackHit", "label": "自分の攻撃がヒットしたら", "title": "攻撃ヒット時", "flavor": "こちらの一撃が決まった、その瞬間。", "effect": "自分の攻撃命中" },
+    { "id": "selfHit", "label": "自分が攻撃を受けたら", "title": "被弾時", "flavor": "痛かったので、すぐ返事をします。", "effect": "自分がダメージを受ける" },
+    { "id": "allyAttackHit", "label": "味方の攻撃がヒットしたら", "title": "味方ヒット時", "flavor": "仲間の一撃に、ぴったり便乗。", "effect": "味方の攻撃命中" },
+    { "id": "selfHpLow", "label": "自分のHPが30%以下になったら", "title": "HP 30%以下", "flavor": "あとがないので、ここから本気。", "effect": "自分のHP ≤ 30%" }
+  ],
+  "units": [
+    { "id": "volt", "name": "ヴォルト", "code": "V-01", "role": "STRIKER", "color": "#39d9ff", "maxHp": 116, "attack": 25, "defense": 7, "speed": 1.18, "price": 4, "range": 10, "knockbackPower": 8, "weight": 6, "attackType": "melee", "rarity": "common", "programLimit": 4 },
+    { "id": "bastion", "name": "バスティオン", "code": "B-07", "role": "TANK", "color": "#ffc247", "maxHp": 176, "attack": 16, "defense": 15, "speed": 0.78, "price": 4, "range": 8, "knockbackPower": 13, "weight": 14, "attackType": "blunt", "rarity": "common", "programLimit": 4 },
+    { "id": "relay", "name": "リレイ", "code": "R-11", "role": "CHASE", "color": "#ff6e77", "maxHp": 110, "attack": 21, "defense": 6, "speed": 1.22, "price": 4, "range": 11, "knockbackPower": 7, "weight": 5, "attackType": "melee", "rarity": "common", "programLimit": 3 },
+    { "id": "arrow", "name": "アロー", "code": "A-05", "role": "STRIKER", "color": "#8df2ff", "maxHp": 74, "attack": 20, "defense": 3, "speed": 0.88, "price": 5, "range": 24, "knockbackPower": 0, "weight": 2, "attackType": "sniper", "rarity": "common", "programLimit": 5 },
+    { "id": "wrath", "name": "ラース", "code": "W-13", "role": "BERSERKER", "color": "#ff594d", "maxHp": 140, "attack": 20, "defense": 8, "speed": 0.85, "price": 5, "range": 9, "knockbackPower": 10, "weight": 9, "attackType": "blunt", "rarity": "rare", "programLimit": 4 }
+  ],
+  "instructions": [
+    { "id": "attack-low", "title": "通常攻撃", "short": "攻撃", "flavor": "まずは一発。話はそれから。", "action": "attack", "price": 2, "rarity": "common", "condition": "enemyInRange", "target": "nearestEnemy", "tone": "cyan", "showAttackTypeLabel": true, "params": { "attackScale": 1, "minimumDamage": 4 } },
+    { "id": "knock-away", "title": "ちょっと吹き飛ばす", "short": "吹き飛ばす", "flavor": "どっか遠くへ、ぽん。じゃあね。", "action": "heavy", "price": 4, "rarity": "rare", "condition": "enemyInRange", "target": "nearestEnemy", "tone": "amber", "params": { "attackScale": 1, "flatDamage": 10, "minimumDamage": 4, "knockbackPower": 120 } },
+    { "id": "approach", "title": "前進する", "short": "前進", "flavor": "届かないなら、こっちから行く。", "action": "move", "price": 1, "rarity": "common", "condition": "enemyOutOfRange", "target": "nearestEnemy", "tone": "amber", "params": { "moveDistance": 5.2 } },
+    { "id": "retreat", "title": "後退する", "short": "後退", "flavor": "逃げではない。助走の準備です。", "action": "retreat", "price": 2, "rarity": "common", "condition": "enemyInRange", "target": "nearestEnemy", "tone": "violet", "params": { "moveDistance": 6.5 } },
+    { "id": "berserker-mode", "title": "バーサーカーモード", "short": "バーサーカー", "flavor": "理性は置いてきた。ここから全部、全力。", "action": "berserk", "price": 0, "rarity": "rare", "condition": "selfHpBelow30", "target": "self", "tone": "amber", "fixedFor": "wrath", "reactionOnly": true, "params": { "attackScale": 1.6, "speedScale": 2 } },
+    { "id": "volt-follow", "title": "追撃する", "short": "追撃", "flavor": "まだ終わってないので、もう一発。", "action": "follow", "price": 0, "rarity": "common", "condition": "always", "target": "nearestEnemy", "tone": "cyan", "fixedFor": "volt", "params": { "attackScale": 0.58, "minimumDamage": 3, "knockbackPower": 0 } },
+    { "id": "tank-guard", "title": "ガードする", "short": "防御", "flavor": "痛いのは困るので、しっかり受ける。", "action": "guard", "price": 0, "rarity": "common", "condition": "always", "target": "self", "tone": "lime", "fixedFor": "bastion", "params": { "incomingDamageScale": 0.82, "incomingKnockbackScale": 0.7 } },
+    { "id": "relay-dash", "title": "高速接近する", "short": "高速接近", "flavor": "距離という問題を、速さで消す。", "action": "move", "price": 0, "rarity": "common", "condition": "enemyOutOfRange", "target": "nearestEnemy", "tone": "amber", "fixedFor": "relay", "visualKind": "dash", "params": { "moveDistance": 8.58 } },
+    { "id": "arrow-reposition", "title": "緊急離脱する", "short": "緊急離脱", "flavor": "近い近い。いったん離れます。", "action": "retreat", "price": 0, "rarity": "common", "condition": "always", "target": "nearestEnemy", "tone": "violet", "fixedFor": "arrow", "visualKind": "retreat", "params": { "moveDistance": 9.43 } }
+  ],
+  "defaultPrograms": [
+    { "unitId": "volt", "actionIds": ["attack-low", "approach"] },
+    { "unitId": "bastion", "actionIds": ["attack-low", "approach"] },
+    { "unitId": "relay", "actionIds": ["attack-low", "relay-dash", "approach"] },
+    { "unitId": "arrow", "actionIds": ["attack-low", "approach"] },
+    { "unitId": "wrath", "actionIds": ["attack-low", "approach"] }
+  ],
+  "defaultReactions": [
+    { "unitId": "volt", "trigger": "selfAttackHit", "actionId": "volt-follow", "fixedReaction": true },
+    { "unitId": "bastion", "trigger": "selfHit", "actionId": "tank-guard", "fixedReaction": true },
+    { "unitId": "relay", "trigger": null, "actionId": null, "fixedReaction": false },
+    { "unitId": "arrow", "trigger": "selfHit", "actionId": "arrow-reposition", "fixedReaction": true },
+    { "unitId": "wrath", "trigger": "selfHpLow", "actionId": "berserker-mode", "fixedReaction": true }
+  ]
+}

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { resolveImpact } from '../src/combat.ts';
+import { resolveImpact } from '../src/core/combat.ts';
 import { INSTRUCTIONS } from '../src/data.ts';
 
 const target = {
@@ -57,11 +57,13 @@ const knockAway = resolveImpact({
   minimumDamage: 4,
   attackType: 'melee',
   attackerKnockbackPower: 8,
-  impact: knockAwayInstruction.impact,
+  impact: { knockbackPower: knockAwayInstruction.params.knockbackPower },
   targetDefense: 15,
   targetWeight: 14,
   targetRole: 'TANK',
   targetGuarded: true,
+  guardDamageScale: 0.82,
+  guardKnockbackScale: 0.7,
 });
 assert.ok(knockAway.damage > 0, '「ちょっと吹き飛ばす」はダメージを与える必要があります');
 assert.ok(knockAway.knockbackDistance >= 35, '「ちょっと吹き飛ばす」はガード中の重量級も大きくノックバックさせる必要があります');
