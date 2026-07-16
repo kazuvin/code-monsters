@@ -52,6 +52,7 @@ const actionKindLabels: Record<Instruction['action'], string> = {
   attack: 'ATTACK',
   heavy: 'IMPACT',
   move: 'MOVE',
+  jump: 'JUMP',
   retreat: 'RETREAT',
   heal: 'REPAIR',
   guard: 'GUARD',

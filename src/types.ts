@@ -3,6 +3,7 @@ export type ActionType =
   | 'attack'
   | 'heavy'
   | 'move'
+  | 'jump'
   | 'retreat'
   | 'heal'
   | 'guard'
@@ -76,7 +77,7 @@ export type Instruction = {
   params: ActionParameters;
   fixedFor?: string;
   reactionOnly?: boolean;
-  visualKind?: 'move' | 'dash' | 'retreat';
+  visualKind?: 'move' | 'dash' | 'jump' | 'retreat';
   showAttackTypeLabel?: boolean;
 };
 
@@ -107,6 +108,7 @@ export type BattleFlash = {
   kind:
     | 'move'
     | 'dash'
+    | 'jump'
     | 'retreat'
     | 'heal'
     | 'hit'

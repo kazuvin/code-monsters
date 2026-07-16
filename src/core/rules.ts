@@ -11,18 +11,27 @@ export const nearestEnemy = (actor: Fighter, enemies: Fighter[]) =>
   [...enemies].sort((a, b) => distanceTo(actor, a) - distanceTo(actor, b))[0];
 export const lowestHp = (fighters: Fighter[]) => [...fighters].sort((a, b) => a.hp - b.hp)[0];
 
+const directionToward = (actor: Fighter, target: Fighter) =>
+  Math.sign(target.x - actor.x) || (actor.team === 'ally' ? 1 : -1);
+
 export function advanceToward(actor: Fighter, target: Fighter, distance: number): number {
   const stoppingDistance = actor.range * BATTLE_CONFIG.rangeStopRatio;
-  if (actor.team === 'ally') return clampStage(Math.min(actor.x + distance, target.x - stoppingDistance));
-  return clampStage(Math.max(actor.x - distance, target.x + stoppingDistance));
+  const direction = directionToward(actor, target);
+  const next = actor.x + direction * distance;
+  const stoppingPosition = target.x - direction * stoppingDistance;
+  return clampStage(direction > 0 ? Math.min(next, stoppingPosition) : Math.max(next, stoppingPosition));
 }
 
-export function retreatFrom(actor: Fighter, distance: number): number {
-  return clampStage(actor.team === 'ally' ? actor.x - distance : actor.x + distance);
+export function jumpToward(actor: Fighter, target: Fighter, distance: number): number {
+  return clampStage(actor.x + directionToward(actor, target) * distance);
 }
 
-export function knockbackPosition(target: Fighter, distance: number): number {
-  return clampStage(target.team === 'ally' ? target.x - distance : target.x + distance);
+export function retreatFrom(actor: Fighter, target: Fighter, distance: number): number {
+  return clampStage(actor.x - directionToward(actor, target) * distance);
+}
+
+export function knockbackPosition(target: Fighter, source: Fighter, distance: number): number {
+  return clampStage(target.x + directionToward(source, target) * distance);
 }
 
 export function canRunCondition(
@@ -107,6 +116,11 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
     return [
       { label: '前進', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },
       { label: '停止', value: 'RNG内' },
+    ];
+  if (instruction.action === 'jump')
+    return [
+      { label: '跳躍', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },
+      { label: '通過', value: '可能' },
     ];
   if (instruction.action === 'retreat')
     return [

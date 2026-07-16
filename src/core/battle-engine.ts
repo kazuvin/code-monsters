@@ -7,6 +7,7 @@ import {
   canRunCondition,
   distanceTo,
   instructionById,
+  jumpToward,
   lowestHp,
   nearestEnemy,
   knockbackPosition,
@@ -135,11 +136,24 @@ export function planBattleFrame({
       return;
     }
     if (instruction.action === 'retreat') {
-      const x = retreatFrom(reactor, instruction.params.moveDistance ?? 0);
+      if (!target || target.hp <= 0) return;
+      const x = retreatFrom(reactor, target, instruction.params.moveDistance ?? 0);
       const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
         flash: { id: reactor.instanceId, kind: instruction.visualKind ?? 'move', actionLabel, reaction: true, n: 0 },
+        log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜戦線 ${Math.round(x)}`, type: 'reaction' },
+        updates: [{ id: reactor.instanceId, values }],
+      });
+      return;
+    }
+    if (instruction.action === 'jump') {
+      if (!target || target.hp <= 0) return;
+      const x = jumpToward(reactor, target, instruction.params.moveDistance ?? 0);
+      const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
+      setNext(reactor.instanceId, values);
+      queueStep({
+        flash: { id: reactor.instanceId, kind: instruction.visualKind ?? 'jump', actionLabel, reaction: true, n: 0 },
         log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜戦線 ${Math.round(x)}`, type: 'reaction' },
         updates: [{ id: reactor.instanceId, values }],
       });
@@ -183,7 +197,8 @@ export function planBattleFrame({
     const impact = resolveActionImpact(reactor, target, instruction);
     const hp = Math.max(0, target.hp - impact.damage);
     const poison = target.poison + (instruction.params.statusStacks ?? 0);
-    const x = hp > 0 && impact.knockbackDistance > 0 ? knockbackPosition(target, impact.knockbackDistance) : target.x;
+    const x =
+      hp > 0 && impact.knockbackDistance > 0 ? knockbackPosition(target, reactor, impact.knockbackDistance) : target.x;
     setNext(reactor.instanceId, { reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds });
     setNext(target.instanceId, { hp, poison, x });
     const attackKind =
@@ -320,6 +335,23 @@ export function planBattleFrame({
             updates: [{ id: current.instanceId, values: { x } }],
           });
         }
+      } else if (instruction.action === 'jump') {
+        const x = jumpToward(current, target, instruction.params.moveDistance ?? 0);
+        setNext(current.instanceId, { x });
+        queueStep({
+          flash: {
+            id: current.instanceId,
+            kind: instruction.visualKind ?? 'jump',
+            actionLabel: instruction.short,
+            n: 0,
+          },
+          log: {
+            actor: current.name,
+            text: `${target.name}へ${instruction.short}｜戦線 ${Math.round(x)}`,
+            type: 'info',
+          },
+          updates: [{ id: current.instanceId, values: { x } }],
+        });
       } else if (instruction.action === 'heal') {
         const amount = Math.round(
           current.role === 'SUPPORT'
@@ -334,7 +366,7 @@ export function planBattleFrame({
           updates: [{ id: target.instanceId, values: { hp } }],
         });
       } else if (instruction.action === 'retreat') {
-        const x = retreatFrom(current, instruction.params.moveDistance ?? 0);
+        const x = retreatFrom(current, target, instruction.params.moveDistance ?? 0);
         setNext(current.instanceId, { x });
         queueStep({
           flash: {
@@ -415,7 +447,9 @@ export function planBattleFrame({
         const hp = Math.max(0, target.hp - impact.damage);
         const poison = target.poison + (instruction.params.statusStacks ?? 0);
         const x =
-          hp > 0 && impact.knockbackDistance > 0 ? knockbackPosition(target, impact.knockbackDistance) : target.x;
+          hp > 0 && impact.knockbackDistance > 0
+            ? knockbackPosition(target, current, impact.knockbackDistance)
+            : target.x;
         setNext(target.instanceId, { x, hp, poison });
         const attackKind =
           instruction.action === 'heavy' ||

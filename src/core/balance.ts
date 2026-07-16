@@ -118,6 +118,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'attack',
     'heavy',
     'move',
+    'jump',
     'retreat',
     'heal',
     'guard',
@@ -176,7 +177,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     }
     if (instruction.fixedFor) requireUnit(instruction.fixedFor, `スキル ${instruction.id}`);
     if (
-      (instruction.action === 'move' || instruction.action === 'retreat') &&
+      (instruction.action === 'move' || instruction.action === 'jump' || instruction.action === 'retreat') &&
       (instruction.params.moveDistance ?? 0) <= 0
     )
       error('MISSING_PARAMETER', `${instruction.id} には正の moveDistance が必要です`);

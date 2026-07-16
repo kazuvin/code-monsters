@@ -44,6 +44,7 @@
     },
     "initialPicks": [
       { "slot": 0, "kind": "unit", "id": "relay" },
+      { "slot": 2, "kind": "instruction", "id": "vault-over" },
       { "slot": 3, "kind": "unit", "id": "wrath" },
       { "slot": 4, "kind": "instruction", "id": "knock-away" }
     ]
@@ -286,6 +287,20 @@
       "params": { "moveDistance": 6.5 }
     },
     {
+      "id": "vault-over",
+      "title": "跳び越える",
+      "short": "跳躍",
+      "flavor": "間合いが合えば、頭上を越えて背後へ。",
+      "action": "jump",
+      "price": 3,
+      "rarity": "rare",
+      "condition": "enemyInRange",
+      "target": "nearestEnemy",
+      "tone": "amber",
+      "visualKind": "jump",
+      "params": { "moveDistance": 14 }
+    },
+    {
       "id": "berserker-mode",
       "title": "バーサーカーモード",
       "short": "バーサーカー",
@@ -298,7 +313,7 @@
       "tone": "amber",
       "fixedFor": "wrath",
       "reactionOnly": true,
-      "params": { "attackScale": 1.6, "speedScale": 2 }
+      "params": { "attackScale": 1.6, "speedScale": 3 }
     },
     {
       "id": "volt-follow",

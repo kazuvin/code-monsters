@@ -55,7 +55,8 @@ export function BattleScene({ fighters, flash, running }: Props) {
           const attackType = isActor && flash?.attackType ? flash.attackType : fighter.attackType;
           const attackEffect = flash?.kind === 'follow' ? 'follow' : attackType;
           const abilityEffect =
-            isActor && (flash?.kind === 'dash' || flash?.kind === 'retreat' || flash?.kind === 'guard')
+            isActor &&
+            (flash?.kind === 'dash' || flash?.kind === 'jump' || flash?.kind === 'retreat' || flash?.kind === 'guard')
               ? flash.kind
               : null;
           const state = fighter.hp <= 0 ? 'is-dead' : isActor ? `is-${flash?.kind}` : '';
