@@ -21,10 +21,11 @@ await arrowCard.getByRole('button', { name: /購入/ }).click();
 await page.locator('.inventory button').filter({ hasText: 'アロー' }).click();
 await page.locator('.unit-tabs button').filter({ hasText: 'アロー' }).click();
 
-await page.locator('.sentence-block').nth(1).getByRole('button', { name: '削除' }).click();
+const normalProgram = page.locator('.program-list').first();
+await normalProgram.locator('.sentence-block').nth(1).getByRole('button', { name: '削除' }).click();
 await page.getByRole('button', { name: '＋ 通常作戦を追加' }).click();
 await page.getByRole('button', { name: '＋ 通常作戦を追加' }).click();
-const program = (await page.locator('.program-list').innerText()).replace(/\s+/g, ' ').trim();
+const program = (await normalProgram.innerText()).replace(/\s+/g, ' ').trim();
 
 for (const unitName of ['ヴォルト', 'バスティオン']) {
   await page.locator('.unit-tabs button').filter({ hasText: unitName }).click();

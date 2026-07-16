@@ -13,8 +13,8 @@ page.on('pageerror', error => errors.push(error.message));
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 const reactionSnapshot = async () => {
-  const editor = page.locator('.reaction-editor');
-  const block = editor.locator('.reaction-block');
+  const editor = page.locator('.reaction-loop');
+  const block = editor.locator('.reaction-code-block');
   if (await block.count() === 0) return { exists: false, text: (await editor.innerText()).replace(/\s+/g, ' ').trim() };
   return {
     exists: true,
@@ -36,7 +36,7 @@ const fixedNormalInstruction = async () => {
 };
 
 const volt = await reactionSnapshot();
-const voltNormal = (await page.locator('.program-list').innerText()).replace(/\s+/g, ' ').trim();
+const voltNormal = (await page.locator('.program-list').first().innerText()).replace(/\s+/g, ' ').trim();
 await page.locator('.unit-tabs button').filter({ hasText: 'バスティオン' }).click();
 const bastion = await reactionSnapshot();
 
@@ -46,8 +46,8 @@ await page.locator('.inventory button').filter({ hasText: 'リレイ' }).click()
 await page.locator('.unit-tabs button').filter({ hasText: 'リレイ' }).click();
 const relayEmpty = await reactionSnapshot();
 const relayNormal = await fixedNormalInstruction();
-await page.getByRole('button', { name: 'リアクションを設定' }).click();
-await page.locator('.reaction-block .word-slot').first().click();
+await page.getByRole('button', { name: /リアクションを追加/ }).click();
+await page.locator('.reaction-code-block .word-slot').first().click();
 const reactionChoices = (await page.locator('.choice-list button').allTextContents()).map(text => text.trim());
 await page.locator('.choice-list button').filter({ hasText: '味方の攻撃がヒットしたら' }).click();
 const relayConfigured = await reactionSnapshot();
@@ -98,7 +98,7 @@ await arrowCard.getByRole('button', { name: /購入/ }).click();
 await page.locator('.inventory button').filter({ hasText: 'アロー' }).click();
 await page.locator('.unit-tabs button').filter({ hasText: 'アロー' }).click();
 const arrow = await reactionSnapshot();
-const arrowNormal = (await page.locator('.program-list').innerText()).replace(/\s+/g, ' ').trim();
+const arrowNormal = (await page.locator('.program-list').first().innerText()).replace(/\s+/g, ' ').trim();
 for (const unitName of ['ヴォルト', 'バスティオン']) {
   await page.locator('.unit-tabs button').filter({ hasText: unitName }).click();
   await page.getByRole('button', { name: '外す' }).click();

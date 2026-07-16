@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { resolveImpact } from '../src/combat.ts';
+import { INSTRUCTIONS } from '../src/data.ts';
 
 const target = {
   targetDefense: 6,
@@ -49,4 +50,20 @@ const explicitNoKnockback = resolveImpact({
 });
 assert.equal(explicitNoKnockback.knockbackDistance, 0, 'アクション固有設定でノックバックを無効化できる必要があります');
 
-console.log(JSON.stringify({ normalSniper, knockbackOnlySniper, normalMelee, explicitNoKnockback }, null, 2));
+const homeRunInstruction = INSTRUCTIONS.find(instruction => instruction.id === 'home-run');
+assert.ok(homeRunInstruction, 'ホームランの指示が登録されていません');
+const homeRun = resolveImpact({
+  rawDamage: 26,
+  minimumDamage: 4,
+  attackType: 'melee',
+  attackerKnockbackPower: 8,
+  impact: homeRunInstruction.impact,
+  targetDefense: 15,
+  targetWeight: 14,
+  targetRole: 'TANK',
+  targetGuarded: true,
+});
+assert.ok(homeRun.damage > 0, 'ホームランはダメージを与える必要があります');
+assert.ok(homeRun.knockbackDistance >= 35, 'ホームランはガード中の重量級も大きくノックバックさせる必要があります');
+
+console.log(JSON.stringify({ normalSniper, knockbackOnlySniper, normalMelee, explicitNoKnockback, homeRun }, null, 2));

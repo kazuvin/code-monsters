@@ -15,6 +15,7 @@ export const UNITS: UnitDefinition[] = [
 
 export const INSTRUCTIONS: Instruction[] = [
   { id:'attack-low', title:'敵を攻撃する', short:'攻撃', action:'attack', price:2, rarity:'common', condition:'敵が射程範囲内', target:'敵', tone:'cyan' },
+  { id:'home-run', title:'敵をホームランする', short:'ホームラン', action:'heavy', price:4, rarity:'rare', condition:'敵が射程範囲内', target:'敵', tone:'amber', impact:{knockbackPower:120} },
   { id:'approach', title:'敵へ前進する', short:'前進', action:'move', price:1, rarity:'common', condition:'敵が射程範囲外', target:'敵', tone:'amber' },
   { id:'retreat', title:'距離を取る', short:'後退', action:'retreat', price:2, rarity:'common', condition:'敵が射程範囲内', target:'敵', tone:'violet' },
   { id:'volt-follow', title:'敵へ追撃する', short:'追撃', action:'follow', price:0, rarity:'common', condition:'条件なし', target:'敵', tone:'cyan', fixedFor:'volt', impact:{knockbackPower:0} },
