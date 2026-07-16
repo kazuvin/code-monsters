@@ -70,7 +70,10 @@ console.log(JSON.stringify(result, null, 2));
 
 if (!shopText.includes('RARE / THROW') || !shopText.includes('基礎DMG 20') || !shopText.includes('着地 背後 6 m'))
   throw new Error('背負い投げのショップ表示が不正です');
-if (!configuredProgram.includes('一番近い敵 が 攻撃射程内') || !configuredProgram.includes('背負い投げ'))
+if (
+  !configuredProgram.includes('このユニットから見て 一番近い敵 が 射程範囲内') ||
+  !configuredProgram.includes('背負い投げ')
+)
   throw new Error('背負い投げを通常作戦へ設定できません');
 if (!throwSeen || !throwAnimation.startsWith('ability-throw-'))
   throw new Error('背負い投げの戦闘アニメーションを確認できません');

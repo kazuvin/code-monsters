@@ -1949,6 +1949,15 @@ button:focus-visible {
   color: #c5ccd5;
   padding: 10px 0;
 }
+.program-viewpoint {
+  color: #8f9aa7;
+  font:
+    600 11px "IBM Plex Mono",
+    "Noto Sans JP",
+    sans-serif;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
 .word-slot {
   border: 1px solid #3b424d;
   background: #12161c;

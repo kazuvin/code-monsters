@@ -12,7 +12,7 @@ The prototype now separates game definitions, deterministic rules, and rendering
 - battle timing, walls, cooldowns, damage/knockback formulas, overheat, economy, and shop weights
 - static-analysis weights and allowed balance spreads
 
-Stable IDs such as `nearestEnemy`, `nearestAlly`, `criticalAlly`, and `enemyInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
+Stable IDs such as `nearestEnemy`, `nearestAlly`, `criticalAlly`, and `targetInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
 
 For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and generate ScriptableObjects if inspector editing is preferred. Keep JSON as the canonical reviewed asset; generated ScriptableObjects should not become a second source of truth.
 
@@ -48,3 +48,7 @@ Normal-program blocks now serialize `{ targetId, conditionId, actionId }`. Instr
 ## Schema version 3 migration
 
 Rename the version 2 target selector ID `currentEnemy` to `nearestEnemy`. Version 3 also adds `nearestAlly` and `criticalAlly`; ally selectors other than `allAllies` exclude the acting unit because `self` remains a separate explicit target.
+
+## Schema version 4 migration
+
+Rename the version 3 condition IDs `enemyInRange` and `enemyOutOfRange` to `targetInRange` and `targetOutOfRange`. Both conditions always measure from the unit executing the program to the selected target, and they now support ally selectors as well as enemy selectors. Remove `allyHpBelow50` and `battle.allyLowHpThreshold`; ally-target programs choose between the acting unit's in-range and out-of-range conditions. The `emergency-repair` instruction was also removed, leaving `field-repair` as the single healing instruction.

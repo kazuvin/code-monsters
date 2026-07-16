@@ -26,7 +26,6 @@ export type BattleConfig = {
   wallRight: number;
   lowHpThreshold: number;
   enemyLowHpThreshold: number;
-  allyLowHpThreshold: number;
   defenseDamageFactor: number;
   minimumKnockbackDistance: number;
   weightKnockbackFactor: number;

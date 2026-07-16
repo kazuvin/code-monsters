@@ -112,11 +112,10 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const targetSelectors = new Set<string>(data.targetSelectors.map((target) => target.id));
   const supportedConditions = new Set([
     'always',
-    'enemyInRange',
-    'enemyOutOfRange',
+    'targetInRange',
+    'targetOutOfRange',
     'enemyHpBelow50',
     'selfHpBelow30',
-    'allyHpBelow50',
     'enemyHasStatus',
   ]);
   const supportedActions = new Set([
@@ -165,7 +164,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const requireTargetSelector = (id: string, context: string) => {
     if (!targetSelectors.has(id)) error('UNKNOWN_TARGET', `${context} が未定義対象 "${id}" を参照しています`);
   };
-  if (data.schemaVersion < 3) error('INVALID_SCHEMA_VERSION', 'schemaVersion は3以上である必要があります');
+  if (data.schemaVersion < 4) error('INVALID_SCHEMA_VERSION', 'schemaVersion は4以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.baseActionCooldownSeconds <= 0 ||

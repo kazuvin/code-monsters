@@ -137,10 +137,10 @@ if (!reactionCopy.includes('REACTION LOOP') || !reactionCopy.includes('もし') 
   throw new Error('リアクションが通常作戦と同じ文型で表示されていません');
 if (
   startingConditions.length !== 2 ||
-  !startingConditions.some((text) => text.includes('攻撃射程内')) ||
-  !startingConditions.some((text) => text.includes('攻撃射程外'))
+  !startingConditions.some((text) => text.includes('射程範囲内')) ||
+  !startingConditions.some((text) => text.includes('射程範囲外'))
 )
-  throw new Error('初期条件は「攻撃射程内」「攻撃射程外」の2つである必要があります');
+  throw new Error('初期条件は「射程範囲内」「射程範囲外」の2つである必要があります');
 if (
   startingActions.length !== 2 ||
   !startingActions.some((text) => text.includes('通常攻撃')) ||
@@ -162,7 +162,7 @@ if (
   !knockAwayChoiceText.includes('KB出力 120')
 )
   throw new Error('行動選択カードで技名・能力値を確認できません');
-if (!program.startsWith('1 もし 一番近い敵 が 攻撃射程内 なら ちょっと吹き飛ばす'))
+if (!program.startsWith('1 もし このユニットから見て 一番近い敵 が 射程範囲内 なら ちょっと吹き飛ばす'))
   throw new Error('「ちょっと吹き飛ばす」を作戦の先頭へ設定できませんでした');
 if (!events.some((event) => event.label === '吹き飛ばす'))
   throw new Error('「ちょっと吹き飛ばす」の固有アクション表示を確認できませんでした');

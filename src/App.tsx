@@ -630,6 +630,7 @@ export function App() {
                     <div className="line-no">{index + 1}</div>
                     <div className="sentence-copy">
                       <span>もし</span>
+                      <span className="program-viewpoint">このユニットから見て</span>
                       <button
                         className={`word-slot target-word-slot target-${target.domain} ${target.cardinality === 'many' ? 'target-many' : ''} ${targetActive ? 'active' : ''}`}
                         onClick={() => setEditingSlot({ scope: 'program', index, field: 'target' })}

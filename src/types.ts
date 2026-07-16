@@ -21,11 +21,10 @@ export type Rarity = 'common' | 'rare' | 'epic';
 export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'allyAttackHit' | 'selfHpLow';
 export type ConditionId =
   | 'always'
-  | 'enemyInRange'
-  | 'enemyOutOfRange'
+  | 'targetInRange'
+  | 'targetOutOfRange'
   | 'enemyHpBelow50'
   | 'selfHpBelow30'
-  | 'allyHpBelow50'
   | 'enemyHasStatus';
 export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'nearestAlly' | 'lowestHpAlly' | 'criticalAlly' | 'self';
 export type TargetSelectorId =

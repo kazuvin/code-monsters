@@ -404,6 +404,7 @@ export function planBattleFrame({
           ? matchedTargets[0]
           : (selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest);
       if (instruction.action === 'pull' && distanceTo(current, target) > actionRange(current, instruction)) continue;
+      if (instruction.action === 'heal' && distanceTo(current, target) > current.range) continue;
       acted = true;
 
       if (instruction.action === 'taunt') {

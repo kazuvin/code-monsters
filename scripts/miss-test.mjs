@@ -15,7 +15,7 @@ await page.goto(targetUrl, { waitUntil: 'networkidle' });
 const normalProgram = page.locator('.program-list').first();
 const attackRow = normalProgram.locator('.sentence-block').first();
 await attackRow.locator('.word-slot').nth(1).click();
-await page.locator('.condition-choice-card').filter({ hasText: '攻撃射程外' }).click();
+await page.locator('.condition-choice-card').filter({ hasText: '射程範囲外' }).click();
 const program = (await normalProgram.innerText()).replace(/\s+/g, ' ').trim();
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
@@ -72,7 +72,7 @@ await browser.close();
 
 console.log(JSON.stringify({ program, missEvent, missLog, errors }, null, 2));
 
-if (!program.startsWith('1 もし 一番近い敵 が 攻撃射程外 なら 通常攻撃'))
+if (!program.startsWith('1 もし このユニットから見て 一番近い敵 が 射程範囲外 なら 通常攻撃'))
   throw new Error('射程外で攻撃する空振り作戦を構成できませんでした');
 if (!missEvent) throw new Error('空振りイベントを観測できませんでした');
 if (!missEvent.label.includes('攻撃｜MISS')) throw new Error('ステータス表示で空振りを確認できません');

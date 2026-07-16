@@ -95,14 +95,12 @@ export function selectConditionTargets(
 
 export function matchCondition(condition: ConditionId, actor: Fighter, targets: Fighter[]): Fighter[] {
   if (condition === 'always') return targets;
-  if (condition === 'enemyInRange') return targets.filter((target) => distanceTo(actor, target) <= actor.range);
-  if (condition === 'enemyOutOfRange') return targets.filter((target) => distanceTo(actor, target) > actor.range);
+  if (condition === 'targetInRange') return targets.filter((target) => distanceTo(actor, target) <= actor.range);
+  if (condition === 'targetOutOfRange') return targets.filter((target) => distanceTo(actor, target) > actor.range);
   if (condition === 'enemyHpBelow50')
     return targets.filter((target) => target.hp / target.maxHp <= BATTLE_CONFIG.enemyLowHpThreshold);
   if (condition === 'selfHpBelow30')
     return targets.filter((target) => target.hp / target.maxHp <= BATTLE_CONFIG.lowHpThreshold);
-  if (condition === 'allyHpBelow50')
-    return targets.filter((target) => target.hp / target.maxHp <= BATTLE_CONFIG.allyLowHpThreshold);
   return targets.filter((target) => target.poison > 0);
 }
 

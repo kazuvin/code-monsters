@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "battle": {
     "tickSeconds": 0.22,
     "actionStepMs": 260,
@@ -15,7 +15,6 @@
     "wallRight": 90,
     "lowHpThreshold": 0.3,
     "enemyLowHpThreshold": 0.5,
-    "allyLowHpThreshold": 0.5,
     "defenseDamageFactor": 0.55,
     "minimumKnockbackDistance": 1.5,
     "weightKnockbackFactor": 0.45,
@@ -35,7 +34,7 @@
     "sellPricePenalty": 1
   },
   "shop": {
-    "size": 9,
+    "size": 8,
     "unitSlots": [0, 3],
     "rarityWeights": {
       "common": 72,
@@ -50,15 +49,14 @@
       { "slot": 4, "kind": "instruction", "id": "shoulder-throw" },
       { "slot": 5, "kind": "instruction", "id": "vault-over" },
       { "slot": 6, "kind": "instruction", "id": "knock-away" },
-      { "slot": 7, "kind": "instruction", "id": "field-repair" },
-      { "slot": 8, "kind": "instruction", "id": "emergency-repair" }
+      { "slot": 7, "kind": "instruction", "id": "field-repair" }
     ]
   },
   "roster": {
     "startingUnitIds": ["volt", "bastion"],
     "enemyUnitIds": ["relay", "bastion"],
     "startingActionIds": ["attack-low", "approach"],
-    "startingConditionIds": ["enemyInRange", "enemyOutOfRange"]
+    "startingConditionIds": ["targetInRange", "targetOutOfRange"]
   },
   "balanceAnalysis": {
     "baselineActionId": "attack-low",
@@ -145,11 +143,17 @@
       "label": "いつでも",
       "flavor": "迷わず、いつでも実行。",
       "effect": "常時",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies", "self"]
+    },
+    {
+      "id": "targetInRange",
+      "label": "射程範囲内",
+      "flavor": "手が届くなら、話は早い。",
+      "effect": "対象との距離 ≤ このユニットのRNG",
       "compatibleTargets": [
         "nearestEnemy",
         "lowestHpEnemy",
         "allEnemies",
-        "self",
         "nearestAlly",
         "lowestHpAlly",
         "criticalAlly",
@@ -157,18 +161,19 @@
       ]
     },
     {
-      "id": "enemyInRange",
-      "label": "攻撃射程内",
-      "flavor": "手が届くなら、話は早い。",
-      "effect": "対象との距離 ≤ RNG",
-      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
-    },
-    {
-      "id": "enemyOutOfRange",
-      "label": "攻撃射程外",
+      "id": "targetOutOfRange",
+      "label": "射程範囲外",
       "flavor": "まだ届かない。なら、次の手を。",
-      "effect": "対象との距離 > RNG",
-      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
+      "effect": "対象との距離 > このユニットのRNG",
+      "compatibleTargets": [
+        "nearestEnemy",
+        "lowestHpEnemy",
+        "allEnemies",
+        "nearestAlly",
+        "lowestHpAlly",
+        "criticalAlly",
+        "allAllies"
+      ]
     },
     {
       "id": "enemyHpBelow50",
@@ -183,13 +188,6 @@
       "flavor": "あとがないので、ここから本気。",
       "effect": "対象のHP ≤ 30%",
       "compatibleTargets": ["self"]
-    },
-    {
-      "id": "allyHpBelow50",
-      "label": "HP 50%以下",
-      "flavor": "仲間の危機には、すぐ反応。",
-      "effect": "対象のHP ≤ 50%",
-      "compatibleTargets": ["nearestAlly", "lowestHpAlly", "criticalAlly", "allAllies"]
     },
     {
       "id": "enemyHasStatus",
@@ -330,7 +328,7 @@
       "action": "attack",
       "price": 2,
       "rarity": "common",
-      "condition": "enemyInRange",
+      "condition": "targetInRange",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
@@ -347,7 +345,7 @@
       "action": "heavy",
       "price": 4,
       "rarity": "rare",
-      "condition": "enemyInRange",
+      "condition": "targetInRange",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
@@ -363,11 +361,11 @@
       "action": "move",
       "price": 1,
       "rarity": "common",
-      "condition": "enemyOutOfRange",
+      "condition": "targetOutOfRange",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "nearestAlly", "lowestHpAlly", "criticalAlly"],
       "tone": "amber",
       "params": { "moveDistance": 5.2 }
     },
@@ -379,7 +377,7 @@
       "action": "retreat",
       "price": 2,
       "rarity": "common",
-      "condition": "enemyInRange",
+      "condition": "targetInRange",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
@@ -395,7 +393,7 @@
       "action": "jump",
       "price": 3,
       "rarity": "rare",
-      "condition": "enemyInRange",
+      "condition": "targetInRange",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
@@ -412,7 +410,7 @@
       "action": "throw",
       "price": 4,
       "rarity": "rare",
-      "condition": "enemyInRange",
+      "condition": "targetInRange",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
@@ -444,7 +442,7 @@
       "action": "pull",
       "price": 3,
       "rarity": "rare",
-      "condition": "enemyOutOfRange",
+      "condition": "targetOutOfRange",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
@@ -454,35 +452,19 @@
     },
     {
       "id": "field-repair",
-      "title": "応急修復する",
-      "short": "応急修復",
-      "flavor": "近くの味方を、その場で素早く立て直す。",
+      "title": "ヒールする",
+      "short": "ヒール",
+      "flavor": "射程内の味方を、その場で立て直す。",
       "action": "heal",
       "price": 3,
       "rarity": "common",
-      "condition": "allyHpBelow50",
-      "target": "nearestAlly",
-      "defaultTarget": "nearestAlly",
+      "condition": "targetInRange",
+      "target": "lowestHpAlly",
+      "defaultTarget": "lowestHpAlly",
       "targetMode": "selected",
       "compatibleTargets": ["nearestAlly", "lowestHpAlly", "criticalAlly"],
       "tone": "lime",
       "params": { "healAmount": 22, "supportHealAmount": 34 }
-    },
-    {
-      "id": "emergency-repair",
-      "title": "緊急修復する",
-      "short": "緊急修復",
-      "flavor": "危険域の味方へ、修復出力を集中する。",
-      "action": "heal",
-      "price": 4,
-      "rarity": "rare",
-      "condition": "always",
-      "target": "criticalAlly",
-      "defaultTarget": "criticalAlly",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestAlly", "lowestHpAlly", "criticalAlly"],
-      "tone": "lime",
-      "params": { "healAmount": 38, "supportHealAmount": 54 }
     },
     {
       "id": "berserker-mode",
@@ -544,7 +526,7 @@
       "action": "move",
       "price": 0,
       "rarity": "common",
-      "condition": "enemyOutOfRange",
+      "condition": "targetOutOfRange",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
