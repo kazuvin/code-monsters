@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { BattleFlash, Fighter } from './types';
 
 type Props = { fighters: Fighter[]; flash: BattleFlash | null; running: boolean };
@@ -8,12 +9,19 @@ const laneIndex=(fighter:Fighter,fighters:Fighter[])=>fighters
 const depthIndex=(fighter:Fighter,fighters:Fighter[])=>40-laneIndex(fighter,fighters)*10;
 
 const colorHex=(value:number)=>`#${value.toString(16).padStart(6,'0')}`;
-const attackKinds=['attack','heavy','poison','burn','follow'] as const;
+const attackKinds=['attack','heavy','poison','burn','follow','miss'] as const;
 const nearestOpponent=(fighter:Fighter,fighters:Fighter[])=>fighters
   .filter(other=>other.team!==fighter.team&&other.hp>0)
   .sort((a,b)=>Math.abs(fighter.x-a.x)-Math.abs(fighter.x-b.x))[0];
 
 export function BattleScene({ fighters, flash, running }: Props) {
+  const [missNotice,setMissNotice]=useState<BattleFlash|null>(null);
+  useEffect(()=>{if(flash?.kind==='miss')setMissNotice(flash)},[flash]);
+  useEffect(()=>{
+    if(!missNotice)return;
+    const timer=setTimeout(()=>setMissNotice(null),1200);
+    return()=>clearTimeout(timer);
+  },[missNotice]);
   const aliveAllies=fighters.filter(f=>f.team==='ally'&&f.hp>0);
   const aliveEnemies=fighters.filter(f=>f.team==='enemy'&&f.hp>0);
   const allyFront=aliveAllies.reduce((n,f)=>n+f.x,0)/(aliveAllies.length||1);
@@ -28,6 +36,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
       <div className="frontline" style={{left:`${Math.max(14,Math.min(86,(allyFront+enemyFront)/2))}%`}} />
       {fighters.map(fighter=>{
         const isActor=flash?.id===fighter.instanceId;
+        const hasMissNotice=missNotice?.id===fighter.instanceId;
         const isTarget=flash?.targetId===fighter.instanceId;
         const isAttack=isActor&&attackKinds.some(kind=>kind===flash?.kind);
         const attackType=isActor&&flash?.attackType?flash.attackType:fighter.attackType;
@@ -60,6 +69,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
             {isAttack&&<i className={`attack-fx fx-${attackEffect}`} key={`fx-${animationKey}`} />}
             {isTarget&&<i className="hit-spark" key={`hit-${animationKey}`} />}
           </div>
+          {hasMissNotice&&<div className="miss-callout" key={`miss-${missNotice.n}`}><b>MISS</b><span>空振り</span></div>}
           {isActor&&flash?.reaction&&<i className="reaction-pulse" key={`reaction-${animationKey}`} />}
           {abilityEffect&&<i className={`ability-fx fx-${abilityEffect}`} key={`ability-${animationKey}`} />}
           <div className="sprite-hp"><i style={{width:`${hpRatio*100}%`}} /></div>

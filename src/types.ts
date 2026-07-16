@@ -31,7 +31,7 @@ export type ReactionBlock = { trigger: ReactionTrigger; actionId: string; fixedR
 export type UnitInventoryItem = UnitDefinition & { inventoryId: string; program: ProgramBlock[]; reaction: ReactionBlock | null };
 export type BattleFlash = {
   id: string;
-  kind: 'move' | 'dash' | 'retreat' | 'heal' | 'hit' | 'attack' | 'heavy' | 'poison' | 'burn' | 'follow' | 'guard' | 'wait' | 'death';
+  kind: 'move' | 'dash' | 'retreat' | 'heal' | 'hit' | 'attack' | 'heavy' | 'poison' | 'burn' | 'follow' | 'guard' | 'wait' | 'miss' | 'death';
   n: number;
   targetId?: string;
   attackType?: AttackType;
@@ -39,4 +39,4 @@ export type BattleFlash = {
   reaction?: boolean;
 };
 
-export type LogItem = { id: number; time: string; actor: string; text: string; type: 'info' | 'hit' | 'heal' | 'skip' | 'reaction' };
+export type LogItem = { id: number; time: string; actor: string; text: string; type: 'info' | 'hit' | 'heal' | 'skip' | 'miss' | 'reaction' };

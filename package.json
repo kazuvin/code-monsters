@@ -10,6 +10,7 @@
     "deploy": "wrangler deploy",
     "test:combat": "node scripts/combat-test.mjs",
     "test:knockback": "node scripts/knockback-test.mjs",
+    "test:miss": "node scripts/miss-test.mjs",
     "test:sniper": "node scripts/sniper-test.mjs",
     "test:ability": "node scripts/ability-test.mjs",
     "test:visual": "node scripts/visual-test.mjs"
