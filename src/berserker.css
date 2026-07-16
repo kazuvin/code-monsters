@@ -1,0 +1,113 @@
+.sprite.berserk-active .sprite-body {
+  z-index: 1;
+  filter: saturate(1.35) contrast(1.08);
+  border-color: #fff0d0;
+  box-shadow: 0 12px 22px #0008, 0 0 18px #ff6570aa, 0 0 34px #f4b84055;
+}
+
+.berserk-aura {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  z-index: 0;
+  width: 90px;
+  height: 90px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, transparent 0 34%, #f4b84055 35% 38%, transparent 39% 52%, #ff6570cc 53% 56%, transparent 57%);
+  clip-path: polygon(50% 0, 59% 16%, 75% 7%, 76% 26%, 96% 22%, 84% 42%, 100% 50%, 83% 59%, 96% 77%, 75% 73%, 74% 94%, 58% 82%, 50% 100%, 41% 82%, 24% 94%, 25% 73%, 4% 77%, 17% 58%, 0 50%, 17% 41%, 4% 22%, 25% 26%, 25% 7%, 41% 16%);
+  filter: drop-shadow(0 0 8px #ff6570) drop-shadow(0 0 16px #f4b84077);
+  pointer-events: none;
+  animation: berserk-aura-pulse .8s steps(2, end) infinite;
+}
+
+.berserk-aura::after {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border: 2px solid #ffe0a3;
+  clip-path: polygon(50% 0, 62% 23%, 88% 12%, 77% 39%, 100% 50%, 76% 62%, 88% 88%, 61% 77%, 50% 100%, 38% 77%, 12% 88%, 23% 61%, 0 50%, 23% 38%, 12% 12%, 39% 23%);
+  animation: berserk-aura-spin 2.1s linear infinite;
+}
+
+.berserk-chip {
+  position: absolute;
+  left: 50%;
+  bottom: 69px;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 3px 7px;
+  background: #290f13;
+  border: 1px solid #ff6570;
+  color: #ffd58a;
+  box-shadow: 0 0 12px #ff657077;
+  font: 700 8px 'Oxanium';
+  letter-spacing: .09em;
+  pointer-events: none;
+}
+
+.sprite.face-right.is-berserk .sprite-body {
+  animation: berserk-awaken-right .68s cubic-bezier(.18, .8, .2, 1);
+}
+
+.sprite.face-left.is-berserk .sprite-body {
+  animation: berserk-awaken-left .68s cubic-bezier(.18, .8, .2, 1);
+}
+
+.sprite.is-dead .berserk-aura,
+.sprite.is-dead .berserk-chip {
+  display: none;
+}
+
+.unit-status-card.berserk {
+  border-color: #8f3d38;
+  background: linear-gradient(90deg, #32171a 0, #202027 36%, #1d2026 100%);
+  box-shadow: inset 3px 0 #ff6570, 0 0 14px #ff65701c;
+}
+
+.unit-status-card.berserk .status-avatar {
+  border-color: #ff9a6f;
+  box-shadow: inset 0 -3px #270d10, 0 0 9px #ff657077;
+}
+
+.status-tags span.berserk {
+  border-color: #a94642;
+  background: #321317;
+  color: #ffc16f;
+  box-shadow: 0 0 8px #ff657033;
+}
+
+@keyframes berserk-aura-pulse {
+  0%, 100% { opacity: .62; transform: translateX(-50%) scale(.92); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
+}
+
+@keyframes berserk-aura-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes berserk-awaken-right {
+  0% { transform: translateX(-50%) scale(.82); filter: brightness(1); }
+  25% { transform: translateX(calc(-50% - 5px)) scale(1.2, .88); filter: brightness(2); }
+  45% { transform: translateX(calc(-50% + 6px)) scale(.94, 1.14); }
+  65% { transform: translateX(calc(-50% - 3px)) scale(1.07, .96); }
+  100% { transform: translateX(-50%) scale(1); filter: brightness(1); }
+}
+
+@keyframes berserk-awaken-left {
+  0% { transform: translateX(-50%) scaleX(-1) scale(.82); filter: brightness(1); }
+  25% { transform: translateX(calc(-50% + 5px)) scaleX(-1) scale(1.2, .88); filter: brightness(2); }
+  45% { transform: translateX(calc(-50% - 6px)) scaleX(-1) scale(.94, 1.14); }
+  65% { transform: translateX(calc(-50% + 3px)) scaleX(-1) scale(1.07, .96); }
+  100% { transform: translateX(-50%) scaleX(-1) scale(1); filter: brightness(1); }
+}
+
+@media (max-width: 800px) {
+  .berserk-aura { bottom: -13px; width: 70px; height: 70px; }
+  .berserk-chip { bottom: 54px; font-size: 7px; padding: 2px 5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .berserk-aura,
+  .berserk-aura::after,
+  .sprite.is-berserk .sprite-body { animation: none !important; }
+}

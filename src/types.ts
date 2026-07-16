@@ -1,8 +1,8 @@
 export type Role = 'STRIKER' | 'TANK' | 'SUPPORT' | 'VENOM' | 'CHASE' | 'HACKER';
-export type ActionType = 'attack' | 'heavy' | 'move' | 'retreat' | 'heal' | 'guard' | 'buff' | 'poison' | 'burn' | 'follow' | 'wait';
+export type ActionType = 'attack' | 'heavy' | 'move' | 'retreat' | 'heal' | 'guard' | 'buff' | 'berserk' | 'poison' | 'burn' | 'follow' | 'wait';
 export type AttackType = 'melee' | 'blunt' | 'sniper';
 export type Rarity = 'common' | 'rare' | 'epic';
-export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'allyAttackHit';
+export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'allyAttackHit' | 'selfHpLow';
 export type ImpactProfile = { damageScale?: number; knockbackPower?: number };
 
 export type UnitDefinition = {
@@ -17,13 +17,14 @@ export type Instruction = {
   rarity: Rarity;
   condition: string; target: string; tone: 'cyan' | 'amber' | 'lime' | 'violet';
   fixedFor?: string;
+  reactionOnly?: boolean;
   movementScale?: number;
   impact?: ImpactProfile;
 };
 
 export type Fighter = UnitDefinition & {
   instanceId: string; team: 'ally' | 'enemy'; hp: number; x: number; z: number;
-  cooldown: number; reactionCooldown: number; guarded: boolean; poison: number;
+  cooldown: number; reactionCooldown: number; guarded: boolean; berserk: boolean; poison: number;
 };
 
 export type ProgramBlock = { conditionId: string; actionId: string; fixedAction?: boolean };
@@ -31,7 +32,7 @@ export type ReactionBlock = { trigger: ReactionTrigger; actionId: string; fixedR
 export type UnitInventoryItem = UnitDefinition & { inventoryId: string; program: ProgramBlock[]; reaction: ReactionBlock | null };
 export type BattleFlash = {
   id: string;
-  kind: 'move' | 'dash' | 'retreat' | 'heal' | 'hit' | 'attack' | 'heavy' | 'poison' | 'burn' | 'follow' | 'guard' | 'wait' | 'miss' | 'death';
+  kind: 'move' | 'dash' | 'retreat' | 'heal' | 'hit' | 'attack' | 'heavy' | 'poison' | 'burn' | 'follow' | 'guard' | 'berserk' | 'wait' | 'miss' | 'death';
   n: number;
   targetId?: string;
   attackType?: AttackType;

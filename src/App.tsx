@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Coins, Lock, LockOpen, Pause, Play, RefreshCw, RotateCcw, ShoppingCart, Sparkles, Swords, X, Zap } from 'lucide-react';
 import { BattleScene } from './BattleScene';
 import { resolveImpact } from './combat';
-import { DEFAULT_PROGRAMS, DEFAULT_REACTIONS, INSTRUCTIONS, REACTION_TRIGGERS, UNITS } from './data';
+import { BERSERKER_ATK_SCALE, BERSERKER_SPEED_SCALE, DEFAULT_PROGRAMS, DEFAULT_REACTIONS, INSTRUCTIONS, REACTION_TRIGGERS, UNITS } from './data';
 import type { BattleFlash, Fighter, Instruction, LogItem, ProgramBlock, Rarity, ReactionBlock, ReactionTrigger, UnitDefinition, UnitInventoryItem } from './types';
 
 type Phase='build'|'battle'|'result';
@@ -46,7 +46,7 @@ const attackTypeLabels:Record<UnitDefinition['attackType'],string>={
 const actionLabel=(id:string)=>instructionById.get(id)?.title||id;
 const conditionLabel=(condition:string)=>conditionLabels[condition]||condition;
 const actionKindLabels:Record<Instruction['action'],string>={
-  attack:'ATTACK',heavy:'IMPACT',move:'MOVE',retreat:'RETREAT',heal:'REPAIR',guard:'GUARD',buff:'BOOST',poison:'POISON',burn:'BURN',follow:'FOLLOW',wait:'WAIT',
+  attack:'ATTACK',heavy:'IMPACT',move:'MOVE',retreat:'RETREAT',heal:'REPAIR',guard:'GUARD',buff:'BOOST',berserk:'BERSERK',poison:'POISON',burn:'BURN',follow:'FOLLOW',wait:'WAIT',
 };
 const conditionDetails:Record<string,{flavor:string;effect:string}>={
   '敵が射程範囲内':{flavor:'手が届くなら、話は早い。',effect:'敵との距離 ≤ RNG'},
@@ -57,6 +57,7 @@ const reactionDetails:Record<ReactionTrigger,{title:string;flavor:string;effect:
   selfAttackHit:{title:'攻撃ヒット時',flavor:'こちらの一撃が決まった、その瞬間。',effect:'自分の攻撃命中'},
   selfHit:{title:'被弾時',flavor:'痛かったので、すぐ返事をします。',effect:'自分がダメージを受ける'},
   allyAttackHit:{title:'味方ヒット時',flavor:'仲間の一撃に、ぴったり便乗。',effect:'味方の攻撃命中'},
+  selfHpLow:{title:'HP 30%以下',flavor:'あとがないので、ここから本気。',effect:'自分のHP ≤ 30%'},
 };
 const metricNumber=(value:number)=>Number.isInteger(value)?String(value):value.toFixed(1);
 const instructionMetrics=(instruction:Instruction,unit:UnitDefinition)=>{
@@ -66,6 +67,7 @@ const instructionMetrics=(instruction:Instruction,unit:UnitDefinition)=>{
   if(instruction.action==='guard')return [{label:'被DMG',value:'−18%'},{label:'被KB',value:'−30%'}];
   if(instruction.action==='heal')return [{label:'回復',value:unit.role==='SUPPORT'?'25 HP':'18 HP'}];
   if(instruction.action==='buff')return [{label:'ATK',value:'+3'}];
+  if(instruction.action==='berserk')return [{label:'ATK',value:`+${Math.round((BERSERKER_ATK_SCALE-1)*100)}%`},{label:'SPD',value:`+${Math.round((BERSERKER_SPEED_SCALE-1)*100)}%`}];
   if(instruction.action==='wait')return [{label:'待機',value:'0.65 s'}];
   const rawDamage=instruction.action==='follow'?unit.attack*.58:unit.attack+(instruction.action==='heavy'?10:instruction.action==='poison'||instruction.action==='burn'?2:0);
   const scaledDamage=rawDamage*(instruction.impact?.damageScale??1);
@@ -125,15 +127,18 @@ function makeShop(seed=0):ShopItem[]{
     const id=kind==='unit'?weightedPick(UNITS,seed*11+i+1).id:weightedPick(SHOP_INSTRUCTIONS,seed*13+i+5).id;
     return {kind,id};
   });
-  if(seed===0)picks[picks.length-1]={kind:'instruction',id:'knock-away'};
+  if(seed===0){
+    picks[2]={kind:'instruction',id:'berserker-mode'};
+    picks[picks.length-1]={kind:'instruction',id:'knock-away'};
+  }
   return picks.map((p,i)=>({...p,key:`${seed}-${i}`,locked:false}));
 }
 
 function freshFighters(team:UnitInventoryItem[]):Fighter[]{
   const enemies=ENEMY_IDS.map((id,i)=>makeUnitItem(id,100+i));
   return [
-    ...team.map((u,i)=>({...u,instanceId:u.inventoryId,team:'ally' as const,hp:u.maxHp,x:WALL_LEFT+2+i*4,z:0,cooldown:i*.18,reactionCooldown:0,guarded:false,poison:0})),
-    ...enemies.map((u,i)=>({...u,instanceId:`enemy-${u.inventoryId}`,team:'enemy' as const,hp:u.maxHp,x:WALL_RIGHT-2-i*4,z:0,cooldown:i*.18+.08,reactionCooldown:0,guarded:false,poison:0})),
+    ...team.map((u,i)=>({...u,instanceId:u.inventoryId,team:'ally' as const,hp:u.maxHp,x:WALL_LEFT+2+i*4,z:0,cooldown:i*.18,reactionCooldown:0,guarded:false,berserk:false,poison:0})),
+    ...enemies.map((u,i)=>({...u,instanceId:`enemy-${u.inventoryId}`,team:'enemy' as const,hp:u.maxHp,x:WALL_RIGHT-2-i*4,z:0,cooldown:i*.18+.08,reactionCooldown:0,guarded:false,berserk:false,poison:0})),
   ];
 }
 
@@ -235,7 +240,7 @@ export function App(){
       if(coins<ins.price){setToast('コインが足りません');return}
       setCoins(c=>c-ins.price);
       setOwnedActions(v=>v.includes(ins.id)?v:[...v,ins.id]);
-      setOwnedConditions(v=>v.includes(ins.condition)?v:[...v,ins.condition]);
+      if(!ins.reactionOnly)setOwnedConditions(v=>v.includes(ins.condition)?v:[...v,ins.condition]);
       setToast(`${ins.title}を取得しました`);
     }
     setShop(s=>s.filter(x=>x.key!==item.key));
@@ -372,7 +377,11 @@ export function App(){
           if(!reaction||reaction.trigger!==trigger||reactor.hp<=0||reactor.reactionCooldown>0)return;
           const source=next.find(f=>f.instanceId===sourceId);
           const eventTarget=next.find(f=>f.instanceId===targetId);
-          const target=trigger==='selfHit'?source:eventTarget;
+          const target=trigger==='selfHit'
+            ? source
+            : trigger==='selfHpLow'
+              ? nearestEnemy(reactor,next.filter(f=>f.team!==reactor.team&&f.hp>0))
+              : eventTarget;
           const ins=instructionById.get(reaction.actionId);
           if(!ins)return;
           const actionLabel=`⚡ ${ins.short}`;
@@ -382,6 +391,18 @@ export function App(){
               flash:{id:reactor.instanceId,kind:'guard',actionLabel,reaction:true,n:Date.now()},
               log:{actor:reactor.name,text:`REACTION｜${ins.short}`,type:'reaction'},
               apply:fighters=>fighters.map(f=>f.instanceId===reactor.instanceId?{...f,guarded:true,reactionCooldown:REACTION_COOLDOWN}:f),
+            });
+            return;
+          }
+          if(ins.action==='berserk'){
+            if(reactor.berserk)return;
+            const attack=Math.round(reactor.attack*BERSERKER_ATK_SCALE);
+            const speed=Number((reactor.speed*BERSERKER_SPEED_SCALE).toFixed(2));
+            next[reactorIndex]={...reactor,attack,speed,berserk:true,reactionCooldown:REACTION_COOLDOWN};
+            queueStep({
+              flash:{id:reactor.instanceId,kind:'berserk',actionLabel,reaction:true,n:Date.now()},
+              log:{actor:reactor.name,text:`REACTION｜バーサーカーモード｜ATK ${reactor.attack}→${attack} / SPD ${reactor.speed.toFixed(2)}→${speed.toFixed(2)}`,type:'reaction'},
+              apply:fighters=>fighters.map(f=>f.instanceId===reactor.instanceId?{...f,attack,speed,berserk:true,reactionCooldown:REACTION_COOLDOWN}:f),
             });
             return;
           }
@@ -459,7 +480,10 @@ export function App(){
           const attacker=next.find(f=>f.instanceId===attackerId);
           const target=next.find(f=>f.instanceId===targetId);
           if(!attacker||!target)return;
-          if(target.hp>0)queueReaction(target.instanceId,'selfHit',attacker.instanceId,target.instanceId);
+          if(target.hp>0){
+            queueReaction(target.instanceId,'selfHit',attacker.instanceId,target.instanceId);
+            if(target.hp/target.maxHp<=.3)queueReaction(target.instanceId,'selfHpLow',attacker.instanceId,target.instanceId);
+          }
           queueReaction(attacker.instanceId,'selfAttackHit',attacker.instanceId,target.instanceId);
           for(const ally of next.filter(f=>f.team===attacker.team&&f.instanceId!==attacker.instanceId&&f.hp>0)){
             queueReaction(ally.instanceId,'allyAttackHit',attacker.instanceId,target.instanceId);
@@ -479,6 +503,9 @@ export function App(){
           });
           next=displayNext.map(f=>({...f}));
           if(Math.floor(elapsedRef.current)!==Math.floor(elapsedRef.current-dt))addLog('SYSTEM',`OVERHEAT｜最大HPの ${(rate*100).toFixed(0)}% ダメージ`,'hit');
+        }
+        for(const lowHpFighter of next.filter(f=>f.hp>0&&f.hp/f.maxHp<=.3)){
+          queueReaction(lowHpFighter.instanceId,'selfHpLow',lowHpFighter.instanceId,lowHpFighter.instanceId);
         }
         for(const ready of [...next].filter(f=>f.hp>0&&f.cooldown<=0).sort((a,b)=>b.speed-a.speed)){
           const ri=next.findIndex(f=>f.instanceId===ready.instanceId&&f.hp>0);
@@ -550,6 +577,23 @@ export function App(){
                 log:{actor:current.name,text:'防御姿勢へ移行',type:'info'},
                 apply:fighters=>fighters.map(f=>f.instanceId===current.instanceId?{...f,guarded:true}:f),
               });
+            }else if(ins.action==='berserk'){
+              if(current.berserk){
+                queueStep({
+                  flash:{id:current.instanceId,kind:'wait',actionLabel:'暴走継続',n:Date.now()},
+                  log:{actor:current.name,text:'バーサーカーモードはすでに稼働中',type:'info'},
+                  apply:fighters=>fighters,
+                });
+              }else{
+                const attack=Math.round(current.attack*BERSERKER_ATK_SCALE);
+                const speed=Number((current.speed*BERSERKER_SPEED_SCALE).toFixed(2));
+                next[ri]={...current,attack,speed,berserk:true};
+                queueStep({
+                  flash:{id:current.instanceId,kind:'berserk',actionLabel:ins.short,n:Date.now()},
+                  log:{actor:current.name,text:`バーサーカーモード｜ATK ${current.attack}→${attack} / SPD ${current.speed.toFixed(2)}→${speed.toFixed(2)}`,type:'info'},
+                  apply:fighters=>fighters.map(f=>f.instanceId===current.instanceId?{...f,attack,speed,berserk:true}:f),
+                });
+              }
             }else if(ins.action==='buff'){
               const attack=current.attack+3;
               next[ri]={...current,attack};
@@ -635,7 +679,7 @@ export function App(){
   ],[fighters]);
   const statusTags=(fighter:Fighter)=>{
     if(fighter.hp<=0)return ['戦闘不能'];
-    const tags=['正常'];
+    const tags=[fighter.berserk?'暴走':'正常'];
     if(fighter.guarded)tags.push('防御');
     if(fighter.poison>0)tags.push(`毒 ${fighter.poison}`);
     if(fighter.cooldown>.55)tags.push('準備中');
@@ -665,7 +709,7 @@ export function App(){
             ? editingSlot.scope==='reaction'
               ? REACTION_TRIGGERS.map(trigger=>{const detail=reactionDetails[trigger.id];return <ConditionChoiceCard key={trigger.id} title={detail.title} flavor={detail.flavor} effect={detail.effect} reaction active={currentReaction?.trigger===trigger.id} onSelect={()=>replaceFocusedSlot(trigger.id)}/>})
               : ownedConditions.map(condition=>{const detail=conditionDetails[condition]||{flavor:'この条件を満たしたら実行。',effect:conditionLabel(condition)};return <ConditionChoiceCard key={condition} title={conditionLabel(condition)} flavor={detail.flavor} effect={detail.effect} active={currentProgram[editingSlot.index]?.conditionId===condition} onSelect={()=>replaceFocusedSlot(condition)}/>})
-            : ownedActions.map(id=>{const instruction=instructionById.get(id)!;return <InstructionChoiceCard key={id} instruction={instruction} unit={selectedUnit} reaction={editingSlot?.scope==='reaction'} active={(editingSlot?.scope==='reaction'?currentReaction?.actionId:currentProgram[editingSlot?.index||0]?.actionId)===id} onSelect={()=>replaceFocusedSlot(id)}/>})}</div>
+            : ownedActions.filter(id=>editingSlot?.scope==='reaction'||!instructionById.get(id)?.reactionOnly).map(id=>{const instruction=instructionById.get(id)!;return <InstructionChoiceCard key={id} instruction={instruction} unit={selectedUnit} reaction={editingSlot?.scope==='reaction'} active={(editingSlot?.scope==='reaction'?currentReaction?.actionId:currentProgram[editingSlot?.index||0]?.actionId)===id} onSelect={()=>replaceFocusedSlot(id)}/>})}</div>
         </div>
         <div className="inventory-grid">
           <div className="inventory"><small>控え</small><div>{bench.length===0?<span className="empty-inventory">なし</span>:bench.map(u=><button key={u.inventoryId} onClick={()=>equipBenchUnit(u.inventoryId)}><span className="unit-mini" style={{background:`#${u.color.toString(16).padStart(6,'0')}`}}/>{u.name}</button>)}</div></div>
@@ -674,7 +718,7 @@ export function App(){
       <aside className="shop-panel"><div className="section-head"><div><span className="step-no">02</span><h2>ショップ</h2></div><button className="refresh" onClick={refresh}><RefreshCw size={15}/>更新 <b>1</b></button></div><div className="shop-grid">{shop.map(item=>{const data:UnitDefinition|Instruction=item.kind==='unit'?unitById.get(item.id)!:instructionById.get(item.id)!;const isUnit=item.kind==='unit';const label=isUnit?(data as UnitDefinition).name:(data as Instruction).title;const instruction=isUnit?null:data as Instruction;return <article className={`shop-item rarity-${data.rarity} ${instruction?'instruction-shop-item':''}`} key={item.key}><button className="lock" aria-label="ロック" onClick={()=>toggleLock(item.key)}>{item.locked?<Lock/>:<LockOpen/>}</button><small>{rarityLabels[data.rarity]} / {isUnit?attackTypeLabels[(data as UnitDefinition).attackType]:actionKindLabels[instruction!.action]}</small><strong>{label}</strong>{instruction?<><p className="shop-flavor">{instruction.flavor}</p><div className="shop-metrics">{instructionMetrics(instruction,selectedUnit).map(metric=><span key={metric.label}><small>{metric.label}</small><b>{metric.value}</b></span>)}</div></>:<p>{`RNG ${(data as UnitDefinition).range} / KB ${(data as UnitDefinition).knockbackPower} / 枠 ${(data as UnitDefinition).programLimit}`}</p>}<button className="buy" onClick={()=>buy(item)}><ShoppingCart size={15}/><span>購入</span><b><Coins size={13}/>{data.price}</b></button></article>})}</div><button className="ready" onClick={startBattle}><Swords/>戦闘開始</button></aside>
     </div>:<div className="battle-layout">
       <section className="arena"><div className="battle-hud"><div className="hud-team ally"><small>YOUR SQUAD</small><b>{teamHp}</b><span>HP</span></div><div className="timer"><small>{elapsed>=50?'OVERHEAT IN':'BATTLE TIME'}</small><b>{Math.floor(elapsed/60)}:{String(Math.floor(elapsed%60)).padStart(2,'0')}</b></div><div className="hud-team enemy"><small>ENEMY</small><b>{enemyHp}</b><span>HP</span></div></div><BattleScene fighters={fighters} flash={flash} running={phase==='battle'&&!paused}/><div className="unit-bars">{fighters.map(f=><div className={f.team} key={f.instanceId}><span>{f.name}</span><div><i style={{width:`${Math.max(0,f.hp/f.maxHp*100)}%`}}/></div><b>{Math.ceil(f.hp)}</b></div>)}</div><div className="battle-controls"><button onClick={()=>setPaused(p=>!p)}>{paused?<Play/>:<Pause/>}</button><button className={speed===1?'active':''} onClick={()=>setSpeed(1)}>x1</button><button className={speed===2?'active':''} onClick={()=>setSpeed(2)}>x2</button><button onClick={reset}><RotateCcw/></button></div></section>
-      <aside className="status-panel"><div className="section-head"><div><span className="live-dot"/><h2>ユニット状態</h2></div><button className="open-log" onClick={()=>setLogsOpen(true)}>ログ <b>{logs.length}</b></button></div><div className="status-roster">{fighterGroups.map(group=><section className="status-group" key={group.key}><h3>{group.label}</h3>{group.units.map(f=>{const hpRatio=Math.max(0,f.hp/f.maxHp*100);const cooldownRatio=cooldownProgress(f);const active=flash?.id===f.instanceId&&flash.actionLabel;return <article className={`unit-status-card ${f.team} ${f.hp<=0?'down':''} ${active?'acting':''}`} key={f.instanceId}><div className="status-avatar" style={{['--unit-color' as string]:`#${f.color.toString(16).padStart(6,'0')}`}}><i/></div><div className="status-id"><small>{f.code}</small><strong>{f.name}</strong><span>{attackTypeLabels[f.attackType]}</span></div><div className="unit-status-hp"><div><i style={{width:`${hpRatio}%`}}/></div><b>{Math.ceil(Math.max(0,f.hp))}/{f.maxHp}</b></div><div className="status-cooldown"><div><i style={{width:`${cooldownRatio*100}%`}}/></div><b>{cooldownRatio>=1?'READY':'WAIT'}</b></div><div className="status-stats"><span>A <b>{f.attack}</b></span><span>R <b>{f.range}</b></span><span>K <b>{f.knockbackPower}</b></span><span>W <b>{f.weight}</b></span><span>D <b>{f.defense}</b></span><span>S <b>{f.speed}</b></span></div><div className="status-tags">{statusTags(f).map(tag=><span className={tag==='正常'?'normal':''} key={tag}>{tag}</span>)}</div>{active&&<div className={`card-action-bubble ${flash?.kind==='miss'?'miss':''}`}>{flash.actionLabel}</div>}</article>})}</section>)}</div></aside>
+      <aside className="status-panel"><div className="section-head"><div><span className="live-dot"/><h2>ユニット状態</h2></div><button className="open-log" onClick={()=>setLogsOpen(true)}>ログ <b>{logs.length}</b></button></div><div className="status-roster">{fighterGroups.map(group=><section className="status-group" key={group.key}><h3>{group.label}</h3>{group.units.map(f=>{const hpRatio=Math.max(0,f.hp/f.maxHp*100);const cooldownRatio=cooldownProgress(f);const active=flash?.id===f.instanceId&&flash.actionLabel;return <article className={`unit-status-card ${f.team} ${f.hp<=0?'down':''} ${f.berserk?'berserk':''} ${active?'acting':''}`} key={f.instanceId}><div className="status-avatar" style={{['--unit-color' as string]:`#${f.color.toString(16).padStart(6,'0')}`}}><i/></div><div className="status-id"><small>{f.code}</small><strong>{f.name}</strong><span>{attackTypeLabels[f.attackType]}</span></div><div className="unit-status-hp"><div><i style={{width:`${hpRatio}%`}}/></div><b>{Math.ceil(Math.max(0,f.hp))}/{f.maxHp}</b></div><div className="status-cooldown"><div><i style={{width:`${cooldownRatio*100}%`}}/></div><b>{cooldownRatio>=1?'READY':'WAIT'}</b></div><div className="status-stats"><span>A <b>{f.attack}</b></span><span>R <b>{f.range}</b></span><span>K <b>{f.knockbackPower}</b></span><span>W <b>{f.weight}</b></span><span>D <b>{f.defense}</b></span><span>S <b>{f.speed}</b></span></div><div className="status-tags">{statusTags(f).map(tag=><span className={tag==='正常'?'normal':tag==='暴走'?'berserk':''} key={tag}>{tag}</span>)}</div>{active&&<div className={`card-action-bubble ${flash?.kind==='miss'?'miss':''}`}>{flash.actionLabel}</div>}</article>})}</section>)}</div></aside>
       {logsOpen&&<div className="log-dialog-overlay" role="dialog" aria-modal="true" aria-label="戦闘ログ"><div className="log-dialog"><div className="log-dialog-head"><div><span className="live-dot"/><h2>戦闘ログ</h2><small>{logs.length} EVENTS</small></div><button aria-label="ログを閉じる" onClick={()=>setLogsOpen(false)}><X size={18}/></button></div><div className="logs">{logs.length===0?<div className="empty-log"><Sparkles/><span>プログラムを初期化中</span></div>:logs.map(l=><div className={`log ${l.type}`} key={l.id}><time>{l.time}</time><div><b>{l.actor}</b><span>{l.text}</span></div></div>)}</div></div></div>}
       {phase==='result'&&<div className="result-overlay"><div className="result-dialog"><small>BATTLE COMPLETE</small><h1>{winner}</h1><p>{winner==='勝利'?'ロジックが敵チームを停止させました':'プログラムを調整して再実行できます'}</p><div><span>実行イベント <b>{logs.length}</b></span><span>戦闘時間 <b>{elapsed.toFixed(1)}s</b></span></div><button onClick={()=>{setRound(r=>r+1);setCoins(c=>c+5);reset()}}>次のラウンドへ</button></div></div>}
     </div>}

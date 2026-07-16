@@ -1,9 +1,13 @@
 import type { Instruction, ReactionBlock, ReactionTrigger, UnitDefinition } from './types';
 
+export const BERSERKER_ATK_SCALE=1.6;
+export const BERSERKER_SPEED_SCALE=1.5;
+
 export const REACTION_TRIGGERS: { id: ReactionTrigger; label: string }[] = [
   { id:'selfAttackHit', label:'自分の攻撃がヒットしたら' },
   { id:'selfHit', label:'自分が攻撃を受けたら' },
   { id:'allyAttackHit', label:'味方の攻撃がヒットしたら' },
+  { id:'selfHpLow', label:'自分のHPが30%以下になったら' },
 ];
 
 export const UNITS: UnitDefinition[] = [
@@ -18,6 +22,7 @@ export const INSTRUCTIONS: Instruction[] = [
   { id:'knock-away', title:'ちょっと吹き飛ばす', short:'吹き飛ばす', flavor:'どっか遠くへ、ぽん。じゃあね。', action:'heavy', price:4, rarity:'rare', condition:'敵が射程範囲内', target:'敵', tone:'amber', impact:{knockbackPower:120} },
   { id:'approach', title:'前進する', short:'前進', flavor:'届かないなら、こっちから行く。', action:'move', price:1, rarity:'common', condition:'敵が射程範囲外', target:'敵', tone:'amber' },
   { id:'retreat', title:'後退する', short:'後退', flavor:'逃げではない。助走の準備です。', action:'retreat', price:2, rarity:'common', condition:'敵が射程範囲内', target:'敵', tone:'violet' },
+  { id:'berserker-mode', title:'バーサーカーモード', short:'バーサーカー', flavor:'理性は置いてきた。ここから全部、全力。', action:'berserk', price:5, rarity:'rare', condition:'自分のHPが30%以下', target:'自分', tone:'amber', reactionOnly:true },
   { id:'volt-follow', title:'追撃する', short:'追撃', flavor:'まだ終わってないので、もう一発。', action:'follow', price:0, rarity:'common', condition:'条件なし', target:'敵', tone:'cyan', fixedFor:'volt', impact:{knockbackPower:0} },
   { id:'tank-guard', title:'ガードする', short:'防御', flavor:'痛いのは困るので、しっかり受ける。', action:'guard', price:0, rarity:'common', condition:'条件なし', target:'自分', tone:'lime', fixedFor:'bastion' },
   { id:'relay-dash', title:'高速接近する', short:'高速接近', flavor:'距離という問題を、速さで消す。', action:'move', price:0, rarity:'common', condition:'敵が射程範囲外', target:'敵', tone:'amber', fixedFor:'relay', movementScale:1.65 },

@@ -49,7 +49,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
         const animationKey=(isActor||isTarget)&&flash ? flash.n : 'idle';
         const fighterLane=laneIndex(fighter,fighters);
         return <div
-          className={`sprite ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${state}`}
+          className={`sprite ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk?'berserk-active':''} ${state}`}
           key={fighter.instanceId}
           style={{
             left:`${fighter.x}%`,
@@ -58,6 +58,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
             ['--lane-offset' as string]:`${fighterLane*18}px`,
           }}
         >
+          {fighter.berserk&&<i className="berserk-aura" aria-hidden="true" />}
           <div className="sprite-label"><b>{fighter.code}</b><span>{fighter.name}</span></div>
           <div className="sprite-body" key={`body-${animationKey}`}>
             <i className="antenna" />
@@ -74,6 +75,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
           {abilityEffect&&<i className={`ability-fx fx-${abilityEffect}`} key={`ability-${animationKey}`} />}
           <div className="sprite-hp"><i style={{width:`${hpRatio*100}%`}} /></div>
           {fighter.hp<=0&&<div className="ko-chip">DOWN</div>}
+          {fighter.berserk&&fighter.hp>0&&<div className="berserk-chip">BERSERK</div>}
           {isActor&&flash?.kind==='guard'&&<div className="status-chip">HOLD</div>}
           {isActor&&flash?.kind==='heal'&&<div className="status-chip heal">PATCH</div>}
         </div>;
