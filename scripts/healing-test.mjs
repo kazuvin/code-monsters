@@ -19,9 +19,21 @@ const healingCardCount = await page
   .filter({ hasText: /ヒールする|修復する/ })
   .count();
 
+const program = page.locator('.workbench > .program-list').first();
+const initialTargetSlot = program.locator('.sentence-block').first().locator('.target-word-slot');
+const targetMarkerContent = await initialTargetSlot.evaluate(
+  (element) => getComputedStyle(element, '::before').content,
+);
+await initialTargetSlot.click();
+const initialTargetChoices = (await page.locator('.choice-list .target-choice-card').allInnerTexts()).map((text) =>
+  text.replace(/\s+/g, ' ').trim(),
+);
+await page.locator('.target-choice-card').filter({ hasText: '一番近い味方' }).click();
+await page.locator('.condition-choice-card').filter({ hasText: '射程範囲外' }).click();
+const allyWithoutHealProgram = (await program.innerText()).replace(/\s+/g, ' ').trim();
+
 await fieldRepairCard.getByRole('button', { name: /購入/ }).click();
 
-const program = page.locator('.workbench > .program-list').first();
 await program.locator('.add-block').click();
 const repairRow = program.locator('.sentence-block').last();
 const targetChoices = (await page.locator('.choice-list .target-choice-card').allInnerTexts()).map((text) =>
@@ -81,6 +93,9 @@ console.log(
     {
       fieldRepairShopText,
       healingCardCount,
+      initialTargetChoices,
+      allyWithoutHealProgram,
+      targetMarkerContent,
       targetChoices,
       targetEffectBoxCount,
       conditionChoices,
@@ -100,9 +115,16 @@ if (!fieldRepairShopText.includes('COMMON / REPAIR') || !fieldRepairShopText.inc
   throw new Error('ヒールのショップ表示が不正です');
 if (healingCardCount !== 1) throw new Error('回復スキルが複数ショップに残っています');
 for (const target of ['一番近い味方', 'HPが最も低い味方', 'HP 30%以下の味方']) {
+  if (!initialTargetChoices.some((choice) => choice.includes(target)))
+    throw new Error(`ヒール購入前に${target}を選べません`);
+}
+if (!allyWithoutHealProgram.startsWith('1 もし このユニットから見て 一番近い味方 が 射程範囲外 なら 前進する'))
+  throw new Error('味方対象を選んだときに所持済みの互換行動へ切り替わりません');
+if (targetMarkerContent !== 'none') throw new Error('対象スロットに点の装飾が残っています');
+for (const target of ['一番近い味方', 'HPが最も低い味方', 'HP 30%以下の味方']) {
   if (!targetChoices.some((choice) => choice.includes(target))) throw new Error(`${target}が回復対象にありません`);
 }
-if (targetChoices.length !== 3) throw new Error('ヒールに無関係な対象候補が表示されています');
+if (targetChoices.length !== 5) throw new Error('所持行動で利用できない対象候補が表示されています');
 if (targetEffectBoxCount !== 0) throw new Error('対象カードに重複した対象ボックスが残っています');
 if (
   conditionChoices.length !== 2 ||

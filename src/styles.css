@@ -1975,22 +1975,8 @@ button:focus-visible {
 }
 .target-word-slot {
   --target-accent: var(--red);
-  position: relative;
-  padding-left: 23px;
   border-color: color-mix(in srgb, var(--target-accent) 55%, #3b424d);
   color: color-mix(in srgb, var(--target-accent) 72%, #fff);
-}
-.target-word-slot:before {
-  content: "";
-  position: absolute;
-  left: 9px;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--target-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--target-accent) 62%, transparent);
-  transform: translateY(-50%);
 }
 .target-word-slot.target-ally {
   --target-accent: var(--lime);

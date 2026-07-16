@@ -173,9 +173,14 @@ if (
 if (
   !pullTargetChoices.some((text) => text.includes('一番近い敵')) ||
   !pullTargetChoices.some((text) => text.includes('HPが最も低い敵')) ||
-  pullTargetChoices.some((text) => text.includes('敵全体') || text.includes('自分'))
+  !pullTargetChoices.some((text) => text.includes('敵全体')) ||
+  !pullTargetChoices.some((text) => text.includes('一番近い味方')) ||
+  !pullTargetChoices.some((text) => text.includes('HPが最も低い味方')) ||
+  !pullTargetChoices.some((text) => text.includes('HP 30%以下の味方')) ||
+  !pullTargetChoices.some((text) => text.includes('\n自分\n')) ||
+  !pullTargetChoices.some((text) => text.includes('\n味方全体\n'))
 )
-  throw new Error('引き寄せる行動に応じて対象候補が絞り込まれていません');
+  throw new Error('所持行動で利用できる対象候補が表示されていません');
 if (teamLabelCount !== 0) throw new Error('敵味方ラベルが戦闘フィールドに残っています');
 if (teamColors.length !== 2) throw new Error('敵味方の足元リングが同じ色です');
 if (teamOutlineFilters.length < 2 || teamOutlineFilters.includes('none'))

@@ -396,11 +396,26 @@ export function App() {
       updateSelectedProgram((program) =>
         program.map((block, index) => {
           if (index !== editingSlot.index) return block;
-          const conditionId = isConditionCompatibleWithTarget(block.conditionId, targetId)
-            ? block.conditionId
-            : (ownedConditions.find((condition) => isConditionCompatibleWithTarget(condition, targetId)) ??
-              block.conditionId);
-          return { ...block, targetId, conditionId };
+          const currentInstruction = instructionById.get(block.actionId);
+          const actionId =
+            currentInstruction && isInstructionCompatibleWithTarget(currentInstruction, targetId)
+              ? block.actionId
+              : (ownedActions.find((ownedActionId) => {
+                  const ownedInstruction = instructionById.get(ownedActionId);
+                  return Boolean(
+                    ownedInstruction &&
+                      !ownedInstruction.reactionOnly &&
+                      isInstructionCompatibleWithTarget(ownedInstruction, targetId),
+                  );
+                }) ?? block.actionId);
+          const nextInstruction = instructionById.get(actionId);
+          const preferredCondition = actionId === block.actionId ? block.conditionId : nextInstruction?.condition;
+          const conditionId =
+            preferredCondition && isConditionCompatibleWithTarget(preferredCondition, targetId)
+              ? preferredCondition
+              : (ownedConditions.find((condition) => isConditionCompatibleWithTarget(condition, targetId)) ??
+                block.conditionId);
+          return { ...block, targetId, conditionId, actionId };
         }),
       );
       setEditingSlot({ ...editingSlot, field: 'condition' });
@@ -747,8 +762,18 @@ export function App() {
                 {editingSlot?.field === 'target'
                   ? TARGET_SELECTORS.filter((target) => {
                       const block = currentProgram[editingSlot.index];
-                      const instruction = block ? instructionById.get(block.actionId) : undefined;
-                      return instruction ? isInstructionCompatibleWithTarget(instruction, target.id) : false;
+                      if (block?.fixedAction) {
+                        const instruction = instructionById.get(block.actionId);
+                        return instruction ? isInstructionCompatibleWithTarget(instruction, target.id) : false;
+                      }
+                      return ownedActions.some((id) => {
+                        const instruction = instructionById.get(id);
+                        return Boolean(
+                          instruction &&
+                            !instruction.reactionOnly &&
+                            isInstructionCompatibleWithTarget(instruction, target.id),
+                        );
+                      });
                     }).map((target) => (
                       <TargetChoiceCard
                         key={target.id}
