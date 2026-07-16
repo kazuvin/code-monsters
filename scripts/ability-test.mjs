@@ -49,7 +49,7 @@ const relayNormal = await fixedNormalInstruction();
 await page.getByRole('button', { name: /リアクションを追加/ }).click();
 await page.locator('.reaction-code-block .word-slot').first().click();
 const reactionChoices = (await page.locator('.choice-list button').allTextContents()).map(text => text.trim());
-await page.locator('.choice-list button').filter({ hasText: '味方の攻撃がヒットしたら' }).click();
+await page.locator('.choice-list button').filter({ hasText: '味方ヒット時' }).click();
 const relayConfigured = await reactionSnapshot();
 
 await page.reload({ waitUntil: 'networkidle' });
@@ -150,8 +150,8 @@ if (voltNormal.includes('追撃') || arrowNormal.includes('緊急離脱')) throw
 if (relayEmpty.exists || !relayEmpty.text.includes('0 / 1')) throw new Error('リレイのリアクション初期状態が不正です');
 if (!relayNormal.text.includes('高速接近') || relayNormal.conditionDisabled || !relayNormal.actionDisabled || !relayNormal.deleteDisabled) throw new Error('高速接近の通常作戦UIが不正です');
 if (!relayConfigured.exists || relayConfigured.triggerDisabled || relayConfigured.actionDisabled || relayConfigured.deleteDisabled || !relayConfigured.text.includes('味方の攻撃がヒットしたら')) throw new Error('編集可能なリアクションUIが不正です');
-const expectedTriggers = ['自分の攻撃がヒットしたら', '自分が攻撃を受けたら', '味方の攻撃がヒットしたら'];
-if (reactionChoices.length !== expectedTriggers.length || !expectedTriggers.every(trigger => reactionChoices.includes(trigger))) throw new Error('リアクション条件が3種に分離されていません');
+const expectedTriggers = ['攻撃ヒット時', '被弾時', '味方ヒット時'];
+if (reactionChoices.length !== expectedTriggers.length || !expectedTriggers.every(trigger => reactionChoices.some(choice => choice.includes(trigger)))) throw new Error('リアクション条件が3種に分離されていません');
 for (const label of ['⚡ 追撃', '⚡ 防御', '高速接近', '⚡ 緊急離脱']) {
   if (!actions.has(label)) throw new Error(`${label}が戦闘中に再生されませんでした`);
 }

@@ -13,7 +13,7 @@ export type UnitDefinition = {
 };
 
 export type Instruction = {
-  id: string; title: string; short: string; action: ActionType; price: number;
+  id: string; title: string; short: string; flavor: string; action: ActionType; price: number;
   rarity: Rarity;
   condition: string; target: string; tone: 'cyan' | 'amber' | 'lime' | 'violet';
   fixedFor?: string;

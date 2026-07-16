@@ -65,7 +65,7 @@ await browser.close();
 
 console.log(JSON.stringify({ program, events, sniperShots, errors }, null, 2));
 
-if ((program.match(/敵を攻撃する/g) ?? []).length !== 3) throw new Error('アローの3連続攻撃を構成できませんでした');
+if ((program.match(/通常攻撃/g) ?? []).length !== 3) throw new Error('アローの3連続攻撃を構成できませんでした');
 if (sniperShots.length !== 3) throw new Error('アローの3連続狙撃を観測できませんでした');
 if (events.some(event => event.label === 'KNOCKBACK')) throw new Error('遠距離通常攻撃でKNOCKBACKイベントが発生しています');
 if (sniperShots.some(event => event.targetFlinchCount > 0)) throw new Error('遠距離通常攻撃で対象のよろけイベントが発生しています');

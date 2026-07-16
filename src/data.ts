@@ -14,14 +14,14 @@ export const UNITS: UnitDefinition[] = [
 ];
 
 export const INSTRUCTIONS: Instruction[] = [
-  { id:'attack-low', title:'敵を攻撃する', short:'攻撃', action:'attack', price:2, rarity:'common', condition:'敵が射程範囲内', target:'敵', tone:'cyan' },
-  { id:'home-run', title:'敵をホームランする', short:'ホームラン', action:'heavy', price:4, rarity:'rare', condition:'敵が射程範囲内', target:'敵', tone:'amber', impact:{knockbackPower:120} },
-  { id:'approach', title:'敵へ前進する', short:'前進', action:'move', price:1, rarity:'common', condition:'敵が射程範囲外', target:'敵', tone:'amber' },
-  { id:'retreat', title:'距離を取る', short:'後退', action:'retreat', price:2, rarity:'common', condition:'敵が射程範囲内', target:'敵', tone:'violet' },
-  { id:'volt-follow', title:'敵へ追撃する', short:'追撃', action:'follow', price:0, rarity:'common', condition:'条件なし', target:'敵', tone:'cyan', fixedFor:'volt', impact:{knockbackPower:0} },
-  { id:'tank-guard', title:'ガードする', short:'防御', action:'guard', price:0, rarity:'common', condition:'条件なし', target:'自分', tone:'lime', fixedFor:'bastion' },
-  { id:'relay-dash', title:'敵へ高速接近する', short:'高速接近', action:'move', price:0, rarity:'common', condition:'敵が射程範囲外', target:'敵', tone:'amber', fixedFor:'relay', movementScale:1.65 },
-  { id:'arrow-reposition', title:'敵から緊急離脱する', short:'緊急離脱', action:'retreat', price:0, rarity:'common', condition:'条件なし', target:'敵', tone:'violet', fixedFor:'arrow', movementScale:1.45 },
+  { id:'attack-low', title:'通常攻撃', short:'攻撃', flavor:'まずは一発。話はそれから。', action:'attack', price:2, rarity:'common', condition:'敵が射程範囲内', target:'敵', tone:'cyan' },
+  { id:'knock-away', title:'ちょっと吹き飛ばす', short:'吹き飛ばす', flavor:'どっか遠くへ、ぽん。じゃあね。', action:'heavy', price:4, rarity:'rare', condition:'敵が射程範囲内', target:'敵', tone:'amber', impact:{knockbackPower:120} },
+  { id:'approach', title:'前進する', short:'前進', flavor:'届かないなら、こっちから行く。', action:'move', price:1, rarity:'common', condition:'敵が射程範囲外', target:'敵', tone:'amber' },
+  { id:'retreat', title:'後退する', short:'後退', flavor:'逃げではない。助走の準備です。', action:'retreat', price:2, rarity:'common', condition:'敵が射程範囲内', target:'敵', tone:'violet' },
+  { id:'volt-follow', title:'追撃する', short:'追撃', flavor:'まだ終わってないので、もう一発。', action:'follow', price:0, rarity:'common', condition:'条件なし', target:'敵', tone:'cyan', fixedFor:'volt', impact:{knockbackPower:0} },
+  { id:'tank-guard', title:'ガードする', short:'防御', flavor:'痛いのは困るので、しっかり受ける。', action:'guard', price:0, rarity:'common', condition:'条件なし', target:'自分', tone:'lime', fixedFor:'bastion' },
+  { id:'relay-dash', title:'高速接近する', short:'高速接近', flavor:'距離という問題を、速さで消す。', action:'move', price:0, rarity:'common', condition:'敵が射程範囲外', target:'敵', tone:'amber', fixedFor:'relay', movementScale:1.65 },
+  { id:'arrow-reposition', title:'緊急離脱する', short:'緊急離脱', flavor:'近い近い。いったん離れます。', action:'retreat', price:0, rarity:'common', condition:'条件なし', target:'敵', tone:'violet', fixedFor:'arrow', movementScale:1.45 },
 ];
 
 export const DEFAULT_PROGRAMS: Record<string, string[]> = {

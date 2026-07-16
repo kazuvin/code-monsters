@@ -50,20 +50,20 @@ const explicitNoKnockback = resolveImpact({
 });
 assert.equal(explicitNoKnockback.knockbackDistance, 0, 'アクション固有設定でノックバックを無効化できる必要があります');
 
-const homeRunInstruction = INSTRUCTIONS.find(instruction => instruction.id === 'home-run');
-assert.ok(homeRunInstruction, 'ホームランの指示が登録されていません');
-const homeRun = resolveImpact({
+const knockAwayInstruction = INSTRUCTIONS.find(instruction => instruction.id === 'knock-away');
+assert.ok(knockAwayInstruction, '「ちょっと吹き飛ばす」の指示が登録されていません');
+const knockAway = resolveImpact({
   rawDamage: 26,
   minimumDamage: 4,
   attackType: 'melee',
   attackerKnockbackPower: 8,
-  impact: homeRunInstruction.impact,
+  impact: knockAwayInstruction.impact,
   targetDefense: 15,
   targetWeight: 14,
   targetRole: 'TANK',
   targetGuarded: true,
 });
-assert.ok(homeRun.damage > 0, 'ホームランはダメージを与える必要があります');
-assert.ok(homeRun.knockbackDistance >= 35, 'ホームランはガード中の重量級も大きくノックバックさせる必要があります');
+assert.ok(knockAway.damage > 0, '「ちょっと吹き飛ばす」はダメージを与える必要があります');
+assert.ok(knockAway.knockbackDistance >= 35, '「ちょっと吹き飛ばす」はガード中の重量級も大きくノックバックさせる必要があります');
 
-console.log(JSON.stringify({ normalSniper, knockbackOnlySniper, normalMelee, explicitNoKnockback, homeRun }, null, 2));
+console.log(JSON.stringify({ normalSniper, knockbackOnlySniper, normalMelee, explicitNoKnockback, knockAway }, null, 2));

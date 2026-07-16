@@ -15,6 +15,7 @@ type BattleStep={
 };
 
 const START_ACTIONS=['attack-low','approach'];
+const START_CONDITIONS=['敵が射程範囲内','敵が射程範囲外'];
 const START_UNITS=['volt','bastion'];
 const ENEMY_IDS=['relay','bastion'];
 const ADVANCE_STEP=5.2;
@@ -25,7 +26,7 @@ const WALL_LEFT=10;
 const WALL_RIGHT=90;
 const rarityWeights:Record<Rarity,number>={common:72,rare:23,epic:5};
 const rarityLabels:Record<Rarity,string>={common:'COMMON',rare:'RARE',epic:'EPIC'};
-const SHOP_INSTRUCTIONS=INSTRUCTIONS.filter(instruction=>!instruction.fixedFor);
+const SHOP_INSTRUCTIONS=INSTRUCTIONS.filter(instruction=>!instruction.fixedFor&&!START_ACTIONS.includes(instruction.id));
 
 const instructionById=new Map(INSTRUCTIONS.map(x=>[x.id,x]));
 const unitById=new Map(UNITS.map(x=>[x.id,x]));
@@ -44,7 +45,50 @@ const attackTypeLabels:Record<UnitDefinition['attackType'],string>={
 };
 const actionLabel=(id:string)=>instructionById.get(id)?.title||id;
 const conditionLabel=(condition:string)=>conditionLabels[condition]||condition;
-const instructionSummary=(instruction:Instruction)=>[instruction.short,instruction.impact?.knockbackPower?`KB ${instruction.impact.knockbackPower}`:null,conditionLabel(instruction.condition)].filter(Boolean).join(' / ');
+const actionKindLabels:Record<Instruction['action'],string>={
+  attack:'ATTACK',heavy:'IMPACT',move:'MOVE',retreat:'RETREAT',heal:'REPAIR',guard:'GUARD',buff:'BOOST',poison:'POISON',burn:'BURN',follow:'FOLLOW',wait:'WAIT',
+};
+const conditionDetails:Record<string,{flavor:string;effect:string}>={
+  '敵が射程範囲内':{flavor:'手が届くなら、話は早い。',effect:'敵との距離 ≤ RNG'},
+  '敵が射程範囲外':{flavor:'まだ届かない。なら、次の手を。',effect:'敵との距離 > RNG'},
+  '条件なし':{flavor:'迷わず、いつでも実行。',effect:'常時'},
+};
+const reactionDetails:Record<ReactionTrigger,{title:string;flavor:string;effect:string}>={
+  selfAttackHit:{title:'攻撃ヒット時',flavor:'こちらの一撃が決まった、その瞬間。',effect:'自分の攻撃命中'},
+  selfHit:{title:'被弾時',flavor:'痛かったので、すぐ返事をします。',effect:'自分がダメージを受ける'},
+  allyAttackHit:{title:'味方ヒット時',flavor:'仲間の一撃に、ぴったり便乗。',effect:'味方の攻撃命中'},
+};
+const metricNumber=(value:number)=>Number.isInteger(value)?String(value):value.toFixed(1);
+const instructionMetrics=(instruction:Instruction,unit:UnitDefinition)=>{
+  const movementScale=instruction.movementScale||1;
+  if(instruction.action==='move')return [{label:'前進',value:`${metricNumber(ADVANCE_STEP*movementScale)} m`},{label:'停止',value:'RNG内'}];
+  if(instruction.action==='retreat')return [{label:'後退',value:`${metricNumber(RETREAT_STEP*movementScale)} m`},{label:'停止',value:'壁際'}];
+  if(instruction.action==='guard')return [{label:'被DMG',value:'−18%'},{label:'被KB',value:'−30%'}];
+  if(instruction.action==='heal')return [{label:'回復',value:unit.role==='SUPPORT'?'25 HP':'18 HP'}];
+  if(instruction.action==='buff')return [{label:'ATK',value:'+3'}];
+  if(instruction.action==='wait')return [{label:'待機',value:'0.65 s'}];
+  const rawDamage=instruction.action==='follow'?unit.attack*.58:unit.attack+(instruction.action==='heavy'?10:instruction.action==='poison'||instruction.action==='burn'?2:0);
+  const scaledDamage=rawDamage*(instruction.impact?.damageScale??1);
+  const knockbackPower=instruction.impact?.knockbackPower??(unit.attackType==='sniper'?0:unit.knockbackPower);
+  return [{label:'基礎DMG',value:metricNumber(scaledDamage)},{label:'KB出力',value:metricNumber(knockbackPower)}];
+};
+const InstructionChoiceCard=({instruction,unit,active,reaction=false,onSelect}:{instruction:Instruction;unit:UnitDefinition;active:boolean;reaction?:boolean;onSelect:()=>void})=>{
+  const metrics=instructionMetrics(instruction,unit);
+  return <button className={`instruction-choice-card ${instruction.tone} ${active?'active':''} ${reaction?'reaction-choice':''}`} aria-pressed={active} onClick={onSelect}>
+    <span className="choice-card-kicker">{actionKindLabels[instruction.action]} / {rarityLabels[instruction.rarity]}</span>
+    <strong>{instruction.title}</strong>
+    <span className="choice-card-flavor">{instruction.flavor}</span>
+    <span className="choice-card-ability"><small>ABILITY</small><span>{metrics.map(metric=><span className="choice-metric" key={metric.label}><small>{metric.label}</small><b>{metric.value}</b></span>)}</span></span>
+    <span className="choice-card-state">{active?'選択中':'選ぶ'}</span>
+  </button>;
+};
+const ConditionChoiceCard=({title,flavor,effect,active,reaction=false,onSelect}:{title:string;flavor:string;effect:string;active:boolean;reaction?:boolean;onSelect:()=>void})=><button className={`condition-choice-card ${active?'active':''} ${reaction?'reaction-choice':''}`} aria-pressed={active} onClick={onSelect}>
+  <span className="choice-card-kicker">{reaction?'REACTION TRIGGER':'IF CONDITION'}</span>
+  <strong>{title}</strong>
+  <span className="choice-card-flavor">{flavor}</span>
+  <span className="condition-effect"><small>判定</small><b>{effect}</b></span>
+  <span className="choice-card-state">{active?'選択中':'選ぶ'}</span>
+</button>;
 const seededRandom=(seed:number)=>{
   const x=Math.sin(seed*999.7+17.13)*10000;
   return x-Math.floor(x);
@@ -81,7 +125,7 @@ function makeShop(seed=0):ShopItem[]{
     const id=kind==='unit'?weightedPick(UNITS,seed*11+i+1).id:weightedPick(SHOP_INSTRUCTIONS,seed*13+i+5).id;
     return {kind,id};
   });
-  if(seed===0)picks[picks.length-1]={kind:'instruction',id:'home-run'};
+  if(seed===0)picks[picks.length-1]={kind:'instruction',id:'knock-away'};
   return picks.map((p,i)=>({...p,key:`${seed}-${i}`,locked:false}));
 }
 
@@ -133,7 +177,7 @@ export function App(){
   const [bench,setBench]=useState<UnitInventoryItem[]>([]);
   const [selected,setSelected]=useState(0);
   const [ownedActions,setOwnedActions]=useState<string[]>(START_ACTIONS);
-  const [ownedConditions,setOwnedConditions]=useState<string[]>(Array.from(new Set(START_ACTIONS.map(id=>instructionById.get(id)!.condition))));
+  const [ownedConditions,setOwnedConditions]=useState<string[]>([...START_CONDITIONS]);
   const [editingSlot,setEditingSlot]=useState<EditingSlot>({scope:'program',index:0,field:'condition'});
   const [shopSeed,setShopSeed]=useState(0);
   const [shop,setShop]=useState(()=>makeShop());
@@ -609,13 +653,17 @@ export function App(){
         </section>
         <div className="choice-panel">
           <div className="choice-head">{editingSlot?.scope==='reaction'?'リアクション':'通常作戦'} / {editingSlot?.field==='condition'?'条件を選ぶ':'行動を選ぶ'}</div>
-          <div className="choice-list">{editingSlot?.field==='condition'?(editingSlot.scope==='reaction'?REACTION_TRIGGERS.map(trigger=><button key={trigger.id} className={currentReaction?.trigger===trigger.id?'active reaction-choice':''} onClick={()=>replaceFocusedSlot(trigger.id)}>{trigger.label}</button>):ownedConditions.map(condition=><button key={condition} className={currentProgram[editingSlot.index]?.conditionId===condition?'active':''} onClick={()=>replaceFocusedSlot(condition)}>{conditionLabel(condition)}</button>)):ownedActions.map(id=><button key={id} className={(editingSlot?.scope==='reaction'?currentReaction?.actionId:currentProgram[editingSlot?.index||0]?.actionId)===id?'active':''} onClick={()=>replaceFocusedSlot(id)}>{actionLabel(id)}</button>)}</div>
+          <div className="choice-list">{editingSlot?.field==='condition'
+            ? editingSlot.scope==='reaction'
+              ? REACTION_TRIGGERS.map(trigger=>{const detail=reactionDetails[trigger.id];return <ConditionChoiceCard key={trigger.id} title={detail.title} flavor={detail.flavor} effect={detail.effect} reaction active={currentReaction?.trigger===trigger.id} onSelect={()=>replaceFocusedSlot(trigger.id)}/>})
+              : ownedConditions.map(condition=>{const detail=conditionDetails[condition]||{flavor:'この条件を満たしたら実行。',effect:conditionLabel(condition)};return <ConditionChoiceCard key={condition} title={conditionLabel(condition)} flavor={detail.flavor} effect={detail.effect} active={currentProgram[editingSlot.index]?.conditionId===condition} onSelect={()=>replaceFocusedSlot(condition)}/>})
+            : ownedActions.map(id=>{const instruction=instructionById.get(id)!;return <InstructionChoiceCard key={id} instruction={instruction} unit={selectedUnit} reaction={editingSlot?.scope==='reaction'} active={(editingSlot?.scope==='reaction'?currentReaction?.actionId:currentProgram[editingSlot?.index||0]?.actionId)===id} onSelect={()=>replaceFocusedSlot(id)}/>})}</div>
         </div>
         <div className="inventory-grid">
           <div className="inventory"><small>控え</small><div>{bench.length===0?<span className="empty-inventory">なし</span>:bench.map(u=><button key={u.inventoryId} onClick={()=>equipBenchUnit(u.inventoryId)}><span className="unit-mini" style={{background:`#${u.color.toString(16).padStart(6,'0')}`}}/>{u.name}</button>)}</div></div>
         </div>
       </section>
-      <aside className="shop-panel"><div className="section-head"><div><span className="step-no">02</span><h2>ショップ</h2></div><button className="refresh" onClick={refresh}><RefreshCw size={15}/>更新 <b>1</b></button></div><div className="shop-grid">{shop.map(item=>{const data:UnitDefinition|Instruction=item.kind==='unit'?unitById.get(item.id)!:instructionById.get(item.id)!;const label=item.kind==='unit'?(data as UnitDefinition).name:(data as Instruction).title;return <article className={`shop-item rarity-${data.rarity}`} key={item.key}><button className="lock" aria-label="ロック" onClick={()=>toggleLock(item.key)}>{item.locked?<Lock/>:<LockOpen/>}</button><small>{rarityLabels[data.rarity]} / {item.kind==='unit'?attackTypeLabels[(data as UnitDefinition).attackType]:'作戦'}</small><strong>{label}</strong><p>{item.kind==='unit'?`RNG ${(data as UnitDefinition).range} / KB ${(data as UnitDefinition).knockbackPower} / 枠 ${(data as UnitDefinition).programLimit}`:instructionSummary(data as Instruction)}</p><button className="buy" onClick={()=>buy(item)}><ShoppingCart size={15}/><span>購入</span><b><Coins size={13}/>{data.price}</b></button></article>})}</div><button className="ready" onClick={startBattle}><Swords/>戦闘開始</button></aside>
+      <aside className="shop-panel"><div className="section-head"><div><span className="step-no">02</span><h2>ショップ</h2></div><button className="refresh" onClick={refresh}><RefreshCw size={15}/>更新 <b>1</b></button></div><div className="shop-grid">{shop.map(item=>{const data:UnitDefinition|Instruction=item.kind==='unit'?unitById.get(item.id)!:instructionById.get(item.id)!;const isUnit=item.kind==='unit';const label=isUnit?(data as UnitDefinition).name:(data as Instruction).title;const instruction=isUnit?null:data as Instruction;return <article className={`shop-item rarity-${data.rarity} ${instruction?'instruction-shop-item':''}`} key={item.key}><button className="lock" aria-label="ロック" onClick={()=>toggleLock(item.key)}>{item.locked?<Lock/>:<LockOpen/>}</button><small>{rarityLabels[data.rarity]} / {isUnit?attackTypeLabels[(data as UnitDefinition).attackType]:actionKindLabels[instruction!.action]}</small><strong>{label}</strong>{instruction?<><p className="shop-flavor">{instruction.flavor}</p><div className="shop-metrics">{instructionMetrics(instruction,selectedUnit).map(metric=><span key={metric.label}><small>{metric.label}</small><b>{metric.value}</b></span>)}</div></>:<p>{`RNG ${(data as UnitDefinition).range} / KB ${(data as UnitDefinition).knockbackPower} / 枠 ${(data as UnitDefinition).programLimit}`}</p>}<button className="buy" onClick={()=>buy(item)}><ShoppingCart size={15}/><span>購入</span><b><Coins size={13}/>{data.price}</b></button></article>})}</div><button className="ready" onClick={startBattle}><Swords/>戦闘開始</button></aside>
     </div>:<div className="battle-layout">
       <section className="arena"><div className="battle-hud"><div className="hud-team ally"><small>YOUR SQUAD</small><b>{teamHp}</b><span>HP</span></div><div className="timer"><small>{elapsed>=50?'OVERHEAT IN':'BATTLE TIME'}</small><b>{Math.floor(elapsed/60)}:{String(Math.floor(elapsed%60)).padStart(2,'0')}</b></div><div className="hud-team enemy"><small>ENEMY</small><b>{enemyHp}</b><span>HP</span></div></div><BattleScene fighters={fighters} flash={flash} running={phase==='battle'&&!paused}/><div className="unit-bars">{fighters.map(f=><div className={f.team} key={f.instanceId}><span>{f.name}</span><div><i style={{width:`${Math.max(0,f.hp/f.maxHp*100)}%`}}/></div><b>{Math.ceil(f.hp)}</b></div>)}</div><div className="battle-controls"><button onClick={()=>setPaused(p=>!p)}>{paused?<Play/>:<Pause/>}</button><button className={speed===1?'active':''} onClick={()=>setSpeed(1)}>x1</button><button className={speed===2?'active':''} onClick={()=>setSpeed(2)}>x2</button><button onClick={reset}><RotateCcw/></button></div></section>
       <aside className="status-panel"><div className="section-head"><div><span className="live-dot"/><h2>ユニット状態</h2></div><button className="open-log" onClick={()=>setLogsOpen(true)}>ログ <b>{logs.length}</b></button></div><div className="status-roster">{fighterGroups.map(group=><section className="status-group" key={group.key}><h3>{group.label}</h3>{group.units.map(f=>{const hpRatio=Math.max(0,f.hp/f.maxHp*100);const cooldownRatio=cooldownProgress(f);const active=flash?.id===f.instanceId&&flash.actionLabel;return <article className={`unit-status-card ${f.team} ${f.hp<=0?'down':''} ${active?'acting':''}`} key={f.instanceId}><div className="status-avatar" style={{['--unit-color' as string]:`#${f.color.toString(16).padStart(6,'0')}`}}><i/></div><div className="status-id"><small>{f.code}</small><strong>{f.name}</strong><span>{attackTypeLabels[f.attackType]}</span></div><div className="unit-status-hp"><div><i style={{width:`${hpRatio}%`}}/></div><b>{Math.ceil(Math.max(0,f.hp))}/{f.maxHp}</b></div><div className="status-cooldown"><div><i style={{width:`${cooldownRatio*100}%`}}/></div><b>{cooldownRatio>=1?'READY':'WAIT'}</b></div><div className="status-stats"><span>A <b>{f.attack}</b></span><span>R <b>{f.range}</b></span><span>K <b>{f.knockbackPower}</b></span><span>W <b>{f.weight}</b></span><span>D <b>{f.defense}</b></span><span>S <b>{f.speed}</b></span></div><div className="status-tags">{statusTags(f).map(tag=><span className={tag==='正常'?'normal':''} key={tag}>{tag}</span>)}</div>{active&&<div className="card-action-bubble">{flash.actionLabel}</div>}</article>})}</section>)}</div></aside>
