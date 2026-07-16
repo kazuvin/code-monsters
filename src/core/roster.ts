@@ -31,6 +31,8 @@ export function createBattleFighters(team: UnitInventoryItem[]): Fighter[] {
     guardKnockbackScale: 1,
     berserk: false,
     poison: 0,
+    tauntTargetId: null,
+    tauntSeconds: 0,
   };
   return [
     ...team.map((unit, index) => ({

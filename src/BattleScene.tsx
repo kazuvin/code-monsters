@@ -11,10 +11,14 @@ const depthIndex = (fighter: Fighter, fighters: Fighter[]) => 40 - laneIndex(fig
 
 const colorHex = (value: string) => value;
 const attackKinds = ['attack', 'heavy', 'poison', 'burn', 'follow', 'miss'] as const;
-const nearestOpponent = (fighter: Fighter, fighters: Fighter[]) =>
-  fighters
+const nearestOpponent = (fighter: Fighter, fighters: Fighter[]) => {
+  const opponents = fighters
     .filter((other) => other.team !== fighter.team && other.hp > 0)
-    .sort((a, b) => Math.abs(fighter.x - a.x) - Math.abs(fighter.x - b.x))[0];
+    .sort((a, b) => Math.abs(fighter.x - a.x) - Math.abs(fighter.x - b.x));
+  return fighter.tauntSeconds > 0
+    ? (opponents.find((opponent) => opponent.instanceId === fighter.tauntTargetId) ?? opponents[0])
+    : opponents[0];
+};
 
 export function BattleScene({ fighters, flash, running }: Props) {
   const [missNotice, setMissNotice] = useState<BattleFlash | null>(null);
@@ -59,6 +63,8 @@ export function BattleScene({ fighters, flash, running }: Props) {
             (flash?.kind === 'dash' ||
               flash?.kind === 'jump' ||
               flash?.kind === 'throw' ||
+              flash?.kind === 'taunt' ||
+              flash?.kind === 'pull' ||
               flash?.kind === 'retreat' ||
               flash?.kind === 'guard')
               ? flash.kind
@@ -77,7 +83,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
           const fighterLane = laneIndex(fighter, fighters);
           return (
             <div
-              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk ? 'berserk-active' : ''} ${state}`}
+              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk ? 'berserk-active' : ''} ${fighter.tauntSeconds > 0 ? 'taunt-locked' : ''} ${state}`}
               key={fighter.instanceId}
               style={{
                 left: `${fighter.x}%`,
@@ -86,8 +92,10 @@ export function BattleScene({ fighters, flash, running }: Props) {
                 ['--lane-offset' as string]: `${fighterLane * 18}px`,
               }}
             >
+              <i className="team-ring" aria-hidden="true" />
               {fighter.berserk && <i className="berserk-aura" aria-hidden="true" />}
               <div className="sprite-label">
+                <em className="team-chip">{fighter.team === 'ally' ? 'ALLY' : 'ENEMY'}</em>
                 <b>{fighter.code}</b>
                 <span>{fighter.name}</span>
               </div>
@@ -114,6 +122,9 @@ export function BattleScene({ fighters, flash, running }: Props) {
               </div>
               {fighter.hp <= 0 && <div className="ko-chip">DOWN</div>}
               {fighter.berserk && fighter.hp > 0 && <div className="berserk-chip">BERSERK</div>}
+              {fighter.tauntSeconds > 0 && fighter.hp > 0 && (
+                <div className="taunt-chip">LOCK {fighter.tauntSeconds.toFixed(1)}</div>
+              )}
               {isActor && flash?.kind === 'guard' && <div className="status-chip">HOLD</div>}
               {isActor && flash?.kind === 'heal' && <div className="status-chip heal">PATCH</div>}
             </div>

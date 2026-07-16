@@ -9,8 +9,9 @@ import {
   instructionById,
   jumpToward,
   lowestHp,
-  nearestEnemy,
   knockbackPosition,
+  priorityEnemy,
+  pullToward,
   resolveActionImpact,
   retreatFrom,
   selectInstructionTarget,
@@ -29,6 +30,8 @@ type MutableFighterFields = Pick<
   | 'guardKnockbackScale'
   | 'berserk'
   | 'poison'
+  | 'tauntTargetId'
+  | 'tauntSeconds'
   | 'attack'
   | 'speed'
 >;
@@ -96,7 +99,7 @@ export function planBattleFrame({
       trigger === 'selfHit'
         ? source
         : trigger === 'selfHpLow'
-          ? nearestEnemy(
+          ? priorityEnemy(
               reactor,
               next.filter((fighter) => fighter.team !== reactor.team && fighter.hp > 0),
             )
@@ -133,6 +136,31 @@ export function planBattleFrame({
           type: 'reaction',
         },
         updates: [{ id: reactor.instanceId, values }],
+      });
+      return;
+    }
+    if (instruction.action === 'taunt') {
+      const duration = instruction.params.durationSeconds ?? 0;
+      const enemyUpdates = next
+        .filter((fighter) => fighter.team !== reactor.team && fighter.hp > 0)
+        .map((fighter) => ({
+          id: fighter.instanceId,
+          values: { tauntTargetId: reactor.instanceId, tauntSeconds: duration },
+        }));
+      const reactorUpdate = {
+        id: reactor.instanceId,
+        values: { reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds },
+      };
+      setNext(reactor.instanceId, reactorUpdate.values);
+      for (const update of enemyUpdates) setNext(update.id, update.values);
+      queueStep({
+        flash: { id: reactor.instanceId, kind: 'taunt', actionLabel, reaction: true, n: 0 },
+        log: {
+          actor: reactor.name,
+          text: `REACTION｜${instruction.short}｜敵全体の標的を ${duration.toFixed(1)}秒固定`,
+          type: 'reaction',
+        },
+        updates: [reactorUpdate, ...enemyUpdates],
       });
       return;
     }
@@ -173,6 +201,54 @@ export function planBattleFrame({
       return;
     }
     if (!target || target.hp <= 0) return;
+    if (instruction.action === 'pull') {
+      const reactionCooldown = BATTLE_CONFIG.reactionCooldownSeconds;
+      if (distanceTo(reactor, target) > reactor.range) {
+        const values = { reactionCooldown };
+        setNext(reactor.instanceId, values);
+        queueStep({
+          flash: {
+            id: reactor.instanceId,
+            kind: 'miss',
+            attackType: reactor.attackType,
+            actionLabel: `${actionLabel}｜MISS`,
+            reaction: true,
+            n: 0,
+          },
+          log: {
+            actor: reactor.name,
+            text: `REACTION｜${instruction.short} → ${target.name}｜空振り（射程外）`,
+            type: 'miss',
+          },
+          updates: [{ id: reactor.instanceId, values }],
+        });
+        return;
+      }
+      const x = pullToward(reactor, target, instruction.params.pullDistance ?? 0);
+      setNext(reactor.instanceId, { reactionCooldown });
+      setNext(target.instanceId, { x });
+      queueStep({
+        flash: {
+          id: reactor.instanceId,
+          kind: 'pull',
+          targetId: target.instanceId,
+          actionLabel,
+          reaction: true,
+          n: 0,
+        },
+        log: {
+          actor: reactor.name,
+          text: `REACTION｜${instruction.short} → ${target.name}｜間合い ${Math.round(x)}`,
+          type: 'reaction',
+        },
+        updates: [{ id: reactor.instanceId, values: { reactionCooldown } }],
+      });
+      queueStep({
+        flash: { id: target.instanceId, kind: 'pulled', actionLabel: 'PULL', n: 0 },
+        updates: [{ id: target.instanceId, values: { x } }],
+      });
+      return;
+    }
     const isFollow = instruction.action === 'follow';
     if (!isFollow && distanceTo(reactor, target) > reactor.range) {
       const values = { reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
@@ -317,11 +393,27 @@ export function planBattleFrame({
       if (currentEnemies.length === 0 || currentAllies.length === 0) break;
       const instruction = instructionById.get(block.actionId);
       if (!instruction || !canRunCondition(block.conditionId, current, currentEnemies, currentAllies)) continue;
-      const nearest = nearestEnemy(current, currentEnemies);
+      const nearest = priorityEnemy(current, currentEnemies);
       const target = selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest;
       acted = true;
 
-      if (instruction.action === 'move') {
+      if (instruction.action === 'taunt') {
+        const duration = instruction.params.durationSeconds ?? 0;
+        const updates = currentEnemies.map((enemy) => ({
+          id: enemy.instanceId,
+          values: { tauntTargetId: current.instanceId, tauntSeconds: duration },
+        }));
+        for (const update of updates) setNext(update.id, update.values);
+        queueStep({
+          flash: { id: current.instanceId, kind: 'taunt', actionLabel: instruction.short, n: 0 },
+          log: {
+            actor: current.name,
+            text: `${instruction.short}｜敵全体の標的を ${duration.toFixed(1)}秒固定`,
+            type: 'info',
+          },
+          updates,
+        });
+      } else if (instruction.action === 'move') {
         if (distanceTo(current, nearest) <= current.range) {
           queueStep({
             flash: { id: current.instanceId, kind: 'wait', actionLabel: '待機', n: 0 },
@@ -363,6 +455,42 @@ export function planBattleFrame({
           },
           updates: [{ id: current.instanceId, values: { x } }],
         });
+      } else if (instruction.action === 'pull') {
+        if (distanceTo(current, target) > current.range) {
+          queueStep({
+            flash: {
+              id: current.instanceId,
+              kind: 'miss',
+              attackType: current.attackType,
+              actionLabel: `${instruction.short}｜MISS`,
+              n: 0,
+            },
+            log: { actor: current.name, text: `${instruction.short} → ${target.name}｜空振り（射程外）`, type: 'miss' },
+            updates: [],
+          });
+        } else {
+          const x = pullToward(current, target, instruction.params.pullDistance ?? 0);
+          setNext(target.instanceId, { x });
+          queueStep({
+            flash: {
+              id: current.instanceId,
+              kind: 'pull',
+              targetId: target.instanceId,
+              actionLabel: instruction.short,
+              n: 0,
+            },
+            log: {
+              actor: current.name,
+              text: `${instruction.short} → ${target.name}｜間合い ${Math.round(x)}`,
+              type: 'info',
+            },
+            updates: [],
+          });
+          queueStep({
+            flash: { id: target.instanceId, kind: 'pulled', actionLabel: 'PULL', n: 0 },
+            updates: [{ id: target.instanceId, values: { x } }],
+          });
+        }
       } else if (instruction.action === 'heal') {
         const amount = Math.round(
           current.role === 'SUPPORT'

@@ -35,7 +35,7 @@
     "sellPricePenalty": 1
   },
   "shop": {
-    "size": 5,
+    "size": 7,
     "unitSlots": [0, 3],
     "rarityWeights": {
       "common": 72,
@@ -44,10 +44,12 @@
     },
     "initialPicks": [
       { "slot": 0, "kind": "unit", "id": "relay" },
-      { "slot": 1, "kind": "instruction", "id": "shoulder-throw" },
-      { "slot": 2, "kind": "instruction", "id": "vault-over" },
+      { "slot": 1, "kind": "instruction", "id": "taunt" },
+      { "slot": 2, "kind": "instruction", "id": "pull-in" },
       { "slot": 3, "kind": "unit", "id": "wrath" },
-      { "slot": 4, "kind": "instruction", "id": "knock-away" }
+      { "slot": 4, "kind": "instruction", "id": "shoulder-throw" },
+      { "slot": 5, "kind": "instruction", "id": "vault-over" },
+      { "slot": 6, "kind": "instruction", "id": "knock-away" }
     ]
   },
   "roster": {
@@ -313,6 +315,32 @@
       "target": "nearestEnemy",
       "tone": "amber",
       "params": { "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 0, "throwDistance": 6 }
+    },
+    {
+      "id": "taunt",
+      "title": "挑発する",
+      "short": "挑発",
+      "flavor": "こっちを見ろ。しばらく狙いは、自分だけ。",
+      "action": "taunt",
+      "price": 3,
+      "rarity": "rare",
+      "condition": "always",
+      "target": "self",
+      "tone": "violet",
+      "params": { "durationSeconds": 5 }
+    },
+    {
+      "id": "pull-in",
+      "title": "引き寄せる",
+      "short": "引き寄せ",
+      "flavor": "届く相手を、こちらの間合いまで連れてくる。",
+      "action": "pull",
+      "price": 3,
+      "rarity": "rare",
+      "condition": "enemyInRange",
+      "target": "nearestEnemy",
+      "tone": "cyan",
+      "params": { "pullDistance": 4 }
     },
     {
       "id": "berserker-mode",

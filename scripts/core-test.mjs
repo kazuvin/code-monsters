@@ -9,8 +9,11 @@ import {
   instructionById,
   jumpToward,
   knockbackPosition,
+  priorityEnemy,
+  pullToward,
   retreatFrom,
   throwBehind,
+  tickCooldowns,
 } from '../src/core/rules.ts';
 import { createShop } from '../src/core/shop.ts';
 import { BATTLE_CONFIG, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
@@ -28,8 +31,14 @@ assert.equal(
   '敵編成がデータ定義と一致しません',
 );
 assert.ok(
-  fighters.every((fighter) => fighter.guardDamageScale === 1 && fighter.guardKnockbackScale === 1),
-  '初期ガード倍率は1である必要があります',
+  fighters.every(
+    (fighter) =>
+      fighter.guardDamageScale === 1 &&
+      fighter.guardKnockbackScale === 1 &&
+      fighter.tauntTargetId === null &&
+      fighter.tauntSeconds === 0,
+  ),
+  'ガードと挑発の初期状態が不正です',
 );
 
 const volt = fighters.find((fighter) => fighter.id === 'volt' && fighter.team === 'ally');
@@ -47,6 +56,8 @@ const jumpActor = { ...volt, x: 40 };
 const crossedActor = { ...jumpActor, x: 54 };
 assert.equal(jumpToward(jumpActor, jumpTarget, 14), 54, '固定距離ジャンプで敵を飛び越えられません');
 assert.equal(throwBehind(jumpActor, jumpTarget, 6), 34, '背負い投げで敵を使用者の背後へ移動できません');
+assert.equal(pullToward(jumpActor, jumpTarget, 4), 44, '引き寄せで敵を使用者の近くへ移動できません');
+assert.equal(pullToward(jumpActor, { ...jumpTarget, x: 42 }, 4), 42, '近くの敵を引き寄せで押し離しています');
 assert.equal(advanceToward({ ...crossedActor, x: 64 }, jumpTarget, 5.2), 58.8, '交差後の前進方向が不正です');
 assert.equal(retreatFrom(crossedActor, jumpTarget, 6.5), 60.5, '交差後の後退方向が不正です');
 assert.equal(knockbackPosition(crossedActor, jumpTarget, 8), 62, '交差後のノックバック方向が不正です');
@@ -106,6 +117,69 @@ assert.ok(throwMoveStep, '背負い投げが投擲移動ステップを生成し
 assert.equal(throwMoveStep.flash.kind, 'thrown', '投げられた敵の専用ステップが生成されません');
 assert.equal(throwMoveStep.updates[0]?.values.x, 34, '背負い投げが敵を使用者の背後へ移動しません');
 
+const tauntTeam = [createInventoryUnit('volt', 'taunt-volt')];
+tauntTeam[0].program = [{ conditionId: 'always', actionId: 'taunt' }];
+const tauntFighters = createBattleFighters(tauntTeam).map((fighter) => ({
+  ...fighter,
+  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 48 : 72,
+  cooldown: fighter.team === 'ally' ? 0 : 10,
+}));
+const tauntPlan = planBattleFrame({
+  fighters: tauntFighters,
+  team: tauntTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const tauntStep = tauntPlan.steps.find((step) => step.flash.kind === 'taunt');
+assert.ok(tauntStep, '挑発が戦闘ステップを生成しません');
+assert.equal(tauntStep.updates.length, 2, '挑発が生存中の敵全体へ適用されません');
+assert.ok(
+  tauntStep.updates.every(
+    (update) =>
+      update.values.tauntTargetId === 'taunt-volt' &&
+      update.values.tauntSeconds === instructionById.get('taunt')?.params.durationSeconds,
+  ),
+  '挑発が敵の標的を使用者へ固定しません',
+);
+
+const forcedActor = {
+  ...enemies[0],
+  x: 58,
+  tauntTargetId: volt.instanceId,
+  tauntSeconds: 3,
+};
+const nearbyOpponent = { ...allies[1], x: 55 };
+const farTaunter = { ...volt, x: 30 };
+assert.equal(
+  priorityEnemy(forcedActor, [nearbyOpponent, farTaunter]).instanceId,
+  volt.instanceId,
+  '挑発中に近い別ユニットへ標的が逸れます',
+);
+const expiredTaunt = tickCooldowns([{ ...forcedActor, tauntSeconds: 0.1 }], 0.2)[0];
+assert.equal(expiredTaunt.tauntTargetId, null, '挑発時間の終了後に標的固定が解除されません');
+assert.equal(expiredTaunt.tauntSeconds, 0, '挑発の残り時間が0未満になります');
+
+const pullTeam = [createInventoryUnit('volt', 'pull-volt')];
+pullTeam[0].program = [{ conditionId: 'enemyInRange', actionId: 'pull-in' }];
+const pullFighters = createBattleFighters(pullTeam).map((fighter) => ({
+  ...fighter,
+  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 48 : 72,
+  cooldown: fighter.team === 'ally' ? 0 : 10,
+}));
+const pullPlan = planBattleFrame({
+  fighters: pullFighters,
+  team: pullTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const pullStep = pullPlan.steps.find((step) => step.flash.kind === 'pull');
+const pulledStep = pullPlan.steps.find((step) => step.flash.kind === 'pulled');
+assert.ok(pullStep, '引き寄せが発動ステップを生成しません');
+assert.ok(pulledStep, '引き寄せが対象移動ステップを生成しません');
+assert.equal(pulledStep.updates[0]?.values.x, 44, '引き寄せが対象を使用者から4mの位置へ移動しません');
+
 const shop = createShop(0);
 assert.ok(
   shop.some((item) => item.kind === 'unit' && item.id === 'wrath'),
@@ -114,6 +188,14 @@ assert.ok(
 assert.ok(
   shop.some((item) => item.kind === 'instruction' && item.id === 'shoulder-throw'),
   '背負い投げが初期ショップにありません',
+);
+assert.ok(
+  shop.some((item) => item.kind === 'instruction' && item.id === 'taunt'),
+  '挑発が初期ショップにありません',
+);
+assert.ok(
+  shop.some((item) => item.kind === 'instruction' && item.id === 'pull-in'),
+  '引き寄せが初期ショップにありません',
 );
 assert.ok(instructionById.get('berserker-mode')?.params.speedScale === 3, 'バーサーカー倍率がデータ定義から読めません');
 

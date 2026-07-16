@@ -54,6 +54,8 @@ const actionKindLabels: Record<Instruction['action'], string> = {
   move: 'MOVE',
   jump: 'JUMP',
   throw: 'THROW',
+  taunt: 'TAUNT',
+  pull: 'PULL',
   retreat: 'RETREAT',
   heal: 'REPAIR',
   guard: 'GUARD',
@@ -443,6 +445,7 @@ export function App() {
     const tags = [fighter.berserk ? '暴走' : '正常'];
     if (fighter.guarded) tags.push('防御');
     if (fighter.poison > 0) tags.push(`毒 ${fighter.poison}`);
+    if (fighter.tauntSeconds > 0) tags.push(`標的固定 ${fighter.tauntSeconds.toFixed(1)}秒`);
     if (fighter.cooldown > 0.55) tags.push('準備中');
     return tags;
   };

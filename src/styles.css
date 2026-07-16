@@ -3296,3 +3296,212 @@ button:focus-visible {
     animation: none !important;
   }
 }
+
+/* Team IFF and control abilities */
+.sprite.ally {
+  --team-accent: #39d9ff;
+  --team-surface: #102932;
+}
+.sprite.enemy {
+  --team-accent: #ff5f6d;
+  --team-surface: #32161c;
+}
+.team-ring {
+  position: absolute;
+  z-index: -2;
+  left: 50%;
+  bottom: -10px;
+  width: 82px;
+  height: 24px;
+  transform: translateX(-50%);
+  border: 2px solid var(--team-accent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--team-accent) 12%, transparent);
+  box-shadow:
+    0 0 5px #080a0d,
+    0 0 14px color-mix(in srgb, var(--team-accent) 62%, transparent),
+    inset 0 0 11px color-mix(in srgb, var(--team-accent) 28%, transparent);
+  opacity: 0.9;
+}
+.sprite-body {
+  filter: drop-shadow(0 0 1px var(--team-accent))
+    drop-shadow(0 0 5px color-mix(in srgb, var(--team-accent) 72%, transparent));
+}
+.team-chip {
+  display: inline-block;
+  min-width: 43px;
+  margin-bottom: 2px;
+  padding: 2px 5px;
+  border: 1px solid var(--team-accent);
+  background: color-mix(in srgb, var(--team-surface) 92%, transparent);
+  color: var(--team-accent);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--team-accent) 26%, transparent);
+  font: normal 800 7px "IBM Plex Mono";
+  letter-spacing: 0.12em;
+}
+.taunt-chip,
+.berserk-chip {
+  position: absolute;
+  z-index: 5;
+  left: calc(50% + 30px);
+  bottom: 20px;
+  padding: 3px 5px;
+  border: 1px solid #c394ff;
+  background: #241631e8;
+  color: #dec8ff;
+  box-shadow: 0 0 10px #a96cff55;
+  font: 700 7px "IBM Plex Mono";
+  white-space: nowrap;
+}
+.berserk-chip {
+  border-color: #ff8a4c;
+  background: #331711e8;
+  color: #ffb27e;
+}
+.sprite.taunt-locked .team-ring {
+  animation: taunt-lock-pulse 0.82s ease-in-out infinite alternate;
+}
+.sprite.face-right.is-taunt .sprite-body,
+.sprite.face-right.is-pull .sprite-body {
+  animation: ability-control-right 0.46s ease;
+}
+.sprite.face-left.is-taunt .sprite-body,
+.sprite.face-left.is-pull .sprite-body {
+  animation: ability-control-left 0.46s ease;
+}
+.sprite.face-right.is-pulled .sprite-body {
+  animation: ability-pulled-right 0.42s cubic-bezier(0.16, 0.78, 0.28, 1);
+}
+.sprite.face-left.is-pulled .sprite-body {
+  animation: ability-pulled-left 0.42s cubic-bezier(0.16, 0.78, 0.28, 1);
+}
+.fx-taunt {
+  bottom: -4px;
+  width: 88px;
+  height: 88px;
+  transform: translateX(-50%);
+  border: 2px solid #c394ff;
+  border-radius: 50%;
+  box-shadow:
+    0 0 12px #a96cffaa,
+    inset 0 0 18px #a96cff55;
+  animation: ability-taunt-signal 0.52s ease-out forwards;
+}
+.fx-pull {
+  bottom: 27px;
+  width: 128px;
+  height: 7px;
+  transform: translateX(4px);
+  border-top: 2px dashed #7eeeff;
+  filter: drop-shadow(0 0 6px #39d9ff);
+  animation: ability-pull-line 0.48s ease-out forwards;
+}
+.face-left .fx-pull {
+  transform: translateX(-132px);
+}
+@keyframes taunt-lock-pulse {
+  to {
+    box-shadow:
+      0 0 5px #080a0d,
+      0 0 21px #b883ffcc,
+      inset 0 0 15px #b883ff66;
+  }
+}
+@keyframes ability-control-right {
+  45% {
+    transform: translateX(-50%) scale(1.08, 0.94);
+    filter: brightness(1.5) drop-shadow(0 0 10px #b883ff);
+  }
+}
+@keyframes ability-control-left {
+  45% {
+    transform: translateX(-50%) scaleX(-1) scale(1.08, 0.94);
+    filter: brightness(1.5) drop-shadow(0 0 10px #b883ff);
+  }
+}
+@keyframes ability-pulled-right {
+  0% {
+    transform: translateX(calc(-50% + 25px)) skewX(-9deg);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+@keyframes ability-pulled-left {
+  0% {
+    transform: translateX(calc(-50% - 25px)) scaleX(-1) skewX(9deg);
+  }
+  100% {
+    transform: translateX(-50%) scaleX(-1);
+  }
+}
+@keyframes ability-taunt-signal {
+  0% {
+    opacity: 0.9;
+    transform: translateX(-50%) scale(0.32);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.4);
+  }
+}
+@keyframes ability-pull-line {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  45% {
+    opacity: 1;
+    clip-path: inset(0);
+  }
+  100% {
+    opacity: 0;
+    clip-path: inset(0 0 0 100%);
+  }
+}
+@media (min-width: 801px) {
+  .shop-panel {
+    position: sticky;
+    top: 72px;
+    align-self: start;
+    max-height: calc(100vh - 72px);
+    overflow-y: auto;
+  }
+}
+@media (max-width: 800px) {
+  .team-ring {
+    bottom: -8px;
+    width: 62px;
+    height: 18px;
+  }
+  .team-chip {
+    min-width: 37px;
+    font-size: 6px;
+  }
+  .taunt-chip,
+  .berserk-chip {
+    left: calc(50% + 23px);
+    bottom: 14px;
+    font-size: 6px;
+  }
+  .fx-taunt {
+    width: 68px;
+    height: 68px;
+  }
+  .fx-pull {
+    width: 92px;
+  }
+  .face-left .fx-pull {
+    transform: translateX(-96px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sprite.taunt-locked .team-ring,
+  .sprite.is-taunt .sprite-body,
+  .sprite.is-pull .sprite-body,
+  .sprite.is-pulled .sprite-body,
+  .fx-taunt,
+  .fx-pull {
+    animation: none !important;
+  }
+}

@@ -11,6 +11,14 @@ export const nearestEnemy = (actor: Fighter, enemies: Fighter[]) =>
   [...enemies].sort((a, b) => distanceTo(actor, a) - distanceTo(actor, b))[0];
 export const lowestHp = (fighters: Fighter[]) => [...fighters].sort((a, b) => a.hp - b.hp)[0];
 
+export const forcedEnemy = (actor: Fighter, enemies: Fighter[]) =>
+  actor.tauntSeconds > 0 && actor.tauntTargetId
+    ? enemies.find((enemy) => enemy.instanceId === actor.tauntTargetId && enemy.hp > 0)
+    : undefined;
+
+export const priorityEnemy = (actor: Fighter, enemies: Fighter[]) =>
+  forcedEnemy(actor, enemies) ?? nearestEnemy(actor, enemies);
+
 const directionToward = (actor: Fighter, target: Fighter) =>
   Math.sign(target.x - actor.x) || (actor.team === 'ally' ? 1 : -1);
 
@@ -30,6 +38,11 @@ export function throwBehind(actor: Fighter, target: Fighter, distance: number): 
   return clampStage(actor.x - directionToward(actor, target) * distance);
 }
 
+export function pullToward(actor: Fighter, target: Fighter, distance: number): number {
+  if (distanceTo(actor, target) <= distance) return target.x;
+  return clampStage(actor.x + directionToward(actor, target) * distance);
+}
+
 export function retreatFrom(actor: Fighter, target: Fighter, distance: number): number {
   return clampStage(actor.x - directionToward(actor, target) * distance);
 }
@@ -46,7 +59,7 @@ export function canRunCondition(
 ): boolean {
   if (condition === 'always') return true;
   if (enemies.length === 0 || allies.length === 0) return false;
-  const nearest = nearestEnemy(actor, enemies);
+  const nearest = priorityEnemy(actor, enemies);
   const inRange = distanceTo(actor, nearest) <= actor.range;
   if (condition === 'enemyInRange') return inRange;
   if (condition === 'enemyOutOfRange') return !inRange;
@@ -63,11 +76,16 @@ export function actionCooldown(speed: number): number {
 }
 
 export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
-  return fighters.map((fighter) => ({
-    ...fighter,
-    cooldown: fighter.cooldown - dt,
-    reactionCooldown: fighter.reactionCooldown - dt,
-  }));
+  return fighters.map((fighter) => {
+    const tauntSeconds = Math.max(0, fighter.tauntSeconds - dt);
+    return {
+      ...fighter,
+      cooldown: fighter.cooldown - dt,
+      reactionCooldown: fighter.reactionCooldown - dt,
+      tauntTargetId: tauntSeconds > 0 ? fighter.tauntTargetId : null,
+      tauntSeconds,
+    };
+  });
 }
 
 export function rawActionDamage(actor: Fighter, instruction: Instruction, target: Fighter): number {
@@ -109,6 +127,8 @@ export function selectInstructionTarget(
   allies: Fighter[],
 ): Fighter | undefined {
   if (instruction.target === 'self') return actor;
+  const forced = forcedEnemy(actor, enemies);
+  if (forced) return forced;
   if (instruction.target === 'lowestHpEnemy') return lowestHp(enemies);
   if (instruction.target === 'lowestHpAlly') return lowestHp(allies);
   return nearestEnemy(actor, enemies);
@@ -133,6 +153,16 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
       { label: '着地', value: `背後 ${metricNumber(instruction.params.throwDistance ?? 0)} m` },
     ];
   }
+  if (instruction.action === 'taunt')
+    return [
+      { label: '標的', value: '自分に固定' },
+      { label: '持続', value: `${metricNumber(instruction.params.durationSeconds ?? 0)} s` },
+    ];
+  if (instruction.action === 'pull')
+    return [
+      { label: '対象', value: '射程内' },
+      { label: '着地', value: `手前 ${metricNumber(instruction.params.pullDistance ?? 0)} m` },
+    ];
   if (instruction.action === 'retreat')
     return [
       { label: '後退', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },

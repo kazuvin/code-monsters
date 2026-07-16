@@ -1,0 +1,133 @@
+import { chromium } from 'playwright-core';
+
+const targetUrl = process.argv[2] ?? 'http://127.0.0.1:5173/';
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  args: ['--use-angle=swiftshader'],
+});
+
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+const errors = [];
+page.on('pageerror', (error) => errors.push(error.message));
+await page.goto(targetUrl, { waitUntil: 'networkidle' });
+
+const tauntCard = page.locator('.instruction-shop-item').filter({ hasText: '挑発する' }).first();
+const pullCard = page.locator('.instruction-shop-item').filter({ hasText: '引き寄せる' }).first();
+const tauntShopText = (await tauntCard.innerText()).replace(/\s+/g, ' ').trim();
+const pullShopText = (await pullCard.innerText()).replace(/\s+/g, ' ').trim();
+await tauntCard.getByRole('button', { name: /購入/ }).click();
+await pullCard.getByRole('button', { name: /購入/ }).click();
+
+const program = page.locator('.workbench > .program-list').first();
+const firstBlock = program.locator('.sentence-block').first();
+await firstBlock.locator('.word-slot').first().click();
+await page.locator('.choice-list .condition-choice-card').filter({ hasText: 'いつでも' }).click();
+await firstBlock.locator('.word-slot').last().click();
+await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '挑発する' }).click();
+
+await program.locator('.add-block').click();
+await page.locator('.choice-list .condition-choice-card').filter({ hasText: '射程範囲内' }).click();
+const thirdBlock = program.locator('.sentence-block').nth(2);
+await thirdBlock.locator('.word-slot').last().click();
+await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '引き寄せる' }).click();
+const configuredProgram = (await program.innerText()).replace(/\s+/g, ' ').trim();
+
+await page.getByRole('button', { name: /戦闘開始/ }).click();
+await page.getByRole('button', { name: 'x2' }).click();
+
+const teamLabels = await page.locator('.team-chip').allTextContents();
+const teamColors = await page
+  .locator('.team-ring')
+  .evaluateAll((elements) => [...new Set(elements.map((element) => getComputedStyle(element).borderTopColor))]);
+
+let tauntSeen = false;
+let tauntLocked = false;
+let pullSeen = false;
+let pulledSeen = false;
+let pullDistance = Number.POSITIVE_INFINITY;
+let tauntAnimation = '';
+let pullAnimation = '';
+let pulledAnimation = '';
+for (let tick = 0; tick < 900; tick += 1) {
+  const tauntActor = page.locator('.sprite.ally.is-taunt').first();
+  if ((await tauntActor.count()) > 0) {
+    tauntSeen = true;
+    tauntAnimation = await tauntActor
+      .locator('.sprite-body')
+      .evaluate((element) => getComputedStyle(element).animationName);
+  }
+  if ((await page.locator('.sprite.enemy.taunt-locked').count()) > 0) tauntLocked = true;
+
+  const pullActor = page.locator('.sprite.ally.is-pull').first();
+  if ((await pullActor.count()) > 0) {
+    pullSeen = true;
+    pullAnimation = await pullActor
+      .locator('.sprite-body')
+      .evaluate((element) => getComputedStyle(element).animationName);
+  }
+  const pulledTarget = page.locator('.sprite.enemy.is-pulled').first();
+  if ((await pulledTarget.count()) > 0) {
+    pulledSeen = true;
+    pulledAnimation = await pulledTarget
+      .locator('.sprite-body')
+      .evaluate((element) => getComputedStyle(element).animationName);
+    const actorX = Number.parseFloat(
+      (await page.locator('.sprite.ally.unit-volt').getAttribute('style'))?.match(/left:\s*([\d.]+)%/)?.[1] ?? '0',
+    );
+    const targetX = Number.parseFloat(
+      (await pulledTarget.getAttribute('style'))?.match(/left:\s*([\d.]+)%/)?.[1] ?? '100',
+    );
+    pullDistance = Math.abs(targetX - actorX);
+  }
+  if (tauntSeen && tauntLocked && pullSeen && pulledSeen && pullDistance <= 4.01) break;
+  await page.waitForTimeout(35);
+}
+
+await page.screenshot({ path: '/tmp/code-monsters-control.png', fullPage: true });
+await browser.close();
+
+const result = {
+  tauntShopText,
+  pullShopText,
+  configuredProgram,
+  teamLabels,
+  teamColors,
+  tauntSeen,
+  tauntLocked,
+  pullSeen,
+  pulledSeen,
+  pullDistance,
+  tauntAnimation,
+  pullAnimation,
+  pulledAnimation,
+  errors,
+};
+console.log(JSON.stringify(result, null, 2));
+
+if (
+  !tauntShopText.includes('RARE / TAUNT') ||
+  !tauntShopText.includes('標的 自分に固定') ||
+  !tauntShopText.includes('持続 5 s')
+)
+  throw new Error('挑発のショップ表示が不正です');
+if (
+  !pullShopText.includes('RARE / PULL') ||
+  !pullShopText.includes('対象 射程内') ||
+  !pullShopText.includes('着地 手前 4 m')
+)
+  throw new Error('引き寄せのショップ表示が不正です');
+if (!configuredProgram.includes('いつでも なら 挑発する') || !configuredProgram.includes('射程範囲内 なら 引き寄せる'))
+  throw new Error('挑発と引き寄せを通常作戦へ設定できません');
+if (
+  teamLabels.filter((label) => label === 'ALLY').length !== 2 ||
+  teamLabels.filter((label) => label === 'ENEMY').length !== 2
+)
+  throw new Error('敵味方ラベルが全ユニットへ表示されていません');
+if (teamColors.length !== 2) throw new Error('敵味方の足元リングが同じ色です');
+if (!tauntSeen || !tauntLocked || !tauntAnimation.startsWith('ability-control-'))
+  throw new Error('挑発の状態固定または戦闘アニメーションを確認できません');
+if (!pullSeen || !pulledSeen || pullDistance > 4.01) throw new Error('引き寄せで対象を使用者の近くへ移動できません');
+if (!pullAnimation.startsWith('ability-control-') || !pulledAnimation.startsWith('ability-pulled-'))
+  throw new Error('引き寄せの専用アニメーションを確認できません');
+if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

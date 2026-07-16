@@ -5,6 +5,8 @@ export type ActionType =
   | 'move'
   | 'jump'
   | 'throw'
+  | 'taunt'
+  | 'pull'
   | 'retreat'
   | 'heal'
   | 'guard'
@@ -36,6 +38,8 @@ export type ActionParameters = {
   knockbackPower?: number;
   moveDistance?: number;
   throwDistance?: number;
+  pullDistance?: number;
+  durationSeconds?: number;
   healAmount?: number;
   supportHealAmount?: number;
   attackFlat?: number;
@@ -96,6 +100,8 @@ export type Fighter = UnitDefinition & {
   guardKnockbackScale: number;
   berserk: boolean;
   poison: number;
+  tauntTargetId: string | null;
+  tauntSeconds: number;
 };
 
 export type ProgramBlock = { conditionId: ConditionId; actionId: string; fixedAction?: boolean };
@@ -113,6 +119,9 @@ export type BattleFlash = {
     | 'jump'
     | 'throw'
     | 'thrown'
+    | 'taunt'
+    | 'pull'
+    | 'pulled'
     | 'retreat'
     | 'heal'
     | 'hit'

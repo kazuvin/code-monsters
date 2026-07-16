@@ -120,6 +120,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'move',
     'jump',
     'throw',
+    'taunt',
+    'pull',
     'retreat',
     'heal',
     'guard',
@@ -184,6 +186,10 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_PARAMETER', `${instruction.id} には正の moveDistance が必要です`);
     if (instruction.action === 'throw' && (instruction.params.throwDistance ?? 0) <= 0)
       error('MISSING_PARAMETER', `${instruction.id} には正の throwDistance が必要です`);
+    if (instruction.action === 'pull' && (instruction.params.pullDistance ?? 0) <= 0)
+      error('MISSING_PARAMETER', `${instruction.id} には正の pullDistance が必要です`);
+    if (instruction.action === 'taunt' && (instruction.params.durationSeconds ?? 0) <= 0)
+      error('MISSING_PARAMETER', `${instruction.id} には正の durationSeconds が必要です`);
     if (
       instruction.action === 'berserk' &&
       ((instruction.params.attackScale ?? 1) < 1 || (instruction.params.speedScale ?? 1) < 1)
