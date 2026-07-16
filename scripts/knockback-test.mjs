@@ -162,7 +162,7 @@ if (
   !knockAwayChoiceText.includes('KB出力 120')
 )
   throw new Error('行動選択カードで技名・能力値を確認できません');
-if (!program.startsWith('1 もし 現在の標的 が 攻撃射程内 なら ちょっと吹き飛ばす'))
+if (!program.startsWith('1 もし 一番近い敵 が 攻撃射程内 なら ちょっと吹き飛ばす'))
   throw new Error('「ちょっと吹き飛ばす」を作戦の先頭へ設定できませんでした');
 if (!events.some((event) => event.label === '吹き飛ばす'))
   throw new Error('「ちょっと吹き飛ばす」の固有アクション表示を確認できませんでした');

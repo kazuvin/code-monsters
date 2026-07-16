@@ -38,7 +38,7 @@ await secondBlock.locator('.word-slot').last().click();
 const allEnemiesActionChoices = await page.locator('.choice-list .instruction-choice-card').allInnerTexts();
 
 await program.locator('.add-block').click();
-await page.locator('.choice-list .target-choice-card').filter({ hasText: '現在の標的' }).click();
+await page.locator('.choice-list .target-choice-card').filter({ hasText: '一番近い敵' }).click();
 await page.locator('.choice-list .condition-choice-card').filter({ hasText: '攻撃射程外' }).click();
 const thirdBlock = program.locator('.sentence-block').nth(2);
 await thirdBlock.locator('.word-slot').last().click();
@@ -161,8 +161,8 @@ if (
   throw new Error('引き寄せのショップ表示が不正です');
 if (
   !configuredProgram.includes('敵全体 が いつでも なら 挑発する') ||
-  !configuredProgram.includes('現在の標的 が 攻撃射程外 なら 引き寄せる') ||
-  !configuredProgram.includes('現在の標的 が 攻撃射程外 なら 前進する')
+  !configuredProgram.includes('一番近い敵 が 攻撃射程外 なら 引き寄せる') ||
+  !configuredProgram.includes('一番近い敵 が 攻撃射程外 なら 前進する')
 )
   throw new Error('挑発と引き寄せを通常作戦へ設定できません');
 if (
@@ -171,7 +171,7 @@ if (
 )
   throw new Error('敵全体の対象に応じて行動候補が絞り込まれていません');
 if (
-  !pullTargetChoices.some((text) => text.includes('現在の標的')) ||
+  !pullTargetChoices.some((text) => text.includes('一番近い敵')) ||
   !pullTargetChoices.some((text) => text.includes('HPが最も低い敵')) ||
   pullTargetChoices.some((text) => text.includes('敵全体') || text.includes('自分'))
 )

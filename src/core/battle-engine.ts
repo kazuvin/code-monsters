@@ -375,7 +375,7 @@ export function planBattleFrame({
     const enemyProgram = (DEFAULT_PROGRAMS[actor.id] ?? []).map((actionId) => ({
       actionId,
       conditionId: instructionById.get(actionId)?.condition ?? 'always',
-      targetId: instructionById.get(actionId)?.defaultTarget ?? 'currentEnemy',
+      targetId: instructionById.get(actionId)?.defaultTarget ?? 'nearestEnemy',
     }));
     const program =
       actor.team === 'ally'

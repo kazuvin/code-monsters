@@ -12,7 +12,7 @@ The prototype now separates game definitions, deterministic rules, and rendering
 - battle timing, walls, cooldowns, damage/knockback formulas, overheat, economy, and shop weights
 - static-analysis weights and allowed balance spreads
 
-Stable IDs such as `currentEnemy`, `allEnemies`, `enemyInRange`, and `berserker-mode` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
+Stable IDs such as `nearestEnemy`, `nearestAlly`, `criticalAlly`, and `enemyInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
 
 For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and generate ScriptableObjects if inspector editing is preferred. Keep JSON as the canonical reviewed asset; generated ScriptableObjects should not become a second source of truth.
 
@@ -44,3 +44,7 @@ When adding a parameter, add it under an instruction's `params` or a named confi
 ## Schema version 2 migration
 
 Normal-program blocks now serialize `{ targetId, conditionId, actionId }`. Instructions add `defaultTarget`, `targetMode`, and `compatibleTargets`; conditions add `compatibleTargets`; and `targetSelectors` defines the selectable subject slots. Importers upgrading version 1 saves should derive `targetId` from the instruction's version 2 `defaultTarget` before validating the block. Conditions now return the matching subset of selected fighters, so a future multi-target action can consume the full array without changing the program schema.
+
+## Schema version 3 migration
+
+Rename the version 2 target selector ID `currentEnemy` to `nearestEnemy`. Version 3 also adds `nearestAlly` and `criticalAlly`; ally selectors other than `allAllies` exclude the acting unit because `self` remains a separate explicit target.

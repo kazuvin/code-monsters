@@ -11,6 +11,12 @@ export const distanceTo = (a: Pick<Fighter, 'x'>, b: Pick<Fighter, 'x'>) => Math
 export const nearestEnemy = (actor: Fighter, enemies: Fighter[]) =>
   [...enemies].sort((a, b) => distanceTo(actor, a) - distanceTo(actor, b))[0];
 export const lowestHpRatio = (fighters: Fighter[]) => [...fighters].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+export const otherAllies = (actor: Fighter, allies: Fighter[]) =>
+  allies.filter((ally) => ally.instanceId !== actor.instanceId);
+export const nearestAlly = (actor: Fighter, allies: Fighter[]) =>
+  [...otherAllies(actor, allies)].sort((a, b) => distanceTo(actor, a) - distanceTo(actor, b))[0];
+export const criticalAlly = (actor: Fighter, allies: Fighter[]) =>
+  lowestHpRatio(otherAllies(actor, allies).filter((ally) => ally.hp / ally.maxHp <= BATTLE_CONFIG.lowHpThreshold));
 
 export const forcedEnemy = (actor: Fighter, enemies: Fighter[]) =>
   actor.tauntSeconds > 0 && actor.tauntTargetId
@@ -63,7 +69,7 @@ export function selectConditionTargets(
   allies: Fighter[],
 ): Fighter[] {
   if (selector === 'self') return [actor];
-  if (selector === 'currentEnemy') {
+  if (selector === 'nearestEnemy') {
     const target = priorityEnemy(actor, enemies);
     return target ? [target] : [];
   }
@@ -71,8 +77,16 @@ export function selectConditionTargets(
     const target = lowestHpRatio(enemies);
     return target ? [target] : [];
   }
+  if (selector === 'nearestAlly') {
+    const target = nearestAlly(actor, allies);
+    return target ? [target] : [];
+  }
   if (selector === 'lowestHpAlly') {
-    const target = lowestHpRatio(allies);
+    const target = lowestHpRatio(otherAllies(actor, allies));
+    return target ? [target] : [];
+  }
+  if (selector === 'criticalAlly') {
+    const target = criticalAlly(actor, allies);
     return target ? [target] : [];
   }
   if (selector === 'allEnemies') return enemies;
@@ -163,7 +177,9 @@ export function selectInstructionTarget(
   const forced = forcedEnemy(actor, enemies);
   if (forced) return forced;
   if (instruction.target === 'lowestHpEnemy') return lowestHpRatio(enemies);
-  if (instruction.target === 'lowestHpAlly') return lowestHpRatio(allies);
+  if (instruction.target === 'nearestAlly') return nearestAlly(actor, allies);
+  if (instruction.target === 'lowestHpAlly') return lowestHpRatio(otherAllies(actor, allies));
+  if (instruction.target === 'criticalAlly') return criticalAlly(actor, allies);
   return nearestEnemy(actor, enemies);
 }
 

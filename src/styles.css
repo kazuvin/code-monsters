@@ -3122,6 +3122,8 @@ button:focus-visible {
 }
 .choice-list .target-choice-card {
   --choice-accent: var(--red);
+  min-height: 112px;
+  grid-template-rows: auto auto 1fr;
 }
 .choice-list .target-choice-card.target-ally {
   --choice-accent: var(--lime);

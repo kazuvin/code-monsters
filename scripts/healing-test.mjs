@@ -1,0 +1,114 @@
+import { chromium } from 'playwright-core';
+
+const targetUrl = process.argv[2] ?? 'http://127.0.0.1:5173/';
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  args: ['--use-angle=swiftshader'],
+});
+
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+const errors = [];
+page.on('pageerror', (error) => errors.push(error.message));
+await page.goto(targetUrl, { waitUntil: 'networkidle' });
+
+const fieldRepairCard = page.locator('.instruction-shop-item').filter({ hasText: '応急修復する' }).first();
+const emergencyRepairCard = page.locator('.instruction-shop-item').filter({ hasText: '緊急修復する' }).first();
+const fieldRepairShopText = (await fieldRepairCard.innerText()).replace(/\s+/g, ' ').trim();
+const emergencyRepairShopText = (await emergencyRepairCard.innerText()).replace(/\s+/g, ' ').trim();
+
+await emergencyRepairCard.getByRole('button', { name: /購入/ }).click();
+await fieldRepairCard.getByRole('button', { name: /購入/ }).click();
+
+const program = page.locator('.workbench > .program-list').first();
+await program.locator('.add-block').click();
+const repairRow = program.locator('.sentence-block').last();
+const targetChoices = (await page.locator('.choice-list .target-choice-card').allInnerTexts()).map((text) =>
+  text.replace(/\s+/g, ' ').trim(),
+);
+const targetEffectBoxCount = await page.locator('.choice-list .target-choice-card .condition-effect').count();
+
+await page.locator('.target-choice-card').filter({ hasText: 'HPが最も低い味方' }).click();
+await page.locator('.condition-choice-card').filter({ hasText: 'HP 50%以下' }).click();
+await repairRow.locator('.word-slot').last().click();
+const allyActionChoices = (await page.locator('.choice-list .instruction-choice-card').allInnerTexts()).map((text) =>
+  text.replace(/\s+/g, ' ').trim(),
+);
+await page.locator('.instruction-choice-card').filter({ hasText: '応急修復する' }).click();
+const configuredRepairRow = program.locator('.sentence-block').filter({ hasText: '応急修復する' });
+await configuredRepairRow.getByRole('button', { name: '上へ移動' }).click();
+await configuredRepairRow.getByRole('button', { name: '上へ移動' }).click();
+const configuredProgram = (await program.innerText()).replace(/\s+/g, ' ').trim();
+await configuredRepairRow.locator('.word-slot').first().click();
+await page.screenshot({ path: '/tmp/code-monsters-healing-targets.png', fullPage: true });
+
+await page.getByRole('button', { name: /戦闘開始/ }).click();
+await page.getByRole('button', { name: 'x2' }).click();
+
+let healSeen = false;
+let healedTarget = '';
+for (let tick = 0; tick < 1400; tick += 1) {
+  const healingTarget = page.locator('.sprite.ally.is-heal').first();
+  if ((await healingTarget.count()) > 0) {
+    healSeen = true;
+    healedTarget = (await healingTarget.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+    await page.screenshot({ path: '/tmp/code-monsters-healing.png', fullPage: true });
+    break;
+  }
+  await page.waitForTimeout(30);
+}
+
+await page.locator('.battle-controls button').first().click();
+await page.getByRole('button', { name: /ログ/ }).click();
+const healLog = (
+  await page
+    .locator('.log.heal')
+    .filter({ hasText: '修復' })
+    .first()
+    .innerText()
+    .catch(() => '')
+)
+  .replace(/\s+/g, ' ')
+  .trim();
+await browser.close();
+
+console.log(
+  JSON.stringify(
+    {
+      fieldRepairShopText,
+      emergencyRepairShopText,
+      targetChoices,
+      targetEffectBoxCount,
+      allyActionChoices,
+      configuredProgram,
+      healSeen,
+      healedTarget,
+      healLog,
+      errors,
+    },
+    null,
+    2,
+  ),
+);
+
+if (!fieldRepairShopText.includes('COMMON / REPAIR') || !fieldRepairShopText.includes('回復 22 HP'))
+  throw new Error('応急修復のショップ表示が不正です');
+if (!emergencyRepairShopText.includes('RARE / REPAIR') || !emergencyRepairShopText.includes('回復 38 HP'))
+  throw new Error('緊急修復のショップ表示が不正です');
+for (const target of ['一番近い味方', 'HPが最も低い味方', 'HP 30%以下の味方']) {
+  if (!targetChoices.some((choice) => choice.includes(target))) throw new Error(`${target}が回復対象にありません`);
+}
+if (targetChoices.length !== 3) throw new Error('応急修復に無関係な対象候補が表示されています');
+if (targetEffectBoxCount !== 0) throw new Error('対象カードに重複した対象ボックスが残っています');
+if (
+  !allyActionChoices.some((choice) => choice.includes('応急修復する')) ||
+  !allyActionChoices.some((choice) => choice.includes('緊急修復する')) ||
+  allyActionChoices.some((choice) => choice.includes('通常攻撃') || choice.includes('前進する'))
+)
+  throw new Error('味方対象に応じた回復アクションの絞り込みが不正です');
+if (!configuredProgram.startsWith('1 もし HPが最も低い味方 が HP 50%以下 なら 応急修復する'))
+  throw new Error('応急修復を通常作戦の先頭へ設定できません');
+if (!healSeen || !healedTarget.includes('バスティオン')) throw new Error('戦闘中に対象味方への回復を確認できません');
+if (!healLog.includes('ヴォルト') || !healLog.includes('バスティオンを 22 修復'))
+  throw new Error('応急修復が戦闘ログに記録されていません');
+if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

@@ -69,7 +69,6 @@ export type TargetSelectorDefinition = {
   id: TargetSelectorId;
   label: string;
   flavor: string;
-  effect: string;
   domain: TargetDomain;
   cardinality: TargetCardinality;
 };

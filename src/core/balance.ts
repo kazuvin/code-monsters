@@ -137,13 +137,22 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'follow',
     'wait',
   ]);
-  const supportedTargets = new Set(['nearestEnemy', 'lowestHpEnemy', 'lowestHpAlly', 'self']);
-  const supportedTargetSelectors = new Set([
-    'currentEnemy',
+  const supportedTargets = new Set([
+    'nearestEnemy',
     'lowestHpEnemy',
+    'nearestAlly',
     'lowestHpAlly',
+    'criticalAlly',
     'self',
+  ]);
+  const supportedTargetSelectors = new Set([
+    'nearestEnemy',
+    'lowestHpEnemy',
     'allEnemies',
+    'self',
+    'nearestAlly',
+    'lowestHpAlly',
+    'criticalAlly',
     'allAllies',
   ]);
   const supportedTargetModes = new Set(['selected', 'self', 'allEnemies', 'allAllies']);
@@ -156,7 +165,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const requireTargetSelector = (id: string, context: string) => {
     if (!targetSelectors.has(id)) error('UNKNOWN_TARGET', `${context} が未定義対象 "${id}" を参照しています`);
   };
-  if (data.schemaVersion < 2) error('INVALID_SCHEMA_VERSION', 'schemaVersion は2以上である必要があります');
+  if (data.schemaVersion < 3) error('INVALID_SCHEMA_VERSION', 'schemaVersion は3以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.baseActionCooldownSeconds <= 0 ||
@@ -223,6 +232,11 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       (instruction.params.moveDistance ?? 0) <= 0
     )
       error('MISSING_PARAMETER', `${instruction.id} には正の moveDistance が必要です`);
+    if (
+      instruction.action === 'heal' &&
+      ((instruction.params.healAmount ?? 0) <= 0 || (instruction.params.supportHealAmount ?? 0) <= 0)
+    )
+      error('MISSING_PARAMETER', `${instruction.id} には正の healAmount と supportHealAmount が必要です`);
     if (instruction.action === 'throw' && (instruction.params.throwDistance ?? 0) <= 0)
       error('MISSING_PARAMETER', `${instruction.id} には正の throwDistance が必要です`);
     if (instruction.action === 'pull' && (instruction.params.pullDistance ?? 0) <= 0)

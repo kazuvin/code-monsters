@@ -2,6 +2,10 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "code-monsters-prototype",
   "compatibility_date": "2026-07-01",
+  "cache": {
+    "enabled": true,
+    "cross_version_cache": false
+  },
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"

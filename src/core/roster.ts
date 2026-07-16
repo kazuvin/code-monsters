@@ -13,7 +13,7 @@ export function createInventoryUnit(unitId: string, inventoryId: string): UnitIn
     program: (DEFAULT_PROGRAMS[unitId] ?? ROSTER_CONFIG.startingActionIds).map((actionId) => ({
       actionId,
       conditionId: instructionById.get(actionId)?.condition ?? 'always',
-      targetId: instructionById.get(actionId)?.defaultTarget ?? 'currentEnemy',
+      targetId: instructionById.get(actionId)?.defaultTarget ?? 'nearestEnemy',
       fixedAction: instructionById.get(actionId)?.fixedFor === unit.id,
     })),
     reaction: DEFAULT_REACTIONS[unitId] ? { ...DEFAULT_REACTIONS[unitId]! } : null,

@@ -23,6 +23,7 @@
     "test:jump": "node scripts/jump-test.mjs",
     "test:throw": "node scripts/throw-test.mjs",
     "test:control": "node scripts/control-test.mjs",
+    "test:healing": "node scripts/healing-test.mjs",
     "test:visual": "node scripts/visual-test.mjs"
   },
   "dependencies": {

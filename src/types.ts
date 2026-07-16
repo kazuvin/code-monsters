@@ -27,8 +27,16 @@ export type ConditionId =
   | 'selfHpBelow30'
   | 'allyHpBelow50'
   | 'enemyHasStatus';
-export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'lowestHpAlly' | 'self';
-export type TargetSelectorId = 'currentEnemy' | 'lowestHpEnemy' | 'lowestHpAlly' | 'self' | 'allEnemies' | 'allAllies';
+export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'nearestAlly' | 'lowestHpAlly' | 'criticalAlly' | 'self';
+export type TargetSelectorId =
+  | 'nearestEnemy'
+  | 'lowestHpEnemy'
+  | 'allEnemies'
+  | 'self'
+  | 'nearestAlly'
+  | 'lowestHpAlly'
+  | 'criticalAlly'
+  | 'allAllies';
 export type TargetDomain = 'enemy' | 'ally' | 'self';
 export type TargetCardinality = 'one' | 'many';
 export type ActionTargetMode = 'selected' | 'self' | 'allEnemies' | 'allAllies';

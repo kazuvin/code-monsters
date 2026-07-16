@@ -185,10 +185,6 @@ const TargetChoiceCard = ({
     <span className="choice-card-kicker">TARGET / {target.cardinality === 'many' ? 'MULTI' : 'SINGLE'}</span>
     <strong>{target.label}</strong>
     <span className="choice-card-flavor">{target.flavor}</span>
-    <span className="condition-effect">
-      <small>対象</small>
-      <b>{target.effect}</b>
-    </span>
     <span className="choice-card-state">{active ? '選択中' : '選ぶ'}</span>
   </button>
 );
@@ -223,6 +219,7 @@ export function App() {
   const [bench, setBench] = useState<UnitInventoryItem[]>([]);
   const [selected, setSelected] = useState(0);
   const [ownedActions, setOwnedActions] = useState<string[]>([...ROSTER_CONFIG.startingActionIds]);
+  const [lastPurchasedAction, setLastPurchasedAction] = useState<string | null>(null);
   const [ownedConditions, setOwnedConditions] = useState<ConditionId[]>([...ROSTER_CONFIG.startingConditionIds]);
   const [editingSlot, setEditingSlot] = useState<EditingSlot>({ scope: 'program', index: 0, field: 'condition' });
   const [shopSeed, setShopSeed] = useState(0);
@@ -308,6 +305,7 @@ export function App() {
       }
       setCoins((current) => current - instruction.price);
       setOwnedActions((current) => (current.includes(instruction.id) ? current : [...current, instruction.id]));
+      setLastPurchasedAction(instruction.id);
       if (!instruction.reactionOnly)
         setOwnedConditions((current) =>
           current.includes(instruction.condition) ? current : [...current, instruction.condition],
@@ -672,7 +670,7 @@ export function App() {
                   </article>
                 );
               })}
-              <button className="add-block" onClick={() => addInstruction(ownedActions[0])}>
+              <button className="add-block" onClick={() => addInstruction(lastPurchasedAction ?? ownedActions[0])}>
                 ＋ 通常作戦を追加
               </button>
             </div>
@@ -775,7 +773,7 @@ export function App() {
                           .filter((condition) =>
                             isConditionCompatibleWithTarget(
                               condition,
-                              currentProgram[editingSlot.index]?.targetId ?? 'currentEnemy',
+                              currentProgram[editingSlot.index]?.targetId ?? 'nearestEnemy',
                             ),
                           )
                           .map((condition) => {
@@ -795,7 +793,7 @@ export function App() {
                         .filter((id) => {
                           if (editingSlot?.scope === 'reaction') return true;
                           const instruction = instructionById.get(id);
-                          const target = currentProgram[editingSlot?.index ?? 0]?.targetId ?? 'currentEnemy';
+                          const target = currentProgram[editingSlot?.index ?? 0]?.targetId ?? 'nearestEnemy';
                           return (
                             Boolean(instruction) &&
                             !instruction?.reactionOnly &&
