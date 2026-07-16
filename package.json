@@ -4,8 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "prepare": "husky",
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "preview": "vite preview",
     "deploy": "wrangler deploy",
     "verify": "node scripts/verify.mjs",
@@ -29,10 +32,16 @@
     "vite": "latest"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.4",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@types/three": "latest",
+    "husky": "9.1.7",
+    "lint-staged": "17.0.8",
     "playwright-core": "^1.61.1",
     "wrangler": "latest"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,tsx,json,jsonc,css,html}": "biome format --write --no-errors-on-unmatched"
   }
 }

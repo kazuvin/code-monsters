@@ -12,7 +12,7 @@
   color: #edf2f7;
   height: 34px;
   padding: 0 10px;
-  font: 700 10px 'IBM Plex Mono';
+  font: 700 10px "IBM Plex Mono";
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -32,7 +32,7 @@
 .status-group h3 {
   margin: 0 0 8px;
   color: #858e9b;
-  font: 700 10px 'IBM Plex Mono';
+  font: 700 10px "IBM Plex Mono";
 }
 
 .unit-status-card {
@@ -52,8 +52,8 @@
 }
 
 .unit-status-card.down {
-  opacity: .62;
-  filter: saturate(.55);
+  opacity: 0.62;
+  filter: saturate(0.55);
 }
 
 .status-card-head {
@@ -67,7 +67,7 @@
 .status-card-head small {
   display: block;
   color: #78818f;
-  font: 700 8px 'IBM Plex Mono';
+  font: 700 8px "IBM Plex Mono";
 }
 
 .status-card-head strong {
@@ -79,7 +79,7 @@
   border: 1px solid #3c4450;
   background: #12161c;
   color: #dce4ed;
-  font: 700 9px 'IBM Plex Mono';
+  font: 700 9px "IBM Plex Mono";
   padding: 3px 6px;
   white-space: nowrap;
 }
@@ -101,7 +101,7 @@
   display: block;
   height: 100%;
   background: var(--cyan);
-  transition: width .2s ease;
+  transition: width 0.2s ease;
 }
 
 .unit-status-card.enemy .unit-status-hp i {
@@ -109,7 +109,7 @@
 }
 
 .unit-status-hp b {
-  font: 700 10px 'IBM Plex Mono';
+  font: 700 10px "IBM Plex Mono";
   color: #e8edf2;
 }
 
@@ -121,7 +121,7 @@
 }
 
 .status-stats span {
-  font: 700 8px 'IBM Plex Mono';
+  font: 700 8px "IBM Plex Mono";
   color: #76808d;
   background: #141820;
   border: 1px solid #2b313b;
@@ -143,7 +143,7 @@
   border: 1px solid #524132;
   background: #2b2117;
   color: #ffd18a;
-  font: 700 8px 'IBM Plex Mono';
+  font: 700 8px "IBM Plex Mono";
   padding: 3px 6px;
 }
 
@@ -190,12 +190,12 @@
 
 .log-dialog-head h2 {
   margin: 0;
-  font: 700 15px 'Oxanium';
+  font: 700 15px "Oxanium";
 }
 
 .log-dialog-head small {
   color: #87919e;
-  font: 700 9px 'IBM Plex Mono';
+  font: 700 9px "IBM Plex Mono";
 }
 
 .log-dialog-head button {
@@ -223,11 +223,11 @@
   background: #eef3f7;
   color: #11161c;
   border: 1px solid #fff;
-  font: 800 10px 'Noto Sans JP';
+  font: 800 10px "Noto Sans JP";
   padding: 4px 8px;
   white-space: nowrap;
   box-shadow: 0 8px 18px #0008;
-  animation: action-pop .5s ease both;
+  animation: action-pop 0.5s ease both;
 }
 
 .sprite.enemy .action-bubble {
@@ -237,7 +237,7 @@
 @keyframes action-pop {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(8px) scale(.8);
+    transform: translateX(-50%) translateY(8px) scale(0.8);
   }
   25% {
     opacity: 1;
@@ -245,7 +245,7 @@
   }
   100% {
     opacity: 0;
-    transform: translateX(-50%) translateY(-14px) scale(.96);
+    transform: translateX(-50%) translateY(-14px) scale(0.96);
   }
 }
 
@@ -363,7 +363,7 @@
   height: 15px;
   background: linear-gradient(160deg, var(--unit-color), #1b2028 78%);
   border: 1px solid #edf2f7;
-  clip-path: polygon(50% 0,96% 25%,86% 78%,50% 100%,14% 78%,4% 25%);
+  clip-path: polygon(50% 0, 96% 25%, 86% 78%, 50% 100%, 14% 78%, 4% 25%);
 }
 
 .unit-status-card.acting {
@@ -379,7 +379,7 @@
   display: inline;
   margin-right: 4px;
   color: #78818f;
-  font: 700 7px 'IBM Plex Mono';
+  font: 700 7px "IBM Plex Mono";
 }
 
 .status-id strong {
@@ -395,7 +395,7 @@
   border: 1px solid #3c4450;
   background: #12161c;
   color: #dce4ed;
-  font: 700 7px 'IBM Plex Mono';
+  font: 700 7px "IBM Plex Mono";
   padding: 1px 4px;
 }
 
@@ -429,12 +429,12 @@
   display: block;
   height: 100%;
   background: linear-gradient(90deg, var(--amber), #f8fafc);
-  transition: width .18s linear;
+  transition: width 0.18s linear;
 }
 
 .status-cooldown b {
   color: #aeb8c5;
-  font: 700 7px 'IBM Plex Mono';
+  font: 700 7px "IBM Plex Mono";
   line-height: 1;
 }
 
@@ -471,11 +471,11 @@
   background: #eef3f7;
   color: #11161c;
   border: 1px solid #fff;
-  font: 800 9px 'Noto Sans JP';
+  font: 800 9px "Noto Sans JP";
   padding: 3px 7px;
   white-space: nowrap;
   box-shadow: 0 8px 18px #0008;
-  animation: card-action-pop .7s ease both;
+  animation: card-action-pop 0.7s ease both;
 }
 
 .unit-status-card.enemy .card-action-bubble {
@@ -487,7 +487,9 @@
   background: #17140d;
   color: var(--amber);
   border-color: var(--amber);
-  box-shadow: 0 8px 18px #0008, 0 0 12px #f4b84033;
+  box-shadow:
+    0 8px 18px #0008,
+    0 0 12px #f4b84033;
 }
 
 .sprite.is-dead {
@@ -512,7 +514,7 @@
 @keyframes card-action-pop {
   0% {
     opacity: 0;
-    transform: translateY(6px) scale(.86);
+    transform: translateY(6px) scale(0.86);
   }
   20% {
     opacity: 1;
@@ -520,16 +522,16 @@
   }
   100% {
     opacity: 0;
-    transform: translateY(-10px) scale(.96);
+    transform: translateY(-10px) scale(0.96);
   }
 }
 
 @keyframes dead-fade {
   0% {
-    opacity: .72;
+    opacity: 0.72;
   }
   45% {
-    opacity: .72;
+    opacity: 0.72;
   }
   100% {
     opacity: 0;

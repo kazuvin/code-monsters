@@ -9,10 +9,13 @@ const browser = await chromium.launch({
 
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
-page.on('pageerror', error => errors.push(error.message));
+page.on('pageerror', (error) => errors.push(error.message));
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
-const genericBerserkerCards = await page.locator('.instruction-shop-item').filter({ hasText: 'バーサーカーモード' }).count();
+const genericBerserkerCards = await page
+  .locator('.instruction-shop-item')
+  .filter({ hasText: 'バーサーカーモード' })
+  .count();
 const wrathShopCard = page.locator('.shop-item').filter({ hasText: 'ラース' }).first();
 const shopText = (await wrathShopCard.innerText()).replace(/\s+/g, ' ').trim();
 await page.screenshot({ path: '/tmp/code-monsters-wrath-shop.png', fullPage: true });
@@ -47,14 +50,20 @@ for (let tick = 0; tick < 1200; tick += 1) {
   const className = await wrathSprite.getAttribute('class');
   if (className?.includes('is-berserk')) activationClassSeen = true;
   if (className?.includes('berserk-active')) {
-    const wrathCard = page.locator('.status-group').filter({ hasText: '味方ユニット' }).locator('.unit-status-card.unit-wrath').first();
-    battleState = await wrathCard.evaluate(element => {
+    const wrathCard = page
+      .locator('.status-group')
+      .filter({ hasText: '味方ユニット' })
+      .locator('.unit-status-card.unit-wrath')
+      .first();
+    battleState = await wrathCard.evaluate((element) => {
       const hpText = element.querySelector('.unit-status-hp b')?.textContent ?? '';
       const [hp, maxHp] = hpText.split('/').map(Number);
-      const stats = Object.fromEntries([...element.querySelectorAll('.status-stats span')].map(stat => {
-        const label = stat.childNodes[0]?.textContent?.trim() ?? '';
-        return [label, Number(stat.querySelector('b')?.textContent)];
-      }));
+      const stats = Object.fromEntries(
+        [...element.querySelectorAll('.status-stats span')].map((stat) => {
+          const label = stat.childNodes[0]?.textContent?.trim() ?? '';
+          return [label, Number(stat.querySelector('b')?.textContent)];
+        }),
+      );
       return {
         hp,
         maxHp,
@@ -73,14 +82,17 @@ const chipCount = await page.locator('.sprite.ally.unit-wrath.berserk-active .be
 await page.screenshot({ path: '/tmp/code-monsters-berserker-active.png', fullPage: true });
 await page.waitForTimeout(700);
 await page.getByRole('button', { name: /ログ/ }).click();
-const berserkerLogs = await page.locator('.log-dialog .log.reaction').filter({ hasText: 'バーサーカーモード' }).allTextContents();
+const berserkerLogs = await page
+  .locator('.log-dialog .log.reaction')
+  .filter({ hasText: 'バーサーカーモード' })
+  .allTextContents();
 await browser.close();
 
 const result = {
   genericBerserkerCards,
   shopText,
   fixedReaction,
-  normalActionChoices: normalActionChoices.map(text => text.replace(/\s+/g, ' ').trim()),
+  normalActionChoices: normalActionChoices.map((text) => text.replace(/\s+/g, ' ').trim()),
   activationClassSeen,
   battleState,
   auraCount,
@@ -91,16 +103,30 @@ const result = {
 console.log(JSON.stringify(result, null, 2));
 
 if (genericBerserkerCards !== 0) throw new Error('バーサーカーモードが汎用ショップ指示として残っています');
-if (!shopText.includes('RARE') || !shopText.includes('ATK 20') || !shopText.includes('SPD 0.85')) throw new Error('ラースの基礎能力がショップに表示されていません');
-if (!shopText.includes('固有リアクション') || !shopText.includes('HP 30%以下') || !shopText.includes('バーサーカー')) throw new Error('ラースの固有リアクションがショップに表示されていません');
-if (!shopText.includes('ATK +60%') || !shopText.includes('SPD +100%')) throw new Error('ラースのバーサーカー効果が定量表示されていません');
-if (!fixedReaction.text.includes('自分のHPが30%以下になったら') || !fixedReaction.text.includes('バーサーカーモード')) throw new Error('ラースの固定リアクションが不正です');
-if (!fixedReaction.triggerDisabled || !fixedReaction.actionDisabled || !fixedReaction.deleteDisabled) throw new Error('ラースの固有リアクションを編集できてしまいます');
-if (normalActionChoices.some(text => text.includes('バーサーカーモード'))) throw new Error('固有リアクションが通常ループに表示されています');
+if (!shopText.includes('RARE') || !shopText.includes('ATK 20') || !shopText.includes('SPD 0.85'))
+  throw new Error('ラースの基礎能力がショップに表示されていません');
+if (!shopText.includes('固有リアクション') || !shopText.includes('HP 30%以下') || !shopText.includes('バーサーカー'))
+  throw new Error('ラースの固有リアクションがショップに表示されていません');
+if (!shopText.includes('ATK +60%') || !shopText.includes('SPD +100%'))
+  throw new Error('ラースのバーサーカー効果が定量表示されていません');
+if (!fixedReaction.text.includes('自分のHPが30%以下になったら') || !fixedReaction.text.includes('バーサーカーモード'))
+  throw new Error('ラースの固定リアクションが不正です');
+if (!fixedReaction.triggerDisabled || !fixedReaction.actionDisabled || !fixedReaction.deleteDisabled)
+  throw new Error('ラースの固有リアクションを編集できてしまいます');
+if (normalActionChoices.some((text) => text.includes('バーサーカーモード')))
+  throw new Error('固有リアクションが通常ループに表示されています');
 if (!battleState) throw new Error('ラースがバーサーカーモードに突入しませんでした');
-if (battleState.hp <= 0 || battleState.hp / battleState.maxHp > .3) throw new Error(`HP 30%以下以外で発動しました: ${battleState.hp}/${battleState.maxHp}`);
-if (battleState.attack !== 32 || battleState.speed !== 1.7) throw new Error(`ATK/SPDバフが不正です: ATK ${battleState.attack}, SPD ${battleState.speed}`);
+if (battleState.hp <= 0 || battleState.hp / battleState.maxHp > 0.3)
+  throw new Error(`HP 30%以下以外で発動しました: ${battleState.hp}/${battleState.maxHp}`);
+if (battleState.attack !== 32 || battleState.speed !== 1.7)
+  throw new Error(`ATK/SPDバフが不正です: ATK ${battleState.attack}, SPD ${battleState.speed}`);
 if (!battleState.text.includes('暴走')) throw new Error('状態欄に暴走表示がありません');
-if (!activationClassSeen || auraCount === 0 || chipCount === 0) throw new Error('バーサーカーの発動・常駐演出が確認できません');
-if (berserkerLogs.length !== 1 || !berserkerLogs[0].includes('ATK 20→32') || !berserkerLogs[0].includes('SPD 0.85→1.70')) throw new Error('ラースの定量ログが不正、または複数回発動しています');
+if (!activationClassSeen || auraCount === 0 || chipCount === 0)
+  throw new Error('バーサーカーの発動・常駐演出が確認できません');
+if (
+  berserkerLogs.length !== 1 ||
+  !berserkerLogs[0].includes('ATK 20→32') ||
+  !berserkerLogs[0].includes('SPD 0.85→1.70')
+)
+  throw new Error('ラースの定量ログが不正、または複数回発動しています');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

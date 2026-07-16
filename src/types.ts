@@ -1,9 +1,28 @@
 export type Role = 'STRIKER' | 'TANK' | 'SUPPORT' | 'VENOM' | 'CHASE' | 'HACKER' | 'BERSERKER';
-export type ActionType = 'attack' | 'heavy' | 'move' | 'retreat' | 'heal' | 'guard' | 'buff' | 'berserk' | 'poison' | 'burn' | 'follow' | 'wait';
+export type ActionType =
+  | 'attack'
+  | 'heavy'
+  | 'move'
+  | 'retreat'
+  | 'heal'
+  | 'guard'
+  | 'buff'
+  | 'berserk'
+  | 'poison'
+  | 'burn'
+  | 'follow'
+  | 'wait';
 export type AttackType = 'melee' | 'blunt' | 'sniper';
 export type Rarity = 'common' | 'rare' | 'epic';
 export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'allyAttackHit' | 'selfHpLow';
-export type ConditionId = 'always' | 'enemyInRange' | 'enemyOutOfRange' | 'enemyHpBelow50' | 'selfHpBelow30' | 'allyHpBelow50' | 'enemyHasStatus';
+export type ConditionId =
+  | 'always'
+  | 'enemyInRange'
+  | 'enemyOutOfRange'
+  | 'enemyHpBelow50'
+  | 'selfHpBelow30'
+  | 'allyHpBelow50'
+  | 'enemyHasStatus';
 export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'lowestHpAlly' | 'self';
 export type ImpactProfile = { damageScale?: number; knockbackPower?: number };
 export type ActionParameters = {
@@ -25,35 +44,82 @@ export type ActionParameters = {
 };
 
 export type UnitDefinition = {
-  id: string; name: string; code: string; role: Role; color: string;
-  maxHp: number; attack: number; defense: number; speed: number; price: number;
-  range: number; knockbackPower: number; weight: number; attackType: AttackType;
-  rarity: Rarity; programLimit: number;
+  id: string;
+  name: string;
+  code: string;
+  role: Role;
+  color: string;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  price: number;
+  range: number;
+  knockbackPower: number;
+  weight: number;
+  attackType: AttackType;
+  rarity: Rarity;
+  programLimit: number;
 };
 
 export type Instruction = {
-  id: string; title: string; short: string; flavor: string; action: ActionType; price: number;
+  id: string;
+  title: string;
+  short: string;
+  flavor: string;
+  action: ActionType;
+  price: number;
   rarity: Rarity;
-  condition: ConditionId; target: TargetType; tone: 'cyan' | 'amber' | 'lime' | 'violet';
+  condition: ConditionId;
+  target: TargetType;
+  tone: 'cyan' | 'amber' | 'lime' | 'violet';
   params: ActionParameters;
   fixedFor?: string;
   reactionOnly?: boolean;
-  visualKind?: 'move'|'dash'|'retreat';
+  visualKind?: 'move' | 'dash' | 'retreat';
   showAttackTypeLabel?: boolean;
 };
 
 export type Fighter = UnitDefinition & {
-  instanceId: string; team: 'ally' | 'enemy'; hp: number; x: number; z: number;
-  cooldown: number; reactionCooldown: number; guarded: boolean; guardDamageScale: number;
-  guardKnockbackScale: number; berserk: boolean; poison: number;
+  instanceId: string;
+  team: 'ally' | 'enemy';
+  hp: number;
+  x: number;
+  z: number;
+  cooldown: number;
+  reactionCooldown: number;
+  guarded: boolean;
+  guardDamageScale: number;
+  guardKnockbackScale: number;
+  berserk: boolean;
+  poison: number;
 };
 
 export type ProgramBlock = { conditionId: ConditionId; actionId: string; fixedAction?: boolean };
 export type ReactionBlock = { trigger: ReactionTrigger; actionId: string; fixedReaction?: boolean };
-export type UnitInventoryItem = UnitDefinition & { inventoryId: string; program: ProgramBlock[]; reaction: ReactionBlock | null };
+export type UnitInventoryItem = UnitDefinition & {
+  inventoryId: string;
+  program: ProgramBlock[];
+  reaction: ReactionBlock | null;
+};
 export type BattleFlash = {
   id: string;
-  kind: 'move' | 'dash' | 'retreat' | 'heal' | 'hit' | 'attack' | 'heavy' | 'poison' | 'burn' | 'follow' | 'guard' | 'berserk' | 'wait' | 'miss' | 'death';
+  kind:
+    | 'move'
+    | 'dash'
+    | 'retreat'
+    | 'heal'
+    | 'hit'
+    | 'attack'
+    | 'heavy'
+    | 'poison'
+    | 'burn'
+    | 'follow'
+    | 'guard'
+    | 'berserk'
+    | 'wait'
+    | 'miss'
+    | 'death';
   n: number;
   targetId?: string;
   attackType?: AttackType;
@@ -61,4 +127,10 @@ export type BattleFlash = {
   reaction?: boolean;
 };
 
-export type LogItem = { id: number; time: string; actor: string; text: string; type: 'info' | 'hit' | 'heal' | 'skip' | 'miss' | 'reaction' };
+export type LogItem = {
+  id: number;
+  time: string;
+  actor: string;
+  text: string;
+  type: 'info' | 'hit' | 'heal' | 'skip' | 'miss' | 'reaction';
+};

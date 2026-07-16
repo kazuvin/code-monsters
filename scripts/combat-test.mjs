@@ -50,7 +50,7 @@ const explicitNoKnockback = resolveImpact({
 });
 assert.equal(explicitNoKnockback.knockbackDistance, 0, 'アクション固有設定でノックバックを無効化できる必要があります');
 
-const knockAwayInstruction = INSTRUCTIONS.find(instruction => instruction.id === 'knock-away');
+const knockAwayInstruction = INSTRUCTIONS.find((instruction) => instruction.id === 'knock-away');
 assert.ok(knockAwayInstruction, '「ちょっと吹き飛ばす」の指示が登録されていません');
 const knockAway = resolveImpact({
   rawDamage: 26,
@@ -66,6 +66,11 @@ const knockAway = resolveImpact({
   guardKnockbackScale: 0.7,
 });
 assert.ok(knockAway.damage > 0, '「ちょっと吹き飛ばす」はダメージを与える必要があります');
-assert.ok(knockAway.knockbackDistance >= 35, '「ちょっと吹き飛ばす」はガード中の重量級も大きくノックバックさせる必要があります');
+assert.ok(
+  knockAway.knockbackDistance >= 35,
+  '「ちょっと吹き飛ばす」はガード中の重量級も大きくノックバックさせる必要があります',
+);
 
-console.log(JSON.stringify({ normalSniper, knockbackOnlySniper, normalMelee, explicitNoKnockback, knockAway }, null, 2));
+console.log(
+  JSON.stringify({ normalSniper, knockbackOnlySniper, normalMelee, explicitNoKnockback, knockAway }, null, 2),
+);

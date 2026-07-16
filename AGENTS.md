@@ -10,6 +10,8 @@
 
 ## Completion gate
 
+- Run `pnpm format` after editing supported source/config files. `pnpm verify` includes a non-writing `pnpm format:check` gate.
+- Keep the Husky + lint-staged pre-commit hook enabled. It formats staged supported files and re-stages the formatter output automatically.
 - After changing `src/core/`, `game-data/`, units, skills, reactions, combat parameters, prices, or shop settings, run `pnpm verify` before declaring the task complete.
 - `pnpm verify` must include the production build, core tests, combat-math tests, and `pnpm balance:check` equivalent.
 - Balance errors block completion. Warnings require review and should be reported; do not loosen a threshold only to silence a result.
