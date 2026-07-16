@@ -19,7 +19,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
   const allyFront=aliveAllies.reduce((n,f)=>n+f.x,0)/(aliveAllies.length||1);
   const enemyFront=aliveEnemies.reduce((n,f)=>n+f.x,0)/(aliveEnemies.length||1);
 
-  return <div className={`side-battlefield ${running?'is-running':'is-paused'}`} aria-label="2D戦闘フィールド">
+  return <div className={`side-battlefield ${running?'is-running':'is-paused'}`} aria-label="2D戦闘フィールド" data-event-id={flash?.n??''}>
     <div className="stage-wall wall-ally" />
     <div className="stage-wall wall-enemy" />
     <div className="base base-ally"><span>ALLY CORE</span></div>
@@ -33,7 +33,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
         const attackType=isActor&&flash?.attackType?flash.attackType:fighter.attackType;
         const attackEffect=flash?.kind==='follow'?'follow':attackType;
         const abilityEffect=isActor&&(flash?.kind==='dash'||flash?.kind==='retreat'||flash?.kind==='guard')?flash.kind:null;
-        const state=fighter.hp<=0?'is-dead':isActor?`is-${flash?.kind}`:isTarget?'is-hit':'';
+        const state=fighter.hp<=0?'is-dead':isActor?`is-${flash?.kind}`:'';
         const hpRatio=Math.max(0,fighter.hp/fighter.maxHp);
         const opponent=nearestOpponent(fighter,fighters);
         const facingClass=opponent ? opponent.x < fighter.x ? 'face-left' : 'face-right' : fighter.team==='enemy' ? 'face-left' : 'face-right';

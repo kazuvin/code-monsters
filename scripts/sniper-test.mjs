@@ -1,0 +1,73 @@
+import { chromium } from 'playwright-core';
+
+const targetUrl = process.argv[2] ?? 'http://127.0.0.1:5173/';
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  args: ['--use-angle=swiftshader'],
+});
+
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+const errors = [];
+page.on('pageerror', error => errors.push(error.message));
+await page.goto(targetUrl, { waitUntil: 'networkidle' });
+
+await page.getByRole('button', { name: /更新/ }).click();
+await page.waitForTimeout(80);
+await page.getByRole('button', { name: /更新/ }).click();
+await page.waitForTimeout(80);
+const arrowCard = page.locator('.shop-item').filter({ hasText: 'アロー' }).first();
+await arrowCard.getByRole('button', { name: /購入/ }).click();
+await page.locator('.inventory button').filter({ hasText: 'アロー' }).click();
+await page.locator('.unit-tabs button').filter({ hasText: 'アロー' }).click();
+
+await page.locator('.sentence-block').nth(1).getByRole('button', { name: '削除' }).click();
+await page.getByRole('button', { name: '＋ 通常作戦を追加' }).click();
+await page.getByRole('button', { name: '＋ 通常作戦を追加' }).click();
+const program = (await page.locator('.program-list').innerText()).replace(/\s+/g, ' ').trim();
+
+for (const unitName of ['ヴォルト', 'バスティオン']) {
+  await page.locator('.unit-tabs button').filter({ hasText: unitName }).click();
+  await page.getByRole('button', { name: '外す' }).click();
+}
+
+await page.getByRole('button', { name: /戦闘開始/ }).click();
+await page.getByRole('button', { name: 'x2' }).click();
+
+const events = [];
+const sniperShots = [];
+let lastEventId = '';
+for (let tick = 0; tick < 800 && sniperShots.length < 3; tick += 1) {
+  const eventId = await page.locator('.side-battlefield').getAttribute('data-event-id');
+  if (eventId && eventId !== lastEventId) {
+    lastEventId = eventId;
+    const active = page.locator('.unit-status-card.acting').first();
+    const actor = await active.locator('.status-id strong').textContent().catch(() => '');
+    const label = await active.locator('.card-action-bubble').textContent().catch(() => '');
+    const bastion = page.locator('.status-group').filter({ hasText: '敵ユニット' }).locator('.unit-status-card').filter({ hasText: 'バスティオン' });
+    const cooldownWidth = Number.parseFloat((await bastion.locator('.status-cooldown i').getAttribute('style'))?.match(/[\d.]+/)?.[0] ?? '0');
+    const event = {
+      id: eventId,
+      actor: actor?.trim() ?? '',
+      label: label?.trim() ?? '',
+      targetFlinchCount: await page.locator('.sprite.is-hit').count(),
+      hitSparkCount: await page.locator('.hit-spark').count(),
+      bastionCooldownWidth: cooldownWidth,
+    };
+    events.push(event);
+    if (event.actor === 'アロー' && event.label === '狙撃') sniperShots.push(event);
+  }
+  await page.waitForTimeout(25);
+}
+
+await browser.close();
+
+console.log(JSON.stringify({ program, events, sniperShots, errors }, null, 2));
+
+if ((program.match(/敵を攻撃する/g) ?? []).length !== 3) throw new Error('アローの3連続攻撃を構成できませんでした');
+if (sniperShots.length !== 3) throw new Error('アローの3連続狙撃を観測できませんでした');
+if (events.some(event => event.label === 'KNOCKBACK')) throw new Error('遠距離通常攻撃でKNOCKBACKイベントが発生しています');
+if (sniperShots.some(event => event.targetFlinchCount > 0)) throw new Error('遠距離通常攻撃で対象のよろけイベントが発生しています');
+if (sniperShots.some(event => event.hitSparkCount === 0)) throw new Error('ノックバックを抑止した狙撃の命中表示が失われています');
+if (sniperShots[0].bastionCooldownWidth < 100 && sniperShots.at(-1).bastionCooldownWidth <= sniperShots[0].bastionCooldownWidth) throw new Error('連続狙撃の演出中に対象のクールダウンが停止しています');
+if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

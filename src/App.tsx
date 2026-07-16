@@ -117,6 +117,12 @@ const canRunCondition=(condition:string,ready:Fighter,enemies:Fighter[],allies:F
     || (condition==='状態異常中の敵がいる'&&enemies.some(f=>f.poison>0));
 };
 
+const tickCooldowns=(fighters:Fighter[],dt:number)=>fighters.map(f=>({
+  ...f,
+  cooldown:f.cooldown-dt,
+  reactionCooldown:f.reactionCooldown-dt,
+}));
+
 export function App(){
   const [phase,setPhase]=useState<Phase>('build');
   const [coins,setCoins]=useState(10);
@@ -287,7 +293,7 @@ export function App(){
         battleQueueRef.current=battleQueueRef.current.slice(1);
         lastStepAtRef.current=now;
         setFighters(prev=>{
-          const next=queuedStep.apply(prev);
+          const next=queuedStep.apply(tickCooldowns(prev,dt));
           setFlash({...queuedStep.flash,n:now});
           if(queuedStep.log)addLog(queuedStep.log.actor,queuedStep.log.text,queuedStep.log.type);
           const aliveA=next.some(f=>f.team==='ally'&&f.hp>0);
@@ -297,9 +303,12 @@ export function App(){
         });
         return;
       }
-      if(queuedStep)return;
+      if(queuedStep){
+        setFighters(prev=>tickCooldowns(prev,dt));
+        return;
+      }
       setFighters(prev=>{
-        let displayNext=prev.map(f=>({...f,cooldown:f.cooldown-dt,reactionCooldown:f.reactionCooldown-dt}));
+        let displayNext=tickCooldowns(prev,dt);
         let next=displayNext.map(f=>({...f}));
         const queued:BattleStep[]=[];
         const queueStep=(step:BattleStep)=>{

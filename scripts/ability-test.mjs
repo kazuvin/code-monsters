@@ -65,7 +65,7 @@ const observeBattle = async (required, maxTicks = 400, extraCheck = () => true) 
       for (const token of className.split(/\s+/).filter(token => token.startsWith('is-'))) animationClasses.add(token);
     }
     const followState = await page.locator('.sprite.is-follow').evaluateAll(elements => elements.map(element => {
-      const target = document.querySelector('.sprite.is-hit');
+      const target = document.querySelector('.hit-spark')?.closest('.sprite');
       return {
         actor: element.textContent ?? '',
         distance: target ? Math.abs(Number.parseFloat(element.style.left) - Number.parseFloat(target.style.left)) : 0,
