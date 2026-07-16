@@ -14,6 +14,7 @@ import {
   resolveActionImpact,
   retreatFrom,
   selectInstructionTarget,
+  throwBehind,
   tickCooldowns,
 } from './rules.ts';
 
@@ -198,11 +199,16 @@ export function planBattleFrame({
     const hp = Math.max(0, target.hp - impact.damage);
     const poison = target.poison + (instruction.params.statusStacks ?? 0);
     const x =
-      hp > 0 && impact.knockbackDistance > 0 ? knockbackPosition(target, reactor, impact.knockbackDistance) : target.x;
+      hp > 0 && instruction.action === 'throw'
+        ? throwBehind(reactor, target, instruction.params.throwDistance ?? 0)
+        : hp > 0 && impact.knockbackDistance > 0
+          ? knockbackPosition(target, reactor, impact.knockbackDistance)
+          : target.x;
     setNext(reactor.instanceId, { reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds });
     setNext(target.instanceId, { hp, poison, x });
     const attackKind =
       instruction.action === 'heavy' ||
+      instruction.action === 'throw' ||
       instruction.action === 'poison' ||
       instruction.action === 'burn' ||
       instruction.action === 'follow'
@@ -230,7 +236,12 @@ export function planBattleFrame({
     });
     if (hp > 0 && x !== target.x)
       queueStep({
-        flash: { id: target.instanceId, kind: 'hit', actionLabel: 'KNOCKBACK', n: 0 },
+        flash: {
+          id: target.instanceId,
+          kind: instruction.action === 'throw' ? 'thrown' : 'hit',
+          actionLabel: instruction.action === 'throw' ? 'THROW' : 'KNOCKBACK',
+          n: 0,
+        },
         updates: [{ id: target.instanceId, values: { x } }],
       });
     if (hp <= 0 && target.hp > 0)
@@ -447,12 +458,15 @@ export function planBattleFrame({
         const hp = Math.max(0, target.hp - impact.damage);
         const poison = target.poison + (instruction.params.statusStacks ?? 0);
         const x =
-          hp > 0 && impact.knockbackDistance > 0
-            ? knockbackPosition(target, current, impact.knockbackDistance)
-            : target.x;
+          hp > 0 && instruction.action === 'throw'
+            ? throwBehind(current, target, instruction.params.throwDistance ?? 0)
+            : hp > 0 && impact.knockbackDistance > 0
+              ? knockbackPosition(target, current, impact.knockbackDistance)
+              : target.x;
         setNext(target.instanceId, { x, hp, poison });
         const attackKind =
           instruction.action === 'heavy' ||
+          instruction.action === 'throw' ||
           instruction.action === 'poison' ||
           instruction.action === 'burn' ||
           instruction.action === 'follow'
@@ -476,7 +490,12 @@ export function planBattleFrame({
         });
         if (hp > 0 && x !== target.x)
           queueStep({
-            flash: { id: target.instanceId, kind: 'hit', actionLabel: 'KNOCKBACK', n: 0 },
+            flash: {
+              id: target.instanceId,
+              kind: instruction.action === 'throw' ? 'thrown' : 'hit',
+              actionLabel: instruction.action === 'throw' ? 'THROW' : 'KNOCKBACK',
+              n: 0,
+            },
             updates: [{ id: target.instanceId, values: { x } }],
           });
         if (hp <= 0 && target.hp > 0)

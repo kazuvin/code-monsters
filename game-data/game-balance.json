@@ -44,6 +44,7 @@
     },
     "initialPicks": [
       { "slot": 0, "kind": "unit", "id": "relay" },
+      { "slot": 1, "kind": "instruction", "id": "shoulder-throw" },
       { "slot": 2, "kind": "instruction", "id": "vault-over" },
       { "slot": 3, "kind": "unit", "id": "wrath" },
       { "slot": 4, "kind": "instruction", "id": "knock-away" }
@@ -299,6 +300,19 @@
       "tone": "amber",
       "visualKind": "jump",
       "params": { "moveDistance": 14 }
+    },
+    {
+      "id": "shoulder-throw",
+      "title": "背負い投げ",
+      "short": "背負い投げ",
+      "flavor": "懐へ入ったら、勢いごと背後へ投げる。",
+      "action": "throw",
+      "price": 4,
+      "rarity": "rare",
+      "condition": "enemyInRange",
+      "target": "nearestEnemy",
+      "tone": "amber",
+      "params": { "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 0, "throwDistance": 6 }
     },
     {
       "id": "berserker-mode",

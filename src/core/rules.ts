@@ -26,6 +26,10 @@ export function jumpToward(actor: Fighter, target: Fighter, distance: number): n
   return clampStage(actor.x + directionToward(actor, target) * distance);
 }
 
+export function throwBehind(actor: Fighter, target: Fighter, distance: number): number {
+  return clampStage(actor.x - directionToward(actor, target) * distance);
+}
+
 export function retreatFrom(actor: Fighter, target: Fighter, distance: number): number {
   return clampStage(actor.x - directionToward(actor, target) * distance);
 }
@@ -122,6 +126,13 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
       { label: '跳躍', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },
       { label: '通過', value: '可能' },
     ];
+  if (instruction.action === 'throw') {
+    const rawDamage = unit.attack * (instruction.params.attackScale ?? 1) + (instruction.params.flatDamage ?? 0);
+    return [
+      { label: '基礎DMG', value: metricNumber(rawDamage) },
+      { label: '着地', value: `背後 ${metricNumber(instruction.params.throwDistance ?? 0)} m` },
+    ];
+  }
   if (instruction.action === 'retreat')
     return [
       { label: '後退', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },

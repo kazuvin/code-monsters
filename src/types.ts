@@ -4,6 +4,7 @@ export type ActionType =
   | 'heavy'
   | 'move'
   | 'jump'
+  | 'throw'
   | 'retreat'
   | 'heal'
   | 'guard'
@@ -34,6 +35,7 @@ export type ActionParameters = {
   minimumDamage?: number;
   knockbackPower?: number;
   moveDistance?: number;
+  throwDistance?: number;
   healAmount?: number;
   supportHealAmount?: number;
   attackFlat?: number;
@@ -109,6 +111,8 @@ export type BattleFlash = {
     | 'move'
     | 'dash'
     | 'jump'
+    | 'throw'
+    | 'thrown'
     | 'retreat'
     | 'heal'
     | 'hit'

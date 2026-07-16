@@ -1384,6 +1384,8 @@ button:focus-visible {
   }
   .sprite.is-move .sprite-body,
   .sprite.is-jump .sprite-body,
+  .sprite.is-throw .sprite-body,
+  .sprite.is-thrown .sprite-body,
   .sprite.is-attack .sprite-body,
   .sprite.is-hit .sprite-body,
   .slash,
@@ -2269,6 +2271,18 @@ button:focus-visible {
 .sprite.face-left.is-jump .sprite-body {
   animation: ability-jump-left 0.46s cubic-bezier(0.22, 0.74, 0.28, 1);
 }
+.sprite.face-right.is-throw .sprite-body {
+  animation: ability-throw-right 0.48s cubic-bezier(0.2, 0.78, 0.24, 1);
+}
+.sprite.face-left.is-throw .sprite-body {
+  animation: ability-throw-left 0.48s cubic-bezier(0.2, 0.78, 0.24, 1);
+}
+.sprite.face-right.is-thrown .sprite-body {
+  animation: ability-thrown-right 0.42s cubic-bezier(0.18, 0.72, 0.24, 1);
+}
+.sprite.face-left.is-thrown .sprite-body {
+  animation: ability-thrown-left 0.42s cubic-bezier(0.18, 0.72, 0.24, 1);
+}
 .sprite.face-right.is-retreat .sprite-body {
   animation: ability-retreat-right 0.38s ease;
 }
@@ -2325,6 +2339,18 @@ button:focus-visible {
   box-shadow: 0 0 14px #ffc247aa;
   animation: ability-jump-landing 0.46s ease-out forwards;
 }
+.fx-throw {
+  bottom: 4px;
+  width: 68px;
+  height: 46px;
+  border: 3px solid transparent;
+  border-top-color: #ffc247;
+  border-right-color: #ff8a3d;
+  border-radius: 50%;
+  transform: translateX(-50%) rotate(-35deg) scale(0.55);
+  filter: drop-shadow(0 0 8px #ffc247aa);
+  animation: ability-throw-arc 0.48s ease-out forwards;
+}
 .fx-guard {
   bottom: 5px;
   width: 70px;
@@ -2379,6 +2405,56 @@ button:focus-visible {
   }
   100% {
     transform: translateX(-50%) scaleX(-1) translateY(0) rotate(0);
+  }
+}
+@keyframes ability-throw-right {
+  0% {
+    transform: translateX(-50%) translateY(0) rotate(0);
+  }
+  38% {
+    transform: translateX(-50%) translateY(7px) rotate(-13deg) scale(1.05, 0.92);
+  }
+  68% {
+    transform: translateX(-50%) translateY(-9px) rotate(25deg) scale(0.95, 1.08);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(0);
+  }
+}
+@keyframes ability-throw-left {
+  0% {
+    transform: translateX(-50%) scaleX(-1) translateY(0) rotate(0);
+  }
+  38% {
+    transform: translateX(-50%) scaleX(-1) translateY(7px) rotate(-13deg) scale(1.05, 0.92);
+  }
+  68% {
+    transform: translateX(-50%) scaleX(-1) translateY(-9px) rotate(25deg) scale(0.95, 1.08);
+  }
+  100% {
+    transform: translateX(-50%) scaleX(-1) translateY(0) rotate(0);
+  }
+}
+@keyframes ability-thrown-right {
+  0% {
+    transform: translateX(-50%) translateY(-42px) rotate(-28deg) scale(0.9);
+  }
+  58% {
+    transform: translateX(-50%) translateY(-18px) rotate(16deg) scale(1.04);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(0) scale(1);
+  }
+}
+@keyframes ability-thrown-left {
+  0% {
+    transform: translateX(-50%) scaleX(-1) translateY(-42px) rotate(-28deg) scale(0.9);
+  }
+  58% {
+    transform: translateX(-50%) scaleX(-1) translateY(-18px) rotate(16deg) scale(1.04);
+  }
+  100% {
+    transform: translateX(-50%) scaleX(-1) translateY(0) rotate(0) scale(1);
   }
 }
 @keyframes ability-retreat-right {
@@ -2473,6 +2549,19 @@ button:focus-visible {
     transform: translateX(-50%) scale(1.25);
   }
 }
+@keyframes ability-throw-arc {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) rotate(-35deg) scale(0.55);
+  }
+  42% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) rotate(245deg) scale(1.12);
+  }
+}
 @keyframes ability-shield {
   0% {
     opacity: 0;
@@ -2498,6 +2587,11 @@ button:focus-visible {
   .fx-jump {
     bottom: -1px;
     width: 56px;
+  }
+  .fx-throw {
+    bottom: 2px;
+    width: 54px;
+    height: 38px;
   }
   .fx-guard {
     bottom: 2px;

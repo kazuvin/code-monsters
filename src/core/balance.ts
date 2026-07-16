@@ -66,7 +66,7 @@ function reactionContribution(data: GameBalanceData, unit: UnitDefinition, baseD
     const factor = 1 + uptime * (1 / damageScale - 1);
     return { dps: baseDps, effectiveHp: effectiveHp * factor, factor };
   }
-  if (['attack', 'heavy', 'follow', 'poison', 'burn'].includes(instruction.action)) {
+  if (['attack', 'heavy', 'throw', 'follow', 'poison', 'burn'].includes(instruction.action)) {
     const reactionDps = (expectedDamage(data, unit, instruction) / cooldown(data, unit.speed)) * uptime;
     const factor = baseDps === 0 ? 1 : (baseDps + reactionDps) / baseDps;
     return { dps: baseDps + reactionDps, effectiveHp, factor };
@@ -119,6 +119,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'heavy',
     'move',
     'jump',
+    'throw',
     'retreat',
     'heal',
     'guard',
@@ -181,6 +182,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       (instruction.params.moveDistance ?? 0) <= 0
     )
       error('MISSING_PARAMETER', `${instruction.id} には正の moveDistance が必要です`);
+    if (instruction.action === 'throw' && (instruction.params.throwDistance ?? 0) <= 0)
+      error('MISSING_PARAMETER', `${instruction.id} には正の throwDistance が必要です`);
     if (
       instruction.action === 'berserk' &&
       ((instruction.params.attackScale ?? 1) < 1 || (instruction.params.speedScale ?? 1) < 1)
@@ -195,7 +198,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     )
       error('INVALID_PARAMETER', `${instruction.id} のガード倍率は0より大きく1以下で指定してください`);
     if (
-      ['attack', 'heavy', 'follow', 'poison', 'burn'].includes(instruction.action) &&
+      ['attack', 'heavy', 'throw', 'follow', 'poison', 'burn'].includes(instruction.action) &&
       (instruction.params.minimumDamage ?? 0) < 0
     )
       error('INVALID_PARAMETER', `${instruction.id} の minimumDamage が負です`);

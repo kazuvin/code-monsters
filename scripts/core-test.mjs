@@ -10,6 +10,7 @@ import {
   jumpToward,
   knockbackPosition,
   retreatFrom,
+  throwBehind,
 } from '../src/core/rules.ts';
 import { createShop } from '../src/core/shop.ts';
 import { BATTLE_CONFIG, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
@@ -45,6 +46,7 @@ const jumpTarget = { ...enemies[0], x: 48 };
 const jumpActor = { ...volt, x: 40 };
 const crossedActor = { ...jumpActor, x: 54 };
 assert.equal(jumpToward(jumpActor, jumpTarget, 14), 54, '固定距離ジャンプで敵を飛び越えられません');
+assert.equal(throwBehind(jumpActor, jumpTarget, 6), 34, '背負い投げで敵を使用者の背後へ移動できません');
 assert.equal(advanceToward({ ...crossedActor, x: 64 }, jumpTarget, 5.2), 58.8, '交差後の前進方向が不正です');
 assert.equal(retreatFrom(crossedActor, jumpTarget, 6.5), 60.5, '交差後の後退方向が不正です');
 assert.equal(knockbackPosition(crossedActor, jumpTarget, 8), 62, '交差後のノックバック方向が不正です');
@@ -83,10 +85,35 @@ const jumpStep = jumpPlan.steps.find((step) => step.flash.kind === 'jump');
 assert.ok(jumpStep, 'ジャンプ指示が戦闘ステップを生成しません');
 assert.equal(jumpStep.updates[0]?.values.x, 54, 'ジャンプ指示が固定距離を移動しません');
 
+const throwTeam = [createInventoryUnit('volt', 'throw-volt')];
+throwTeam[0].program = [{ conditionId: 'enemyInRange', actionId: 'shoulder-throw' }];
+const throwFighters = createBattleFighters(throwTeam).map((fighter) => ({
+  ...fighter,
+  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 48 : 72,
+  cooldown: fighter.team === 'ally' ? 0 : 10,
+}));
+const throwPlan = planBattleFrame({
+  fighters: throwFighters,
+  team: throwTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const throwStep = throwPlan.steps.find((step) => step.flash.kind === 'throw');
+const throwMoveStep = throwPlan.steps.find((step) => step.flash.actionLabel === 'THROW');
+assert.ok(throwStep, '背負い投げが攻撃ステップを生成しません');
+assert.ok(throwMoveStep, '背負い投げが投擲移動ステップを生成しません');
+assert.equal(throwMoveStep.flash.kind, 'thrown', '投げられた敵の専用ステップが生成されません');
+assert.equal(throwMoveStep.updates[0]?.values.x, 34, '背負い投げが敵を使用者の背後へ移動しません');
+
 const shop = createShop(0);
 assert.ok(
   shop.some((item) => item.kind === 'unit' && item.id === 'wrath'),
   '初期ショップ定義が反映されていません',
+);
+assert.ok(
+  shop.some((item) => item.kind === 'instruction' && item.id === 'shoulder-throw'),
+  '背負い投げが初期ショップにありません',
 );
 assert.ok(instructionById.get('berserker-mode')?.params.speedScale === 3, 'バーサーカー倍率がデータ定義から読めません');
 
