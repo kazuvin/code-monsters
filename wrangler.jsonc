@@ -3,8 +3,7 @@
   "name": "code-monsters-prototype",
   "compatibility_date": "2026-07-01",
   "cache": {
-    "enabled": true,
-    "cross_version_cache": false
+    "enabled": false
   },
   "assets": {
     "directory": "./dist",
