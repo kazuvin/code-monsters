@@ -126,6 +126,10 @@ export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
     return {
       ...fighter,
       cooldown: fighter.cooldown - dt,
+      abilityGauge: Math.min(
+        BATTLE_CONFIG.abilityGaugeMax,
+        fighter.abilityGauge + BATTLE_CONFIG.abilityGaugeRegenPerSecond * dt,
+      ),
       reactionCooldown: fighter.reactionCooldown - dt,
       tauntTargetId: tauntSeconds > 0 ? fighter.tauntTargetId : null,
       tauntSeconds,
@@ -183,64 +187,70 @@ export function selectInstructionTarget(
 
 export function instructionMetrics(instruction: Instruction, unit: UnitDefinition): { label: string; value: string }[] {
   const metricNumber = (value: number) => (Number.isInteger(value) ? String(value) : value.toFixed(1));
+  const withCost = (metrics: { label: string; value: string }[]) => [
+    ...metrics,
+    { label: 'COST', value: instruction.abilityCost === 0 ? 'FREE' : String(instruction.abilityCost) },
+  ];
   if (instruction.action === 'move')
-    return [
+    return withCost([
       { label: '前進', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },
       { label: '停止', value: 'RNG内' },
-    ];
+    ]);
   if (instruction.action === 'jump')
-    return [
+    return withCost([
       { label: '跳躍', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },
       { label: '通過', value: '可能' },
-    ];
+    ]);
   if (instruction.action === 'throw') {
     const rawDamage = unit.attack * (instruction.params.attackScale ?? 1) + (instruction.params.flatDamage ?? 0);
-    return [
+    return withCost([
       { label: '基礎DMG', value: metricNumber(rawDamage) },
       { label: '着地', value: `背後 ${metricNumber(instruction.params.throwDistance ?? 0)} m` },
-    ];
+    ]);
   }
   if (instruction.action === 'taunt')
-    return [
+    return withCost([
       { label: '効果', value: '敵の標的→自分' },
       { label: '持続', value: `${metricNumber(instruction.params.durationSeconds ?? 0)} s` },
-    ];
+    ]);
   if (instruction.action === 'pull')
-    return [
+    return withCost([
       {
         label: '射程',
         value: `${metricNumber(unit.range * (instruction.params.rangeScale ?? 1))} m`,
       },
       { label: '着地', value: `手前 ${metricNumber(instruction.params.pullDistance ?? 0)} m` },
-    ];
+    ]);
   if (instruction.action === 'retreat')
-    return [
+    return withCost([
       { label: '後退', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },
       { label: '停止', value: '壁際' },
-    ];
+    ]);
   if (instruction.action === 'guard')
-    return [
+    return withCost([
       { label: '被DMG', value: `−${Math.round((1 - (instruction.params.incomingDamageScale ?? 1)) * 100)}%` },
       { label: '被KB', value: `−${Math.round((1 - (instruction.params.incomingKnockbackScale ?? 1)) * 100)}%` },
-    ];
+    ]);
   if (instruction.action === 'heal')
-    return [
+    return withCost([
       {
         label: '回復',
         value: `${unit.role === 'SUPPORT' ? (instruction.params.supportHealAmount ?? instruction.params.healAmount ?? 0) : (instruction.params.healAmount ?? 0)} HP`,
       },
-    ];
-  if (instruction.action === 'buff') return [{ label: 'ATK', value: `+${instruction.params.attackFlat ?? 0}` }];
+    ]);
+  if (instruction.action === 'buff')
+    return withCost([{ label: 'ATK', value: `+${instruction.params.attackFlat ?? 0}` }]);
   if (instruction.action === 'berserk')
-    return [
+    return withCost([
       { label: 'ATK', value: `+${Math.round(((instruction.params.attackScale ?? 1) - 1) * 100)}%` },
       { label: 'SPD', value: `+${Math.round(((instruction.params.speedScale ?? 1) - 1) * 100)}%` },
-    ];
-  if (instruction.action === 'wait') return [{ label: '待機', value: `${instruction.params.cooldownSeconds ?? 0} s` }];
+    ]);
+  if (instruction.action === 'wait')
+    return withCost([{ label: '待機', value: `${instruction.params.cooldownSeconds ?? 0} s` }]);
   const rawDamage = unit.attack * (instruction.params.attackScale ?? 1) + (instruction.params.flatDamage ?? 0);
   const knockbackPower = instruction.params.knockbackPower ?? (unit.attackType === 'sniper' ? 0 : unit.knockbackPower);
-  return [
+  return withCost([
     { label: '基礎DMG', value: metricNumber(rawDamage) },
     { label: 'KB出力', value: metricNumber(knockbackPower) },
-  ];
+  ]);
 }

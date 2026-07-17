@@ -16,9 +16,11 @@ base DPS = expected normal-attack damage / action cooldown
 effective HP = max HP + defense * defense weight
 power = DPS, effective HP, range, knockback/second, and program capacity (weighted sum)
 cost efficiency = power / unit price
+ability recovery = ability cost / gauge regeneration per second
+sustainable ability interval = max(reference action cooldown, ability recovery)
 ```
 
-Fixed reactions modify the corresponding estimate using the configured trigger uptime: attacks add expected DPS, guard increases effective HP, and berserker blends its ATK × SPD multiplier over the low-HP uptime. The report shows absolute power, median-relative index, and power per coin.
+The ability-economy table reports each instruction's gauge cost, recovery time, sustainable interval, and uses per minute. Strong actions must have a positive integer cost no greater than the configured gauge maximum; a free strong action is a structural error. Fixed reactions modify the corresponding estimate using the configured trigger uptime and are capped by the sustainable gauge-regeneration rate: attacks add expected DPS, guard increases effective HP, and berserker blends its ATK × SPD multiplier over the low-HP uptime. The unit report shows absolute power, median-relative index, and power per coin.
 
 This is a deterministic screening model, not proof of live-match fairness. It is intentionally good at finding broken references, impossible parameters, extreme same-rarity gaps, and price-efficiency outliers. Borderline spreads are warnings and should be followed by matchup simulation or playtesting. Exceeding configured hard limits exits non-zero.
 

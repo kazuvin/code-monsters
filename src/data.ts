@@ -13,6 +13,9 @@ import type {
 
 export type BattleConfig = {
   tickSeconds: number;
+  abilityGaugeMax: number;
+  abilityGaugeInitial: number;
+  abilityGaugeRegenPerSecond: number;
   actionStepMs: number;
   reactionCooldownSeconds: number;
   baseActionCooldownSeconds: number;
@@ -55,6 +58,7 @@ export type ShopConfig = {
 
 export type BalanceAnalysisConfig = {
   baselineActionId: string;
+  abilityReferenceSpeed: number;
   referenceDefense: number;
   effectiveHpDefenseWeight: number;
   powerWeights: { dps: number; effectiveHp: number; range: number; knockbackPerSecond: number; programLimit: number };

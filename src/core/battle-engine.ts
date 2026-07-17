@@ -25,6 +25,7 @@ type MutableFighterFields = Pick<
   | 'hp'
   | 'x'
   | 'cooldown'
+  | 'abilityGauge'
   | 'reactionCooldown'
   | 'guarded'
   | 'guardDamageScale'
@@ -83,6 +84,16 @@ export function planBattleFrame({
     const index = next.findIndex((fighter) => fighter.instanceId === fighterId);
     if (index >= 0) next[index] = { ...next[index], ...values };
   };
+  const canAffordAbility = (fighter: Fighter, abilityCost: number) =>
+    fighter.abilityGauge + Number.EPSILON >= abilityCost;
+  const spendAbility = (fighterId: string, abilityCost: number) => {
+    if (abilityCost <= 0) return;
+    const fighter = next.find((candidate) => candidate.instanceId === fighterId);
+    if (!fighter) return;
+    const abilityGauge = Math.max(0, fighter.abilityGauge - abilityCost);
+    setNext(fighterId, { abilityGauge });
+    displayNext = applyFighterUpdates(displayNext, [{ id: fighterId, values: { abilityGauge } }]);
+  };
   const queueStep = (step: BattleStep) => steps.push(step);
   const reactionFor = (fighter: Fighter): ReactionBlock | null =>
     fighter.team === 'ally'
@@ -110,6 +121,8 @@ export function planBattleFrame({
     const actionLabel = `⚡ ${instruction.short}`;
 
     if (instruction.action === 'guard') {
+      if (!canAffordAbility(reactor, instruction.abilityCost)) return;
+      spendAbility(reactor.instanceId, instruction.abilityCost);
       const values = {
         guarded: true,
         guardDamageScale: instruction.params.incomingDamageScale ?? 1,
@@ -126,6 +139,8 @@ export function planBattleFrame({
     }
     if (instruction.action === 'berserk') {
       if (reactor.berserk) return;
+      if (!canAffordAbility(reactor, instruction.abilityCost)) return;
+      spendAbility(reactor.instanceId, instruction.abilityCost);
       const boost = activateBerserker(reactor, instruction);
       const values = { ...boost, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
@@ -141,6 +156,8 @@ export function planBattleFrame({
       return;
     }
     if (instruction.action === 'taunt') {
+      if (!canAffordAbility(reactor, instruction.abilityCost)) return;
+      spendAbility(reactor.instanceId, instruction.abilityCost);
       const duration = instruction.params.durationSeconds ?? 0;
       const enemyUpdates = next
         .filter((fighter) => fighter.team !== reactor.team && fighter.hp > 0)
@@ -167,6 +184,8 @@ export function planBattleFrame({
     }
     if (instruction.action === 'retreat') {
       if (!target || target.hp <= 0) return;
+      if (!canAffordAbility(reactor, instruction.abilityCost)) return;
+      spendAbility(reactor.instanceId, instruction.abilityCost);
       const x = retreatFrom(reactor, target, instruction.params.moveDistance ?? 0);
       const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
@@ -179,6 +198,8 @@ export function planBattleFrame({
     }
     if (instruction.action === 'jump') {
       if (!target || target.hp <= 0) return;
+      if (!canAffordAbility(reactor, instruction.abilityCost)) return;
+      spendAbility(reactor.instanceId, instruction.abilityCost);
       const x = jumpToward(reactor, target, instruction.params.moveDistance ?? 0);
       const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
@@ -191,6 +212,8 @@ export function planBattleFrame({
     }
     if (instruction.action === 'move') {
       if (!target || target.hp <= 0 || distanceTo(reactor, target) <= reactor.range) return;
+      if (!canAffordAbility(reactor, instruction.abilityCost)) return;
+      spendAbility(reactor.instanceId, instruction.abilityCost);
       const x = advanceToward(reactor, target, instruction.params.moveDistance ?? 0);
       const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
@@ -202,6 +225,8 @@ export function planBattleFrame({
       return;
     }
     if (!target || target.hp <= 0) return;
+    if (!canAffordAbility(reactor, instruction.abilityCost)) return;
+    spendAbility(reactor.instanceId, instruction.abilityCost);
     if (instruction.action === 'pull') {
       const reactionCooldown = BATTLE_CONFIG.reactionCooldownSeconds;
       if (distanceTo(reactor, target) > actionRange(reactor, instruction)) {
@@ -386,6 +411,7 @@ export function planBattleFrame({
     setNext(actor.instanceId, readyValues);
     displayNext = applyFighterUpdates(displayNext, [{ id: actor.instanceId, values: readyValues }]);
     let acted = false;
+    let blockedByCost = false;
 
     for (const block of program.slice(0, actor.programLimit)) {
       const current = next.find((fighter) => fighter.instanceId === actor.instanceId);
@@ -405,6 +431,12 @@ export function planBattleFrame({
           : (selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest);
       if (instruction.action === 'pull' && distanceTo(current, target) > actionRange(current, instruction)) continue;
       if (instruction.action === 'heal' && distanceTo(current, target) > current.range) continue;
+      if (instruction.action === 'berserk' && current.berserk) continue;
+      if (!canAffordAbility(current, instruction.abilityCost)) {
+        blockedByCost = true;
+        continue;
+      }
+      spendAbility(current.instanceId, instruction.abilityCost);
       acted = true;
 
       if (instruction.action === 'taunt') {
@@ -627,7 +659,12 @@ export function planBattleFrame({
         if (instruction.action !== 'follow') triggerHitReactions(current.instanceId, target.instanceId);
       }
     }
-    if (!acted) logs.push({ actor: actor.name, text: '実行できる指示なし', type: 'skip' });
+    if (!acted)
+      logs.push({
+        actor: actor.name,
+        text: blockedByCost ? 'COST不足｜ゲージ回復待ち' : '実行できる指示なし',
+        type: 'skip',
+      });
   }
 
   return { fighters: displayNext, steps, logs, complete: isBattleComplete(next) && steps.length === 0 };

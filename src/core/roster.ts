@@ -26,6 +26,7 @@ export function createBattleFighters(team: UnitInventoryItem[]): Fighter[] {
   );
   const baseState = {
     z: 0,
+    abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
     reactionCooldown: 0,
     guarded: false,
     guardDamageScale: 1,

@@ -1020,11 +1020,35 @@ export function App() {
                             {Math.ceil(Math.max(0, fighter.hp))}/{fighter.maxHp}
                           </b>
                         </div>
-                        <div className="status-cooldown">
-                          <div>
-                            <i style={{ width: `${cooldownRatio * 100}%` }} />
+                        <div className="status-resources">
+                          <div
+                            className="status-cooldown"
+                            aria-label={cooldownRatio >= 1 ? '行動準備完了' : '行動準備中'}
+                          >
+                            <div>
+                              <i style={{ width: `${cooldownRatio * 100}%` }} />
+                            </div>
+                            <b>{cooldownRatio >= 1 ? 'READY' : 'WAIT'}</b>
                           </div>
-                          <b>{cooldownRatio >= 1 ? 'READY' : 'WAIT'}</b>
+                          <div
+                            className="status-ability"
+                            aria-label={`コスト ${fighter.abilityGauge.toFixed(1)} / ${BATTLE_CONFIG.abilityGaugeMax}`}
+                          >
+                            <div className="status-ability-pips">
+                              {Array.from({ length: BATTLE_CONFIG.abilityGaugeMax }, (_, index) => (
+                                <span className="status-ability-pip" key={index}>
+                                  <i
+                                    style={{
+                                      width: `${Math.max(0, Math.min(1, fighter.abilityGauge - index)) * 100}%`,
+                                    }}
+                                  />
+                                </span>
+                              ))}
+                            </div>
+                            <b>
+                              COST <em>{fighter.abilityGauge.toFixed(1)}</em>
+                            </b>
+                          </div>
                         </div>
                         <div className="status-stats">
                           <span>

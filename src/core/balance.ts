@@ -15,9 +15,21 @@ export type UnitBalanceMetric = {
   powerIndex: number;
   costEfficiency: number;
 };
+export type AbilityBalanceMetric = {
+  id: string;
+  title: string;
+  action: Instruction['action'];
+  rarity: Rarity;
+  gaugeCost: number;
+  recoverySeconds: number;
+  sustainableIntervalSeconds: number;
+  usesPerMinute: number;
+  costLimited: boolean;
+};
 export type BalanceReport = {
   schemaVersion: number;
   metrics: UnitBalanceMetric[];
+  abilityMetrics: AbilityBalanceMetric[];
   issues: BalanceIssue[];
   errors: number;
   warnings: number;
@@ -49,13 +61,35 @@ function cooldown(data: GameBalanceData, speed: number): number {
   return Math.max(data.battle.minimumActionCooldownSeconds, data.battle.baseActionCooldownSeconds / speed);
 }
 
+function sustainableActionInterval(data: GameBalanceData, instruction: Instruction, speed: number): number {
+  const actionInterval = cooldown(data, speed);
+  const resourceInterval =
+    instruction.abilityCost <= 0 ? 0 : instruction.abilityCost / data.battle.abilityGaugeRegenPerSecond;
+  return Math.max(actionInterval, resourceInterval);
+}
+
+function resourceAdjustedUptime(
+  data: GameBalanceData,
+  instruction: Instruction,
+  uptime: number,
+  attemptIntervalSeconds: number,
+): number {
+  if (instruction.abilityCost <= 0 || uptime <= 0) return uptime;
+  const attemptedUsesPerSecond = uptime / attemptIntervalSeconds;
+  const sustainableUsesPerSecond = data.battle.abilityGaugeRegenPerSecond / instruction.abilityCost;
+  return attemptedUsesPerSecond <= sustainableUsesPerSecond
+    ? uptime
+    : uptime * (sustainableUsesPerSecond / attemptedUsesPerSecond);
+}
+
 function reactionContribution(data: GameBalanceData, unit: UnitDefinition, baseDps: number, effectiveHp: number) {
   const reaction = data.defaultReactions.find((entry) => entry.unitId === unit.id && entry.trigger && entry.actionId);
   if (!reaction?.trigger || !reaction.actionId) return { dps: baseDps, effectiveHp, factor: 1 };
   const instruction = data.instructions.find((candidate) => candidate.id === reaction.actionId);
   if (!instruction) return { dps: baseDps, effectiveHp, factor: 1 };
   const params = instruction.params ?? {};
-  const uptime = data.balanceAnalysis.reactionUptime[reaction.trigger as ReactionTrigger] ?? 0;
+  const configuredUptime = data.balanceAnalysis.reactionUptime[reaction.trigger as ReactionTrigger] ?? 0;
+  const uptime = resourceAdjustedUptime(data, instruction, configuredUptime, data.battle.reactionCooldownSeconds);
   if (instruction.action === 'berserk') {
     const boosted = (params.attackScale ?? 1) * (params.speedScale ?? 1);
     const factor = 1 + uptime * (boosted - 1);
@@ -67,7 +101,9 @@ function reactionContribution(data: GameBalanceData, unit: UnitDefinition, baseD
     return { dps: baseDps, effectiveHp: effectiveHp * factor, factor };
   }
   if (['attack', 'heavy', 'throw', 'follow', 'poison', 'burn'].includes(instruction.action)) {
-    const reactionDps = (expectedDamage(data, unit, instruction) / cooldown(data, unit.speed)) * uptime;
+    const attackInterval = cooldown(data, unit.speed);
+    const attackUptime = resourceAdjustedUptime(data, instruction, configuredUptime, attackInterval);
+    const reactionDps = (expectedDamage(data, unit, instruction) / attackInterval) * attackUptime;
     const factor = baseDps === 0 ? 1 : (baseDps + reactionDps) / baseDps;
     return { dps: baseDps + reactionDps, effectiveHp, factor };
   }
@@ -164,13 +200,20 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const requireTargetSelector = (id: string, context: string) => {
     if (!targetSelectors.has(id)) error('UNKNOWN_TARGET', `${context} が未定義対象 "${id}" を参照しています`);
   };
-  if (data.schemaVersion < 4) error('INVALID_SCHEMA_VERSION', 'schemaVersion は4以上である必要があります');
+  if (data.schemaVersion < 5) error('INVALID_SCHEMA_VERSION', 'schemaVersion は5以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
+    !Number.isInteger(data.battle.abilityGaugeMax) ||
+    data.battle.abilityGaugeMax <= 0 ||
+    data.battle.abilityGaugeInitial < 0 ||
+    data.battle.abilityGaugeInitial > data.battle.abilityGaugeMax ||
+    data.battle.abilityGaugeRegenPerSecond <= 0 ||
     data.battle.baseActionCooldownSeconds <= 0 ||
     data.battle.minimumActionCooldownSeconds <= 0
   )
-    error('INVALID_BATTLE_CONFIG', '戦闘のtick/cooldown設定は正数である必要があります');
+    error('INVALID_BATTLE_CONFIG', '戦闘のtick/cooldown/abilityGauge設定が不正です');
+  if (data.balanceAnalysis.abilityReferenceSpeed <= 0)
+    error('INVALID_BALANCE_CONFIG', 'abilityReferenceSpeed は正数である必要があります');
   if (data.balanceAnalysis.warningThresholdRatio <= 0 || data.balanceAnalysis.warningThresholdRatio >= 1)
     error('INVALID_BALANCE_CONFIG', 'warningThresholdRatio は0より大きく1未満である必要があります');
   if (data.balanceAnalysis.maxCostEfficiencySpread <= 1 || data.balanceAnalysis.maxSameRarityPowerSpread <= 1)
@@ -203,6 +246,33 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       requireTargetSelector(targetId, `条件 ${condition.id}.compatibleTargets`);
   }
   for (const instruction of data.instructions) {
+    if (
+      !Number.isInteger(instruction.abilityCost) ||
+      instruction.abilityCost < 0 ||
+      instruction.abilityCost > data.battle.abilityGaugeMax
+    )
+      error(
+        'INVALID_ABILITY_COST',
+        `${instruction.id} の abilityCost は0〜${data.battle.abilityGaugeMax}の整数で指定してください`,
+      );
+    if (
+      [
+        'heavy',
+        'jump',
+        'throw',
+        'taunt',
+        'pull',
+        'heal',
+        'guard',
+        'buff',
+        'berserk',
+        'poison',
+        'burn',
+        'follow',
+      ].includes(instruction.action) &&
+      instruction.abilityCost <= 0
+    )
+      error('MISSING_ABILITY_COST', `${instruction.id} の強力な行動には正の abilityCost が必要です`);
     if (!conditions.has(instruction.condition))
       error('UNKNOWN_CONDITION', `${instruction.id} が未定義条件 "${instruction.condition}" を参照しています`);
     if (!supportedConditions.has(instruction.condition))
@@ -336,6 +406,27 @@ export function analyzeBalance(data: GameBalanceData): BalanceReport {
     powerIndex: round((power / medianPower) * 100, 1),
     costEfficiency: round(unit.price > 0 ? power / unit.price : 0),
   }));
+  const referenceCooldown = cooldown(data, data.balanceAnalysis.abilityReferenceSpeed);
+  const abilityMetrics = data.instructions.map((instruction) => {
+    const recoverySeconds =
+      instruction.abilityCost <= 0 ? 0 : instruction.abilityCost / data.battle.abilityGaugeRegenPerSecond;
+    const sustainableIntervalSeconds = sustainableActionInterval(
+      data,
+      instruction,
+      data.balanceAnalysis.abilityReferenceSpeed,
+    );
+    return {
+      id: instruction.id,
+      title: instruction.title,
+      action: instruction.action,
+      rarity: instruction.rarity,
+      gaugeCost: instruction.abilityCost,
+      recoverySeconds: round(recoverySeconds),
+      sustainableIntervalSeconds: round(sustainableIntervalSeconds),
+      usesPerMinute: round(60 / sustainableIntervalSeconds, 1),
+      costLimited: recoverySeconds > referenceCooldown,
+    };
+  });
   const efficiencySpread = ratio(metrics.map((metric) => metric.costEfficiency));
   const mostEfficient = [...metrics].sort((a, b) => b.costEfficiency - a.costEfficiency)[0];
   const leastEfficient = [...metrics].sort((a, b) => a.costEfficiency - b.costEfficiency)[0];
@@ -380,6 +471,7 @@ export function analyzeBalance(data: GameBalanceData): BalanceReport {
   return {
     schemaVersion: data.schemaVersion,
     metrics,
+    abilityMetrics,
     issues,
     errors: issues.filter((issue) => issue.severity === 'error').length,
     warnings: issues.filter((issue) => issue.severity === 'warning').length,

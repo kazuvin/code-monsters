@@ -9,7 +9,7 @@ The prototype now separates game definitions, deterministic rules, and rendering
 - unit stats, rarity, price, role, attack type, and program capacity
 - target selectors, condition compatibility, instruction target modes, effects, movement, damage, knockback, healing, and buffs
 - fixed reactions and default programs
-- battle timing, walls, cooldowns, damage/knockback formulas, overheat, economy, and shop weights
+- battle timing, walls, cooldowns, ability-gauge capacity/regeneration, damage/knockback formulas, overheat, economy, and shop weights
 - static-analysis weights and allowed balance spreads
 
 Stable IDs such as `nearestEnemy`, `nearestAlly`, `criticalAlly`, and `targetInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
@@ -52,3 +52,7 @@ Rename the version 2 target selector ID `currentEnemy` to `nearestEnemy`. Versio
 ## Schema version 4 migration
 
 Rename the version 3 condition IDs `enemyInRange` and `enemyOutOfRange` to `targetInRange` and `targetOutOfRange`. Both conditions always measure from the unit executing the program to the selected target, and they now support ally selectors as well as enemy selectors. Remove `allyHpBelow50` and `battle.allyLowHpThreshold`; ally-target programs choose between the acting unit's in-range and out-of-range conditions. The `emergency-repair` instruction was also removed, leaving `field-repair` as the single healing instruction.
+
+## Schema version 5 migration
+
+Add `abilityCost` to every instruction and add `abilityGaugeMax`, `abilityGaugeInitial`, and `abilityGaugeRegenPerSecond` under `battle`. Runtime fighter state now includes `abilityGauge`. Regenerate it by elapsed battle time, cap it at the configured maximum, and deduct the instruction cost only when an action or reaction is committed. If a normal-program instruction cannot afford its cost, continue evaluating later blocks so free attacks and movement can remain fallbacks. Reactions with insufficient gauge do not fire or consume their reaction cooldown. Add `balanceAnalysis.abilityReferenceSpeed` when importing the analyzer configuration.

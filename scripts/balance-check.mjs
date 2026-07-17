@@ -24,6 +24,19 @@ if (process.argv.includes('--json')) {
       'Power/Coin': metric.costEfficiency,
     })),
   );
+  console.log('Ability economy (resource-sustainable rate)');
+  console.table(
+    report.abilityMetrics.map((metric) => ({
+      Ability: `${metric.title} (${metric.id})`,
+      Action: metric.action,
+      Rarity: metric.rarity,
+      Cost: metric.gaugeCost === 0 ? 'FREE' : metric.gaugeCost,
+      'Recharge(s)': metric.recoverySeconds,
+      'Interval(s)': metric.sustainableIntervalSeconds,
+      'Uses/min': metric.usesPerMinute,
+      Limited: metric.costLimited ? 'COST' : 'COOLDOWN',
+    })),
+  );
   if (report.issues.length === 0) console.log('PASS: data references and balance thresholds are healthy.');
   for (const issue of report.issues) console.log(`${issue.severity.toUpperCase()} [${issue.code}] ${issue.message}`);
   console.log(`Result: ${report.errors} error(s), ${report.warnings} warning(s)`);

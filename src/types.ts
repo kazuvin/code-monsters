@@ -87,6 +87,7 @@ export type Instruction = {
   short: string;
   flavor: string;
   action: ActionType;
+  abilityCost: number;
   price: number;
   rarity: Rarity;
   condition: ConditionId;
@@ -109,6 +110,7 @@ export type Fighter = UnitDefinition & {
   x: number;
   z: number;
   cooldown: number;
+  abilityGauge: number;
   reactionCooldown: number;
   guarded: boolean;
   guardDamageScale: number;
