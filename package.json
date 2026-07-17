@@ -17,6 +17,7 @@
     "test:combat": "node scripts/combat-test.mjs",
     "test:knockback": "node scripts/knockback-test.mjs",
     "test:miss": "node scripts/miss-test.mjs",
+    "test:mobile": "node scripts/mobile-ux-test.mjs",
     "test:sniper": "node scripts/sniper-test.mjs",
     "test:ability": "node scripts/ability-test.mjs",
     "test:berserker": "node scripts/berserker-test.mjs",
@@ -26,7 +27,7 @@
     "test:healing": "node scripts/healing-test.mjs",
     "test:cost": "node scripts/cost-test.mjs",
     "test:catalog": "node scripts/catalog-test.mjs",
-    "test:corrosion": "node scripts/corrosion-test.mjs",
+    "test:poison": "node scripts/poison-test.mjs",
     "test:run": "node scripts/run-test.mjs",
     "test:unity-core": "node scripts/unity-core-check.mjs",
     "test:visual": "node scripts/visual-test.mjs"

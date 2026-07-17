@@ -504,23 +504,19 @@ const toxinFighters = createBattleFighters(toxinTeam).map((fighter) => ({
 }));
 const toxinActor = toxinFighters.find((fighter) => fighter.instanceId === 'status-toxin');
 const cleanStatusTarget = toxinFighters.find((fighter) => fighter.team === 'enemy' && fighter.id === 'relay');
-const corrosionBurst = instructionById.get('corrosion-burst');
-assert.ok(toxinActor && cleanStatusTarget && corrosionBurst);
+const poisonAmplify = instructionById.get('corrosion-burst');
+assert.ok(toxinActor && cleanStatusTarget && poisonAmplify);
 const poisonedStatusTarget = { ...cleanStatusTarget, poison: 1 };
 assert.equal(
   matchCondition('enemyHasStatus', toxinActor, [cleanStatusTarget]).length,
   0,
   '未付与の敵が状態条件に一致します',
 );
-assert.equal(
-  matchCondition('enemyHasStatus', toxinActor, [poisonedStatusTarget]).length,
-  1,
-  '腐食状態を検出できません',
-);
+assert.equal(matchCondition('enemyHasStatus', toxinActor, [poisonedStatusTarget]).length, 1, '毒状態を検出できません');
 assert.ok(
-  resolveActionImpact(toxinActor, poisonedStatusTarget, corrosionBurst).damage >
-    resolveActionImpact(toxinActor, cleanStatusTarget, corrosionBurst).damage,
-  '腐食起爆の状態特効ダメージが適用されていません',
+  resolveActionImpact(toxinActor, poisonedStatusTarget, poisonAmplify).damage >
+    resolveActionImpact(toxinActor, cleanStatusTarget, poisonAmplify).damage,
+  '毒増幅の状態特効ダメージが適用されていません',
 );
 
 const multiTeam = [createInventoryUnit('arrow', 'multi-arrow')];

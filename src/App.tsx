@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Sparkles,
   Swords,
+  Users,
   X,
   Zap,
 } from 'lucide-react';
@@ -68,6 +69,7 @@ import type {
 
 type Phase = 'build' | 'battle' | 'result';
 type AppView = 'game' | 'catalog';
+type MobileBuildPanel = 'program' | 'reaction' | 'squad' | 'shop' | null;
 type EditingSlot = { scope: 'program' | 'reaction'; index: number; field: 'target' | 'condition' | 'action' } | null;
 type GaugeTelemetry = { totalSeconds: number; emptySeconds: number; fullSeconds: number };
 
@@ -258,6 +260,7 @@ export function App() {
   const lastStepAtRef = useRef(0);
   const [logsOpen, setLogsOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const [mobileBuildPanel, setMobileBuildPanel] = useState<MobileBuildPanel>(null);
   const logId = useRef(0);
   const selectedUnit = team[Math.min(selected, team.length - 1)];
   const currentProgram = selectedUnit?.program ?? [];
@@ -275,6 +278,17 @@ export function App() {
   const gaugeEmptyRate =
     gaugeTelemetry.totalSeconds > 0 ? gaugeTelemetry.emptySeconds / gaugeTelemetry.totalSeconds : 0;
   const gaugeFullRate = gaugeTelemetry.totalSeconds > 0 ? gaugeTelemetry.fullSeconds / gaugeTelemetry.totalSeconds : 0;
+
+  const toggleMobileBuildPanel = (panel: Exclude<MobileBuildPanel, null>) => {
+    if (mobileBuildPanel === panel) {
+      setMobileBuildPanel(null);
+      return;
+    }
+    setMobileBuildPanel(panel);
+    if (panel === 'program') setEditingSlot({ scope: 'program', index: 0, field: 'condition' });
+    if (panel === 'reaction')
+      setEditingSlot(currentReaction ? { scope: 'reaction', index: 0, field: 'condition' } : null);
+  };
 
   const addLog = useCallback((actor: string, text: string, type: LogItem['type'] = 'info') => {
     const t = Math.max(0, elapsedRef.current);
@@ -505,6 +519,7 @@ export function App() {
     elapsedRef.current = 0;
     setPaused(false);
     setLogsOpen(false);
+    setMobileBuildPanel(null);
     setPhase('battle');
     setToast('プログラムを実行します');
   };
@@ -516,6 +531,7 @@ export function App() {
     setFighters(createBattleFighters(nextTeam, encounter));
     setLogs([]);
     setLogsOpen(false);
+    setMobileBuildPanel(null);
     setElapsed(0);
     elapsedRef.current = 0;
   };
@@ -661,7 +677,7 @@ export function App() {
     if (fighter.hp <= 0) return ['戦闘不能'];
     const tags = [fighter.berserk ? '暴走' : '正常'];
     if (fighter.guarded) tags.push('防御');
-    if (fighter.poison > 0) tags.push(`腐食 ×${fighter.poison}`);
+    if (fighter.poison > 0) tags.push(`毒 ×${fighter.poison}`);
     if (fighter.tauntSeconds > 0) tags.push(`標的固定 ${fighter.tauntSeconds.toFixed(1)}秒`);
     if (fighter.cooldown > 0.55) tags.push('準備中');
     return tags;
@@ -670,7 +686,7 @@ export function App() {
     Math.max(0, Math.min(1, 1 - fighter.cooldown / actionCooldown(fighter.speed)));
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell view-${view} phase-${phase}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">CM_</span>
@@ -697,6 +713,7 @@ export function App() {
               setView('catalog');
               setPaused(true);
               setLogsOpen(false);
+              setMobileBuildPanel(null);
             }}
           >
             <BookOpen size={14} />
@@ -728,7 +745,26 @@ export function App() {
       {view === 'catalog' ? (
         <Catalog />
       ) : phase === 'build' ? (
-        <div className="build-layout">
+        <div className={`build-layout ${mobileBuildPanel ? `mobile-panel-${mobileBuildPanel}` : ''}`}>
+          {mobileBuildPanel && (
+            <header className="mobile-panel-header">
+              <div>
+                <small>MOBILE COMMAND</small>
+                <b>
+                  {mobileBuildPanel === 'program'
+                    ? '通常作戦'
+                    : mobileBuildPanel === 'reaction'
+                      ? 'リアクション'
+                      : mobileBuildPanel === 'squad'
+                        ? 'ユニット編成'
+                        : 'ショップ'}
+                </b>
+              </div>
+              <button aria-label="パネルを閉じる" onClick={() => setMobileBuildPanel(null)}>
+                <X size={18} />
+              </button>
+            </header>
+          )}
           <section className="encounter-strip" aria-label="次の敵編成">
             <span>MISSION {String(round).padStart(2, '0')}</span>
             <div>
@@ -759,7 +795,11 @@ export function App() {
                   className={selected === index ? 'active' : ''}
                   onClick={() => {
                     setSelected(index);
-                    setEditingSlot({ scope: 'program', index: 0, field: 'condition' });
+                    setEditingSlot(
+                      mobileBuildPanel === 'reaction' && unit.reaction
+                        ? { scope: 'reaction', index: 0, field: 'condition' }
+                        : { scope: 'program', index: 0, field: 'condition' },
+                    );
                   }}
                 >
                   <span className="unit-dot" style={{ background: unit.color }} />
@@ -807,6 +847,37 @@ export function App() {
                 外す
               </button>
             </div>
+            <section className="mobile-build-summary" aria-label="現在の作戦概要">
+              <header>
+                <div>
+                  <small>ACTIVE PROGRAM</small>
+                  <b>{selectedUnit.name}の作戦</b>
+                </div>
+                <span>
+                  {currentProgram.length} / {selectedUnit.programLimit}
+                </span>
+              </header>
+              <div className="mobile-program-preview">
+                {currentProgram.slice(0, 3).map((block, index) => (
+                  <div key={`${block.actionId}-${block.conditionId}-${index}`}>
+                    <small>{String(index + 1).padStart(2, '0')}</small>
+                    <span>{targetLabel(block.targetId)}</span>
+                    <i>{conditionLabel(block.conditionId)}</i>
+                    <b>{actionLabel(block.actionId)}</b>
+                  </div>
+                ))}
+                {currentProgram.length > 3 && <em>+あと {currentProgram.length - 3} 件</em>}
+              </div>
+              <div className={`mobile-reaction-preview ${currentReaction ? 'armed' : ''}`}>
+                <Zap size={14} />
+                <small>REACTION</small>
+                <b>
+                  {currentReaction
+                    ? `${reactionTriggerLabels.get(currentReaction.trigger)} → ${actionLabel(currentReaction.actionId)}`
+                    : '未設定'}
+                </b>
+              </div>
+            </section>
             <div className="mode-label">
               <span>NORMAL LOOP</span>
               <b>クールダウン完了時に上から評価</b>
@@ -933,7 +1004,7 @@ export function App() {
                 )}
               </div>
             </section>
-            <div className="choice-panel">
+            <div className={`choice-panel choice-scope-${editingSlot?.scope ?? 'none'}`}>
               <div className="choice-head">
                 {editingSlot?.scope === 'reaction' ? 'リアクション' : '通常作戦'} /{' '}
                 {editingSlot?.field === 'target'
@@ -1114,6 +1185,44 @@ export function App() {
               戦闘開始
             </button>
           </aside>
+          <nav className="mobile-build-dock" aria-label="編成コマンド">
+            <button
+              className={mobileBuildPanel === 'program' ? 'active' : ''}
+              aria-expanded={mobileBuildPanel === 'program'}
+              onClick={() => toggleMobileBuildPanel('program')}
+            >
+              <Sparkles size={16} />
+              <span>通常</span>
+            </button>
+            <button
+              className={mobileBuildPanel === 'reaction' ? 'active reaction' : 'reaction'}
+              aria-expanded={mobileBuildPanel === 'reaction'}
+              onClick={() => toggleMobileBuildPanel('reaction')}
+            >
+              <Zap size={16} />
+              <span>反応</span>
+            </button>
+            <button
+              className={mobileBuildPanel === 'squad' ? 'active' : ''}
+              aria-expanded={mobileBuildPanel === 'squad'}
+              onClick={() => toggleMobileBuildPanel('squad')}
+            >
+              <Users size={16} />
+              <span>編成</span>
+            </button>
+            <button
+              className={mobileBuildPanel === 'shop' ? 'active' : ''}
+              aria-expanded={mobileBuildPanel === 'shop'}
+              onClick={() => toggleMobileBuildPanel('shop')}
+            >
+              <ShoppingCart size={16} />
+              <span>購入</span>
+            </button>
+            <button className="mobile-run" onClick={startBattle}>
+              <Swords size={18} />
+              <span>戦闘開始</span>
+            </button>
+          </nav>
         </div>
       ) : (
         <div className="battle-layout">
@@ -1185,7 +1294,7 @@ export function App() {
                     const active = flash?.id === fighter.instanceId && flash.actionLabel;
                     return (
                       <article
-                        className={`unit-status-card unit-${fighter.id} ${fighter.team} ${fighter.hp <= 0 ? 'down' : ''} ${fighter.berserk ? 'berserk' : ''} ${fighter.poison > 0 ? 'corroded' : ''} ${active ? 'acting' : ''}`}
+                        className={`unit-status-card unit-${fighter.id} ${fighter.team} ${fighter.hp <= 0 ? 'down' : ''} ${fighter.berserk ? 'berserk' : ''} ${fighter.poison > 0 ? 'poisoned' : ''} ${active ? 'acting' : ''}`}
                         key={fighter.instanceId}
                       >
                         <div className="status-avatar" style={{ ['--unit-color' as string]: fighter.color }}>
@@ -1265,8 +1374,8 @@ export function App() {
                                   ? 'normal'
                                   : tag === '暴走'
                                     ? 'berserk'
-                                    : tag.startsWith('腐食')
-                                      ? 'corrosion'
+                                    : tag.startsWith('毒')
+                                      ? 'poison'
                                       : ''
                               }
                               key={tag}

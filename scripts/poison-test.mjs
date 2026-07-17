@@ -19,15 +19,15 @@ await page.getByRole('button', { name: '外す' }).click();
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
-await page.waitForSelector('.sprite.corroded .corrosion-chip', { timeout: 45_000 });
+await page.waitForSelector('.sprite.poisoned .poison-chip', { timeout: 45_000 });
 
-const corrosion = await page
-  .locator('.sprite.corroded')
+const poison = await page
+  .locator('.sprite.poisoned')
   .first()
   .evaluate((element) => {
-    const chip = element.querySelector('.corrosion-chip');
-    const surface = element.querySelector('.corrosion-surface');
-    const haze = element.querySelector('.corrosion-haze');
+    const chip = element.querySelector('.poison-chip');
+    const surface = element.querySelector('.poison-surface');
+    const haze = element.querySelector('.poison-haze');
     return {
       chip: chip?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
       chipDisplay: chip ? getComputedStyle(chip).display : 'none',
@@ -37,24 +37,24 @@ const corrosion = await page
     };
   });
 const status = await page
-  .locator('.unit-status-card.corroded')
+  .locator('.unit-status-card.poisoned')
   .first()
   .evaluate((element) => ({
     text: element.textContent?.replace(/\s+/g, ' ').trim() ?? '',
-    tag: element.querySelector('.status-tags .corrosion')?.textContent?.trim() ?? '',
+    tag: element.querySelector('.status-tags .poison')?.textContent?.trim() ?? '',
     borderColor: getComputedStyle(element).borderColor,
   }));
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-await page.screenshot({ path: '/tmp/code-monsters-corrosion.png', fullPage: true });
+await page.screenshot({ path: '/tmp/code-monsters-poison.png', fullPage: true });
 await browser.close();
 
-console.log(JSON.stringify({ corrosion, status, overflow, errors }, null, 2));
+console.log(JSON.stringify({ poison, status, overflow, errors }, null, 2));
 
-if (!corrosion.chip.includes('CORROSION') || !corrosion.chip.includes('×1') || corrosion.chipDisplay === 'none')
-  throw new Error('戦場ユニットに腐食状態ラベルが表示されていません');
-if (corrosion.surfaceAnimation === 'none' || corrosion.hazeAnimation === 'none' || corrosion.bodyShadow === 'none')
-  throw new Error('腐食状態の表面・粒子エフェクトが適用されていません');
-if (!status.tag.startsWith('腐食 ×') || !status.text.includes('腐食'))
-  throw new Error('ユニット状態パネルに腐食状態が表示されていません');
-if (overflow > 0) throw new Error('腐食表示で画面が横にはみ出しています');
+if (!poison.chip.includes('POISON') || !poison.chip.includes('×1') || poison.chipDisplay === 'none')
+  throw new Error('戦場ユニットに毒状態ラベルが表示されていません');
+if (poison.surfaceAnimation === 'none' || poison.hazeAnimation === 'none' || poison.bodyShadow === 'none')
+  throw new Error('毒状態の表面・粒子エフェクトが適用されていません');
+if (!status.tag.startsWith('毒 ×') || !status.text.includes('毒'))
+  throw new Error('ユニット状態パネルに毒状態が表示されていません');
+if (overflow > 0) throw new Error('毒表示で画面が横にはみ出しています');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);
