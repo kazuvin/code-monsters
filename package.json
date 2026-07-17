@@ -25,6 +25,7 @@
     "test:control": "node scripts/control-test.mjs",
     "test:healing": "node scripts/healing-test.mjs",
     "test:cost": "node scripts/cost-test.mjs",
+    "test:catalog": "node scripts/catalog-test.mjs",
     "test:visual": "node scripts/visual-test.mjs"
   },
   "dependencies": {

@@ -70,10 +70,10 @@ console.log(
   ),
 );
 
-if (!strongCardText.includes('COST 3')) throw new Error('大技のショップカードにCOST 3が表示されていません');
+if (!strongCardText.includes('COST 6')) throw new Error('大技のショップカードにCOST 6が表示されていません');
 if (!normalAttackText.includes('COST FREE')) throw new Error('通常攻撃にCOST FREEが表示されていません');
 if (!(recoveredRelayGauge > initialRelayGauge)) throw new Error('戦闘中にコストゲージが時間回復していません');
-if (gaugeCount !== statusCards || pipCount !== statusCards * 3)
-  throw new Error('ユニットごとの3分割コストゲージが表示されていません');
+if (gaugeCount !== statusCards || pipCount !== statusCards * 10)
+  throw new Error('ユニットごとの10分割コストゲージが表示されていません');
 if (resourceOverflow || pageOverflow > 0) throw new Error('コストゲージ追加後のステータスUIが横にはみ出しています');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

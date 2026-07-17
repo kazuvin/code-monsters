@@ -81,7 +81,7 @@ const auraCount = await page.locator('.sprite.ally.unit-wrath.berserk-active .be
 const chipCount = await page.locator('.sprite.ally.unit-wrath.berserk-active .berserk-chip').count();
 await page.screenshot({ path: '/tmp/code-monsters-berserker-active.png', fullPage: true });
 await page.waitForTimeout(700);
-await page.getByRole('button', { name: /ログ/ }).click();
+await page.getByRole('button', { name: /^ログ/ }).click();
 const berserkerLogs = await page
   .locator('.log-dialog .log.reaction')
   .filter({ hasText: 'バーサーカーモード' })

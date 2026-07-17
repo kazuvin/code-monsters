@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
+  BookOpen,
   Coins,
   Lock,
   LockOpen,
@@ -16,6 +17,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { BattleScene } from './BattleScene';
+import { Catalog } from './Catalog';
 import { applyBattleStep, isBattleComplete, planBattleFrame, type BattleStep } from './core/battle-engine';
 import { createBattleFighters, createInventoryUnit, unitById } from './core/roster';
 import {
@@ -33,6 +35,7 @@ import {
   BATTLE_CONFIG,
   DEFAULT_REACTIONS,
   ECONOMY_CONFIG,
+  GAME_SCHEMA_VERSION,
   REACTION_TRIGGERS,
   ROSTER_CONFIG,
   TARGET_SELECTORS,
@@ -54,6 +57,7 @@ import type {
 } from './types';
 
 type Phase = 'build' | 'battle' | 'result';
+type AppView = 'game' | 'catalog';
 type EditingSlot = { scope: 'program' | 'reaction'; index: number; field: 'target' | 'condition' | 'action' } | null;
 
 const rarityLabels: Record<Rarity, string> = { common: 'COMMON', rare: 'RARE', epic: 'EPIC' };
@@ -212,6 +216,7 @@ const newInventoryUnit = (unitId: string) => createInventoryUnit(unitId, `${unit
 const initialUnits = ROSTER_CONFIG.startingUnitIds.map(newInventoryUnit);
 
 export function App() {
+  const [view, setView] = useState<AppView>('game');
   const [phase, setPhase] = useState<Phase>('build');
   const [coins, setCoins] = useState(ECONOMY_CONFIG.startingCoins);
   const [round, setRound] = useState(1);
@@ -545,18 +550,53 @@ export function App() {
             <small>BUILD / COMPILE / BATTLE</small>
           </div>
         </div>
-        <div className="round">
-          <small>ROUND</small>
-          <b>{String(round).padStart(2, '0')}</b>
-          <span>1W / 0L</span>
-        </div>
-        <div className="wallet">
-          <Coins size={16} />
-          <b>{coins}</b>
-          <small>COIN</small>
-        </div>
+        <nav className="app-nav" aria-label="メイン画面">
+          <button
+            className={view === 'game' ? 'active' : ''}
+            aria-label="バトル"
+            aria-current={view === 'game' ? 'page' : undefined}
+            onClick={() => setView('game')}
+          >
+            <Swords size={14} />
+            <span>バトル</span>
+          </button>
+          <button
+            className={view === 'catalog' ? 'active' : ''}
+            aria-label="カタログ"
+            aria-current={view === 'catalog' ? 'page' : undefined}
+            onClick={() => {
+              setView('catalog');
+              setPaused(true);
+              setLogsOpen(false);
+            }}
+          >
+            <BookOpen size={14} />
+            <span>カタログ</span>
+          </button>
+        </nav>
+        {view === 'game' ? (
+          <>
+            <div className="round">
+              <small>ROUND</small>
+              <b>{String(round).padStart(2, '0')}</b>
+              <span>1W / 0L</span>
+            </div>
+            <div className="wallet">
+              <Coins size={16} />
+              <b>{coins}</b>
+              <small>COIN</small>
+            </div>
+          </>
+        ) : (
+          <div className="catalog-top-meta">
+            <small>SOURCE OF TRUTH</small>
+            <b>SCHEMA V{GAME_SCHEMA_VERSION}</b>
+          </div>
+        )}
       </header>
-      {phase === 'build' ? (
+      {view === 'catalog' ? (
+        <Catalog />
+      ) : phase === 'build' ? (
         <div className="build-layout">
           <section className="workbench">
             <div className="section-head">
@@ -1034,7 +1074,10 @@ export function App() {
                             className="status-ability"
                             aria-label={`コスト ${fighter.abilityGauge.toFixed(1)} / ${BATTLE_CONFIG.abilityGaugeMax}`}
                           >
-                            <div className="status-ability-pips">
+                            <div
+                              className="status-ability-pips"
+                              style={{ ['--gauge-segments' as string]: BATTLE_CONFIG.abilityGaugeMax }}
+                            >
                               {Array.from({ length: BATTLE_CONFIG.abilityGaugeMax }, (_, index) => (
                                 <span className="status-ability-pip" key={index}>
                                   <i

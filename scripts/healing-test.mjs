@@ -75,7 +75,7 @@ for (let tick = 0; tick < 1400; tick += 1) {
 }
 
 await page.locator('.battle-controls button').first().click();
-await page.getByRole('button', { name: /ログ/ }).click();
+await page.getByRole('button', { name: /^ログ/ }).click();
 const healLog = (
   await page
     .locator('.log.heal')

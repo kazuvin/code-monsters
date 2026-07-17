@@ -44,7 +44,7 @@ for (const viewport of [
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   await page.screenshot({ path: `/tmp/code-monsters-${viewport.name}-battle.png`, fullPage: true });
-  await page.getByRole('button', { name: /ログ/ }).click();
+  await page.getByRole('button', { name: /^ログ/ }).click();
   const logs = await page.locator('.log-dialog .log').count();
   const logDialogCount = await page.locator('.log-dialog').count();
   results.push({

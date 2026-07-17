@@ -24,6 +24,9 @@ import { BATTLE_CONFIG, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
 const fighters = createBattleFighters(team);
+assert.equal(BATTLE_CONFIG.abilityGaugeMax, 10, 'アビリティゲージの最大値が10ではありません');
+assert.equal(BATTLE_CONFIG.abilityGaugeInitial, 8, '技を連続使用できる初期ゲージ量ではありません');
+assert.equal(BATTLE_CONFIG.abilityGaugeRegenPerSecond, 1.5, 'アビリティゲージの回復速度が不正です');
 assert.equal(
   fighters.filter((fighter) => fighter.team === 'ally').length,
   team.length,
@@ -422,6 +425,24 @@ assert.ok(
 );
 assert.ok(!instructionById.has('emergency-repair'), '回復スキルが複数残っています');
 assert.ok(instructionById.get('berserker-mode')?.params.speedScale === 3, 'バーサーカー倍率がデータ定義から読めません');
+assert.deepEqual(
+  Object.fromEntries(
+    ['knock-away', 'vault-over', 'pull-in', 'field-repair', 'berserker-mode', 'volt-follow', 'tank-guard'].map((id) => [
+      id,
+      instructionById.get(id)?.abilityCost,
+    ]),
+  ),
+  {
+    'knock-away': 6,
+    'vault-over': 4,
+    'pull-in': 3,
+    'field-repair': 2,
+    'berserker-mode': 10,
+    'volt-follow': 4,
+    'tank-guard': 1,
+  },
+  '軽技・強技・奥義のコスト階層が不正です',
+);
 
 const balance = analyzeBalance(GAME_DATA);
 assert.equal(

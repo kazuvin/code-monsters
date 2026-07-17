@@ -120,7 +120,7 @@ for (const unitName of ['ヴォルト', 'バスティオン']) {
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
 await observeBattle(['⚡ 緊急離脱'], 500);
-await page.getByRole('button', { name: /ログ/ }).click();
+await page.getByRole('button', { name: /^ログ/ }).click();
 const stacking = await page.evaluate(() => ({
   log: Number.parseInt(getComputedStyle(document.querySelector('.log-dialog-overlay')).zIndex, 10),
   sprites: [...document.querySelectorAll('.sprite')].map((element) =>
