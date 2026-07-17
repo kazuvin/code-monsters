@@ -25,6 +25,14 @@ for (const viewport of [
   await page.waitForTimeout(2400);
   const battlefieldCount = await page.locator('.side-battlefield').count();
   const spriteCount = await page.locator('.sprite').count();
+  const formation = await page.locator('.sprite').evaluateAll((elements) =>
+    elements.map((element) => ({
+      team: element.classList.contains('ally') ? 'ally' : 'enemy',
+      lane: Number.parseInt(element.getAttribute('data-lane-index') ?? '-1', 10),
+      laneOffset: Number.parseFloat(getComputedStyle(element).getPropertyValue('--lane-offset')),
+      zIndex: Number.parseInt(getComputedStyle(element).zIndex, 10),
+    })),
+  );
   const battlefield = await page
     .locator('.side-battlefield')
     .first()
@@ -54,6 +62,7 @@ for (const viewport of [
     battleOverflow,
     battlefieldCount,
     spriteCount,
+    formation,
     battlefield,
     statusCards,
     actionBubbleCount,
@@ -65,3 +74,21 @@ for (const viewport of [
 }
 await browser.close();
 console.log(JSON.stringify(results, null, 2));
+
+for (const result of results) {
+  if (result.spriteCount !== 6 || result.statusCards !== 6)
+    throw new Error(`${result.viewport}: デフォルト戦闘が3対3ではありません`);
+  for (const team of ['ally', 'enemy']) {
+    const formation = result.formation.filter((fighter) => fighter.team === team).sort((a, b) => a.lane - b.lane);
+    if (
+      formation.length !== 3 ||
+      formation.some((fighter, index) => fighter.lane !== index || fighter.laneOffset !== index * 22)
+    )
+      throw new Error(`${result.viewport}: ${team}が3レーンに配置されていません`);
+    if (!(formation[0].zIndex > formation[1].zIndex && formation[1].zIndex > formation[2].zIndex))
+      throw new Error(`${result.viewport}: 手前の${team}が最前面に描画されていません`);
+  }
+  if (result.buildOverflow > 0 || result.battleOverflow > 0)
+    throw new Error(`${result.viewport}: 画面が横にはみ出しています`);
+  if (result.errors.length > 0) throw new Error(`${result.viewport}: ブラウザエラー: ${result.errors.join(', ')}`);
+}

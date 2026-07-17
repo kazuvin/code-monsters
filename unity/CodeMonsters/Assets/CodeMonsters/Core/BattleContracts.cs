@@ -25,11 +25,22 @@ namespace CodeMonsters.Core
         public Dictionary<string, double> Values = new Dictionary<string, double>();
     }
 
+    public sealed class BattleDamagePayload
+    {
+        public string ActorId = "";
+        public string ActorName = "";
+        public string Team = "";
+        public string ActionId = "";
+        public double Amount;
+        public string Source = "";
+    }
+
     public sealed class BattleStep
     {
         public string VisualKind = "";
         public string ActorId = "";
         public string TargetId = "";
+        public BattleDamagePayload Damage;
         public List<FighterUpdate> Updates = new List<FighterUpdate>();
     }
 

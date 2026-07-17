@@ -47,9 +47,13 @@ namespace CodeMonsters.Core
                     throw new InvalidDataException($"Duplicate instruction id: {instruction.Id}");
 
             foreach (var encounter in data.Encounters)
+            {
+                if (encounter.EnemyUnitIds.Count != 3)
+                    throw new InvalidDataException($"Encounter {encounter.Id} must contain three enemies");
                 foreach (var unitId in encounter.EnemyUnitIds)
                     if (!unitIds.Contains(unitId))
                         throw new InvalidDataException($"Encounter {encounter.Id} references unknown unit {unitId}");
+            }
         }
     }
 }

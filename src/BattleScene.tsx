@@ -3,11 +3,14 @@ import type { BattleFlash, Fighter } from './types';
 
 type Props = { fighters: Fighter[]; flash: BattleFlash | null; running: boolean };
 
+const FORMATION_LANES = 3;
+const LANE_SPACING_PX = 22;
 const laneIndex = (fighter: Fighter, fighters: Fighter[]) =>
   fighters
     .filter((other) => other.team === fighter.team)
-    .findIndex((other) => other.instanceId === fighter.instanceId) % 2;
-const depthIndex = (fighter: Fighter, fighters: Fighter[]) => 40 - laneIndex(fighter, fighters) * 10;
+    .findIndex((other) => other.instanceId === fighter.instanceId) % FORMATION_LANES;
+const depthIndex = (fighter: Fighter, fighters: Fighter[]) => 50 - laneIndex(fighter, fighters) * 10;
+const laneOffset = (fighter: Fighter, fighters: Fighter[]) => laneIndex(fighter, fighters) * LANE_SPACING_PX;
 
 const colorHex = (value: string) => value;
 const attackKinds = ['attack', 'heavy', 'poison', 'burn', 'follow', 'miss'] as const;
@@ -69,8 +72,8 @@ export function BattleScene({ fighters, flash, running }: Props) {
             style={{
               ['--projectile-start-x' as string]: `${projectileAttack.actor.x}%`,
               ['--projectile-end-x' as string]: `${projectileAttack.target.x}%`,
-              ['--projectile-start-lane' as string]: `${laneIndex(projectileAttack.actor, fighters) * 18}px`,
-              ['--projectile-end-lane' as string]: `${laneIndex(projectileAttack.target, fighters) * 18}px`,
+              ['--projectile-start-lane' as string]: `${laneOffset(projectileAttack.actor, fighters)}px`,
+              ['--projectile-end-lane' as string]: `${laneOffset(projectileAttack.target, fighters)}px`,
             }}
           />
         )}
@@ -107,17 +110,19 @@ export function BattleScene({ fighters, flash, running }: Props) {
           const fighterLane = laneIndex(fighter, fighters);
           return (
             <div
-              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk ? 'berserk-active' : ''} ${fighter.tauntSeconds > 0 ? 'taunt-locked' : ''} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${state}`}
+              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk ? 'berserk-active' : ''} ${fighter.poison > 0 ? 'corroded' : ''} ${fighter.tauntSeconds > 0 ? 'taunt-locked' : ''} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${state}`}
+              data-lane-index={fighterLane}
               key={fighter.instanceId}
               style={{
                 left: `${fighter.x}%`,
                 zIndex: depthIndex(fighter, fighters),
                 ['--unit-color' as string]: colorHex(fighter.color),
-                ['--lane-offset' as string]: `${fighterLane * 18}px`,
+                ['--lane-offset' as string]: `${laneOffset(fighter, fighters)}px`,
               }}
             >
               <i className="team-ring" aria-hidden="true" />
               {fighter.berserk && <i className="berserk-aura" aria-hidden="true" />}
+              {fighter.poison > 0 && fighter.hp > 0 && <i className="corrosion-haze" aria-hidden="true" />}
               <div className="sprite-label">
                 <b>{fighter.code}</b>
                 <span>{fighter.name}</span>
@@ -129,6 +134,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
                 <i className="arm arm-b" />
                 <i className="leg leg-a" />
                 <i className="leg leg-b" />
+                {fighter.poison > 0 && <i className="corrosion-surface" aria-hidden="true" />}
                 {isAttack && <i className={`attack-fx fx-${attackEffect}`} key={`fx-${animationKey}`} />}
                 {isTarget && <i className="hit-spark" key={`hit-${animationKey}`} />}
               </div>
@@ -147,6 +153,11 @@ export function BattleScene({ fighters, flash, running }: Props) {
               {fighter.berserk && fighter.hp > 0 && <div className="berserk-chip">BERSERK</div>}
               {fighter.tauntSeconds > 0 && fighter.hp > 0 && (
                 <div className="taunt-chip">LOCK {fighter.tauntSeconds.toFixed(1)}</div>
+              )}
+              {fighter.poison > 0 && fighter.hp > 0 && (
+                <div className="corrosion-chip" aria-label={`腐食状態 ${fighter.poison}`}>
+                  CORROSION <b>×{fighter.poison}</b>
+                </div>
               )}
               {isActor && flash?.kind === 'guard' && <div className="status-chip">HOLD</div>}
               {isActor && flash?.kind === 'heal' && <div className="status-chip heal">PATCH</div>}

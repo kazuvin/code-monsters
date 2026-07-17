@@ -39,7 +39,20 @@ type MutableFighterFields = Pick<
 >;
 export type FighterUpdate = { id: string; values: Partial<MutableFighterFields> };
 export type BattleLogPayload = { actor: string; text: string; type: LogItem['type'] };
-export type BattleStep = { flash: BattleFlash; log?: BattleLogPayload; updates: FighterUpdate[] };
+export type BattleDamagePayload = {
+  actorId: string;
+  actorName: string;
+  team: Fighter['team'];
+  actionId: string;
+  amount: number;
+  source: 'normal' | 'reaction';
+};
+export type BattleStep = {
+  flash: BattleFlash;
+  log?: BattleLogPayload;
+  damage?: BattleDamagePayload;
+  updates: FighterUpdate[];
+};
 export type DecisionReason = 'condition' | 'range' | 'cost' | 'state';
 export type DecisionTrace = {
   actorId: string;
@@ -347,6 +360,14 @@ export function planBattleFrame({
         actor: reactor.name,
         text: `REACTION｜${instruction.short} → ${target.name}｜${impact.damage} dmg`,
         type: 'reaction',
+      },
+      damage: {
+        actorId: reactor.instanceId,
+        actorName: reactor.name,
+        team: reactor.team,
+        actionId: instruction.id,
+        amount: Math.min(impact.damage, target.hp),
+        source: 'reaction',
       },
       updates: [
         { id: reactor.instanceId, values: { reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds } },
@@ -683,6 +704,14 @@ export function planBattleFrame({
               text: `${instruction.short} → ${liveTarget.name}｜${impact.damage} dmg`,
               type: 'hit',
             },
+            damage: {
+              actorId: current.instanceId,
+              actorName: current.name,
+              team: current.team,
+              actionId: instruction.id,
+              amount: Math.min(impact.damage, liveTarget.hp),
+              source: 'normal',
+            },
             updates: [{ id: liveTarget.instanceId, values: { hp, poison } }],
           });
           if (hp > 0 && x !== liveTarget.x)
@@ -738,6 +767,14 @@ export function planBattleFrame({
             actor: current.name,
             text: `${instruction.short} / ${current.attackType} → ${target.name}｜${impact.damage} dmg`,
             type: 'hit',
+          },
+          damage: {
+            actorId: current.instanceId,
+            actorName: current.name,
+            team: current.team,
+            actionId: instruction.id,
+            amount: Math.min(impact.damage, target.hp),
+            source: 'normal',
           },
           updates: [{ id: target.instanceId, values: { hp, poison } }],
         });

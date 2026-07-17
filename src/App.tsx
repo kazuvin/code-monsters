@@ -23,6 +23,7 @@ import {
   applyBattleStep,
   isBattleComplete,
   planBattleFrame,
+  type BattleDamagePayload,
   type BattleStep,
   type DecisionTrace,
 } from './core/battle-engine';
@@ -249,9 +250,11 @@ export function App() {
   const [flash, setFlash] = useState<BattleFlash | null>(null);
   const battleQueueRef = useRef<BattleStep[]>([]);
   const decisionTraceRef = useRef<DecisionTrace[]>([]);
+  const damageTraceRef = useRef<BattleDamagePayload[]>([]);
   const replayRef = useRef<BattleReplay | null>(null);
   const gaugeTelemetryRef = useRef<GaugeTelemetry>({ totalSeconds: 0, emptySeconds: 0, fullSeconds: 0 });
   const [decisionReport, setDecisionReport] = useState<DecisionTrace[]>([]);
+  const [damageReport, setDamageReport] = useState<BattleDamagePayload[]>([]);
   const lastStepAtRef = useRef(0);
   const [logsOpen, setLogsOpen] = useState(false);
   const [toast, setToast] = useState('');
@@ -267,7 +270,7 @@ export function App() {
         : '勝利'
       : '';
   const runComplete = winner === '勝利' && round === ENCOUNTERS.length;
-  const reportRows = useMemo(() => summarizeDecisions(decisionReport), [decisionReport]);
+  const reportRows = useMemo(() => summarizeDecisions(decisionReport, damageReport), [decisionReport, damageReport]);
   const gaugeTelemetry = gaugeTelemetryRef.current;
   const gaugeEmptyRate =
     gaugeTelemetry.totalSeconds > 0 ? gaugeTelemetry.emptySeconds / gaugeTelemetry.totalSeconds : 0;
@@ -482,6 +485,7 @@ export function App() {
     const initialFighters = createBattleFighters(team, currentEncounter);
     battleQueueRef.current = [];
     decisionTraceRef.current = [];
+    damageTraceRef.current = [];
     gaugeTelemetryRef.current = { totalSeconds: 0, emptySeconds: 0, fullSeconds: 0 };
     replayRef.current = {
       schemaVersion: GAME_SCHEMA_VERSION,
@@ -492,6 +496,7 @@ export function App() {
       frames: [],
     };
     setDecisionReport([]);
+    setDamageReport([]);
     lastStepAtRef.current = 0;
     setFlash(null);
     setFighters(initialFighters);
@@ -553,6 +558,7 @@ export function App() {
   const completeBattle = useCallback(() => {
     setLogsOpen(false);
     setDecisionReport([...decisionTraceRef.current]);
+    setDamageReport([...damageTraceRef.current]);
     setPhase('result');
   }, []);
   const exportReplay = () => {
@@ -609,6 +615,7 @@ export function App() {
         const plan = planBattleFrame({ fighters: current, team, dt, elapsed: elapsedRef.current, previousElapsed });
         battleQueueRef.current.push(...plan.steps);
         decisionTraceRef.current.push(...plan.decisions);
+        damageTraceRef.current.push(...plan.steps.flatMap((step) => (step.damage ? [step.damage] : [])));
         if (replayRef.current && (plan.steps.length > 0 || plan.decisions.length > 0 || plan.complete))
           replayRef.current.frames.push({
             elapsed: elapsedRef.current,
@@ -654,7 +661,7 @@ export function App() {
     if (fighter.hp <= 0) return ['戦闘不能'];
     const tags = [fighter.berserk ? '暴走' : '正常'];
     if (fighter.guarded) tags.push('防御');
-    if (fighter.poison > 0) tags.push(`毒 ${fighter.poison}`);
+    if (fighter.poison > 0) tags.push(`腐食 ×${fighter.poison}`);
     if (fighter.tauntSeconds > 0) tags.push(`標的固定 ${fighter.tauntSeconds.toFixed(1)}秒`);
     if (fighter.cooldown > 0.55) tags.push('準備中');
     return tags;
@@ -1178,7 +1185,7 @@ export function App() {
                     const active = flash?.id === fighter.instanceId && flash.actionLabel;
                     return (
                       <article
-                        className={`unit-status-card unit-${fighter.id} ${fighter.team} ${fighter.hp <= 0 ? 'down' : ''} ${fighter.berserk ? 'berserk' : ''} ${active ? 'acting' : ''}`}
+                        className={`unit-status-card unit-${fighter.id} ${fighter.team} ${fighter.hp <= 0 ? 'down' : ''} ${fighter.berserk ? 'berserk' : ''} ${fighter.poison > 0 ? 'corroded' : ''} ${active ? 'acting' : ''}`}
                         key={fighter.instanceId}
                       >
                         <div className="status-avatar" style={{ ['--unit-color' as string]: fighter.color }}>
@@ -1252,7 +1259,18 @@ export function App() {
                         </div>
                         <div className="status-tags">
                           {statusTags(fighter).map((tag) => (
-                            <span className={tag === '正常' ? 'normal' : tag === '暴走' ? 'berserk' : ''} key={tag}>
+                            <span
+                              className={
+                                tag === '正常'
+                                  ? 'normal'
+                                  : tag === '暴走'
+                                    ? 'berserk'
+                                    : tag.startsWith('腐食')
+                                      ? 'corrosion'
+                                      : ''
+                              }
+                              key={tag}
+                            >
                               {tag}
                             </span>
                           ))}
@@ -1331,12 +1349,13 @@ export function App() {
                 </div>
                 <section className="execution-report" aria-label="指示実行レポート">
                   <header>
-                    <span>NORMAL LOOP TRACE</span>
-                    <b>なぜ動いたか、なぜ飛ばしたか</b>
+                    <span>COMBAT EXECUTION TRACE</span>
+                    <b>指示・リアクション・実ダメージ</b>
                   </header>
                   <div className="report-row report-head">
                     <span>UNIT / INSTRUCTION</span>
                     <span>EXEC</span>
+                    <span>DMG</span>
                     <span>条件</span>
                     <span>射程</span>
                     <span>COST</span>
@@ -1349,6 +1368,7 @@ export function App() {
                           <b>{actionLabel(row.actionId)}</b>
                         </span>
                         <strong>{row.executed}</strong>
+                        <strong className="report-damage">{Math.round(row.totalDamage)}</strong>
                         <em>{row.skipped.condition}</em>
                         <em>{row.skipped.range}</em>
                         <em>{row.skipped.cost}</em>

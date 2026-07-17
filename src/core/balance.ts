@@ -367,9 +367,11 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_DEFAULT_REACTION', `${unit.id} にデフォルトリアクション定義がありません`);
   }
   for (const id of [...data.roster.startingUnitIds, ...data.roster.enemyUnitIds]) requireUnit(id, 'roster');
+  if (data.roster.startingUnitIds.length !== 3 || data.roster.enemyUnitIds.length !== 3)
+    error('INVALID_ROSTER_SIZE', '標準の味方・敵編成はそれぞれ3体にしてください');
   if (data.encounters.length !== 5) error('INVALID_ENCOUNTERS', 'encounters は5ラウンド定義してください');
   for (const encounter of data.encounters) {
-    if (encounter.enemyUnitIds.length === 0) error('INVALID_ENCOUNTER', `${encounter.id} に敵が設定されていません`);
+    if (encounter.enemyUnitIds.length !== 3) error('INVALID_ENCOUNTER', `${encounter.id} の敵編成は3体にしてください`);
     if (encounter.enemyStatScale <= 0 || encounter.reward < 0)
       error('INVALID_ENCOUNTER', `${encounter.id} の倍率または報酬が不正です`);
     for (const id of encounter.enemyUnitIds) requireUnit(id, `encounter ${encounter.id}`);

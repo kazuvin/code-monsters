@@ -28,7 +28,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | `src/core/balance.ts` | editor/CLI validation | reference validation and power scoring |
 | `src/App.tsx`, `src/BattleScene.tsx` | MonoBehaviours/UI Toolkit | orchestration, animation, audio, and presentation only |
 
-`BattleStep` contains only plain values: a visual event, optional log event, and fighter field updates. There are no closures in the core queue. Unity can mirror this with serializable structs and let animation code consume the visual event independently of the simulation.
+`BattleStep` contains only plain values: a visual event, optional log and damage events, and fighter field updates. Damage events carry the acting unit, stable action ID, actual HP damage, and whether the source was a normal instruction or reaction. There are no closures in the core queue. Unity can mirror this with serializable structs and let animation and report code consume events independently of the simulation.
 
 ## Suggested port order
 
@@ -61,7 +61,7 @@ Instructions may also define the optional `params.fixedRange` value. Use it as t
 
 ## Schema version 6 migration
 
-Add the ordered `encounters` array. Each entry owns its stable ID, player-facing briefing, enemy unit IDs, enemy stat scale, and victory reward. The current round selects one encounter; defeat retries the same encounter without a reward, while victory advances to the next entry. Importers should keep `roster.enemyUnitIds` only as a legacy/default fallback and use `encounters` for the playable run.
+Add the ordered `encounters` array. Each entry owns its stable ID, player-facing briefing, enemy unit IDs, enemy stat scale, and victory reward. The current round selects one encounter; defeat retries the same encounter without a reward, while victory advances to the next entry. Importers should keep `roster.enemyUnitIds` only as a legacy/default fallback and use `encounters` for the playable run. The prototype's standard battle contract is three starting allies against three encounter enemies; loaders reject default or encounter rosters with a different count.
 
 ## Executable migration spike
 

@@ -29,13 +29,12 @@ await firstBlock.locator('.word-slot').first().click();
 const pullTargetChoices = await page.locator('.choice-list .target-choice-card').allInnerTexts();
 
 const secondBlock = program.locator('.sentence-block').nth(1);
-await secondBlock.locator('.word-slot').last().click();
-await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '挑発する' }).click();
 await secondBlock.locator('.word-slot').first().click();
 await page.locator('.choice-list .target-choice-card').filter({ hasText: '敵全体' }).click();
 await page.locator('.choice-list .condition-choice-card').filter({ hasText: 'いつでも' }).click();
 await secondBlock.locator('.word-slot').last().click();
 const allEnemiesActionChoices = await page.locator('.choice-list .instruction-choice-card').allInnerTexts();
+await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '挑発する' }).click();
 
 await program.locator('.add-block').click();
 await page.locator('.choice-list .target-choice-card').filter({ hasText: '一番近い敵' }).click();
@@ -170,15 +169,18 @@ if (
   allEnemiesActionChoices.some((text) => text.includes('引き寄せる'))
 )
   throw new Error('敵全体の対象に応じて行動候補が絞り込まれていません');
+const expectedPullTargets = [
+  '一番近い敵',
+  'HPが最も低い敵',
+  '敵全体',
+  '一番近い味方',
+  'HPが最も低い味方',
+  'HP 30%以下の味方',
+];
 if (
-  !pullTargetChoices.some((text) => text.includes('一番近い敵')) ||
-  !pullTargetChoices.some((text) => text.includes('HPが最も低い敵')) ||
-  !pullTargetChoices.some((text) => text.includes('敵全体')) ||
-  !pullTargetChoices.some((text) => text.includes('一番近い味方')) ||
-  !pullTargetChoices.some((text) => text.includes('HPが最も低い味方')) ||
-  !pullTargetChoices.some((text) => text.includes('HP 30%以下の味方')) ||
-  !pullTargetChoices.some((text) => text.includes('\n自分\n')) ||
-  !pullTargetChoices.some((text) => text.includes('\n味方全体\n'))
+  pullTargetChoices.length !== expectedPullTargets.length ||
+  !expectedPullTargets.every((label) => pullTargetChoices.some((text) => text.includes(label))) ||
+  pullTargetChoices.some((text) => text.includes('\n自分\n') || text.includes('\n味方全体\n'))
 )
   throw new Error('所持行動で利用できる対象候補が表示されていません');
 if (teamLabelCount !== 0) throw new Error('敵味方ラベルが戦闘フィールドに残っています');

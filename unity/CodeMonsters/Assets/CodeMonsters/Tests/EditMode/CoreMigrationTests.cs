@@ -22,7 +22,7 @@ namespace CodeMonsters.Core.Tests
         {
             Assert.That(data.SchemaVersion, Is.EqualTo(6));
             Assert.That(data.Encounters, Has.Count.EqualTo(5));
-            Assert.That(data.Encounters.Last().EnemyUnitIds, Has.Count.EqualTo(3));
+            Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 3), Is.True);
             Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("mender"));
             Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("toxin"));
         }

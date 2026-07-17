@@ -783,7 +783,7 @@ button:focus-visible {
 }
 .report-row {
   display: grid;
-  grid-template-columns: minmax(190px, 1fr) repeat(4, 56px);
+  grid-template-columns: minmax(174px, 1fr) repeat(5, 54px);
   align-items: center;
   min-height: 42px;
   border-bottom: 1px solid #25282e;
@@ -814,6 +814,10 @@ button:focus-visible {
 .report-row strong {
   color: var(--cyan);
   font: 600 15px "Oxanium";
+}
+.report-row .report-damage {
+  color: #baff75;
+  text-shadow: 0 0 9px #8cff4f33;
 }
 .report-row em {
   color: #a36f45;
@@ -989,7 +993,7 @@ button:focus-visible {
     font-size: 52px;
   }
   .report-row {
-    grid-template-columns: minmax(132px, 1fr) repeat(4, 40px);
+    grid-template-columns: minmax(118px, 1fr) repeat(5, 38px);
   }
   .report-row > * {
     padding: 7px 5px;
@@ -3655,6 +3659,73 @@ button:focus-visible {
     inset 0 0 11px color-mix(in srgb, var(--team-accent) 28%, transparent);
   opacity: 0.9;
 }
+.sprite.corroded .sprite-body {
+  box-shadow:
+    inset 0 0 0 2px #c68aff99,
+    inset 0 -18px 18px #351d48aa,
+    0 0 7px #b567ff,
+    0 0 20px #8aff6a55;
+}
+.corrosion-surface {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(165deg, transparent 0 7px, #dca5ff99 8px 10px, transparent 11px 15px),
+    radial-gradient(circle at 68% 24%, #c8ff88 0 5%, transparent 6%),
+    radial-gradient(circle at 30% 70%, #b976ef 0 8%, transparent 9%);
+  mix-blend-mode: screen;
+  opacity: 0.76;
+  animation: corrosion-scan 1.4s steps(3) infinite;
+}
+.corrosion-haze {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: 3px;
+  width: 78px;
+  height: 72px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 28% 72%, #c988ff 0 5%, transparent 7%),
+    radial-gradient(circle at 72% 38%, #a8ff76 0 4%, transparent 6%),
+    radial-gradient(ellipse at center, #8f4fc733 0 42%, transparent 68%);
+  filter: blur(1px) drop-shadow(0 0 8px #b36dff);
+  animation: corrosion-haze 1.05s ease-in-out infinite alternate;
+}
+.corrosion-chip {
+  position: absolute;
+  z-index: 6;
+  left: calc(50% - 34px);
+  bottom: 20px;
+  transform: translateX(-50%);
+  padding: 3px 5px;
+  border: 1px solid #c88cff;
+  background: #21132de8;
+  color: #e4c2ff;
+  box-shadow:
+    inset 3px 0 #aaff72,
+    0 0 11px #a667dd66;
+  font: 700 7px "IBM Plex Mono";
+  white-space: nowrap;
+}
+.corrosion-chip b {
+  color: #baff75;
+}
+@keyframes corrosion-scan {
+  50% {
+    opacity: 0.48;
+    transform: translateY(2px);
+  }
+}
+@keyframes corrosion-haze {
+  to {
+    opacity: 0.58;
+    transform: translateX(-50%) translateY(-5px) scale(1.06);
+  }
+}
 .sprite-body {
   filter: drop-shadow(0 0 1px var(--team-accent))
     drop-shadow(0 0 5px color-mix(in srgb, var(--team-accent) 72%, transparent));
@@ -3795,10 +3866,14 @@ button:focus-visible {
     height: 18px;
   }
   .taunt-chip,
-  .berserk-chip {
+  .berserk-chip,
+  .corrosion-chip {
     left: calc(50% + 23px);
     bottom: 14px;
     font-size: 6px;
+  }
+  .corrosion-chip {
+    left: calc(50% - 25px);
   }
   .fx-taunt {
     width: 68px;
@@ -3813,6 +3888,8 @@ button:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .sprite.taunt-locked .team-ring,
+  .corrosion-surface,
+  .corrosion-haze,
   .sprite.is-taunt .sprite-body,
   .sprite.is-pull .sprite-body,
   .sprite.is-pulled .sprite-body,

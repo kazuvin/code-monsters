@@ -60,8 +60,8 @@
     ]
   },
   "roster": {
-    "startingUnitIds": ["volt", "bastion"],
-    "enemyUnitIds": ["relay", "bastion"],
+    "startingUnitIds": ["volt", "bastion", "relay"],
+    "enemyUnitIds": ["relay", "bastion", "volt"],
     "startingActionIds": ["attack-low", "approach"],
     "startingConditionIds": ["targetInRange", "targetOutOfRange"]
   },
@@ -69,8 +69,8 @@
     {
       "id": "opening-line",
       "name": "接近戦プロトコル",
-      "briefing": "前衛同士の基準戦。距離条件と指示順を確認する。",
-      "enemyUnitIds": ["relay", "bastion"],
+      "briefing": "三体編成の基準戦。距離条件と指示順を確認する。",
+      "enemyUnitIds": ["relay", "bastion", "volt"],
       "enemyStatScale": 1,
       "reward": 5
     },
@@ -78,15 +78,15 @@
       "id": "crossfire",
       "name": "交差射線",
       "briefing": "遠距離火力と高速接近が同時に戦線を揺らす。",
-      "enemyUnitIds": ["arrow", "relay"],
+      "enemyUnitIds": ["arrow", "relay", "toxin"],
       "enemyStatScale": 1.05,
       "reward": 5
     },
     {
       "id": "iron-wall",
       "name": "鉄壁シフト",
-      "briefing": "高耐久の前衛と暴走火力を崩す中盤戦。",
-      "enemyUnitIds": ["bastion", "mender"],
+      "briefing": "高耐久の前衛・修復役・暴走火力を崩す中盤戦。",
+      "enemyUnitIds": ["bastion", "mender", "wrath"],
       "enemyStatScale": 1.1,
       "reward": 6
     },

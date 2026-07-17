@@ -42,9 +42,6 @@ const voltNormal = (await page.locator('.program-list').first().innerText()).rep
 await page.locator('.unit-tabs button').filter({ hasText: 'バスティオン' }).click();
 const bastion = await reactionSnapshot();
 
-const relayCard = page.locator('.shop-item').filter({ hasText: 'リレイ' }).first();
-await relayCard.getByRole('button', { name: /購入/ }).click();
-await page.locator('.inventory button').filter({ hasText: 'リレイ' }).click();
 await page.locator('.unit-tabs button').filter({ hasText: 'リレイ' }).click();
 const relayEmpty = await reactionSnapshot();
 const relayNormal = await fixedNormalInstruction();
