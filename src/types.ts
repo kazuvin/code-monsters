@@ -45,6 +45,7 @@ export type ActionParameters = {
   flatDamage?: number;
   damageScale?: number;
   statusTargetDamageBonus?: number;
+  statusTargetId?: string;
   minimumDamage?: number;
   knockbackPower?: number;
   moveDistance?: number;
@@ -61,6 +62,56 @@ export type ActionParameters = {
   statusStacks?: number;
   incomingDamageScale?: number;
   incomingKnockbackScale?: number;
+};
+
+export type StatusEffectKind =
+  | 'incomingDamageScale'
+  | 'incomingKnockbackScale'
+  | 'attackScale'
+  | 'speedScale'
+  | 'targetLock';
+
+export type StatusEffectDefinition = {
+  kind: StatusEffectKind;
+  sourceInstructionId?: string;
+  parameter?: keyof ActionParameters;
+};
+
+export type StatusDefinition = {
+  id: string;
+  label: string;
+  description: string;
+  stacking: 'stack' | 'replace';
+  maxStacks: number;
+  clearOnAction: boolean;
+  duration: {
+    mode: 'persistent' | 'instructionParam';
+    sourceInstructionId?: string;
+    parameter?: keyof ActionParameters;
+  };
+  debug: {
+    control: 'toggle' | 'stacks';
+    min?: number;
+    max?: number;
+    step?: number;
+  };
+  visual: {
+    className: string;
+    cardClass: string;
+    chipClass: string;
+    label: string;
+    showStacks: boolean;
+    showRemaining: boolean;
+  };
+  effects: StatusEffectDefinition[];
+};
+
+export type StatusInstance = {
+  statusId: string;
+  stacks: number;
+  remainingSeconds: number | null;
+  sourceId: string | null;
+  targetId: string | null;
 };
 
 export type UnitDefinition = {
@@ -98,6 +149,7 @@ export type Instruction = {
   compatibleTargets: TargetSelectorId[];
   tone: 'cyan' | 'amber' | 'lime' | 'violet';
   params: ActionParameters;
+  appliesStatusId?: string;
   fixedFor?: string;
   reactionOnly?: boolean;
   visualKind?: 'move' | 'dash' | 'jump' | 'retreat';
@@ -113,13 +165,7 @@ export type Fighter = UnitDefinition & {
   cooldown: number;
   abilityGauge: number;
   reactionCooldown: number;
-  guarded: boolean;
-  guardDamageScale: number;
-  guardKnockbackScale: number;
-  berserk: boolean;
-  poison: number;
-  tauntTargetId: string | null;
-  tauntSeconds: number;
+  statuses: StatusInstance[];
 };
 
 export type ProgramBlock = {

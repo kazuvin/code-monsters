@@ -1,16 +1,15 @@
 import rawGameData from '../game-data/game-balance.json' with { type: 'json' };
 import type {
   ConditionId,
-  Fighter,
   Instruction,
   Rarity,
   ReactionBlock,
   ReactionTrigger,
+  StatusDefinition,
   TargetCardinality,
   TargetDomain,
   TargetSelectorId,
   UnitDefinition,
-  ActionParameters,
 } from './types.ts';
 
 export type BattleConfig = {
@@ -57,7 +56,6 @@ export type DebugTrainingConfig = {
   outsideRangeGap: number;
   defaultPositionPresetId: string;
   positionPresets: DebugPositionPresetDefinition[];
-  statuses: DebugStatusDefinition[];
 };
 
 export type DebugPositionPresetDefinition = {
@@ -66,25 +64,6 @@ export type DebugPositionPresetDefinition = {
   description: string;
   rangeReference: 'mutual' | 'actor' | 'target';
   relation: 'inside' | 'outside';
-};
-
-export type DebugStatusEffectDefinition = {
-  fighterField: keyof Fighter;
-  source: 'control' | 'enabled' | 'opponentId' | 'instructionParam' | 'sessionDuration';
-  instructionId?: string;
-  parameter?: keyof ActionParameters;
-  operation?: 'set' | 'multiply';
-};
-
-export type DebugStatusDefinition = {
-  id: string;
-  label: string;
-  description: string;
-  control: 'toggle' | 'stacks';
-  min?: number;
-  max?: number;
-  step?: number;
-  effects: DebugStatusEffectDefinition[];
 };
 
 export type ShopConfig = {
@@ -128,6 +107,7 @@ export type ConditionDefinition = {
   flavor: string;
   effect: string;
   compatibleTargets: TargetSelectorId[];
+  statusId?: string;
 };
 export type ReactionTriggerDefinition = {
   id: ReactionTrigger;
@@ -141,6 +121,7 @@ export type GameBalanceData = {
   schemaVersion: number;
   battle: BattleConfig;
   debugTraining: DebugTrainingConfig;
+  statuses: StatusDefinition[];
   economy: EconomyConfig;
   shop: ShopConfig;
   roster: {
@@ -169,6 +150,7 @@ export const GAME_DATA = rawGameData as unknown as GameBalanceData;
 export const GAME_SCHEMA_VERSION = GAME_DATA.schemaVersion;
 export const BATTLE_CONFIG = GAME_DATA.battle;
 export const DEBUG_TRAINING_CONFIG = GAME_DATA.debugTraining;
+export const STATUSES = GAME_DATA.statuses;
 export const ECONOMY_CONFIG = GAME_DATA.economy;
 export const SHOP_CONFIG = GAME_DATA.shop;
 export const ROSTER_CONFIG = GAME_DATA.roster;

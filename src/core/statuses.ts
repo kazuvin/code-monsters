@@ -1,0 +1,133 @@
+import { INSTRUCTIONS, STATUSES } from '../data.ts';
+import type { Fighter, StatusDefinition, StatusEffectKind, StatusInstance } from '../types.ts';
+
+export const statusById = new Map(STATUSES.map((status) => [status.id, status]));
+const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
+
+const round = (value: number, digits = 2) => Number(value.toFixed(digits));
+const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value));
+
+export function requireStatusDefinition(statusId: string): StatusDefinition {
+  const definition = statusById.get(statusId);
+  if (!definition) throw new Error(`Unknown status: ${statusId}`);
+  return definition;
+}
+
+export function getStatus(fighter: Pick<Fighter, 'statuses'>, statusId: string): StatusInstance | undefined {
+  return fighter.statuses.find((status) => status.statusId === statusId);
+}
+
+export const hasStatus = (fighter: Pick<Fighter, 'statuses'>, statusId: string) =>
+  Boolean(getStatus(fighter, statusId));
+export const statusStacks = (fighter: Pick<Fighter, 'statuses'>, statusId: string) =>
+  getStatus(fighter, statusId)?.stacks ?? 0;
+export const statusRemaining = (fighter: Pick<Fighter, 'statuses'>, statusId: string) =>
+  getStatus(fighter, statusId)?.remainingSeconds ?? null;
+export const statusTargetId = (fighter: Pick<Fighter, 'statuses'>, statusId: string) =>
+  getStatus(fighter, statusId)?.targetId ?? null;
+
+export function statusEffectTargetId(
+  fighter: Pick<Fighter, 'statuses'>,
+  kind: Extract<StatusEffectKind, 'targetLock'>,
+): string | null {
+  const instance = fighter.statuses.find((status) =>
+    requireStatusDefinition(status.statusId).effects.some((effect) => effect.kind === kind),
+  );
+  return instance?.targetId ?? null;
+}
+
+function instructionParameter(instructionId: string | undefined, parameter: string | undefined): number {
+  const instruction = instructionId ? instructionById.get(instructionId) : undefined;
+  const value = parameter ? instruction?.params[parameter as keyof typeof instruction.params] : undefined;
+  if (typeof value !== 'number') throw new Error(`Invalid status parameter reference: ${instructionId}.${parameter}`);
+  return value;
+}
+
+function definitionDuration(definition: StatusDefinition): number | null {
+  if (definition.duration.mode === 'persistent') return null;
+  return instructionParameter(definition.duration.sourceInstructionId, definition.duration.parameter);
+}
+
+function effectValue(definition: StatusDefinition, kind: StatusEffectKind): number {
+  const effect = definition.effects.find((candidate) => candidate.kind === kind);
+  if (!effect) return 1;
+  return instructionParameter(effect.sourceInstructionId, effect.parameter);
+}
+
+export function applyStatus(
+  fighter: Fighter,
+  statusId: string,
+  options: {
+    stacks?: number;
+    sourceId?: string | null;
+    targetId?: string | null;
+    remainingSeconds?: number | null;
+  } = {},
+): Fighter {
+  const definition = requireStatusDefinition(statusId);
+  const existing = getStatus(fighter, statusId);
+  const requestedStacks = Math.max(1, Math.round(options.stacks ?? 1));
+  const stacks = clamp(
+    definition.stacking === 'stack' ? (existing?.stacks ?? 0) + requestedStacks : requestedStacks,
+    1,
+    definition.maxStacks,
+  );
+  const instance: StatusInstance = {
+    statusId,
+    stacks,
+    remainingSeconds:
+      options.remainingSeconds !== undefined ? options.remainingSeconds : definitionDuration(definition),
+    sourceId: options.sourceId !== undefined ? options.sourceId : (existing?.sourceId ?? null),
+    targetId: options.targetId !== undefined ? options.targetId : (existing?.targetId ?? null),
+  };
+  const statuses = existing
+    ? fighter.statuses.map((status) => (status.statusId === statusId ? instance : status))
+    : [...fighter.statuses, instance];
+  if (existing) return { ...fighter, statuses };
+
+  const attackScale = effectValue(definition, 'attackScale');
+  const speedScale = effectValue(definition, 'speedScale');
+  return {
+    ...fighter,
+    statuses,
+    attack: attackScale === 1 ? fighter.attack : Math.round(fighter.attack * attackScale),
+    speed: speedScale === 1 ? fighter.speed : round(fighter.speed * speedScale),
+  };
+}
+
+export function removeStatus(fighter: Fighter, statusId: string): Fighter {
+  return { ...fighter, statuses: fighter.statuses.filter((status) => status.statusId !== statusId) };
+}
+
+export function clearActionStatuses(fighter: Fighter): Fighter {
+  return {
+    ...fighter,
+    statuses: fighter.statuses.filter((status) => !requireStatusDefinition(status.statusId).clearOnAction),
+  };
+}
+
+export function tickStatuses(statuses: StatusInstance[], dt: number): StatusInstance[] {
+  return statuses.flatMap((status) => {
+    if (status.remainingSeconds === null) return [status];
+    const remainingSeconds = Math.max(0, status.remainingSeconds - dt);
+    return remainingSeconds > 0 ? [{ ...status, remainingSeconds }] : [];
+  });
+}
+
+export function statusEffectMultiplier(fighter: Pick<Fighter, 'statuses'>, kind: StatusEffectKind): number {
+  return fighter.statuses.reduce((multiplier, status) => {
+    const definition = requireStatusDefinition(status.statusId);
+    return multiplier * effectValue(definition, kind);
+  }, 1);
+}
+
+export function statusVisualClasses(fighter: Pick<Fighter, 'statuses'>): string {
+  return fighter.statuses.map((status) => requireStatusDefinition(status.statusId).visual.className).join(' ');
+}
+
+export function statusCardClasses(fighter: Pick<Fighter, 'statuses'>): string {
+  return fighter.statuses.map((status) => requireStatusDefinition(status.statusId).visual.cardClass).join(' ');
+}
+
+export const activeStatusDetails = (fighter: Pick<Fighter, 'statuses'>) =>
+  fighter.statuses.map((instance) => ({ instance, definition: requireStatusDefinition(instance.statusId) }));

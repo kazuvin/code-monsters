@@ -147,13 +147,14 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.debugTraining.positionPresets.map((preset) => preset.id),
   );
   unique(
-    'debugStatus',
-    data.debugTraining.statuses.map((status) => status.id),
+    'status',
+    data.statuses.map((status) => status.id),
   );
   const units = new Set(data.units.map((unit) => unit.id));
   const instructions = new Set(data.instructions.map((instruction) => instruction.id));
   const conditions = new Set(data.conditions.map((condition) => condition.id));
   const targetSelectors = new Set<string>(data.targetSelectors.map((target) => target.id));
+  const statuses = new Set(data.statuses.map((status) => status.id));
   const supportedConditions = new Set([
     'always',
     'targetInRange',
@@ -199,6 +200,13 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'allAllies',
   ]);
   const supportedTargetModes = new Set(['selected', 'self', 'allEnemies', 'allAllies']);
+  const supportedStatusEffects = new Set([
+    'incomingDamageScale',
+    'incomingKnockbackScale',
+    'attackScale',
+    'speedScale',
+    'targetLock',
+  ]);
   const requireUnit = (id: string, context: string) => {
     if (!units.has(id)) error('UNKNOWN_UNIT', `${context} が未定義ユニット "${id}" を参照しています`);
   };
@@ -208,7 +216,10 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const requireTargetSelector = (id: string, context: string) => {
     if (!targetSelectors.has(id)) error('UNKNOWN_TARGET', `${context} が未定義対象 "${id}" を参照しています`);
   };
-  if (data.schemaVersion < 6) error('INVALID_SCHEMA_VERSION', 'schemaVersion は6以上である必要があります');
+  const requireStatus = (id: string, context: string) => {
+    if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
+  };
+  if (data.schemaVersion < 7) error('INVALID_SCHEMA_VERSION', 'schemaVersion は7以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     !Number.isInteger(data.battle.abilityGaugeMax) ||
@@ -225,10 +236,9 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.debugTraining.minimumDummyHp < 1 ||
     data.debugTraining.recoveryDelaySeconds <= 0 ||
     data.debugTraining.outsideRangeGap <= 0 ||
-    data.debugTraining.positionPresets.length === 0 ||
-    data.debugTraining.statuses.length === 0
+    data.debugTraining.positionPresets.length === 0
   )
-    error('INVALID_DEBUG_TRAINING_CONFIG', 'デバッグ訓練のHP・回復・距離・状態設定が不正です');
+    error('INVALID_DEBUG_TRAINING_CONFIG', 'デバッグ訓練のHP・回復・距離設定が不正です');
   if (!data.debugTraining.positionPresets.some((preset) => preset.id === data.debugTraining.defaultPositionPresetId))
     error('INVALID_DEBUG_POSITION', 'デバッグ訓練のデフォルト開始位置が未定義です');
   for (const preset of data.debugTraining.positionPresets) {
@@ -238,22 +248,52 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     )
       error('INVALID_DEBUG_POSITION', `デバッグ開始位置 ${preset.id} の射程基準が不正です`);
   }
-  for (const status of data.debugTraining.statuses) {
-    if (!['toggle', 'stacks'].includes(status.control) || status.effects.length === 0)
-      error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} の操作または効果が不正です`);
-    if (status.control === 'stacks' && ((status.min ?? 0) < 0 || (status.max ?? 0) <= (status.min ?? 0)))
-      error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} のスタック範囲が不正です`);
+  if (data.statuses.length === 0) error('MISSING_STATUS_REGISTRY', 'statuses に状態定義がありません');
+  for (const status of data.statuses) {
+    if (!status.id || !status.label || !status.description)
+      error('INVALID_STATUS', '状態定義には id・label・description が必要です');
+    if (!['stack', 'replace'].includes(status.stacking) || !Number.isInteger(status.maxStacks) || status.maxStacks < 1)
+      error('INVALID_STATUS', `状態 ${status.id} の stacking または maxStacks が不正です`);
+    if (!['persistent', 'instructionParam'].includes(status.duration.mode))
+      error('UNSUPPORTED_STATUS_DURATION', `状態 ${status.id} の duration.mode はエンジン未対応です`);
+    if (!['toggle', 'stacks'].includes(status.debug.control))
+      error('INVALID_DEBUG_STATUS', `状態 ${status.id} のデバッグ操作が不正です`);
+    if (
+      status.debug.control === 'stacks' &&
+      ((status.debug.min ?? 0) < 0 || (status.debug.max ?? 0) <= (status.debug.min ?? 0))
+    )
+      error('INVALID_DEBUG_STATUS', `状態 ${status.id} のスタック範囲が不正です`);
+    if (!status.visual.className || !status.visual.cardClass || !status.visual.chipClass || !status.visual.label)
+      error('MISSING_STATUS_VISUAL', `状態 ${status.id} の表示定義が不足しています`);
+    if (status.duration.mode === 'instructionParam') {
+      const sourceInstruction = status.duration.sourceInstructionId
+        ? data.instructions.find((instruction) => instruction.id === status.duration.sourceInstructionId)
+        : undefined;
+      if (!sourceInstruction)
+        error('UNKNOWN_INSTRUCTION', `状態 ${status.id} の duration が未定義スキルを参照しています`);
+      else if (!status.duration.parameter || typeof sourceInstruction.params[status.duration.parameter] !== 'number')
+        error('INVALID_STATUS_DURATION', `状態 ${status.id} の duration が未定義パラメータを参照しています`);
+    }
     for (const effect of status.effects) {
-      if (!['control', 'enabled', 'opponentId', 'instructionParam', 'sessionDuration'].includes(effect.source))
-        error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} の効果ソースが不正です`);
-      if (effect.operation && !['set', 'multiply'].includes(effect.operation))
-        error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} の演算が不正です`);
-      if (effect.source === 'instructionParam') {
-        const sourceInstruction = data.instructions.find((instruction) => instruction.id === effect.instructionId);
-        if (!sourceInstruction)
-          error('UNKNOWN_INSTRUCTION', `デバッグ状態 ${status.id} が未定義スキルを参照しています`);
+      if (!supportedStatusEffects.has(effect.kind))
+        error('UNSUPPORTED_STATUS_EFFECT', `状態 ${status.id} の効果 "${effect.kind}" はエンジン未対応です`);
+      if (effect.kind !== 'targetLock' && (!effect.sourceInstructionId || !effect.parameter))
+        error('INVALID_STATUS_EFFECT', `状態 ${status.id} の数値効果にはスキルパラメータ参照が必要です`);
+      if (
+        ['attackScale', 'speedScale'].includes(effect.kind) &&
+        (status.duration.mode !== 'persistent' || status.clearOnAction || status.stacking !== 'replace')
+      )
+        error(
+          'UNSUPPORTED_STATUS_EFFECT_LIFECYCLE',
+          `状態 ${status.id} の能力倍率は永続・置換・行動解除なしの場合のみ対応しています`,
+        );
+      if (effect.sourceInstructionId || effect.parameter) {
+        const sourceInstruction = effect.sourceInstructionId
+          ? data.instructions.find((instruction) => instruction.id === effect.sourceInstructionId)
+          : undefined;
+        if (!sourceInstruction) error('UNKNOWN_INSTRUCTION', `状態 ${status.id} の効果が未定義スキルを参照しています`);
         else if (!effect.parameter || typeof sourceInstruction.params[effect.parameter] !== 'number')
-          error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} が未定義パラメータを参照しています`);
+          error('INVALID_STATUS_EFFECT', `状態 ${status.id} の効果が未定義パラメータを参照しています`);
       }
     }
   }
@@ -289,6 +329,9 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_TARGET_COMPATIBILITY', `${condition.id} に対応対象がありません`);
     for (const targetId of condition.compatibleTargets)
       requireTargetSelector(targetId, `条件 ${condition.id}.compatibleTargets`);
+    if (condition.statusId) requireStatus(condition.statusId, `条件 ${condition.id}.statusId`);
+    if (condition.id === 'enemyHasStatus' && !condition.statusId)
+      error('MISSING_STATUS_REFERENCE', `条件 ${condition.id} に statusId がありません`);
   }
   for (const instruction of data.instructions) {
     if (
@@ -340,6 +383,23 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_PARAMETER', `${instruction.id} に params がありません`);
       continue;
     }
+    if (
+      (['guard', 'berserk', 'taunt'].includes(instruction.action) || (instruction.params.statusStacks ?? 0) > 0) &&
+      !instruction.appliesStatusId
+    )
+      error('MISSING_STATUS_REFERENCE', `${instruction.id} に appliesStatusId がありません`);
+    if (instruction.appliesStatusId) requireStatus(instruction.appliesStatusId, `スキル ${instruction.id}`);
+    if (
+      instruction.appliesStatusId &&
+      !['attack', 'heavy', 'throw', 'taunt', 'guard', 'berserk', 'poison', 'burn', 'follow'].includes(
+        instruction.action,
+      )
+    )
+      error(
+        'UNSUPPORTED_STATUS_APPLICATION',
+        `${instruction.id} の action ${instruction.action} への状態付与はエンジン未対応です`,
+      );
+    if (instruction.params.statusTargetId) requireStatus(instruction.params.statusTargetId, `スキル ${instruction.id}`);
     if (instruction.fixedFor) requireUnit(instruction.fixedFor, `スキル ${instruction.id}`);
     if (
       (instruction.action === 'move' || instruction.action === 'jump' || instruction.action === 'retreat') &&

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace CodeMonsters.Core
 {
@@ -12,7 +13,21 @@ namespace CodeMonsters.Core
         public double Hp;
         public double MaxHp;
         public double Range;
-        public double Poison;
+        public List<StatusInstance> Statuses = new List<StatusInstance>();
+
+        public bool HasStatus(string statusId)
+        {
+            return Statuses.Exists(status => status.StatusId == statusId && status.Stacks > 0);
+        }
+    }
+
+    public sealed class StatusInstance
+    {
+        public string StatusId = "";
+        public int Stacks = 1;
+        public double? RemainingSeconds;
+        public string SourceId = "";
+        public string TargetId = "";
     }
 
     public static class BattleRules
@@ -31,7 +46,8 @@ namespace CodeMonsters.Core
             string conditionId,
             FighterState actor,
             FighterState target,
-            BattleConfig battle
+            BattleConfig battle,
+            string statusId = ""
         )
         {
             return conditionId switch
@@ -42,7 +58,7 @@ namespace CodeMonsters.Core
                 "enemyHpBelow50" => target.Hp / target.MaxHp <= battle.EnemyLowHpThreshold,
                 "selfHpBelow30" => target.InstanceId == actor.InstanceId
                     && actor.Hp / actor.MaxHp <= battle.LowHpThreshold,
-                "enemyHasStatus" => target.Poison > 0,
+                "enemyHasStatus" => !string.IsNullOrEmpty(statusId) && target.HasStatus(statusId),
                 _ => throw new ArgumentOutOfRangeException(nameof(conditionId), conditionId, "Unknown condition"),
             };
         }

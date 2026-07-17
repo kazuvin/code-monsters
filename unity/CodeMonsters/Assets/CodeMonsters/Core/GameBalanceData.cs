@@ -14,11 +14,17 @@ namespace CodeMonsters.Core
         [JsonProperty("debugTraining")]
         public DebugTrainingConfig DebugTraining = new DebugTrainingConfig();
 
+        [JsonProperty("statuses")]
+        public List<StatusDefinition> Statuses = new List<StatusDefinition>();
+
         [JsonProperty("units")]
         public List<UnitDefinition> Units = new List<UnitDefinition>();
 
         [JsonProperty("instructions")]
         public List<InstructionDefinition> Instructions = new List<InstructionDefinition>();
+
+        [JsonProperty("conditions")]
+        public List<ConditionDefinition> Conditions = new List<ConditionDefinition>();
 
         [JsonProperty("encounters")]
         public List<EncounterDefinition> Encounters = new List<EncounterDefinition>();
@@ -71,8 +77,6 @@ namespace CodeMonsters.Core
         [JsonProperty("positionPresets")]
         public List<DebugPositionPresetDefinition> PositionPresets = new List<DebugPositionPresetDefinition>();
 
-        [JsonProperty("statuses")]
-        public List<DebugStatusDefinition> Statuses = new List<DebugStatusDefinition>();
     }
 
     public sealed class DebugPositionPresetDefinition
@@ -87,34 +91,92 @@ namespace CodeMonsters.Core
         public string Relation = "";
     }
 
-    public sealed class DebugStatusDefinition
+    public sealed class StatusDefinition
     {
         [JsonProperty("id")]
         public string Id = "";
 
+        [JsonProperty("stacking")]
+        public string Stacking = "";
+
+        [JsonProperty("maxStacks")]
+        public int MaxStacks;
+
+        [JsonProperty("clearOnAction")]
+        public bool ClearOnAction;
+
+        [JsonProperty("duration")]
+        public StatusDurationDefinition Duration = new StatusDurationDefinition();
+
+        [JsonProperty("debug")]
+        public StatusDebugDefinition Debug = new StatusDebugDefinition();
+
+        [JsonProperty("visual")]
+        public StatusVisualDefinition Visual = new StatusVisualDefinition();
+
+        [JsonProperty("effects")]
+        public List<StatusEffectDefinition> Effects = new List<StatusEffectDefinition>();
+    }
+
+    public sealed class StatusDurationDefinition
+    {
+        [JsonProperty("mode")]
+        public string Mode = "";
+
+        [JsonProperty("sourceInstructionId")]
+        public string SourceInstructionId = "";
+
+        [JsonProperty("parameter")]
+        public string Parameter = "";
+    }
+
+    public sealed class StatusDebugDefinition
+    {
         [JsonProperty("control")]
         public string Control = "";
 
-        [JsonProperty("effects")]
-        public List<DebugStatusEffectDefinition> Effects = new List<DebugStatusEffectDefinition>();
+        [JsonProperty("min")]
+        public double? Min;
+
+        [JsonProperty("max")]
+        public double? Max;
     }
 
-    public sealed class DebugStatusEffectDefinition
+    public sealed class StatusVisualDefinition
     {
-        [JsonProperty("fighterField")]
-        public string FighterField = "";
+        [JsonProperty("className")]
+        public string ClassName = "";
 
-        [JsonProperty("source")]
-        public string Source = "";
+        [JsonProperty("cardClass")]
+        public string CardClass = "";
 
-        [JsonProperty("instructionId")]
-        public string InstructionId = "";
+        [JsonProperty("chipClass")]
+        public string ChipClass = "";
+
+        [JsonProperty("label")]
+        public string Label = "";
+    }
+
+    public sealed class StatusEffectDefinition
+    {
+        [JsonProperty("kind")]
+        public string Kind = "";
+
+        [JsonProperty("sourceInstructionId")]
+        public string SourceInstructionId = "";
 
         [JsonProperty("parameter")]
         public string Parameter = "";
 
-        [JsonProperty("operation")]
-        public string Operation = "";
+    }
+
+    public sealed class ConditionDefinition
+    {
+        [JsonProperty("id")]
+        public string Id = "";
+
+        [JsonProperty("statusId")]
+        public string StatusId = "";
     }
 
     public sealed class UnitDefinition
@@ -173,6 +235,9 @@ namespace CodeMonsters.Core
         [JsonProperty("targetMode")]
         public string TargetMode = "";
 
+        [JsonProperty("appliesStatusId")]
+        public string AppliesStatusId = "";
+
         [JsonProperty("params")]
         public ActionParameters Params = new ActionParameters();
     }
@@ -199,6 +264,21 @@ namespace CodeMonsters.Core
 
         [JsonProperty("statusTargetDamageBonus")]
         public double? StatusTargetDamageBonus;
+
+        [JsonProperty("statusTargetId")]
+        public string StatusTargetId = "";
+
+        [JsonProperty("durationSeconds")]
+        public double? DurationSeconds;
+
+        [JsonProperty("speedScale")]
+        public double? SpeedScale;
+
+        [JsonProperty("incomingDamageScale")]
+        public double? IncomingDamageScale;
+
+        [JsonProperty("incomingKnockbackScale")]
+        public double? IncomingKnockbackScale;
     }
 
     public sealed class EncounterDefinition

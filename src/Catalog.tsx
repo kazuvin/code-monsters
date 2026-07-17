@@ -32,6 +32,7 @@ const parameterLabels: Record<keyof ActionParameters, string> = {
   flatDamage: '固定ダメージ',
   damageScale: 'ダメージ倍率',
   statusTargetDamageBonus: '状態特効',
+  statusTargetId: '状態特効対象',
   minimumDamage: '最低ダメージ',
   knockbackPower: 'KB出力',
   moveDistance: '移動距離',

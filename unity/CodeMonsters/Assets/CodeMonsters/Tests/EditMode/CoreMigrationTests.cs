@@ -20,11 +20,11 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(6));
+            Assert.That(data.SchemaVersion, Is.EqualTo(7));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));
             Assert.That(data.DebugTraining.RecoveryDelaySeconds, Is.EqualTo(3));
             Assert.That(data.DebugTraining.PositionPresets, Has.Count.EqualTo(3));
-            Assert.That(data.DebugTraining.Statuses.Select(status => status.Id), Does.Contain("poison"));
+            Assert.That(data.Statuses.Select(status => status.Id), Does.Contain("poison"));
             Assert.That(data.Encounters, Has.Count.EqualTo(5));
             Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 3), Is.True);
             Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("mender"));
@@ -49,10 +49,12 @@ namespace CodeMonsters.Core.Tests
         {
             var actor = new FighterState { InstanceId = "mender-1", X = 40, Range = 14, Hp = 118, MaxHp = 118 };
             var ally = new FighterState { InstanceId = "volt-1", X = 52, Range = 10, Hp = 30, MaxHp = 116 };
-            var enemy = new FighterState { InstanceId = "enemy-1", X = 54, Range = 10, Hp = 80, MaxHp = 100, Poison = 1 };
+            var enemy = new FighterState { InstanceId = "enemy-1", X = 54, Range = 10, Hp = 80, MaxHp = 100 };
+            enemy.Statuses.Add(new StatusInstance { StatusId = "poison", Stacks = 1 });
+            var condition = data.Conditions.Single(candidate => candidate.Id == "enemyHasStatus");
 
             Assert.That(BattleRules.MatchesCondition("targetInRange", actor, ally, data.Battle), Is.True);
-            Assert.That(BattleRules.MatchesCondition("enemyHasStatus", actor, enemy, data.Battle), Is.True);
+            Assert.That(BattleRules.MatchesCondition("enemyHasStatus", actor, enemy, data.Battle, condition.StatusId), Is.True);
             Assert.That(BattleRules.MatchesCondition("selfHpBelow30", actor, ally, data.Battle), Is.False);
         }
 

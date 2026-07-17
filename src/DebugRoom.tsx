@@ -9,7 +9,7 @@ import {
   type DebugSimulationInput,
   type DebugSimulationResult,
 } from './core/debug-simulation';
-import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, UNITS } from './data';
+import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from './data';
 import type { BattleFlash, Fighter, Role } from './types';
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
@@ -53,10 +53,10 @@ const hasDamageEffect = (instruction: (typeof INSTRUCTIONS)[number]) =>
   damageParameterNames.some((parameter) => instruction.params[parameter] !== undefined);
 
 const statusLabels = (values: Record<string, number>) =>
-  DEBUG_TRAINING_CONFIG.statuses.flatMap((status) => {
+  STATUSES.flatMap((status) => {
     const value = values[status.id] ?? 0;
     if (value <= 0) return [];
-    return [status.control === 'stacks' ? `${status.label} ×${value}` : status.label];
+    return [status.debug.control === 'stacks' ? `${status.label} ×${value}` : status.label];
   });
 
 function Metric({
@@ -128,8 +128,8 @@ function StatusControls({
   values: Record<string, number>;
   onChange: (values: Record<string, number>) => void;
 }) {
-  const stackStatuses = DEBUG_TRAINING_CONFIG.statuses.filter((status) => status.control === 'stacks');
-  const toggleStatuses = DEBUG_TRAINING_CONFIG.statuses.filter((status) => status.control === 'toggle');
+  const stackStatuses = STATUSES.filter((status) => status.debug.control === 'stacks');
+  const toggleStatuses = STATUSES.filter((status) => status.debug.control === 'toggle');
   const update = (statusId: string, value: number) => onChange({ ...values, [statusId]: value });
   return (
     <>
@@ -139,9 +139,9 @@ function StatusControls({
           label={`${status.label}スタック`}
           ariaLabel={`${sideLabel} ${status.label}スタック`}
           value={values[status.id] ?? 0}
-          min={status.min ?? 0}
-          max={status.max ?? 99}
-          step={status.step ?? 1}
+          min={status.debug.min ?? 0}
+          max={status.debug.max ?? 99}
+          step={status.debug.step ?? 1}
           onChange={(value) => update(status.id, value)}
         />
       ))}

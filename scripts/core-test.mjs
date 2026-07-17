@@ -24,6 +24,7 @@ import {
   tickCooldowns,
 } from '../src/core/rules.ts';
 import { createShop } from '../src/core/shop.ts';
+import { applyStatus, hasStatus, statusRemaining, statusStacks, statusTargetId } from '../src/core/statuses.ts';
 import { BATTLE_CONFIG, DEBUG_TRAINING_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
@@ -60,14 +61,8 @@ assert.equal(
   '敵編成がデータ定義と一致しません',
 );
 assert.ok(
-  fighters.every(
-    (fighter) =>
-      fighter.guardDamageScale === 1 &&
-      fighter.guardKnockbackScale === 1 &&
-      fighter.tauntTargetId === null &&
-      fighter.tauntSeconds === 0,
-  ),
-  'ガードと挑発の初期状態が不正です',
+  fighters.every((fighter) => fighter.statuses.length === 0),
+  '戦闘開始時の状態リストが空ではありません',
 );
 assert.ok(
   fighters.every((fighter) => fighter.abilityGauge === BATTLE_CONFIG.abilityGaugeInitial),
@@ -341,20 +336,20 @@ assert.equal(
   '挑発が生存中の敵全体へ適用されません',
 );
 assert.ok(
-  tauntStep.updates.every(
-    (update) =>
-      update.values.tauntTargetId === 'taunt-volt' &&
-      update.values.tauntSeconds === instructionById.get('taunt')?.params.durationSeconds,
-  ),
+  tauntStep.updates.every((update) => {
+    const taunted = update.values.statuses?.find((status) => status.statusId === 'taunted');
+    return (
+      taunted?.targetId === 'taunt-volt' &&
+      taunted.remainingSeconds === instructionById.get('taunt')?.params.durationSeconds
+    );
+  }),
   '挑発が敵の標的を使用者へ固定しません',
 );
 
-const forcedActor = {
-  ...enemies[0],
-  x: 58,
-  tauntTargetId: volt.instanceId,
-  tauntSeconds: 3,
-};
+const forcedActor = applyStatus({ ...enemies[0], x: 58 }, 'taunted', {
+  targetId: volt.instanceId,
+  remainingSeconds: 3,
+});
 const nearbyOpponent = { ...allies[1], x: 55 };
 const farTaunter = { ...volt, x: 30 };
 assert.equal(
@@ -362,9 +357,13 @@ assert.equal(
   volt.instanceId,
   '挑発中に近い別ユニットへ標的が逸れます',
 );
-const expiredTaunt = tickCooldowns([{ ...forcedActor, tauntSeconds: 0.1 }], 0.2)[0];
-assert.equal(expiredTaunt.tauntTargetId, null, '挑発時間の終了後に標的固定が解除されません');
-assert.equal(expiredTaunt.tauntSeconds, 0, '挑発の残り時間が0未満になります');
+const expiringTaunt = applyStatus({ ...enemies[0], x: 58 }, 'taunted', {
+  targetId: volt.instanceId,
+  remainingSeconds: 0.1,
+});
+const expiredTaunt = tickCooldowns([expiringTaunt], 0.2)[0];
+assert.equal(statusTargetId(expiredTaunt, 'taunted'), null, '挑発時間の終了後に標的固定が解除されません');
+assert.equal(statusRemaining(expiredTaunt, 'taunted'), null, '期限切れの挑発状態が残っています');
 
 const pullTeam = [createInventoryUnit('volt', 'pull-volt')];
 pullTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetOutOfRange', actionId: 'pull-in' }];
@@ -507,7 +506,7 @@ const toxinActor = toxinFighters.find((fighter) => fighter.instanceId === 'statu
 const cleanStatusTarget = toxinFighters.find((fighter) => fighter.team === 'enemy' && fighter.id === 'relay');
 const poisonAmplify = instructionById.get('corrosion-burst');
 assert.ok(toxinActor && cleanStatusTarget && poisonAmplify);
-const poisonedStatusTarget = { ...cleanStatusTarget, poison: 1 };
+const poisonedStatusTarget = applyStatus(cleanStatusTarget, 'poison');
 assert.equal(
   matchCondition('enemyHasStatus', toxinActor, [cleanStatusTarget]).length,
   0,
@@ -730,10 +729,10 @@ const debugActorStatuses = createDebugFighters({
 });
 const configuredDebugActor = debugActorStatuses.find((fighter) => fighter.team === 'ally');
 assert.ok(configuredDebugActor, '状態設定済みの攻撃側を作れません');
-assert.equal(configuredDebugActor.poison, 2, '攻撃側の毒状態が反映されていません');
-assert.equal(configuredDebugActor.guarded, true, '攻撃側のガード状態が反映されていません');
-assert.equal(configuredDebugActor.berserk, true, '攻撃側のバーサーク状態が反映されていません');
-assert.equal(configuredDebugActor.tauntTargetId, 'debug-target', '攻撃側の挑発状態が反映されていません');
+assert.equal(statusStacks(configuredDebugActor, 'poison'), 2, '攻撃側の毒状態が反映されていません');
+assert.equal(hasStatus(configuredDebugActor, 'guarded'), true, '攻撃側のガード状態が反映されていません');
+assert.equal(hasStatus(configuredDebugActor, 'berserk'), true, '攻撃側のバーサーク状態が反映されていません');
+assert.equal(statusTargetId(configuredDebugActor, 'taunted'), 'debug-target', '攻撃側の挑発状態が反映されていません');
 assert.ok(configuredDebugActor.attack > debugActor.attack, '攻撃側のバーサーク強化が能力値へ反映されていません');
 
 const debugPoison = runDebugSimulation({
@@ -743,7 +742,11 @@ const debugPoison = runDebugSimulation({
 });
 assert.ok(debugPoison.finalPoison > 0, 'デバッグルームが毒スタックを計測していません');
 assert.ok(
-  (debugPoison.playback.at(-1)?.fighters.find((fighter) => fighter.team === 'enemy')?.poison ?? 0) > 0,
+  statusStacks(
+    debugPoison.playback.at(-1)?.fighters.find((fighter) => fighter.team === 'enemy') ??
+      createDebugFighters(debugBase)[1],
+    'poison',
+  ) > 0,
   'デバッグ再生が付与された毒状態を保持していません',
 );
 
@@ -804,6 +807,53 @@ const invalidRangeReport = analyzeBalance(invalidRangeData);
 assert.ok(
   invalidRangeReport.issues.some((issue) => issue.code === 'INVALID_PARAMETER' || issue.code === 'MISSING_PARAMETER'),
   '接触スキルの不正な固定射程を静的検査で検出できません',
+);
+const unsupportedStatusEffectData = structuredClone(GAME_DATA);
+unsupportedStatusEffectData.statuses[0].effects.push({ kind: 'teleportOnHit' });
+assert.ok(
+  analyzeBalance(unsupportedStatusEffectData).issues.some((issue) => issue.code === 'UNSUPPORTED_STATUS_EFFECT'),
+  '未対応の状態効果構造を静的検査で検出できません',
+);
+const unsupportedStatusDurationData = structuredClone(GAME_DATA);
+unsupportedStatusDurationData.statuses[0].duration.mode = 'turnCount';
+assert.ok(
+  analyzeBalance(unsupportedStatusDurationData).issues.some((issue) => issue.code === 'UNSUPPORTED_STATUS_DURATION'),
+  '未対応の状態持続構造を静的検査で検出できません',
+);
+const missingStatusVisualData = structuredClone(GAME_DATA);
+missingStatusVisualData.statuses[0].visual.chipClass = '';
+assert.ok(
+  analyzeBalance(missingStatusVisualData).issues.some((issue) => issue.code === 'MISSING_STATUS_VISUAL'),
+  '状態表示定義の欠落を静的検査で検出できません',
+);
+const unknownAppliedStatusData = structuredClone(GAME_DATA);
+unknownAppliedStatusData.instructions.find((instruction) => instruction.id === 'toxic-mark').appliesStatusId =
+  'unknown-status';
+assert.ok(
+  analyzeBalance(unknownAppliedStatusData).issues.some((issue) => issue.code === 'UNKNOWN_STATUS'),
+  'スキルの未知状態参照を静的検査で検出できません',
+);
+const unsupportedStatusLifecycleData = structuredClone(GAME_DATA);
+const berserkStatus = unsupportedStatusLifecycleData.statuses.find((status) => status.id === 'berserk');
+berserkStatus.duration = {
+  mode: 'instructionParam',
+  sourceInstructionId: 'taunt',
+  parameter: 'durationSeconds',
+};
+assert.ok(
+  analyzeBalance(unsupportedStatusLifecycleData).issues.some(
+    (issue) => issue.code === 'UNSUPPORTED_STATUS_EFFECT_LIFECYCLE',
+  ),
+  '未対応の能力倍率ライフサイクルを静的検査で検出できません',
+);
+const unsupportedStatusApplicationData = structuredClone(GAME_DATA);
+unsupportedStatusApplicationData.instructions.find((instruction) => instruction.id === 'field-repair').appliesStatusId =
+  'poison';
+assert.ok(
+  analyzeBalance(unsupportedStatusApplicationData).issues.some(
+    (issue) => issue.code === 'UNSUPPORTED_STATUS_APPLICATION',
+  ),
+  '未対応アクションへの状態付与を静的検査で検出できません',
 );
 
 console.log(

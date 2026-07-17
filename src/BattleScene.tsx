@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { activeStatusDetails, hasStatus, statusEffectTargetId, statusVisualClasses } from './core/statuses';
 import type { BattleFlash, Fighter } from './types';
 
 type Props = { fighters: Fighter[]; flash: BattleFlash | null; running: boolean };
@@ -18,8 +19,9 @@ const nearestOpponent = (fighter: Fighter, fighters: Fighter[]) => {
   const opponents = fighters
     .filter((other) => other.team !== fighter.team && other.hp > 0)
     .sort((a, b) => Math.abs(fighter.x - a.x) - Math.abs(fighter.x - b.x));
-  return fighter.tauntSeconds > 0
-    ? (opponents.find((opponent) => opponent.instanceId === fighter.tauntTargetId) ?? opponents[0])
+  const lockedTargetId = statusEffectTargetId(fighter, 'targetLock');
+  return lockedTargetId
+    ? (opponents.find((opponent) => opponent.instanceId === lockedTargetId) ?? opponents[0])
     : opponents[0];
 };
 
@@ -108,9 +110,10 @@ export function BattleScene({ fighters, flash, running }: Props) {
               : 'face-right';
           const animationKey = (isActor || isTarget) && flash ? flash.n : 'idle';
           const fighterLane = laneIndex(fighter, fighters);
+          const statusDetails = activeStatusDetails(fighter);
           return (
             <div
-              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk ? 'berserk-active' : ''} ${fighter.poison > 0 ? 'poisoned' : ''} ${fighter.tauntSeconds > 0 ? 'taunt-locked' : ''} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${state}`}
+              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${state}`}
               data-lane-index={fighterLane}
               key={fighter.instanceId}
               style={{
@@ -121,8 +124,8 @@ export function BattleScene({ fighters, flash, running }: Props) {
               }}
             >
               <i className="team-ring" aria-hidden="true" />
-              {fighter.berserk && <i className="berserk-aura" aria-hidden="true" />}
-              {fighter.poison > 0 && fighter.hp > 0 && <i className="poison-haze" aria-hidden="true" />}
+              {hasStatus(fighter, 'berserk') && <i className="berserk-aura" aria-hidden="true" />}
+              {hasStatus(fighter, 'poison') && fighter.hp > 0 && <i className="poison-haze" aria-hidden="true" />}
               <div className="sprite-label">
                 <b>{fighter.code}</b>
                 <span>{fighter.name}</span>
@@ -134,7 +137,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
                 <i className="arm arm-b" />
                 <i className="leg leg-a" />
                 <i className="leg leg-b" />
-                {fighter.poison > 0 && <i className="poison-surface" aria-hidden="true" />}
+                {hasStatus(fighter, 'poison') && <i className="poison-surface" aria-hidden="true" />}
                 {isAttack && <i className={`attack-fx fx-${attackEffect}`} key={`fx-${animationKey}`} />}
                 {isTarget && <i className="hit-spark" key={`hit-${animationKey}`} />}
               </div>
@@ -150,16 +153,20 @@ export function BattleScene({ fighters, flash, running }: Props) {
                 <i style={{ width: `${hpRatio * 100}%` }} />
               </div>
               {fighter.hp <= 0 && <div className="ko-chip">DOWN</div>}
-              {fighter.berserk && fighter.hp > 0 && <div className="berserk-chip">BERSERK</div>}
-              {fighter.tauntSeconds > 0 && fighter.hp > 0 && (
-                <div className="taunt-chip">LOCK {fighter.tauntSeconds.toFixed(1)}</div>
-              )}
-              {fighter.poison > 0 && fighter.hp > 0 && (
-                <div className="poison-chip" aria-label={`毒状態 ${fighter.poison}`}>
-                  POISON <b>×{fighter.poison}</b>
-                </div>
-              )}
-              {isActor && flash?.kind === 'guard' && <div className="status-chip">HOLD</div>}
+              {fighter.hp > 0 &&
+                statusDetails.map(({ definition, instance }) => (
+                  <div
+                    className={definition.visual.chipClass}
+                    aria-label={`${definition.label}状態 ${instance.stacks}`}
+                    key={definition.id}
+                  >
+                    {definition.visual.label}
+                    {definition.visual.showStacks && <b>×{instance.stacks}</b>}
+                    {definition.visual.showRemaining && instance.remainingSeconds !== null && (
+                      <> {instance.remainingSeconds.toFixed(1)}</>
+                    )}
+                  </div>
+                ))}
               {isActor && flash?.kind === 'heal' && <div className="status-chip heal">PATCH</div>}
             </div>
           );

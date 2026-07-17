@@ -1,4 +1,4 @@
-import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, UNITS } from '../data.ts';
+import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from '../data.ts';
 import type {
   BattleFlash,
   ConditionId,
@@ -18,6 +18,7 @@ import {
   type DecisionTrace,
 } from './battle-engine.ts';
 import { knockbackPosition, resolveActionImpact, throwBehind, tickCooldowns } from './rules.ts';
+import { applyStatus, hasStatus, statusStacks } from './statuses.ts';
 
 export type DebugRunMode = 'single' | 'timeline';
 export type DebugStatusValues = Record<string, number>;
@@ -114,13 +115,7 @@ const baseFighterState = {
   z: 0,
   abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
   reactionCooldown: 0,
-  guarded: false,
-  guardDamageScale: 1,
-  guardKnockbackScale: 1,
-  berserk: false,
-  poison: 0,
-  tauntTargetId: null,
-  tauntSeconds: 0,
+  statuses: [],
 };
 
 function requireUnit(id: string): UnitDefinition {
@@ -136,7 +131,7 @@ function requireInstruction(id: string): Instruction {
 }
 
 export function createDefaultDebugStatuses(): DebugStatusValues {
-  return Object.fromEntries(DEBUG_TRAINING_CONFIG.statuses.map((status) => [status.id, 0]));
+  return Object.fromEntries(STATUSES.map((status) => [status.id, 0]));
 }
 
 function requirePositionPreset(id: string) {
@@ -161,10 +156,14 @@ function startingDistance(actor: UnitDefinition, target: UnitDefinition, presetI
 }
 
 function statusControlValue(statusId: string, values: DebugStatusValues): number {
-  const definition = DEBUG_TRAINING_CONFIG.statuses.find((status) => status.id === statusId);
+  const definition = STATUSES.find((status) => status.id === statusId);
   if (!definition) throw new Error(`Unknown debug status: ${statusId}`);
   const value = Number.isFinite(values[statusId]) ? values[statusId] : 0;
-  return clamp(value, definition.min ?? 0, definition.max ?? (definition.control === 'toggle' ? 1 : value));
+  return clamp(
+    value,
+    definition.debug.min ?? 0,
+    definition.debug.max ?? (definition.debug.control === 'toggle' ? 1 : value),
+  );
 }
 
 export function applyDebugStatuses(
@@ -173,55 +172,31 @@ export function applyDebugStatuses(
   opponentId: string,
   sessionDuration = 1,
 ): Fighter {
-  const next = { ...fighter };
-  const mutable = next as unknown as Record<string, unknown>;
-  for (const definition of DEBUG_TRAINING_CONFIG.statuses) {
+  let next = fighter;
+  for (const definition of STATUSES) {
     const controlValue = statusControlValue(definition.id, values);
     if (controlValue <= 0) continue;
-    for (const effect of definition.effects) {
-      if (!(effect.fighterField in mutable)) {
-        throw new Error(`Debug status ${definition.id} references unknown fighter field: ${effect.fighterField}`);
-      }
-      let sourceValue: unknown;
-      if (effect.source === 'control') sourceValue = controlValue;
-      if (effect.source === 'enabled') sourceValue = true;
-      if (effect.source === 'opponentId') sourceValue = opponentId;
-      if (effect.source === 'sessionDuration') sourceValue = sessionDuration;
-      if (effect.source === 'instructionParam') {
-        const sourceInstruction = effect.instructionId ? instructionById.get(effect.instructionId) : undefined;
-        const parameterValue = effect.parameter ? sourceInstruction?.params[effect.parameter] : undefined;
-        if (typeof parameterValue !== 'number') {
-          throw new Error(
-            `Debug status ${definition.id} references invalid instruction parameter: ${effect.instructionId}.${effect.parameter}`,
-          );
-        }
-        sourceValue = parameterValue;
-      }
-      if (effect.operation === 'multiply') {
-        const current = mutable[effect.fighterField];
-        if (typeof current !== 'number' || typeof sourceValue !== 'number') {
-          throw new Error(`Debug status ${definition.id} cannot multiply non-numeric field: ${effect.fighterField}`);
-        }
-        const multiplied = current * sourceValue;
-        mutable[effect.fighterField] = effect.fighterField === 'attack' ? Math.round(multiplied) : round(multiplied, 2);
-      } else {
-        mutable[effect.fighterField] = sourceValue;
-      }
-    }
+    const locksTarget = definition.effects.some((effect) => effect.kind === 'targetLock');
+    next = applyStatus(next, definition.id, {
+      stacks: definition.debug.control === 'stacks' ? controlValue : 1,
+      sourceId: 'debug-room',
+      targetId: locksTarget ? opponentId : null,
+      remainingSeconds: definition.duration.mode === 'persistent' ? null : sessionDuration,
+    });
   }
   return next;
 }
 
 export function readDebugStatusValues(fighter: Fighter): DebugStatusValues {
   return Object.fromEntries(
-    DEBUG_TRAINING_CONFIG.statuses.map((definition) => {
-      const primaryEffect = definition.effects.find(
-        (effect) => effect.source !== 'instructionParam' && effect.source !== 'sessionDuration',
-      );
-      const fieldValue = primaryEffect ? fighter[primaryEffect.fighterField] : 0;
-      const value = typeof fieldValue === 'number' ? fieldValue : fieldValue ? 1 : 0;
-      return [definition.id, value];
-    }),
+    STATUSES.map((definition) => [
+      definition.id,
+      definition.debug.control === 'stacks'
+        ? statusStacks(fighter, definition.id)
+        : hasStatus(fighter, definition.id)
+          ? 1
+          : 0,
+    ]),
   );
 }
 
@@ -478,12 +453,12 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
   const finalDummy = fighters.find((fighter) => fighter.instanceId === setup.dummyId);
   const effectTotal = totalDamage + totalHealing;
   const costSpent = executions * setup.instruction.abilityCost;
-  const initialPoison = setup.fighters.find((fighter) => fighter.instanceId === setup.effectTargetId)?.poison ?? 0;
+  const initialTargetStatuses = setup.fighters.find((fighter) => fighter.instanceId === setup.effectTargetId)?.statuses;
   const hasStateEffect =
-    (finalTarget?.poison ?? 0) !== initialPoison ||
+    JSON.stringify(finalTarget?.statuses ?? []) !== JSON.stringify(initialTargetStatuses ?? []) ||
     maximumTargetDisplacement > Number.EPSILON ||
     maximumActorDisplacement > Number.EPSILON ||
-    Boolean(finalActor?.berserk || finalActor?.guarded);
+    Boolean(finalActor && finalActor.statuses.length > 0);
   const verdict =
     totalDamage > 0 ? 'damage' : totalHealing > 0 ? 'healing' : executions > 0 || hasStateEffect ? 'effect' : 'blocked';
 
@@ -504,14 +479,19 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
     timeToKill: null,
     finalTargetHp: Math.max(0, round(finalTarget?.hp ?? 0, 1)),
     finalTargetHpRatio: finalTarget ? round(finalTarget.hp / finalTarget.maxHp, 3) : 0,
-    finalPoison: finalTarget?.poison ?? 0,
+    finalPoison: finalTarget ? statusStacks(finalTarget, 'poison') : 0,
     finalActorStatuses: finalActor ? readDebugStatusValues(finalActor) : createDefaultDebugStatuses(),
     finalTargetStatuses: finalDummy ? readDebugStatusValues(finalDummy) : createDefaultDebugStatuses(),
     targetDisplacement: round(maximumTargetDisplacement, 1),
     actorDisplacement: round(maximumActorDisplacement, 1),
     attackDelta: round((finalActor?.attack ?? initialActor.attack) - initialActor.attack, 1),
     speedDelta: round((finalActor?.speed ?? initialActor.speed) - initialActor.speed, 2),
-    effectState: finalActor?.berserk ? 'BERSERK' : finalActor?.guarded ? 'GUARD' : 'ACTIVE',
+    effectState:
+      finalActor && hasStatus(finalActor, 'berserk')
+        ? 'BERSERK'
+        : finalActor && hasStatus(finalActor, 'guarded')
+          ? 'GUARD'
+          : 'ACTIVE',
     minimumGauge: round(minimumGauge, 1),
     emptyGaugeRate: elapsed > 0 ? round(emptyGaugeSeconds / elapsed, 3) : 0,
     mutualDistance: setup.startingDistance,

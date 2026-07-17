@@ -40,13 +40,7 @@ export function createBattleFighters(
     z: 0,
     abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
     reactionCooldown: 0,
-    guarded: false,
-    guardDamageScale: 1,
-    guardKnockbackScale: 1,
-    berserk: false,
-    poison: 0,
-    tauntTargetId: null,
-    tauntSeconds: 0,
+    statuses: [],
   };
   return [
     ...team.map((unit, index) => ({

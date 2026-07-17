@@ -5,7 +5,7 @@ import {
   readDebugStatusValues,
   runDebugSimulation,
 } from '../src/core/debug-simulation.ts';
-import { BATTLE_CONFIG, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, UNITS } from '../src/data.ts';
+import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from '../src/data.ts';
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
 const defaultActor = unitById.get('volt') ?? UNITS[0];
@@ -31,8 +31,8 @@ const makeInput = (overrides = {}) => ({
   ...overrides,
 });
 
-for (const status of DEBUG_TRAINING_CONFIG.statuses) {
-  const activeValue = status.control === 'stacks' ? Math.max(1, status.min ?? 0) : 1;
+for (const status of STATUSES) {
+  const activeValue = status.debug.control === 'stacks' ? Math.max(1, status.debug.min ?? 0) : 1;
   for (const side of ['actorStatuses', 'targetStatuses']) {
     const input = makeInput({ [side]: { ...createDefaultDebugStatuses(), [status.id]: activeValue } });
     const fighter = createDebugFighters(input).find((candidate) =>
@@ -41,6 +41,13 @@ for (const status of DEBUG_TRAINING_CONFIG.statuses) {
     assert.ok(fighter, `${status.id} の${side}検証用ユニットを作れません`);
     assert.ok(readDebugStatusValues(fighter)[status.id] > 0, `${status.id} が${side}へ反映されていません`);
   }
+}
+
+for (const unit of UNITS) {
+  const actor = createDebugFighters(makeInput({ actorUnitId: unit.id })).find((fighter) => fighter.team === 'ally');
+  const target = createDebugFighters(makeInput({ targetUnitId: unit.id })).find((fighter) => fighter.team === 'enemy');
+  assert.equal(actor?.id, unit.id, `${unit.id} を攻撃側ユニットとしてデバッグルームに反映できません`);
+  assert.equal(target?.id, unit.id, `${unit.id} を敵ユニットとしてデバッグルームに反映できません`);
 }
 
 for (const preset of DEBUG_TRAINING_CONFIG.positionPresets) {
@@ -65,7 +72,11 @@ for (const instruction of INSTRUCTIONS) {
     (instruction.action === 'heal' ? unitById.get('mender') : undefined) ||
     defaultActor;
   const targetStatuses = createDefaultDebugStatuses();
-  if (instruction.condition === 'enemyHasStatus') targetStatuses.poison = 1;
+  if (instruction.condition === 'enemyHasStatus') {
+    const statusId = CONDITIONS.find((condition) => condition.id === instruction.condition)?.statusId;
+    assert.ok(statusId, `${instruction.condition} に statusId がありません`);
+    targetStatuses[statusId] = 1;
+  }
   const input = makeInput({
     actorUnitId: actor.id,
     instructionId: instruction.id,
@@ -88,7 +99,8 @@ for (const instruction of INSTRUCTIONS) {
 console.log(
   JSON.stringify({
     instructions: INSTRUCTIONS.length,
-    statuses: DEBUG_TRAINING_CONFIG.statuses.length,
+    units: UNITS.length,
+    statuses: STATUSES.length,
     positionPresets: DEBUG_TRAINING_CONFIG.positionPresets.length,
   }),
 );

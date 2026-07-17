@@ -1,6 +1,7 @@
 import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, TARGET_SELECTORS } from '../data.ts';
 import { resolveImpact, type ImpactResult } from './combat.ts';
 import type { ConditionId, Fighter, Instruction, TargetSelectorId, UnitDefinition } from '../types.ts';
+import { applyStatus, hasStatus, statusEffectMultiplier, statusEffectTargetId, tickStatuses } from './statuses.ts';
 
 export const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
 export const conditionById = new Map(CONDITIONS.map((condition) => [condition.id, condition]));
@@ -18,10 +19,10 @@ export const nearestAlly = (actor: Fighter, allies: Fighter[]) =>
 export const criticalAlly = (actor: Fighter, allies: Fighter[]) =>
   lowestHpRatio(otherAllies(actor, allies).filter((ally) => ally.hp / ally.maxHp <= BATTLE_CONFIG.lowHpThreshold));
 
-export const forcedEnemy = (actor: Fighter, enemies: Fighter[]) =>
-  actor.tauntSeconds > 0 && actor.tauntTargetId
-    ? enemies.find((enemy) => enemy.instanceId === actor.tauntTargetId && enemy.hp > 0)
-    : undefined;
+export const forcedEnemy = (actor: Fighter, enemies: Fighter[]) => {
+  const targetId = statusEffectTargetId(actor, 'targetLock');
+  return targetId ? enemies.find((enemy) => enemy.instanceId === targetId && enemy.hp > 0) : undefined;
+};
 
 export const priorityEnemy = (actor: Fighter, enemies: Fighter[]) =>
   forcedEnemy(actor, enemies) ?? nearestEnemy(actor, enemies);
@@ -101,7 +102,8 @@ export function matchCondition(condition: ConditionId, actor: Fighter, targets: 
     return targets.filter((target) => target.hp / target.maxHp <= BATTLE_CONFIG.enemyLowHpThreshold);
   if (condition === 'selfHpBelow30')
     return targets.filter((target) => target.hp / target.maxHp <= BATTLE_CONFIG.lowHpThreshold);
-  return targets.filter((target) => target.poison > 0);
+  const statusId = conditionById.get(condition)?.statusId;
+  return statusId ? targets.filter((target) => hasStatus(target, statusId)) : [];
 }
 
 export function canRunCondition(condition: ConditionId, actor: Fighter, targets: Fighter[]): boolean {
@@ -123,28 +125,28 @@ export function actionCooldown(speed: number): number {
 }
 
 export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
-  return fighters.map((fighter) => {
-    const tauntSeconds = Math.max(0, fighter.tauntSeconds - dt);
-    return {
-      ...fighter,
-      cooldown: fighter.cooldown - dt,
-      abilityGauge: Math.min(
-        BATTLE_CONFIG.abilityGaugeMax,
-        fighter.abilityGauge + BATTLE_CONFIG.abilityGaugeRegenPerSecond * dt,
-      ),
-      reactionCooldown: fighter.reactionCooldown - dt,
-      tauntTargetId: tauntSeconds > 0 ? fighter.tauntTargetId : null,
-      tauntSeconds,
-    };
-  });
+  return fighters.map((fighter) => ({
+    ...fighter,
+    cooldown: fighter.cooldown - dt,
+    abilityGauge: Math.min(
+      BATTLE_CONFIG.abilityGaugeMax,
+      fighter.abilityGauge + BATTLE_CONFIG.abilityGaugeRegenPerSecond * dt,
+    ),
+    reactionCooldown: fighter.reactionCooldown - dt,
+    statuses: tickStatuses(fighter.statuses, dt),
+  }));
 }
 
 export function rawActionDamage(actor: Fighter, instruction: Instruction, target: Fighter): number {
-  const statusBonus = target.poison > 0 ? (instruction.params.statusTargetDamageBonus ?? 0) : 0;
+  const bonusStatusId = instruction.params.statusTargetId;
+  const statusBonus =
+    bonusStatusId && hasStatus(target, bonusStatusId) ? (instruction.params.statusTargetDamageBonus ?? 0) : 0;
   return actor.attack * (instruction.params.attackScale ?? 1) + (instruction.params.flatDamage ?? 0) + statusBonus;
 }
 
 export function resolveActionImpact(actor: Fighter, target: Fighter, instruction: Instruction): ImpactResult {
+  const guardDamageScale = statusEffectMultiplier(target, 'incomingDamageScale');
+  const guardKnockbackScale = statusEffectMultiplier(target, 'incomingKnockbackScale');
   return resolveImpact({
     rawDamage: rawActionDamage(actor, instruction, target),
     minimumDamage: instruction.params.minimumDamage ?? 0,
@@ -153,9 +155,9 @@ export function resolveActionImpact(actor: Fighter, target: Fighter, instruction
     targetDefense: target.defense,
     targetWeight: target.weight,
     targetRole: target.role,
-    targetGuarded: target.guarded,
-    guardDamageScale: target.guardDamageScale,
-    guardKnockbackScale: target.guardKnockbackScale,
+    targetGuarded: guardDamageScale !== 1 || guardKnockbackScale !== 1,
+    guardDamageScale,
+    guardKnockbackScale,
     impact: { damageScale: instruction.params.damageScale, knockbackPower: instruction.params.knockbackPower },
   });
 }
@@ -163,11 +165,15 @@ export function resolveActionImpact(actor: Fighter, target: Fighter, instruction
 export function activateBerserker(
   actor: Fighter,
   instruction: Instruction,
-): Pick<Fighter, 'attack' | 'speed' | 'berserk'> {
+): Pick<Fighter, 'attack' | 'speed' | 'statuses'> {
+  if (!instruction.appliesStatusId) throw new Error(`${instruction.id} has no appliesStatusId`);
+  const boosted = applyStatus(actor, instruction.appliesStatusId, {
+    sourceId: actor.instanceId,
+  });
   return {
-    attack: Math.round(actor.attack * (instruction.params.attackScale ?? 1)),
-    speed: Number((actor.speed * (instruction.params.speedScale ?? 1)).toFixed(2)),
-    berserk: true,
+    attack: boosted.attack,
+    speed: boosted.speed,
+    statuses: boosted.statuses,
   };
 }
 

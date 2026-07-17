@@ -32,6 +32,7 @@ import {
 } from './core/battle-engine';
 import { summarizeDecisions, type BattleReplay } from './core/replay';
 import { createBattleFighters, createInventoryUnit, unitById } from './core/roster';
+import { activeStatusDetails, statusCardClasses } from './core/statuses';
 import {
   actionCooldown,
   conditionById,
@@ -677,10 +678,16 @@ export function App() {
   );
   const statusTags = (fighter: Fighter) => {
     if (fighter.hp <= 0) return ['戦闘不能'];
-    const tags = [fighter.berserk ? '暴走' : '正常'];
-    if (fighter.guarded) tags.push('防御');
-    if (fighter.poison > 0) tags.push(`毒 ×${fighter.poison}`);
-    if (fighter.tauntSeconds > 0) tags.push(`標的固定 ${fighter.tauntSeconds.toFixed(1)}秒`);
+    const details = activeStatusDetails(fighter);
+    const tags = details.length
+      ? details.map(({ definition, instance }) => {
+          if (definition.id === 'berserk') return '暴走';
+          if (definition.visual.showStacks) return `${definition.label} ×${instance.stacks}`;
+          if (definition.visual.showRemaining && instance.remainingSeconds !== null)
+            return `${definition.label} ${instance.remainingSeconds.toFixed(1)}秒`;
+          return definition.label;
+        })
+      : ['正常'];
     if (fighter.cooldown > 0.55) tags.push('準備中');
     return tags;
   };
@@ -1317,7 +1324,7 @@ export function App() {
                     const active = flash?.id === fighter.instanceId && flash.actionLabel;
                     return (
                       <article
-                        className={`unit-status-card unit-${fighter.id} ${fighter.team} ${fighter.hp <= 0 ? 'down' : ''} ${fighter.berserk ? 'berserk' : ''} ${fighter.poison > 0 ? 'poisoned' : ''} ${active ? 'acting' : ''}`}
+                        className={`unit-status-card unit-${fighter.id} ${fighter.team} ${fighter.hp <= 0 ? 'down' : ''} ${statusCardClasses(fighter)} ${active ? 'acting' : ''}`}
                         key={fighter.instanceId}
                       >
                         <div className="status-avatar" style={{ ['--unit-color' as string]: fighter.color }}>

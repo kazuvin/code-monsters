@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "battle": {
     "tickSeconds": 0.22,
     "abilityGaugeMax": 10,
@@ -56,74 +56,112 @@
         "rangeReference": "actor",
         "relation": "outside"
       }
-    ],
-    "statuses": [
-      {
-        "id": "poison",
-        "label": "毒",
-        "description": "毒スタックを保持",
-        "control": "stacks",
-        "min": 0,
-        "max": 99,
-        "step": 1,
-        "effects": [{ "fighterField": "poison", "source": "control" }]
-      },
-      {
-        "id": "guarded",
-        "label": "ガード",
-        "description": "被ダメージ・ノックバック軽減",
-        "control": "toggle",
-        "effects": [
-          { "fighterField": "guarded", "source": "enabled" },
-          {
-            "fighterField": "guardDamageScale",
-            "source": "instructionParam",
-            "instructionId": "tank-guard",
-            "parameter": "incomingDamageScale"
-          },
-          {
-            "fighterField": "guardKnockbackScale",
-            "source": "instructionParam",
-            "instructionId": "tank-guard",
-            "parameter": "incomingKnockbackScale"
-          }
-        ]
-      },
-      {
-        "id": "berserk",
-        "label": "バーサーク",
-        "description": "攻撃力・速度を強化",
-        "control": "toggle",
-        "effects": [
-          { "fighterField": "berserk", "source": "enabled" },
-          {
-            "fighterField": "attack",
-            "source": "instructionParam",
-            "instructionId": "berserker-mode",
-            "parameter": "attackScale",
-            "operation": "multiply"
-          },
-          {
-            "fighterField": "speed",
-            "source": "instructionParam",
-            "instructionId": "berserker-mode",
-            "parameter": "speedScale",
-            "operation": "multiply"
-          }
-        ]
-      },
-      {
-        "id": "taunted",
-        "label": "挑発",
-        "description": "相手を標的として固定",
-        "control": "toggle",
-        "effects": [
-          { "fighterField": "tauntTargetId", "source": "opponentId" },
-          { "fighterField": "tauntSeconds", "source": "sessionDuration" }
-        ]
-      }
     ]
   },
+  "statuses": [
+    {
+      "id": "poison",
+      "label": "毒",
+      "description": "毒スタックを保持",
+      "stacking": "stack",
+      "maxStacks": 99,
+      "clearOnAction": false,
+      "duration": { "mode": "persistent" },
+      "debug": { "control": "stacks", "min": 0, "max": 99, "step": 1 },
+      "visual": {
+        "className": "poisoned",
+        "cardClass": "poisoned",
+        "chipClass": "poison-chip",
+        "label": "POISON",
+        "showStacks": true,
+        "showRemaining": false
+      },
+      "effects": []
+    },
+    {
+      "id": "guarded",
+      "label": "ガード",
+      "description": "被ダメージ・ノックバック軽減",
+      "stacking": "replace",
+      "maxStacks": 1,
+      "clearOnAction": true,
+      "duration": { "mode": "persistent" },
+      "debug": { "control": "toggle" },
+      "visual": {
+        "className": "guarded",
+        "cardClass": "guarded",
+        "chipClass": "status-chip",
+        "label": "GUARD",
+        "showStacks": false,
+        "showRemaining": false
+      },
+      "effects": [
+        {
+          "kind": "incomingDamageScale",
+          "sourceInstructionId": "tank-guard",
+          "parameter": "incomingDamageScale"
+        },
+        {
+          "kind": "incomingKnockbackScale",
+          "sourceInstructionId": "tank-guard",
+          "parameter": "incomingKnockbackScale"
+        }
+      ]
+    },
+    {
+      "id": "berserk",
+      "label": "バーサーク",
+      "description": "攻撃力・速度を強化",
+      "stacking": "replace",
+      "maxStacks": 1,
+      "clearOnAction": false,
+      "duration": { "mode": "persistent" },
+      "debug": { "control": "toggle" },
+      "visual": {
+        "className": "berserk-active",
+        "cardClass": "berserk",
+        "chipClass": "berserk-chip",
+        "label": "BERSERK",
+        "showStacks": false,
+        "showRemaining": false
+      },
+      "effects": [
+        {
+          "kind": "attackScale",
+          "sourceInstructionId": "berserker-mode",
+          "parameter": "attackScale"
+        },
+        {
+          "kind": "speedScale",
+          "sourceInstructionId": "berserker-mode",
+          "parameter": "speedScale"
+        }
+      ]
+    },
+    {
+      "id": "taunted",
+      "label": "挑発",
+      "description": "相手を標的として固定",
+      "stacking": "replace",
+      "maxStacks": 1,
+      "clearOnAction": false,
+      "duration": {
+        "mode": "instructionParam",
+        "sourceInstructionId": "taunt",
+        "parameter": "durationSeconds"
+      },
+      "debug": { "control": "toggle" },
+      "visual": {
+        "className": "taunt-locked",
+        "cardClass": "taunt-locked",
+        "chipClass": "taunt-chip",
+        "label": "LOCK",
+        "showStacks": false,
+        "showRemaining": true
+      },
+      "effects": [{ "kind": "targetLock" }]
+    }
+  ],
   "economy": {
     "startingCoins": 10,
     "refreshCost": 1,
@@ -339,6 +377,7 @@
       "label": "状態異常あり",
       "flavor": "仕込み済みなら、畳みかける。",
       "effect": "対象が状態異常",
+      "statusId": "poison",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
     }
   ],
@@ -632,6 +671,7 @@
       "targetMode": "allEnemies",
       "compatibleTargets": [],
       "tone": "violet",
+      "appliesStatusId": "taunted",
       "params": { "durationSeconds": 5 }
     },
     {
@@ -683,6 +723,7 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "violet",
+      "appliesStatusId": "poison",
       "params": { "attackScale": 0.45, "minimumDamage": 3, "knockbackPower": 0, "statusStacks": 1 }
     },
     {
@@ -704,6 +745,7 @@
       "params": {
         "attackScale": 0.7,
         "statusTargetDamageBonus": 18,
+        "statusTargetId": "poison",
         "minimumDamage": 4,
         "knockbackPower": 0
       }
@@ -742,6 +784,7 @@
       "tone": "amber",
       "fixedFor": "wrath",
       "reactionOnly": true,
+      "appliesStatusId": "berserk",
       "params": { "attackScale": 1.6, "speedScale": 3 }
     },
     {
@@ -778,6 +821,7 @@
       "compatibleTargets": [],
       "tone": "lime",
       "fixedFor": "bastion",
+      "appliesStatusId": "guarded",
       "params": { "incomingDamageScale": 0.82, "incomingKnockbackScale": 0.7 }
     },
     {

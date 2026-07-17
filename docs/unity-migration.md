@@ -21,6 +21,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | TypeScript | Unity destination | Responsibility |
 | --- | --- | --- |
 | `src/core/combat.ts` | `CombatResolver.cs` | damage and knockback math |
+| `src/core/statuses.ts` | `BattleRules.cs` / future `StatusRuntime.cs` | generic status instances, stacking, duration, effects, and visual metadata lookup |
 | `src/core/rules.ts` | `BattleRules.cs` | target selection, per-target condition matching, cooldowns, movement, action effects |
 | `src/core/battle-engine.ts` | `BattleEngine.cs` | deterministic frame planning and serializable battle steps |
 | `src/core/roster.ts` | `RosterFactory.cs` | inventory units and battle-state construction |
@@ -31,7 +32,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 
 `BattleStep` contains only plain values: a visual event, optional log and damage events, and fighter field updates. Damage events carry the acting unit, stable action ID, actual HP damage, and whether the source was a normal instruction or reaction. There are no closures in the core queue. Unity can mirror this with serializable structs and let animation and report code consume events independently of the simulation.
 
-The debug-room harness constructs a plain two-fighter/program input and advances `planBattleFrame` on a virtual clock. Its start-distance presets and configurable statuses come from `debugTraining.positionPresets` and `debugTraining.statuses`; the same generic status-effect mapping applies to the attacker and dummy. It preserves movement and status updates in serializable playback frames, clamps the dummy to `debugTraining.minimumDummyHp`, and restores only its HP after `debugTraining.recoveryDelaySeconds`; Reset recreates the configured initial fighters. Unit stat and state overrides remain harness inputs rather than presentation-only modifiers. It derives per-hit damage independent of remaining dummy HP, DPS, resource efficiency, healing, maximum displacement, state stacks, recovery count, and skip reasons from normal battle outputs. Port the harness as an editor tool rather than duplicating combat formulas in Unity UI code; matching harness results provide a practical parity check during migration.
+The debug-room harness constructs a plain two-fighter/program input and advances `planBattleFrame` on a virtual clock. Its start-distance presets come from `debugTraining.positionPresets`, while every configurable status is generated from the canonical top-level `statuses` registry; the same status runtime applies to the attacker and dummy. It preserves movement and status updates in serializable playback frames, clamps the dummy to `debugTraining.minimumDummyHp`, and restores only its HP after `debugTraining.recoveryDelaySeconds`; Reset recreates the configured initial fighters. Unit stat and state overrides remain harness inputs rather than presentation-only modifiers. It derives per-hit damage independent of remaining dummy HP, DPS, resource efficiency, healing, maximum displacement, state stacks, recovery count, and skip reasons from normal battle outputs. Port the harness as an editor tool rather than duplicating combat formulas in Unity UI code; matching harness results provide a practical parity check during migration.
 
 ## Suggested port order
 
@@ -42,7 +43,7 @@ The debug-room harness constructs a plain two-fighter/program input and advances
 5. Build Unity presentation from battle-step events; do not move rules into MonoBehaviours.
 6. Keep `pnpm balance:check` available until the analyzer itself is ported to an editor tool or .NET CLI.
 
-When adding a parameter, add it under an instruction's `params` or a named configuration section, update the TypeScript type, add a focused test, then mirror the DTO in Unity. Add new debug-configurable fighter statuses to `debugTraining.statuses`; the web controls are generated from this list, and `pnpm verify` checks both sides plus every position preset and instruction. Breaking schema changes require a `schemaVersion` increment and migration note.
+When adding a parameter, add it under an instruction's `params` or a named configuration section, update the TypeScript type, add a focused test, then mirror the DTO in Unity. Add statuses once to the top-level `statuses` registry with their debug control and visual metadata; runtime fighters store only generic status instances. The web controls and status chips are generated from the registry, and `pnpm verify` checks every unit, status, position preset, and instruction. Unsupported status effects, duration modes, actions, conditions, or target structures fail validation rather than being silently omitted. Breaking schema changes require a `schemaVersion` increment and migration note.
 
 ## Schema version 2 migration
 
@@ -66,11 +67,17 @@ Instructions may also define the optional `params.fixedRange` value. Use it as t
 
 Add the ordered `encounters` array. Each entry owns its stable ID, player-facing briefing, enemy unit IDs, enemy stat scale, and victory reward. The current round selects one encounter; defeat retries the same encounter without a reward, while victory advances to the next entry. Importers should keep `roster.enemyUnitIds` only as a legacy/default fallback and use `encounters` for the playable run. The prototype's standard battle contract is three starting allies against three encounter enemies; loaders reject default or encounter rosters with a different count.
 
+## Schema version 7 migration
+
+Move status definitions from `debugTraining.statuses` to the canonical top-level `statuses` registry. Each definition owns a stable ID, stacking and duration behavior, optional typed effects, debug controls, and presentation metadata. Instructions that apply a state now reference it through `appliesStatusId`; status-sensitive conditions and damage modifiers reference a `statusId`. Runtime fighter state replaces poison, guard, berserk, and taunt-specific fields with a serializable `statuses` array containing `{ statusId, stacks, remainingSeconds, sourceId, targetId }`.
+
+Importers must reject unknown status IDs and new unsupported effect or duration kinds. Debug tools should enumerate the registry instead of maintaining a separate status list. This makes data-only additions visible in the debug room and causes structural additions that require runtime work to fail CI until both TypeScript and Unity loaders support them.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v6 DTO loading and stable-ID/reference validation
+- schema-v7 DTO loading and stable-ID/reference validation, including the canonical status registry
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames
