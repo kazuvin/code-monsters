@@ -357,7 +357,13 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "amber",
-      "params": { "attackScale": 1, "flatDamage": 10, "minimumDamage": 4, "knockbackPower": 120 }
+      "params": {
+        "attackScale": 1,
+        "flatDamage": 10,
+        "minimumDamage": 4,
+        "knockbackPower": 120,
+        "fixedRange": 9
+      }
     },
     {
       "id": "approach",
@@ -391,7 +397,7 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "violet",
-      "params": { "moveDistance": 6.5 }
+      "params": { "moveDistance": 6.5, "fixedRange": 10 }
     },
     {
       "id": "vault-over",
@@ -409,7 +415,7 @@
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "amber",
       "visualKind": "jump",
-      "params": { "moveDistance": 14 }
+      "params": { "moveDistance": 14, "fixedRange": 9 }
     },
     {
       "id": "shoulder-throw",
@@ -426,7 +432,13 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "amber",
-      "params": { "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 0, "throwDistance": 6 }
+      "params": {
+        "attackScale": 0.8,
+        "minimumDamage": 4,
+        "knockbackPower": 0,
+        "throwDistance": 6,
+        "fixedRange": 9
+      }
     },
     {
       "id": "taunt",
@@ -460,7 +472,7 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "cyan",
-      "params": { "pullDistance": 4, "rangeScale": 4 }
+      "params": { "pullDistance": 4, "fixedRange": 40 }
     },
     {
       "id": "field-repair",
@@ -477,7 +489,7 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestAlly", "lowestHpAlly", "criticalAlly"],
       "tone": "lime",
-      "params": { "healAmount": 22, "supportHealAmount": 34 }
+      "params": { "healAmount": 22, "supportHealAmount": 34, "fixedRange": 12 }
     },
     {
       "id": "berserker-mode",

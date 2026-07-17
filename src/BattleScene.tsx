@@ -34,6 +34,16 @@ export function BattleScene({ fighters, flash, running }: Props) {
   const aliveEnemies = fighters.filter((f) => f.team === 'enemy' && f.hp > 0);
   const allyFront = aliveAllies.reduce((n, f) => n + f.x, 0) / (aliveAllies.length || 1);
   const enemyFront = aliveEnemies.reduce((n, f) => n + f.x, 0) / (aliveEnemies.length || 1);
+  const flashActor = flash ? fighters.find((fighter) => fighter.instanceId === flash.id) : undefined;
+  const flashTarget = flash?.targetId ? fighters.find((fighter) => fighter.instanceId === flash.targetId) : undefined;
+  const projectileAttack =
+    flash &&
+    flashActor &&
+    flashTarget &&
+    (flash.attackType ?? flashActor.attackType) === 'sniper' &&
+    attackKinds.some((kind) => kind === flash.kind)
+      ? { actor: flashActor, target: flashTarget }
+      : null;
 
   return (
     <div
@@ -51,10 +61,24 @@ export function BattleScene({ fighters, flash, running }: Props) {
       </div>
       <div className="battle-road">
         <div className="frontline" style={{ left: `${Math.max(14, Math.min(86, (allyFront + enemyFront) / 2))}%` }} />
+        {projectileAttack && (
+          <i
+            aria-hidden="true"
+            className={`battle-projectile projectile-arrow ${projectileAttack.target.x < projectileAttack.actor.x ? 'flies-left' : 'flies-right'}`}
+            key={`projectile-${flash?.n}`}
+            style={{
+              ['--projectile-start-x' as string]: `${projectileAttack.actor.x}%`,
+              ['--projectile-end-x' as string]: `${projectileAttack.target.x}%`,
+              ['--projectile-start-lane' as string]: `${laneIndex(projectileAttack.actor, fighters) * 18}px`,
+              ['--projectile-end-lane' as string]: `${laneIndex(projectileAttack.target, fighters) * 18}px`,
+            }}
+          />
+        )}
         {fighters.map((fighter) => {
           const isActor = flash?.id === fighter.instanceId;
           const hasMissNotice = missNotice?.id === fighter.instanceId;
           const isTarget = flash?.targetId === fighter.instanceId;
+          const isProjectileTarget = isTarget && projectileAttack?.target.instanceId === fighter.instanceId;
           const isAttack = isActor && attackKinds.some((kind) => kind === flash?.kind);
           const attackType = isActor && flash?.attackType ? flash.attackType : fighter.attackType;
           const attackEffect = flash?.kind === 'follow' ? 'follow' : attackType;
@@ -83,7 +107,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
           const fighterLane = laneIndex(fighter, fighters);
           return (
             <div
-              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk ? 'berserk-active' : ''} ${fighter.tauntSeconds > 0 ? 'taunt-locked' : ''} ${state}`}
+              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${fighter.berserk ? 'berserk-active' : ''} ${fighter.tauntSeconds > 0 ? 'taunt-locked' : ''} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${state}`}
               key={fighter.instanceId}
               style={{
                 left: `${fighter.x}%`,

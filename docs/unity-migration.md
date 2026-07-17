@@ -56,3 +56,5 @@ Rename the version 3 condition IDs `enemyInRange` and `enemyOutOfRange` to `targ
 ## Schema version 5 migration
 
 Add `abilityCost` to every instruction and add `abilityGaugeMax`, `abilityGaugeInitial`, and `abilityGaugeRegenPerSecond` under `battle`. Runtime fighter state now includes `abilityGauge`. Regenerate it by elapsed battle time, cap it at the configured maximum, and deduct the instruction cost only when an action or reaction is committed. If a normal-program instruction cannot afford its cost, continue evaluating later blocks so free attacks and movement can remain fallbacks. Reactions with insufficient gauge do not fire or consume their reaction cooldown. Add `balanceAnalysis.abilityReferenceSpeed` when importing the analyzer configuration.
+
+Instructions may also define the optional `params.fixedRange` value. Use it as the action's execution range instead of the acting unit's attack range; the `targetInRange` and `targetOutOfRange` conditions continue to describe the acting unit's own attack range. This keeps close-contact skills such as throws independent from the weapon range while preserving range-condition save semantics.

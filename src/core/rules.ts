@@ -51,7 +51,7 @@ export function pullToward(actor: Fighter, target: Fighter, distance: number): n
 }
 
 export function actionRange(actor: Fighter, instruction: Instruction): number {
-  return actor.range * (instruction.params.rangeScale ?? 1);
+  return instruction.params.fixedRange ?? actor.range * (instruction.params.rangeScale ?? 1);
 }
 
 export function retreatFrom(actor: Fighter, target: Fighter, distance: number): number {
@@ -189,6 +189,9 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
   const metricNumber = (value: number) => (Number.isInteger(value) ? String(value) : value.toFixed(1));
   const withCost = (metrics: { label: string; value: string }[]) => [
     ...metrics,
+    ...(instruction.params.fixedRange !== undefined
+      ? [{ label: '固定射程', value: `${metricNumber(instruction.params.fixedRange)} m` }]
+      : []),
     { label: 'COST', value: instruction.abilityCost === 0 ? 'FREE' : String(instruction.abilityCost) },
   ];
   if (instruction.action === 'move')
@@ -214,13 +217,7 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
       { label: '持続', value: `${metricNumber(instruction.params.durationSeconds ?? 0)} s` },
     ]);
   if (instruction.action === 'pull')
-    return withCost([
-      {
-        label: '射程',
-        value: `${metricNumber(unit.range * (instruction.params.rangeScale ?? 1))} m`,
-      },
-      { label: '着地', value: `手前 ${metricNumber(instruction.params.pullDistance ?? 0)} m` },
-    ]);
+    return withCost([{ label: '着地', value: `手前 ${metricNumber(instruction.params.pullDistance ?? 0)} m` }]);
   if (instruction.action === 'retreat')
     return withCost([
       { label: '後退', value: `${metricNumber(instruction.params.moveDistance ?? 0)} m` },

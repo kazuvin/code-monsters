@@ -1094,6 +1094,75 @@ button:focus-visible {
   opacity: 0.75;
   transition: left 0.22s ease;
 }
+.battle-projectile {
+  --projectile-height: 29px;
+  position: absolute;
+  z-index: 50;
+  left: var(--projectile-start-x);
+  bottom: calc(34% + var(--projectile-start-lane) + var(--projectile-height));
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  opacity: 0;
+  animation: projectile-flight 0.24s linear forwards;
+}
+.projectile-arrow:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 42px;
+  height: 8px;
+  background: linear-gradient(90deg, #e8fbff 0 64%, #8df2ff 65% 100%);
+  clip-path: polygon(0 38%, 76% 38%, 76% 0, 100% 50%, 76% 100%, 76% 62%, 0 62%);
+  filter: drop-shadow(0 0 6px #8df2ff) drop-shadow(0 0 12px #39d9ff99);
+}
+.projectile-arrow:after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  width: 54px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #8df2ff99);
+  filter: blur(1px);
+}
+.projectile-arrow.flies-right:before {
+  transform: translate(-8px, -50%);
+}
+.projectile-arrow.flies-right:after {
+  right: 2px;
+  transform: translateY(-50%);
+}
+.projectile-arrow.flies-left:before {
+  transform: translate(-34px, -50%) rotate(180deg);
+}
+.projectile-arrow.flies-left:after {
+  left: 2px;
+  transform: translateY(-50%) rotate(180deg);
+}
+.sprite.projectile-impact-target .hit-spark {
+  opacity: 0;
+  animation-delay: 0.16s;
+  animation-duration: 0.08s;
+}
+@keyframes projectile-flight {
+  0% {
+    left: var(--projectile-start-x);
+    bottom: calc(34% + var(--projectile-start-lane) + var(--projectile-height));
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    left: var(--projectile-end-x);
+    bottom: calc(34% + var(--projectile-end-lane) + var(--projectile-height));
+    opacity: 0;
+  }
+}
 .sprite {
   position: absolute;
   z-index: 2;
@@ -1391,6 +1460,15 @@ button:focus-visible {
   .slash,
   .hit-spark {
     animation: none !important;
+  }
+  .battle-projectile {
+    left: var(--projectile-end-x);
+    bottom: calc(34% + var(--projectile-end-lane) + var(--projectile-height));
+    opacity: 1;
+    animation: none !important;
+  }
+  .sprite.projectile-impact-target .hit-spark {
+    opacity: 0.86;
   }
 }
 @media (max-width: 800px) {

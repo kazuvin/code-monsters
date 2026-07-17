@@ -211,7 +211,7 @@ export function planBattleFrame({
       return;
     }
     if (instruction.action === 'move') {
-      if (!target || target.hp <= 0 || distanceTo(reactor, target) <= reactor.range) return;
+      if (!target || target.hp <= 0 || distanceTo(reactor, target) <= actionRange(reactor, instruction)) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
       const x = advanceToward(reactor, target, instruction.params.moveDistance ?? 0);
@@ -276,7 +276,7 @@ export function planBattleFrame({
       return;
     }
     const isFollow = instruction.action === 'follow';
-    if (!isFollow && distanceTo(reactor, target) > reactor.range) {
+    if (!isFollow && distanceTo(reactor, target) > actionRange(reactor, instruction)) {
       const values = { reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
@@ -430,7 +430,11 @@ export function planBattleFrame({
           ? matchedTargets[0]
           : (selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest);
       if (instruction.action === 'pull' && distanceTo(current, target) > actionRange(current, instruction)) continue;
-      if (instruction.action === 'heal' && distanceTo(current, target) > current.range) continue;
+      if (
+        ['heavy', 'jump', 'throw', 'retreat', 'heal'].includes(instruction.action) &&
+        distanceTo(current, target) > actionRange(current, instruction)
+      )
+        continue;
       if (instruction.action === 'berserk' && current.berserk) continue;
       if (!canAffordAbility(current, instruction.abilityCost)) {
         blockedByCost = true;
@@ -456,7 +460,7 @@ export function planBattleFrame({
           updates,
         });
       } else if (instruction.action === 'move') {
-        if (distanceTo(current, target) <= current.range) {
+        if (distanceTo(current, target) <= actionRange(current, instruction)) {
           queueStep({
             flash: { id: current.instanceId, kind: 'wait', actionLabel: '待機', n: 0 },
             log: { actor: current.name, text: `${target.name}と対峙｜前線を維持`, type: 'info' },
@@ -597,7 +601,7 @@ export function planBattleFrame({
           log: { actor: current.name, text: '同期タイミングを待機', type: 'info' },
           updates: [{ id: current.instanceId, values: { cooldown: waitCooldown } }],
         });
-      } else if (distanceTo(current, target) > current.range && instruction.action !== 'follow') {
+      } else if (distanceTo(current, target) > actionRange(current, instruction) && instruction.action !== 'follow') {
         queueStep({
           flash: {
             id: current.instanceId,

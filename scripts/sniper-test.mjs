@@ -59,16 +59,35 @@ for (let tick = 0; tick < 800 && sniperShots.length < 3; tick += 1) {
     const cooldownWidth = Number.parseFloat(
       (await bastion.locator('.status-cooldown i').getAttribute('style'))?.match(/[\d.]+/)?.[0] ?? '0',
     );
+    const projectileCount = await page.locator('.battle-projectile.projectile-arrow').count();
+    const projectileAnimation =
+      projectileCount > 0
+        ? await page
+            .locator('.battle-projectile.projectile-arrow')
+            .first()
+            .evaluate((element) => getComputedStyle(element).animationName)
+        : '';
     const event = {
       id: eventId,
       actor: actor?.trim() ?? '',
       label: label?.trim() ?? '',
       targetFlinchCount: await page.locator('.sprite.is-hit').count(),
       hitSparkCount: await page.locator('.hit-spark').count(),
+      projectileCount,
+      projectileAnimation,
+      projectilePositions: [],
       bastionCooldownWidth: cooldownWidth,
     };
     events.push(event);
     if (event.actor === 'アロー' && event.label === '狙撃') sniperShots.push(event);
+  }
+  const activeShot = sniperShots.find((shot) => shot.id === eventId);
+  if (activeShot && (await page.locator('.battle-projectile.projectile-arrow').count()) > 0) {
+    const projectileX = await page
+      .locator('.battle-projectile.projectile-arrow')
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().x);
+    activeShot.projectilePositions.push(Math.round(projectileX));
   }
   await page.waitForTimeout(25);
 }
@@ -85,6 +104,16 @@ if (sniperShots.some((event) => event.targetFlinchCount > 0))
   throw new Error('遠距離通常攻撃で対象のよろけイベントが発生しています');
 if (sniperShots.some((event) => event.hitSparkCount === 0))
   throw new Error('ノックバックを抑止した狙撃の命中表示が失われています');
+if (sniperShots.some((event) => event.projectileCount === 0 || event.projectileAnimation !== 'projectile-flight'))
+  throw new Error('狙撃時に飛翔する矢のアニメーションが表示されていません');
+if (
+  !sniperShots.some(
+    (event) =>
+      event.projectilePositions.length >= 2 &&
+      Math.max(...event.projectilePositions) - Math.min(...event.projectilePositions) >= 40,
+  )
+)
+  throw new Error('狙撃の矢が敵に向かって画面上を移動していません');
 if (
   sniperShots[0].bastionCooldownWidth < 100 &&
   sniperShots.at(-1).bastionCooldownWidth <= sniperShots[0].bastionCooldownWidth

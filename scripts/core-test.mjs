@@ -332,7 +332,7 @@ const pullTeam = [createInventoryUnit('volt', 'pull-volt')];
 pullTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetOutOfRange', actionId: 'pull-in' }];
 const pullInstruction = instructionById.get('pull-in');
 assert.ok(pullInstruction);
-assert.equal(actionRange(volt, pullInstruction), 40, '引き寄せの射程がユニットRNGの4倍になっていません');
+assert.equal(actionRange(volt, pullInstruction), 40, '引き寄せの固定射程が40mになっていません');
 const pullFighters = createBattleFighters(pullTeam).map((fighter) => ({
   ...fighter,
   x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 78 : 80,
@@ -400,6 +400,41 @@ assert.ok(!costFallbackPlan.steps.some((step) => step.flash.kind === 'heavy'), '
 assert.ok(
   costFallbackPlan.steps.some((step) => step.flash.kind === 'attack'),
   'コスト不足時に後続の無料アクションへフォールバックしていません',
+);
+
+const rangedThrowTeam = [createInventoryUnit('arrow', 'ranged-throw-arrow')];
+rangedThrowTeam[0].program = [
+  { targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'shoulder-throw' },
+  { targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' },
+];
+const rangedThrowFighters = createBattleFighters(rangedThrowTeam).map((fighter) => ({
+  ...fighter,
+  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 55 : 72,
+  abilityGauge: fighter.team === 'ally' ? BATTLE_CONFIG.abilityGaugeMax : fighter.abilityGauge,
+  cooldown: fighter.team === 'ally' ? 0 : 10,
+}));
+const rangedThrowActor = rangedThrowFighters.find((fighter) => fighter.instanceId === 'ranged-throw-arrow');
+const shoulderThrowInstruction = instructionById.get('shoulder-throw');
+assert.ok(rangedThrowActor && shoulderThrowInstruction);
+assert.equal(
+  actionRange(rangedThrowActor, shoulderThrowInstruction),
+  9,
+  '背負い投げの射程がアローの攻撃射程を継承しています',
+);
+const rangedThrowPlan = planBattleFrame({
+  fighters: rangedThrowFighters,
+  team: rangedThrowTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+assert.ok(
+  !rangedThrowPlan.steps.some((step) => step.flash.kind === 'throw'),
+  '遠距離攻撃射程内だけで背負い投げが発動しています',
+);
+assert.ok(
+  rangedThrowPlan.steps.some((step) => step.flash.kind === 'attack'),
+  '背負い投げの固定射程外で後続の通常攻撃へフォールバックしません',
 );
 
 const shop = createShop(0);
@@ -472,6 +507,13 @@ const invalidCostReport = analyzeBalance(invalidCostData);
 assert.ok(
   invalidCostReport.issues.some((issue) => issue.code === 'MISSING_ABILITY_COST'),
   '強力なスキルの無料化を静的検査で検出できません',
+);
+const invalidRangeData = structuredClone(GAME_DATA);
+invalidRangeData.instructions.find((instruction) => instruction.id === 'shoulder-throw').params.fixedRange = 0;
+const invalidRangeReport = analyzeBalance(invalidRangeData);
+assert.ok(
+  invalidRangeReport.issues.some((issue) => issue.code === 'INVALID_PARAMETER' || issue.code === 'MISSING_PARAMETER'),
+  '接触スキルの不正な固定射程を静的検査で検出できません',
 );
 
 console.log(

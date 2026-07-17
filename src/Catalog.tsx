@@ -38,6 +38,7 @@ const parameterLabels: Record<keyof ActionParameters, string> = {
   throwDistance: '投げ距離',
   pullDistance: '引寄距離',
   rangeScale: '射程倍率',
+  fixedRange: '固定射程',
   durationSeconds: '持続時間',
   healAmount: '回復量',
   supportHealAmount: '支援回復量',
@@ -68,6 +69,7 @@ const formatParameter = (key: keyof ActionParameters, value: number) => {
   if (key.endsWith('Scale')) return `×${value}`;
   if (key.endsWith('Seconds')) return `${value}秒`;
   if (key.endsWith('Distance')) return `${value}m`;
+  if (key === 'fixedRange') return `${value}m`;
   if (key.includes('heal') || key.includes('Heal')) return `${value} HP`;
   return String(value);
 };
