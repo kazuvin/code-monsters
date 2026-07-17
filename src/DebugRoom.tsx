@@ -1,20 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Activity,
-  Crosshair,
-  Gauge,
-  Play,
-  RotateCcw,
-  Settings2,
-  Shield,
-  Sparkles,
-  TimerReset,
-  X,
-  Zap,
-} from 'lucide-react';
+import { Activity, Crosshair, Gauge, Play, RotateCcw, Settings2, TimerReset, X, Zap } from 'lucide-react';
 import { BattleScene } from './BattleScene';
 import {
   createDebugFighters,
+  createDefaultDebugStatuses,
   runDebugSimulation,
   type DebugEffectEvent,
   type DebugSimulationInput,
@@ -30,15 +19,7 @@ const conditionById = new Map(CONDITIONS.map((condition) => [condition.id, condi
 const defaultTarget = unitById.get('bastion') ?? UNITS[0];
 const defaultInstruction = instructionById.get('attack-low') ?? INSTRUCTIONS[0];
 
-const roles: Array<{ id: Role; label: string }> = [
-  { id: 'STRIKER', label: 'ストライカー' },
-  { id: 'TANK', label: 'タンク' },
-  { id: 'SUPPORT', label: 'サポート' },
-  { id: 'VENOM', label: 'ヴェノム' },
-  { id: 'CHASE', label: 'チェイス' },
-  { id: 'HACKER', label: 'ハッカー' },
-  { id: 'BERSERKER', label: 'バーサーカー' },
-];
+const roles = Array.from(new Set(UNITS.map((unit) => unit.role)));
 
 const createDefaultInput = (): DebugSimulationInput => ({
   actorUnitId: unitById.has('volt') ? 'volt' : UNITS[0].id,
@@ -54,10 +35,9 @@ const createDefaultInput = (): DebugSimulationInput => ({
   targetDefense: defaultTarget.defense,
   targetWeight: defaultTarget.weight,
   targetRole: defaultTarget.role,
-  targetPoison: 0,
-  targetGuarded: false,
-  targetBerserk: false,
-  targetTaunted: false,
+  positionPresetId: DEBUG_TRAINING_CONFIG.defaultPositionPresetId,
+  actorStatuses: createDefaultDebugStatuses(),
+  targetStatuses: createDefaultDebugStatuses(),
 });
 
 const skipLabels = {
@@ -67,26 +47,17 @@ const skipLabels = {
   state: '状態重複',
 };
 
-const actionLabels = {
-  attack: 'ATTACK',
-  heavy: 'IMPACT',
-  move: 'MOVE',
-  jump: 'JUMP',
-  throw: 'THROW',
-  taunt: 'TAUNT',
-  pull: 'PULL',
-  retreat: 'RETREAT',
-  heal: 'REPAIR',
-  guard: 'GUARD',
-  buff: 'BOOST',
-  berserk: 'BERSERK',
-  poison: 'POISON',
-  burn: 'BURN',
-  follow: 'FOLLOW',
-  wait: 'WAIT',
-};
+const damageParameterNames = ['attackScale', 'flatDamage', 'minimumDamage', 'statusTargetDamageBonus'] as const;
 
-const damageActions = new Set(['attack', 'heavy', 'throw', 'poison', 'burn', 'follow']);
+const hasDamageEffect = (instruction: (typeof INSTRUCTIONS)[number]) =>
+  damageParameterNames.some((parameter) => instruction.params[parameter] !== undefined);
+
+const statusLabels = (values: Record<string, number>) =>
+  DEBUG_TRAINING_CONFIG.statuses.flatMap((status) => {
+    const value = values[status.id] ?? 0;
+    if (value <= 0) return [];
+    return [status.control === 'stacks' ? `${status.label} ×${value}` : status.label];
+  });
 
 function Metric({
   label,
@@ -117,6 +88,7 @@ function NumberControl({
   max,
   step = 1,
   suffix,
+  ariaLabel,
   onChange,
 }: {
   label: string;
@@ -125,6 +97,7 @@ function NumberControl({
   max: number;
   step?: number;
   suffix?: string;
+  ariaLabel?: string;
   onChange: (value: number) => void;
 }) {
   return (
@@ -132,7 +105,7 @@ function NumberControl({
       <span>{label}</span>
       <div>
         <input
-          aria-label={label}
+          aria-label={ariaLabel ?? label}
           type="number"
           value={value}
           min={min}
@@ -143,6 +116,55 @@ function NumberControl({
         {suffix && <small>{suffix}</small>}
       </div>
     </label>
+  );
+}
+
+function StatusControls({
+  sideLabel,
+  values,
+  onChange,
+}: {
+  sideLabel: string;
+  values: Record<string, number>;
+  onChange: (values: Record<string, number>) => void;
+}) {
+  const stackStatuses = DEBUG_TRAINING_CONFIG.statuses.filter((status) => status.control === 'stacks');
+  const toggleStatuses = DEBUG_TRAINING_CONFIG.statuses.filter((status) => status.control === 'toggle');
+  const update = (statusId: string, value: number) => onChange({ ...values, [statusId]: value });
+  return (
+    <>
+      {stackStatuses.map((status) => (
+        <NumberControl
+          key={status.id}
+          label={`${status.label}スタック`}
+          ariaLabel={`${sideLabel} ${status.label}スタック`}
+          value={values[status.id] ?? 0}
+          min={status.min ?? 0}
+          max={status.max ?? 99}
+          step={status.step ?? 1}
+          onChange={(value) => update(status.id, value)}
+        />
+      ))}
+      {toggleStatuses.length > 0 && (
+        <div className="debug-status-toggles">
+          {toggleStatuses.map((status) => {
+            const active = (values[status.id] ?? 0) > 0;
+            return (
+              <button
+                key={status.id}
+                aria-label={`${sideLabel} ${status.label} ${status.description}`}
+                aria-pressed={active}
+                className={active ? 'active' : ''}
+                onClick={() => update(status.id, active ? 0 : 1)}
+              >
+                <span>{status.label}</span>
+                <small>{status.description}</small>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -214,7 +236,9 @@ function DebugBattlePreview({
   const target = fighters.find((fighter) => fighter.instanceId === 'debug-target') ?? fighters[1];
   const elapsed = result?.elapsed ?? 0;
   const currentDistance = Math.abs(actor.x - target.x);
+  const actorInRange = currentDistance <= actor.range;
   const mutuallyInRange = currentDistance <= actor.range && currentDistance <= target.range;
+  const rangeLabel = mutuallyInRange ? '相互射程内' : actorInRange ? '攻撃側の射程内' : '攻撃側の射程外';
 
   return (
     <section className="debug-arena-stage" aria-label="1対1戦闘テスト">
@@ -237,9 +261,9 @@ function DebugBattlePreview({
         </div>
       </div>
       <BattleScene fighters={fighters} flash={flash} running={running} />
-      <div className={`debug-range-lock ${mutuallyInRange ? '' : 'is-outside'}`}>
+      <div className={`debug-range-lock ${actorInRange ? '' : 'is-outside'}`}>
         <Crosshair size={13} />
-        <span>{mutuallyInRange ? '相互射程内' : '射程変化あり'}</span>
+        <span>{rangeLabel}</span>
         <b>{currentDistance.toFixed(1)} RNG</b>
         <small>
           {actor.range} / {target.range}
@@ -290,23 +314,15 @@ export function DebugRoom() {
   const measuredInstruction = instructionById.get(measuredInput.instructionId) ?? INSTRUCTIONS[0];
   const measuredTarget = unitById.get(measuredInput.targetUnitId) ?? UNITS[0];
   const isHealing = measuredInstruction.action === 'heal';
-  const isDamage = damageActions.has(measuredInstruction.action);
+  const isDamage = hasDamageEffect(measuredInstruction);
   const effectPerUse = isHealing
     ? result && result.executions > 0
       ? Number((result.totalHealing / result.executions).toFixed(1))
       : 0
     : (result?.damagePerHit ?? 0);
   const efficiency = result?.effectPerCost ?? (measuredInstruction.abilityCost === 0 ? 'FREE' : '—');
-  const displayedTargetPoison =
-    measuredInstruction.action === 'poison'
-      ? (result?.finalPoison ?? measuredInput.targetPoison)
-      : measuredInput.targetPoison;
-  const activeStatuses = [
-    displayedTargetPoison > 0 ? `毒 ×${displayedTargetPoison}` : null,
-    measuredInput.targetGuarded ? 'ガード' : null,
-    measuredInput.targetBerserk ? 'バーサーク' : null,
-    measuredInput.targetTaunted ? '挑発' : null,
-  ].filter(Boolean);
+  const activeActorStatuses = statusLabels(result?.finalActorStatuses ?? measuredInput.actorStatuses);
+  const activeTargetStatuses = statusLabels(result?.finalTargetStatuses ?? measuredInput.targetStatuses);
 
   const updateInput = (next: Partial<DebugSimulationInput>) => {
     setInput((current) => ({ ...current, ...next }));
@@ -342,7 +358,11 @@ export function DebugRoom() {
   };
 
   const measure = () => {
-    const next = { ...input };
+    const next = {
+      ...input,
+      actorStatuses: { ...input.actorStatuses },
+      targetStatuses: { ...input.targetStatuses },
+    };
     setMeasuredInput(next);
     setResult(runDebugSimulation(next));
     setSequence((current) => current + 1);
@@ -356,7 +376,11 @@ export function DebugRoom() {
   };
 
   const applySettings = () => {
-    setMeasuredInput({ ...input });
+    setMeasuredInput({
+      ...input,
+      actorStatuses: { ...input.actorStatuses },
+      targetStatuses: { ...input.targetStatuses },
+    });
     setResult(null);
     setSequence((current) => current + 1);
     setDirty(false);
@@ -477,7 +501,7 @@ export function DebugRoom() {
 
           <div className="debug-skill-readout">
             <div>
-              <small>{actionLabels[measuredInstruction.action]}</small>
+              <small>{measuredInstruction.action.toUpperCase()}</small>
               <b>{measuredInstruction.title}</b>
             </div>
             <span>COST {measuredInstruction.abilityCost}</span>
@@ -523,11 +547,26 @@ export function DebugRoom() {
               </span>
             </div>
             <div className="debug-profile-statuses">
-              {activeStatuses.length > 0 ? (
-                activeStatuses.map((status) => <span key={status}>{status}</span>)
-              ) : (
-                <span className="normal">状態なし</span>
-              )}
+              <div>
+                <small>ATTACKER</small>
+                <p>
+                  {activeActorStatuses.length > 0 ? (
+                    activeActorStatuses.map((status) => <span key={status}>{status}</span>)
+                  ) : (
+                    <span className="normal">状態なし</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <small>DUMMY</small>
+                <p>
+                  {activeTargetStatuses.length > 0 ? (
+                    activeTargetStatuses.map((status) => <span key={status}>{status}</span>)
+                  ) : (
+                    <span className="normal">状態なし</span>
+                  )}
+                </p>
+              </div>
             </div>
           </section>
 
@@ -626,6 +665,33 @@ export function DebugRoom() {
             </div>
           </div>
 
+          <div className="debug-config-section status actor-status">
+            <span>攻撃側の状態</span>
+            <StatusControls
+              sideLabel="攻撃側"
+              values={input.actorStatuses}
+              onChange={(actorStatuses) => updateInput({ actorStatuses })}
+            />
+          </div>
+
+          <div className="debug-config-section position">
+            <span>開始位置</span>
+            <label className="debug-select-control">
+              <span>射程プリセット</span>
+              <select
+                aria-label="開始位置"
+                value={input.positionPresetId}
+                onChange={(event) => updateInput({ positionPresetId: event.target.value })}
+              >
+                {DEBUG_TRAINING_CONFIG.positionPresets.map((preset) => (
+                  <option value={preset.id} key={preset.id}>
+                    {preset.label} / {preset.description}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <div className="debug-config-section enemy">
             <span>敵ユニット</span>
             <label className="debug-select-control">
@@ -650,8 +716,8 @@ export function DebugRoom() {
                 onChange={(event) => updateInput({ targetRole: event.target.value as Role })}
               >
                 {roles.map((role) => (
-                  <option value={role.id} key={role.id}>
-                    {role.label} / {role.id}
+                  <option value={role} key={role}>
+                    {role}
                   </option>
                 ))}
               </select>
@@ -684,42 +750,11 @@ export function DebugRoom() {
 
           <div className="debug-config-section status">
             <span>敵の状態</span>
-            <NumberControl
-              label="毒スタック"
-              value={input.targetPoison}
-              min={0}
-              max={99}
-              onChange={(targetPoison) => updateInput({ targetPoison })}
+            <StatusControls
+              sideLabel="敵側"
+              values={input.targetStatuses}
+              onChange={(targetStatuses) => updateInput({ targetStatuses })}
             />
-            <div className="debug-status-toggles">
-              <button
-                aria-pressed={input.targetGuarded}
-                className={input.targetGuarded ? 'active' : ''}
-                onClick={() => updateInput({ targetGuarded: !input.targetGuarded })}
-              >
-                <Shield size={14} />
-                <span>ガード</span>
-                <small>被ダメージ軽減</small>
-              </button>
-              <button
-                aria-pressed={input.targetBerserk}
-                className={input.targetBerserk ? 'active' : ''}
-                onClick={() => updateInput({ targetBerserk: !input.targetBerserk })}
-              >
-                <Sparkles size={14} />
-                <span>バーサーク</span>
-                <small>状態表示</small>
-              </button>
-              <button
-                aria-pressed={input.targetTaunted}
-                className={input.targetTaunted ? 'active' : ''}
-                onClick={() => updateInput({ targetTaunted: !input.targetTaunted })}
-              >
-                <Crosshair size={14} />
-                <span>挑発</span>
-                <small>標的固定</small>
-              </button>
-            </div>
           </div>
 
           <div className="debug-recovery-note">

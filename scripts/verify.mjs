@@ -10,6 +10,7 @@ const commands = [
     : { label: 'production build', command: process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', args: ['build'] },
   { label: 'core rules', command: process.execPath, args: ['scripts/core-test.mjs'] },
   { label: 'combat math', command: process.execPath, args: ['scripts/combat-test.mjs'] },
+  { label: 'debug room data contract', command: process.execPath, args: ['scripts/debug-data-test.mjs'] },
   { label: 'power balance', command: process.execPath, args: ['scripts/balance-check.mjs'] },
 ];
 

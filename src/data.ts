@@ -1,6 +1,7 @@
 import rawGameData from '../game-data/game-balance.json' with { type: 'json' };
 import type {
   ConditionId,
+  Fighter,
   Instruction,
   Rarity,
   ReactionBlock,
@@ -9,6 +10,7 @@ import type {
   TargetDomain,
   TargetSelectorId,
   UnitDefinition,
+  ActionParameters,
 } from './types.ts';
 
 export type BattleConfig = {
@@ -52,6 +54,37 @@ export type EconomyConfig = {
 export type DebugTrainingConfig = {
   minimumDummyHp: number;
   recoveryDelaySeconds: number;
+  outsideRangeGap: number;
+  defaultPositionPresetId: string;
+  positionPresets: DebugPositionPresetDefinition[];
+  statuses: DebugStatusDefinition[];
+};
+
+export type DebugPositionPresetDefinition = {
+  id: string;
+  label: string;
+  description: string;
+  rangeReference: 'mutual' | 'actor' | 'target';
+  relation: 'inside' | 'outside';
+};
+
+export type DebugStatusEffectDefinition = {
+  fighterField: keyof Fighter;
+  source: 'control' | 'enabled' | 'opponentId' | 'instructionParam' | 'sessionDuration';
+  instructionId?: string;
+  parameter?: keyof ActionParameters;
+  operation?: 'set' | 'multiply';
+};
+
+export type DebugStatusDefinition = {
+  id: string;
+  label: string;
+  description: string;
+  control: 'toggle' | 'stacks';
+  min?: number;
+  max?: number;
+  step?: number;
+  effects: DebugStatusEffectDefinition[];
 };
 
 export type ShopConfig = {

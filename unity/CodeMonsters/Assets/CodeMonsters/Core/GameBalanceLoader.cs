@@ -35,8 +35,16 @@ namespace CodeMonsters.Core
                 );
             if (data.Encounters.Count != 5)
                 throw new InvalidDataException("The migration spike expects exactly five ordered encounters");
-            if (data.DebugTraining.MinimumDummyHp < 1 || data.DebugTraining.RecoveryDelaySeconds <= 0)
-                throw new InvalidDataException("Debug training HP and recovery delay must be positive");
+            if (
+                data.DebugTraining.MinimumDummyHp < 1
+                || data.DebugTraining.RecoveryDelaySeconds <= 0
+                || data.DebugTraining.OutsideRangeGap <= 0
+                || data.DebugTraining.PositionPresets.Count == 0
+                || data.DebugTraining.Statuses.Count == 0
+            )
+                throw new InvalidDataException("Debug training HP, recovery, position, and status data must be valid");
+            if (!data.DebugTraining.PositionPresets.Exists(preset => preset.Id == data.DebugTraining.DefaultPositionPresetId))
+                throw new InvalidDataException("Debug training default position preset is missing");
 
             var unitIds = new HashSet<string>();
             foreach (var unit in data.Units)
@@ -47,6 +55,18 @@ namespace CodeMonsters.Core
             foreach (var instruction in data.Instructions)
                 if (!instructionIds.Add(instruction.Id))
                     throw new InvalidDataException($"Duplicate instruction id: {instruction.Id}");
+
+            var debugStatusIds = new HashSet<string>();
+            foreach (var status in data.DebugTraining.Statuses)
+            {
+                if (!debugStatusIds.Add(status.Id))
+                    throw new InvalidDataException($"Duplicate debug status id: {status.Id}");
+                if (status.Effects.Count == 0)
+                    throw new InvalidDataException($"Debug status {status.Id} has no effects");
+                foreach (var effect in status.Effects)
+                    if (effect.Source == "instructionParam" && !instructionIds.Contains(effect.InstructionId))
+                        throw new InvalidDataException($"Debug status {status.Id} references unknown instruction");
+            }
 
             foreach (var encounter in data.Encounters)
             {

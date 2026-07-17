@@ -61,6 +61,60 @@ namespace CodeMonsters.Core
 
         [JsonProperty("recoveryDelaySeconds")]
         public double RecoveryDelaySeconds;
+
+        [JsonProperty("outsideRangeGap")]
+        public double OutsideRangeGap;
+
+        [JsonProperty("defaultPositionPresetId")]
+        public string DefaultPositionPresetId = "";
+
+        [JsonProperty("positionPresets")]
+        public List<DebugPositionPresetDefinition> PositionPresets = new List<DebugPositionPresetDefinition>();
+
+        [JsonProperty("statuses")]
+        public List<DebugStatusDefinition> Statuses = new List<DebugStatusDefinition>();
+    }
+
+    public sealed class DebugPositionPresetDefinition
+    {
+        [JsonProperty("id")]
+        public string Id = "";
+
+        [JsonProperty("rangeReference")]
+        public string RangeReference = "";
+
+        [JsonProperty("relation")]
+        public string Relation = "";
+    }
+
+    public sealed class DebugStatusDefinition
+    {
+        [JsonProperty("id")]
+        public string Id = "";
+
+        [JsonProperty("control")]
+        public string Control = "";
+
+        [JsonProperty("effects")]
+        public List<DebugStatusEffectDefinition> Effects = new List<DebugStatusEffectDefinition>();
+    }
+
+    public sealed class DebugStatusEffectDefinition
+    {
+        [JsonProperty("fighterField")]
+        public string FighterField = "";
+
+        [JsonProperty("source")]
+        public string Source = "";
+
+        [JsonProperty("instructionId")]
+        public string InstructionId = "";
+
+        [JsonProperty("parameter")]
+        public string Parameter = "";
+
+        [JsonProperty("operation")]
+        public string Operation = "";
     }
 
     public sealed class UnitDefinition

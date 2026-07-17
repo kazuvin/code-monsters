@@ -20,6 +20,7 @@ import {
 import { knockbackPosition, resolveActionImpact, throwBehind, tickCooldowns } from './rules.ts';
 
 export type DebugRunMode = 'single' | 'timeline';
+export type DebugStatusValues = Record<string, number>;
 
 export type DebugSimulationInput = {
   actorUnitId: string;
@@ -35,10 +36,9 @@ export type DebugSimulationInput = {
   targetDefense: number;
   targetWeight: number;
   targetRole: Role;
-  targetPoison: number;
-  targetGuarded: boolean;
-  targetBerserk: boolean;
-  targetTaunted: boolean;
+  positionPresetId: string;
+  actorStatuses: DebugStatusValues;
+  targetStatuses: DebugStatusValues;
 };
 
 export type DebugEffectEvent = {
@@ -72,6 +72,8 @@ export type DebugSimulationResult = {
   finalTargetHp: number;
   finalTargetHpRatio: number;
   finalPoison: number;
+  finalActorStatuses: DebugStatusValues;
+  finalTargetStatuses: DebugStatusValues;
   targetDisplacement: number;
   actorDisplacement: number;
   attackDelta: number;
@@ -80,6 +82,7 @@ export type DebugSimulationResult = {
   minimumGauge: number;
   emptyGaugeRate: number;
   mutualDistance: number;
+  startingDistance: number;
   targetRecoveryCount: number;
   skipped: Record<DecisionReason, number>;
   events: DebugEffectEvent[];
@@ -97,7 +100,7 @@ type DebugSetup = {
   targetDomain: TargetDomain;
   actorX: number;
   targetX: number;
-  mutualDistance: number;
+  startingDistance: number;
 };
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
@@ -132,8 +135,94 @@ function requireInstruction(id: string): Instruction {
   return instruction;
 }
 
-function mutualRangeDistance(actor: UnitDefinition, target: UnitDefinition): number {
-  return round(Math.max(2, Math.min(actor.range, target.range) * BATTLE_CONFIG.rangeStopRatio), 1);
+export function createDefaultDebugStatuses(): DebugStatusValues {
+  return Object.fromEntries(DEBUG_TRAINING_CONFIG.statuses.map((status) => [status.id, 0]));
+}
+
+function requirePositionPreset(id: string) {
+  const preset = DEBUG_TRAINING_CONFIG.positionPresets.find((candidate) => candidate.id === id);
+  if (!preset) throw new Error(`Unknown debug position preset: ${id}`);
+  return preset;
+}
+
+function startingDistance(actor: UnitDefinition, target: UnitDefinition, presetId: string): number {
+  const preset = requirePositionPreset(presetId);
+  const referenceRange =
+    preset.rangeReference === 'mutual'
+      ? Math.min(actor.range, target.range)
+      : preset.rangeReference === 'actor'
+        ? actor.range
+        : target.range;
+  const distance =
+    preset.relation === 'inside'
+      ? Math.max(2, referenceRange * BATTLE_CONFIG.rangeStopRatio)
+      : referenceRange + DEBUG_TRAINING_CONFIG.outsideRangeGap;
+  return round(Math.min(BATTLE_CONFIG.wallRight - BATTLE_CONFIG.wallLeft, distance), 1);
+}
+
+function statusControlValue(statusId: string, values: DebugStatusValues): number {
+  const definition = DEBUG_TRAINING_CONFIG.statuses.find((status) => status.id === statusId);
+  if (!definition) throw new Error(`Unknown debug status: ${statusId}`);
+  const value = Number.isFinite(values[statusId]) ? values[statusId] : 0;
+  return clamp(value, definition.min ?? 0, definition.max ?? (definition.control === 'toggle' ? 1 : value));
+}
+
+export function applyDebugStatuses(
+  fighter: Fighter,
+  values: DebugStatusValues,
+  opponentId: string,
+  sessionDuration = 1,
+): Fighter {
+  const next = { ...fighter };
+  const mutable = next as unknown as Record<string, unknown>;
+  for (const definition of DEBUG_TRAINING_CONFIG.statuses) {
+    const controlValue = statusControlValue(definition.id, values);
+    if (controlValue <= 0) continue;
+    for (const effect of definition.effects) {
+      if (!(effect.fighterField in mutable)) {
+        throw new Error(`Debug status ${definition.id} references unknown fighter field: ${effect.fighterField}`);
+      }
+      let sourceValue: unknown;
+      if (effect.source === 'control') sourceValue = controlValue;
+      if (effect.source === 'enabled') sourceValue = true;
+      if (effect.source === 'opponentId') sourceValue = opponentId;
+      if (effect.source === 'sessionDuration') sourceValue = sessionDuration;
+      if (effect.source === 'instructionParam') {
+        const sourceInstruction = effect.instructionId ? instructionById.get(effect.instructionId) : undefined;
+        const parameterValue = effect.parameter ? sourceInstruction?.params[effect.parameter] : undefined;
+        if (typeof parameterValue !== 'number') {
+          throw new Error(
+            `Debug status ${definition.id} references invalid instruction parameter: ${effect.instructionId}.${effect.parameter}`,
+          );
+        }
+        sourceValue = parameterValue;
+      }
+      if (effect.operation === 'multiply') {
+        const current = mutable[effect.fighterField];
+        if (typeof current !== 'number' || typeof sourceValue !== 'number') {
+          throw new Error(`Debug status ${definition.id} cannot multiply non-numeric field: ${effect.fighterField}`);
+        }
+        const multiplied = current * sourceValue;
+        mutable[effect.fighterField] = effect.fighterField === 'attack' ? Math.round(multiplied) : round(multiplied, 2);
+      } else {
+        mutable[effect.fighterField] = sourceValue;
+      }
+    }
+  }
+  return next;
+}
+
+export function readDebugStatusValues(fighter: Fighter): DebugStatusValues {
+  return Object.fromEntries(
+    DEBUG_TRAINING_CONFIG.statuses.map((definition) => {
+      const primaryEffect = definition.effects.find(
+        (effect) => effect.source !== 'instructionParam' && effect.source !== 'sessionDuration',
+      );
+      const fieldValue = primaryEffect ? fighter[primaryEffect.fighterField] : 0;
+      const value = typeof fieldValue === 'number' ? fieldValue : fieldValue ? 1 : 0;
+      return [definition.id, value];
+    }),
+  );
 }
 
 function debugTargetSelector(instruction: Instruction, requested: TargetSelectorId): TargetSelectorId {
@@ -150,7 +239,7 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
 
   const actorId = 'debug-actor';
   const dummyId = 'debug-target';
-  const distance = mutualRangeDistance(actorDefinition, targetDefinition);
+  const distance = startingDistance(actorDefinition, targetDefinition, input.positionPresetId);
   const actorX = round(50 - distance / 2, 1);
   const targetX = round(50 + distance / 2, 1);
   const runDuration = input.mode === 'single' ? 12 : input.durationSeconds;
@@ -158,7 +247,6 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
   const targetMaxHp = Math.max(1, Math.round(input.targetMaxHp));
   const targetSelectorId = debugTargetSelector(instruction, input.targetSelectorId);
   const targetDomain: TargetDomain = targetSelectorId === 'self' ? 'self' : 'enemy';
-  const guardInstruction = instructionById.get('tank-guard');
 
   const actorInventory: UnitInventoryItem = {
     ...actorDefinition,
@@ -166,38 +254,41 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
     program: [{ actionId: instruction.id, conditionId: input.conditionId, targetId: targetSelectorId }],
     reaction: null,
   };
-  const actor: Fighter = {
-    ...actorInventory,
-    ...baseFighterState,
-    instanceId: actorId,
-    team: 'ally',
-    hp: Math.max(1, Math.round(actorDefinition.maxHp * clamp(input.actorHpRatio, 0.01, 1))),
-    abilityGauge: clamp(input.initialGauge, 0, BATTLE_CONFIG.abilityGaugeMax),
-    x: actorX,
-    cooldown: 0,
-  };
-  const target: Fighter = {
-    ...targetDefinition,
-    ...baseFighterState,
-    instanceId: dummyId,
-    team: 'enemy',
-    name: `DUMMY / ${targetDefinition.name}`,
-    role: input.targetRole,
-    maxHp: targetMaxHp,
-    hp: targetMaxHp,
-    defense: Math.max(0, Math.round(input.targetDefense)),
-    weight: Math.max(0, input.targetWeight),
-    poison: Math.max(0, Math.round(input.targetPoison)),
-    guarded: input.targetGuarded,
-    guardDamageScale: input.targetGuarded ? (guardInstruction?.params.incomingDamageScale ?? 1) : 1,
-    guardKnockbackScale: input.targetGuarded ? (guardInstruction?.params.incomingKnockbackScale ?? 1) : 1,
-    berserk: input.targetBerserk,
-    tauntTargetId: input.targetTaunted ? actorId : null,
-    tauntSeconds: input.targetTaunted ? inertCooldown : 0,
-    attack: 0,
-    x: targetX,
-    cooldown: inertCooldown,
-  };
+  const actor = applyDebugStatuses(
+    {
+      ...actorInventory,
+      ...baseFighterState,
+      instanceId: actorId,
+      team: 'ally',
+      hp: Math.max(1, Math.round(actorDefinition.maxHp * clamp(input.actorHpRatio, 0.01, 1))),
+      abilityGauge: clamp(input.initialGauge, 0, BATTLE_CONFIG.abilityGaugeMax),
+      x: actorX,
+      cooldown: 0,
+    },
+    input.actorStatuses,
+    dummyId,
+    inertCooldown,
+  );
+  const target = applyDebugStatuses(
+    {
+      ...targetDefinition,
+      ...baseFighterState,
+      instanceId: dummyId,
+      team: 'enemy',
+      name: `DUMMY / ${targetDefinition.name}`,
+      role: input.targetRole,
+      maxHp: targetMaxHp,
+      hp: targetMaxHp,
+      defense: Math.max(0, Math.round(input.targetDefense)),
+      weight: Math.max(0, input.targetWeight),
+      attack: 0,
+      x: targetX,
+      cooldown: inertCooldown,
+    },
+    input.targetStatuses,
+    actorId,
+    inertCooldown,
+  );
 
   return {
     fighters: [actor, target],
@@ -209,7 +300,7 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
     targetDomain,
     actorX,
     targetX,
-    mutualDistance: distance,
+    startingDistance: distance,
   };
 }
 
@@ -384,6 +475,7 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
   const executions = actionDecisions.filter((decision) => decision.outcome === 'executed').length;
   const finalActor = fighters.find((fighter) => fighter.instanceId === setup.actorId);
   const finalTarget = fighters.find((fighter) => fighter.instanceId === setup.effectTargetId);
+  const finalDummy = fighters.find((fighter) => fighter.instanceId === setup.dummyId);
   const effectTotal = totalDamage + totalHealing;
   const costSpent = executions * setup.instruction.abilityCost;
   const initialPoison = setup.fighters.find((fighter) => fighter.instanceId === setup.effectTargetId)?.poison ?? 0;
@@ -413,6 +505,8 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
     finalTargetHp: Math.max(0, round(finalTarget?.hp ?? 0, 1)),
     finalTargetHpRatio: finalTarget ? round(finalTarget.hp / finalTarget.maxHp, 3) : 0,
     finalPoison: finalTarget?.poison ?? 0,
+    finalActorStatuses: finalActor ? readDebugStatusValues(finalActor) : createDefaultDebugStatuses(),
+    finalTargetStatuses: finalDummy ? readDebugStatusValues(finalDummy) : createDefaultDebugStatuses(),
     targetDisplacement: round(maximumTargetDisplacement, 1),
     actorDisplacement: round(maximumActorDisplacement, 1),
     attackDelta: round((finalActor?.attack ?? initialActor.attack) - initialActor.attack, 1),
@@ -420,7 +514,8 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
     effectState: finalActor?.berserk ? 'BERSERK' : finalActor?.guarded ? 'GUARD' : 'ACTIVE',
     minimumGauge: round(minimumGauge, 1),
     emptyGaugeRate: elapsed > 0 ? round(emptyGaugeSeconds / elapsed, 3) : 0,
-    mutualDistance: setup.mutualDistance,
+    mutualDistance: setup.startingDistance,
+    startingDistance: setup.startingDistance,
     targetRecoveryCount: targetRecoveryCount,
     skipped: countSkips(decisions, setup.instruction.id),
     events: events.slice(0, 160),

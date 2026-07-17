@@ -649,6 +649,24 @@
 
 .debug-profile-statuses {
   margin-top: 7px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.debug-profile-statuses > div {
+  min-width: 0;
+}
+
+.debug-profile-statuses small {
+  display: block;
+  margin-bottom: 4px;
+  color: #59636e;
+  font: 600 6px "IBM Plex Mono";
+}
+
+.debug-profile-statuses p {
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -813,6 +831,11 @@
   color: #d59aff;
 }
 
+.debug-config-section.actor-status > span,
+.debug-config-section.position > span {
+  color: var(--cyan);
+}
+
 .debug-select-control,
 .debug-number-control {
   display: block;
@@ -907,13 +930,13 @@
 
 .debug-status-toggles {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
   gap: 6px;
 }
 
 .debug-status-toggles button {
   min-width: 0;
-  min-height: 65px;
+  min-height: 56px;
   padding: 7px 5px;
   display: grid;
   justify-items: center;

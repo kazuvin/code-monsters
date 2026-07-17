@@ -29,6 +29,7 @@ for (const viewport of [
         element.textContent?.trim(),
       ),
       targetClasses: document.querySelector('.debug-arena-stage .sprite.enemy')?.className,
+      actorClasses: document.querySelector('.debug-arena-stage .sprite.ally')?.className,
       actorLeft: document.querySelector('.debug-arena-stage .sprite.ally')?.style.left,
       targetLeft: document.querySelector('.debug-arena-stage .sprite.enemy')?.style.left,
       recovery: document.querySelector('.debug-auto-recovery')?.textContent?.replace(/\s+/g, ' ').trim(),
@@ -90,10 +91,10 @@ for (const viewport of [
   await page.getByLabel('最大HP').fill('500');
   await page.getByLabel('防御').fill('0');
   await page.getByLabel('敵のロール属性').selectOption('STRIKER');
-  await page.getByLabel('毒スタック').fill('2');
-  await page.getByRole('button', { name: 'ガード 被ダメージ軽減', exact: true }).click();
-  await page.getByRole('button', { name: 'バーサーク 状態表示', exact: true }).click();
-  await page.getByRole('button', { name: '挑発 標的固定', exact: true }).click();
+  await page.getByLabel('敵側 毒スタック').fill('2');
+  await page.getByRole('button', { name: '敵側 ガード 被ダメージ・ノックバック軽減', exact: true }).click();
+  await page.getByRole('button', { name: '敵側 バーサーク 攻撃力・速度を強化', exact: true }).click();
+  await page.getByRole('button', { name: '敵側 挑発 相手を標的として固定', exact: true }).click();
   if (viewport.name === 'mobile') {
     await page.screenshot({ path: '/tmp/code-monsters-mobile-debug-room-settings.png', fullPage: false });
   }
@@ -102,12 +103,25 @@ for (const viewport of [
   const guarded = await readMeasurement();
 
   await openSettings();
-  await page.getByRole('button', { name: 'ガード 被ダメージ軽減', exact: true }).click();
+  await page.getByRole('button', { name: '敵側 ガード 被ダメージ・ノックバック軽減', exact: true }).click();
   await applySettings();
   await measure();
   const unguarded = await readMeasurement();
 
+  await openSettings();
+  await page.getByLabel('計測する技').selectOption('pull-in');
+  await page.getByLabel('開始位置').selectOption('actor-out-of-range');
+  await page.getByLabel('攻撃側 毒スタック').fill('3');
+  await page.getByRole('button', { name: '攻撃側 ガード 被ダメージ・ノックバック軽減', exact: true }).click();
+  await page.getByRole('button', { name: '攻撃側 バーサーク 攻撃力・速度を強化', exact: true }).click();
+  await page.getByRole('button', { name: '攻撃側 挑発 相手を標的として固定', exact: true }).click();
+  await applySettings();
+  const actorConfigured = await readMeasurement();
+  await measure();
+  const actorMeasured = await readMeasurement();
   await page.getByRole('button', { name: 'リセット', exact: true }).click();
+  const actorReset = await readMeasurement();
+
   const configuredReset = await readMeasurement();
   const measuredSkillAfterReset = (await page.locator('.debug-skill-readout b').textContent())?.trim();
 
@@ -132,6 +146,9 @@ for (const viewport of [
     poisonReset,
     guarded,
     unguarded,
+    actorConfigured,
+    actorMeasured,
+    actorReset,
     configuredReset,
     measuredSkillAfterReset,
     settingsScrollTop,
@@ -203,9 +220,22 @@ for (const result of results) {
   if (result.unguarded.value <= result.guarded.value)
     throw new Error(`${result.viewport}: ガード状態の有無が実ダメージへ反映されていません`);
   if (
+    !result.actorConfigured.stage.range.includes('攻撃側の射程外') ||
+    !result.actorConfigured.stage.statuses.includes('毒 ×3') ||
+    !result.actorConfigured.stage.statuses.includes('ガード') ||
+    !result.actorConfigured.stage.actorClasses.includes('poisoned') ||
+    !result.actorConfigured.stage.actorClasses.includes('berserk-active') ||
+    !result.actorConfigured.stage.actorClasses.includes('taunt-locked') ||
+    result.actorMeasured.verdict !== 'EFFECT CONFIRMED' ||
+    result.actorMeasured.stage.targetLeft === result.actorConfigured.stage.targetLeft ||
+    !result.actorReset.stage.range.includes('攻撃側の射程外') ||
+    !result.actorReset.stage.actorClasses.includes('poisoned')
+  )
+    throw new Error(`${result.viewport}: 攻撃側の状態または射程プリセットが戦闘・リセットへ反映されていません`);
+  if (
     result.configuredReset.verdict !== 'READY TO MEASURE' ||
     result.configuredReset.stage.targetHp !== '500 / 500' ||
-    result.measuredSkillAfterReset !== 'ちょっと吹き飛ばす'
+    result.measuredSkillAfterReset !== '引き寄せる'
   )
     throw new Error(`${result.viewport}: リセット時に現在の計測設定を維持した初期状態へ戻りません`);
   if (result.settingsScrollTop !== 0) throw new Error(`${result.viewport}: 設定を開いたとき先頭が表示されません`);

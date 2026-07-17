@@ -31,7 +31,98 @@
   },
   "debugTraining": {
     "minimumDummyHp": 1,
-    "recoveryDelaySeconds": 3
+    "recoveryDelaySeconds": 3,
+    "outsideRangeGap": 8,
+    "defaultPositionPresetId": "mutual-in-range",
+    "positionPresets": [
+      {
+        "id": "mutual-in-range",
+        "label": "相互射程内",
+        "description": "双方の通常攻撃が届く距離",
+        "rangeReference": "mutual",
+        "relation": "inside"
+      },
+      {
+        "id": "actor-in-range",
+        "label": "攻撃側の射程内",
+        "description": "攻撃側ユニットの通常射程を基準に配置",
+        "rangeReference": "actor",
+        "relation": "inside"
+      },
+      {
+        "id": "actor-out-of-range",
+        "label": "攻撃側の射程外",
+        "description": "攻撃側ユニットの通常射程より外に配置",
+        "rangeReference": "actor",
+        "relation": "outside"
+      }
+    ],
+    "statuses": [
+      {
+        "id": "poison",
+        "label": "毒",
+        "description": "毒スタックを保持",
+        "control": "stacks",
+        "min": 0,
+        "max": 99,
+        "step": 1,
+        "effects": [{ "fighterField": "poison", "source": "control" }]
+      },
+      {
+        "id": "guarded",
+        "label": "ガード",
+        "description": "被ダメージ・ノックバック軽減",
+        "control": "toggle",
+        "effects": [
+          { "fighterField": "guarded", "source": "enabled" },
+          {
+            "fighterField": "guardDamageScale",
+            "source": "instructionParam",
+            "instructionId": "tank-guard",
+            "parameter": "incomingDamageScale"
+          },
+          {
+            "fighterField": "guardKnockbackScale",
+            "source": "instructionParam",
+            "instructionId": "tank-guard",
+            "parameter": "incomingKnockbackScale"
+          }
+        ]
+      },
+      {
+        "id": "berserk",
+        "label": "バーサーク",
+        "description": "攻撃力・速度を強化",
+        "control": "toggle",
+        "effects": [
+          { "fighterField": "berserk", "source": "enabled" },
+          {
+            "fighterField": "attack",
+            "source": "instructionParam",
+            "instructionId": "berserker-mode",
+            "parameter": "attackScale",
+            "operation": "multiply"
+          },
+          {
+            "fighterField": "speed",
+            "source": "instructionParam",
+            "instructionId": "berserker-mode",
+            "parameter": "speedScale",
+            "operation": "multiply"
+          }
+        ]
+      },
+      {
+        "id": "taunted",
+        "label": "挑発",
+        "description": "相手を標的として固定",
+        "control": "toggle",
+        "effects": [
+          { "fighterField": "tauntTargetId", "source": "opponentId" },
+          { "fighterField": "tauntSeconds", "source": "sessionDuration" }
+        ]
+      }
+    ]
   },
   "economy": {
     "startingCoins": 10,

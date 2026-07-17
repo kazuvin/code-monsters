@@ -142,6 +142,14 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'defaultReactions',
     data.defaultReactions.map((entry) => entry.unitId),
   );
+  unique(
+    'debugPositionPreset',
+    data.debugTraining.positionPresets.map((preset) => preset.id),
+  );
+  unique(
+    'debugStatus',
+    data.debugTraining.statuses.map((status) => status.id),
+  );
   const units = new Set(data.units.map((unit) => unit.id));
   const instructions = new Set(data.instructions.map((instruction) => instruction.id));
   const conditions = new Set(data.conditions.map((condition) => condition.id));
@@ -215,9 +223,40 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   if (
     !Number.isInteger(data.debugTraining.minimumDummyHp) ||
     data.debugTraining.minimumDummyHp < 1 ||
-    data.debugTraining.recoveryDelaySeconds <= 0
+    data.debugTraining.recoveryDelaySeconds <= 0 ||
+    data.debugTraining.outsideRangeGap <= 0 ||
+    data.debugTraining.positionPresets.length === 0 ||
+    data.debugTraining.statuses.length === 0
   )
-    error('INVALID_DEBUG_TRAINING_CONFIG', 'デバッグ訓練の最低HPまたは回復待ち時間が不正です');
+    error('INVALID_DEBUG_TRAINING_CONFIG', 'デバッグ訓練のHP・回復・距離・状態設定が不正です');
+  if (!data.debugTraining.positionPresets.some((preset) => preset.id === data.debugTraining.defaultPositionPresetId))
+    error('INVALID_DEBUG_POSITION', 'デバッグ訓練のデフォルト開始位置が未定義です');
+  for (const preset of data.debugTraining.positionPresets) {
+    if (
+      !['mutual', 'actor', 'target'].includes(preset.rangeReference) ||
+      !['inside', 'outside'].includes(preset.relation)
+    )
+      error('INVALID_DEBUG_POSITION', `デバッグ開始位置 ${preset.id} の射程基準が不正です`);
+  }
+  for (const status of data.debugTraining.statuses) {
+    if (!['toggle', 'stacks'].includes(status.control) || status.effects.length === 0)
+      error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} の操作または効果が不正です`);
+    if (status.control === 'stacks' && ((status.min ?? 0) < 0 || (status.max ?? 0) <= (status.min ?? 0)))
+      error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} のスタック範囲が不正です`);
+    for (const effect of status.effects) {
+      if (!['control', 'enabled', 'opponentId', 'instructionParam', 'sessionDuration'].includes(effect.source))
+        error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} の効果ソースが不正です`);
+      if (effect.operation && !['set', 'multiply'].includes(effect.operation))
+        error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} の演算が不正です`);
+      if (effect.source === 'instructionParam') {
+        const sourceInstruction = data.instructions.find((instruction) => instruction.id === effect.instructionId);
+        if (!sourceInstruction)
+          error('UNKNOWN_INSTRUCTION', `デバッグ状態 ${status.id} が未定義スキルを参照しています`);
+        else if (!effect.parameter || typeof sourceInstruction.params[effect.parameter] !== 'number')
+          error('INVALID_DEBUG_STATUS', `デバッグ状態 ${status.id} が未定義パラメータを参照しています`);
+      }
+    }
+  }
   if (data.balanceAnalysis.abilityReferenceSpeed <= 0)
     error('INVALID_BALANCE_CONFIG', 'abilityReferenceSpeed は正数である必要があります');
   if (data.balanceAnalysis.warningThresholdRatio <= 0 || data.balanceAnalysis.warningThresholdRatio >= 1)

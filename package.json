@@ -13,6 +13,7 @@
     "deploy": "wrangler deploy",
     "verify": "node scripts/verify.mjs",
     "balance:check": "node scripts/balance-check.mjs",
+    "debug:data-check": "node scripts/debug-data-test.mjs",
     "test:core": "node scripts/core-test.mjs",
     "test:combat": "node scripts/combat-test.mjs",
     "test:knockback": "node scripts/knockback-test.mjs",
