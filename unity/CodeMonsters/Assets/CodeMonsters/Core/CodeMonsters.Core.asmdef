@@ -1,0 +1,6 @@
+{
+  "name": "CodeMonsters.Core",
+  "rootNamespace": "CodeMonsters.Core",
+  "references": ["Unity.Newtonsoft.Json"],
+  "autoReferenced": true
+}

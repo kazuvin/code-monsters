@@ -40,7 +40,23 @@ type MutableFighterFields = Pick<
 export type FighterUpdate = { id: string; values: Partial<MutableFighterFields> };
 export type BattleLogPayload = { actor: string; text: string; type: LogItem['type'] };
 export type BattleStep = { flash: BattleFlash; log?: BattleLogPayload; updates: FighterUpdate[] };
-export type BattlePlan = { fighters: Fighter[]; steps: BattleStep[]; logs: BattleLogPayload[]; complete: boolean };
+export type DecisionReason = 'condition' | 'range' | 'cost' | 'state';
+export type DecisionTrace = {
+  actorId: string;
+  actorName: string;
+  team: Fighter['team'];
+  blockIndex: number;
+  actionId: string;
+  outcome: 'executed' | 'skipped';
+  reason?: DecisionReason;
+};
+export type BattlePlan = {
+  fighters: Fighter[];
+  steps: BattleStep[];
+  logs: BattleLogPayload[];
+  decisions: DecisionTrace[];
+  complete: boolean;
+};
 
 const attackTypeLabels: Record<Fighter['attackType'], string> = { melee: '近距離', blunt: '打撃', sniper: '狙撃' };
 
@@ -79,6 +95,7 @@ export function planBattleFrame({
   let next = displayNext.map((fighter) => ({ ...fighter }));
   const steps: BattleStep[] = [];
   const logs: BattleLogPayload[] = [];
+  const decisions: DecisionTrace[] = [];
 
   const setNext = (fighterId: string, values: Partial<MutableFighterFields>) => {
     const index = next.findIndex((fighter) => fighter.instanceId === fighterId);
@@ -413,7 +430,7 @@ export function planBattleFrame({
     let acted = false;
     let blockedByCost = false;
 
-    for (const block of program.slice(0, actor.programLimit)) {
+    for (const [blockIndex, block] of program.slice(0, actor.programLimit).entries()) {
       const current = next.find((fighter) => fighter.instanceId === actor.instanceId);
       if (!current || current.hp <= 0) break;
       const currentEnemies = next.filter((fighter) => fighter.team !== current.team && fighter.hp > 0);
@@ -421,25 +438,60 @@ export function planBattleFrame({
       if (currentEnemies.length === 0 || currentAllies.length === 0) break;
       const instruction = instructionById.get(block.actionId);
       if (!instruction) continue;
+      const traceDecision = (outcome: DecisionTrace['outcome'], reason?: DecisionReason) =>
+        decisions.push({
+          actorId: current.instanceId,
+          actorName: current.name,
+          team: current.team,
+          blockIndex,
+          actionId: instruction.id,
+          outcome,
+          reason,
+        });
       const conditionTargets = selectConditionTargets(block.targetId, current, currentEnemies, currentAllies);
       const matchedTargets = matchCondition(block.conditionId, current, conditionTargets);
-      if (matchedTargets.length === 0) continue;
+      if (matchedTargets.length === 0) {
+        traceDecision('skipped', 'condition');
+        continue;
+      }
       const nearest = priorityEnemy(current, currentEnemies);
       const target =
         instruction.targetMode === 'selected'
           ? matchedTargets[0]
           : (selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest);
-      if (instruction.action === 'pull' && distanceTo(current, target) > actionRange(current, instruction)) continue;
+      const isMultiTargetAttack =
+        instruction.targetMode === 'allEnemies' && ['attack', 'heavy', 'poison', 'burn'].includes(instruction.action);
+      const multiTargets = isMultiTargetAttack
+        ? matchedTargets.filter(
+            (candidate) =>
+              candidate.team !== current.team && distanceTo(current, candidate) <= actionRange(current, instruction),
+          )
+        : [];
+      if (isMultiTargetAttack && multiTargets.length === 0) {
+        traceDecision('skipped', 'range');
+        continue;
+      }
+      if (instruction.action === 'pull' && distanceTo(current, target) > actionRange(current, instruction)) {
+        traceDecision('skipped', 'range');
+        continue;
+      }
       if (
         ['heavy', 'jump', 'throw', 'retreat', 'heal'].includes(instruction.action) &&
         distanceTo(current, target) > actionRange(current, instruction)
-      )
-        continue;
-      if (instruction.action === 'berserk' && current.berserk) continue;
-      if (!canAffordAbility(current, instruction.abilityCost)) {
-        blockedByCost = true;
+      ) {
+        traceDecision('skipped', 'range');
         continue;
       }
+      if (instruction.action === 'berserk' && current.berserk) {
+        traceDecision('skipped', 'state');
+        continue;
+      }
+      if (!canAffordAbility(current, instruction.abilityCost)) {
+        blockedByCost = true;
+        traceDecision('skipped', 'cost');
+        continue;
+      }
+      traceDecision('executed');
       spendAbility(current.instanceId, instruction.abilityCost);
       acted = true;
 
@@ -601,6 +653,47 @@ export function planBattleFrame({
           log: { actor: current.name, text: '同期タイミングを待機', type: 'info' },
           updates: [{ id: current.instanceId, values: { cooldown: waitCooldown } }],
         });
+      } else if (isMultiTargetAttack) {
+        for (const matchedTarget of multiTargets) {
+          const liveTarget = next.find((fighter) => fighter.instanceId === matchedTarget.instanceId);
+          if (!liveTarget || liveTarget.hp <= 0) continue;
+          const impact = resolveActionImpact(current, liveTarget, instruction);
+          const hp = Math.max(0, liveTarget.hp - impact.damage);
+          const poison = liveTarget.poison + (instruction.params.statusStacks ?? 0);
+          const x =
+            hp > 0 && impact.knockbackDistance > 0
+              ? knockbackPosition(liveTarget, current, impact.knockbackDistance)
+              : liveTarget.x;
+          setNext(liveTarget.instanceId, { x, hp, poison });
+          const attackKind =
+            instruction.action === 'heavy' || instruction.action === 'poison' || instruction.action === 'burn'
+              ? instruction.action
+              : 'attack';
+          queueStep({
+            flash: {
+              id: current.instanceId,
+              kind: attackKind,
+              targetId: liveTarget.instanceId,
+              attackType: current.attackType,
+              actionLabel: instruction.short,
+              n: 0,
+            },
+            log: {
+              actor: current.name,
+              text: `${instruction.short} → ${liveTarget.name}｜${impact.damage} dmg`,
+              type: 'hit',
+            },
+            updates: [{ id: liveTarget.instanceId, values: { hp, poison } }],
+          });
+          if (hp > 0 && x !== liveTarget.x)
+            queueStep({
+              flash: { id: liveTarget.instanceId, kind: 'hit', actionLabel: 'KNOCKBACK', n: 0 },
+              updates: [{ id: liveTarget.instanceId, values: { x } }],
+            });
+          if (hp <= 0 && liveTarget.hp > 0)
+            queueStep({ flash: { id: liveTarget.instanceId, kind: 'death', actionLabel: 'DOWN', n: 0 }, updates: [] });
+          triggerHitReactions(current.instanceId, liveTarget.instanceId);
+        }
       } else if (distanceTo(current, target) > actionRange(current, instruction) && instruction.action !== 'follow') {
         queueStep({
           flash: {
@@ -671,5 +764,5 @@ export function planBattleFrame({
       });
   }
 
-  return { fighters: displayNext, steps, logs, complete: isBattleComplete(next) && steps.length === 0 };
+  return { fighters: displayNext, steps, logs, decisions, complete: isBattleComplete(next) && steps.length === 0 };
 }

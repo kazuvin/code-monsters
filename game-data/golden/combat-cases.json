@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "normal-sniper",
+      "input": {
+        "rawDamage": 20,
+        "minimumDamage": 4,
+        "attackType": "sniper",
+        "attackerKnockbackPower": 99,
+        "targetDefense": 6,
+        "targetWeight": 8,
+        "targetRole": "STRIKER",
+        "targetGuarded": false
+      },
+      "expected": { "damage": 17, "knockbackDistance": 0 }
+    },
+    {
+      "id": "knockback-only-sniper",
+      "input": {
+        "rawDamage": 20,
+        "minimumDamage": 4,
+        "attackType": "sniper",
+        "attackerKnockbackPower": 0,
+        "targetDefense": 6,
+        "targetWeight": 8,
+        "targetRole": "STRIKER",
+        "targetGuarded": false,
+        "impact": { "damageScale": 0, "knockbackPower": 12 }
+      },
+      "expected": { "damage": 0, "knockbackDistance": 8.4 }
+    },
+    {
+      "id": "normal-melee",
+      "input": {
+        "rawDamage": 25,
+        "minimumDamage": 4,
+        "attackType": "melee",
+        "attackerKnockbackPower": 10,
+        "targetDefense": 6,
+        "targetWeight": 8,
+        "targetRole": "STRIKER",
+        "targetGuarded": false
+      },
+      "expected": { "damage": 22, "knockbackDistance": 6.4 }
+    },
+    {
+      "id": "guarded-tank",
+      "input": {
+        "rawDamage": 26,
+        "minimumDamage": 4,
+        "attackType": "melee",
+        "attackerKnockbackPower": 8,
+        "targetDefense": 15,
+        "targetWeight": 14,
+        "targetRole": "TANK",
+        "targetGuarded": true,
+        "guardDamageScale": 0.82,
+        "guardKnockbackScale": 0.7,
+        "impact": { "knockbackPower": 120 }
+      },
+      "expected": { "damage": 15, "knockbackDistance": 39.795 }
+    }
+  ]
+}

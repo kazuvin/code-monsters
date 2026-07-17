@@ -4,6 +4,7 @@ import {
   ArrowUp,
   BookOpen,
   Coins,
+  Download,
   Lock,
   LockOpen,
   Pause,
@@ -18,7 +19,14 @@ import {
 } from 'lucide-react';
 import { BattleScene } from './BattleScene';
 import { Catalog } from './Catalog';
-import { applyBattleStep, isBattleComplete, planBattleFrame, type BattleStep } from './core/battle-engine';
+import {
+  applyBattleStep,
+  isBattleComplete,
+  planBattleFrame,
+  type BattleStep,
+  type DecisionTrace,
+} from './core/battle-engine';
+import { summarizeDecisions, type BattleReplay } from './core/replay';
 import { createBattleFighters, createInventoryUnit, unitById } from './core/roster';
 import {
   actionCooldown,
@@ -35,6 +43,7 @@ import {
   BATTLE_CONFIG,
   DEFAULT_REACTIONS,
   ECONOMY_CONFIG,
+  ENCOUNTERS,
   GAME_SCHEMA_VERSION,
   REACTION_TRIGGERS,
   ROSTER_CONFIG,
@@ -59,6 +68,7 @@ import type {
 type Phase = 'build' | 'battle' | 'result';
 type AppView = 'game' | 'catalog';
 type EditingSlot = { scope: 'program' | 'reaction'; index: number; field: 'target' | 'condition' | 'action' } | null;
+type GaugeTelemetry = { totalSeconds: number; emptySeconds: number; fullSeconds: number };
 
 const rarityLabels: Record<Rarity, string> = { common: 'COMMON', rare: 'RARE', epic: 'EPIC' };
 const reactionTriggerLabels = new Map(REACTION_TRIGGERS.map((trigger) => [trigger.id, trigger.label]));
@@ -213,7 +223,8 @@ const ShopUnitTrait = ({ unit }: { unit: UnitDefinition }) => {
 
 let inventorySequence = 0;
 const newInventoryUnit = (unitId: string) => createInventoryUnit(unitId, `${unitId}-${++inventorySequence}`);
-const initialUnits = ROSTER_CONFIG.startingUnitIds.map(newInventoryUnit);
+const createStartingTeam = () => ROSTER_CONFIG.startingUnitIds.map(newInventoryUnit);
+const initialUnits = createStartingTeam();
 
 export function App() {
   const [view, setView] = useState<AppView>('game');
@@ -229,7 +240,7 @@ export function App() {
   const [editingSlot, setEditingSlot] = useState<EditingSlot>({ scope: 'program', index: 0, field: 'condition' });
   const [shopSeed, setShopSeed] = useState(0);
   const [shop, setShop] = useState(() => createShop());
-  const [fighters, setFighters] = useState(() => createBattleFighters(initialUnits));
+  const [fighters, setFighters] = useState(() => createBattleFighters(initialUnits, ENCOUNTERS[0]));
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef(0);
@@ -237,6 +248,10 @@ export function App() {
   const [paused, setPaused] = useState(false);
   const [flash, setFlash] = useState<BattleFlash | null>(null);
   const battleQueueRef = useRef<BattleStep[]>([]);
+  const decisionTraceRef = useRef<DecisionTrace[]>([]);
+  const replayRef = useRef<BattleReplay | null>(null);
+  const gaugeTelemetryRef = useRef<GaugeTelemetry>({ totalSeconds: 0, emptySeconds: 0, fullSeconds: 0 });
+  const [decisionReport, setDecisionReport] = useState<DecisionTrace[]>([]);
   const lastStepAtRef = useRef(0);
   const [logsOpen, setLogsOpen] = useState(false);
   const [toast, setToast] = useState('');
@@ -244,12 +259,19 @@ export function App() {
   const selectedUnit = team[Math.min(selected, team.length - 1)];
   const currentProgram = selectedUnit?.program ?? [];
   const currentReaction = selectedUnit?.reaction ?? null;
+  const currentEncounter = ENCOUNTERS[Math.min(round - 1, ENCOUNTERS.length - 1)];
   const winner =
     phase === 'result'
       ? fighters.some((fighter) => fighter.team === 'enemy' && fighter.hp > 0)
         ? '敗北'
         : '勝利'
       : '';
+  const runComplete = winner === '勝利' && round === ENCOUNTERS.length;
+  const reportRows = useMemo(() => summarizeDecisions(decisionReport), [decisionReport]);
+  const gaugeTelemetry = gaugeTelemetryRef.current;
+  const gaugeEmptyRate =
+    gaugeTelemetry.totalSeconds > 0 ? gaugeTelemetry.emptySeconds / gaugeTelemetry.totalSeconds : 0;
+  const gaugeFullRate = gaugeTelemetry.totalSeconds > 0 ? gaugeTelemetry.fullSeconds / gaugeTelemetry.totalSeconds : 0;
 
   const addLog = useCallback((actor: string, text: string, type: LogItem['type'] = 'info') => {
     const t = Math.max(0, elapsedRef.current);
@@ -265,6 +287,14 @@ export function App() {
         ...current,
       ].slice(0, BATTLE_CONFIG.maxLogEntries),
     );
+  }, []);
+  const sampleAbilityGauges = useCallback((current: Fighter[], dt: number) => {
+    const allies = current.filter((fighter) => fighter.team === 'ally' && fighter.hp > 0);
+    gaugeTelemetryRef.current.totalSeconds += allies.length * dt;
+    gaugeTelemetryRef.current.emptySeconds +=
+      allies.filter((fighter) => fighter.abilityGauge <= Number.EPSILON).length * dt;
+    gaugeTelemetryRef.current.fullSeconds +=
+      allies.filter((fighter) => fighter.abilityGauge >= BATTLE_CONFIG.abilityGaugeMax - Number.EPSILON).length * dt;
   }, []);
 
   const updateSelectedProgram = (updater: (program: ProgramBlock[]) => ProgramBlock[]) =>
@@ -432,16 +462,39 @@ export function App() {
       );
     } else if (!currentProgram[editingSlot.index]?.fixedAction) {
       updateSelectedProgram((program) =>
-        program.map((block, index) => (index === editingSlot.index ? { ...block, actionId: id } : block)),
+        program.map((block, index) => {
+          if (index !== editingSlot.index) return block;
+          const instruction = instructionById.get(id);
+          if (!instruction) return block;
+          const targetId = isInstructionCompatibleWithTarget(instruction, block.targetId)
+            ? block.targetId
+            : instruction.defaultTarget;
+          const conditionId = isConditionCompatibleWithTarget(block.conditionId, targetId)
+            ? block.conditionId
+            : instruction.condition;
+          return { ...block, targetId, conditionId, actionId: id };
+        }),
       );
     }
   };
 
   const startBattle = () => {
+    const initialFighters = createBattleFighters(team, currentEncounter);
     battleQueueRef.current = [];
+    decisionTraceRef.current = [];
+    gaugeTelemetryRef.current = { totalSeconds: 0, emptySeconds: 0, fullSeconds: 0 };
+    replayRef.current = {
+      schemaVersion: GAME_SCHEMA_VERSION,
+      round,
+      encounter: structuredClone(currentEncounter),
+      team: structuredClone(team),
+      initialFighters: structuredClone(initialFighters),
+      frames: [],
+    };
+    setDecisionReport([]);
     lastStepAtRef.current = 0;
     setFlash(null);
-    setFighters(createBattleFighters(team));
+    setFighters(initialFighters);
     setLogs([]);
     setElapsed(0);
     elapsedRef.current = 0;
@@ -450,21 +503,77 @@ export function App() {
     setPhase('battle');
     setToast('プログラムを実行します');
   };
-  const reset = () => {
+  const prepareBuild = (encounter = currentEncounter, nextTeam = team) => {
     battleQueueRef.current = [];
     lastStepAtRef.current = 0;
     setFlash(null);
     setPhase('build');
-    setFighters(createBattleFighters(team));
+    setFighters(createBattleFighters(nextTeam, encounter));
     setLogs([]);
     setLogsOpen(false);
     setElapsed(0);
     elapsedRef.current = 0;
   };
+  const rollNextShop = () => {
+    setShopSeed((currentSeed) => {
+      const nextSeed = currentSeed + 1;
+      setShop((current) => {
+        const next = createShop(nextSeed);
+        return next.map((item, index) => (current[index]?.locked ? current[index] : item));
+      });
+      return nextSeed;
+    });
+  };
+  const advanceRun = () => {
+    if (winner === '敗北') {
+      prepareBuild();
+      return;
+    }
+    if (runComplete) {
+      const freshTeam = createStartingTeam();
+      setCoins(ECONOMY_CONFIG.startingCoins);
+      setRound(1);
+      setTeam(freshTeam);
+      setBench([]);
+      setSelected(0);
+      setOwnedActions([...ROSTER_CONFIG.startingActionIds]);
+      setOwnedConditions([...ROSTER_CONFIG.startingConditionIds]);
+      setLastPurchasedAction(null);
+      setShopSeed(0);
+      setShop(createShop());
+      prepareBuild(ENCOUNTERS[0], freshTeam);
+      return;
+    }
+    const nextEncounter = ENCOUNTERS[round];
+    setCoins((current) => current + currentEncounter.reward);
+    setRound((current) => current + 1);
+    rollNextShop();
+    prepareBuild(nextEncounter);
+  };
   const completeBattle = useCallback(() => {
     setLogsOpen(false);
+    setDecisionReport([...decisionTraceRef.current]);
     setPhase('result');
   }, []);
+  const exportReplay = () => {
+    if (!replayRef.current || !winner) return;
+    const replay: BattleReplay = {
+      ...replayRef.current,
+      result: {
+        winner,
+        elapsed,
+        finalFighters: structuredClone(fighters),
+      },
+    };
+    const blob = new Blob([JSON.stringify(replay, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `code-monsters-r${String(round).padStart(2, '0')}-${currentEncounter.id}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setToast('リプレイJSONを保存しました');
+  };
 
   useEffect(() => {
     if (phase !== 'battle' || paused) return;
@@ -479,6 +588,7 @@ export function App() {
         battleQueueRef.current = battleQueueRef.current.slice(1);
         lastStepAtRef.current = now;
         setFighters((current) => {
+          sampleAbilityGauges(current, dt);
           const next = applyBattleStep(tickCooldowns(current, dt), queuedStep);
           setFlash({ ...queuedStep.flash, n: now });
           if (queuedStep.log) addLog(queuedStep.log.actor, queuedStep.log.text, queuedStep.log.type);
@@ -488,19 +598,31 @@ export function App() {
         return;
       }
       if (queuedStep) {
-        setFighters((current) => tickCooldowns(current, dt));
+        setFighters((current) => {
+          sampleAbilityGauges(current, dt);
+          return tickCooldowns(current, dt);
+        });
         return;
       }
       setFighters((current) => {
+        sampleAbilityGauges(current, dt);
         const plan = planBattleFrame({ fighters: current, team, dt, elapsed: elapsedRef.current, previousElapsed });
         battleQueueRef.current.push(...plan.steps);
+        decisionTraceRef.current.push(...plan.decisions);
+        if (replayRef.current && (plan.steps.length > 0 || plan.decisions.length > 0 || plan.complete))
+          replayRef.current.frames.push({
+            elapsed: elapsedRef.current,
+            fighters: structuredClone(plan.fighters),
+            queuedSteps: structuredClone(plan.steps),
+            decisions: structuredClone(plan.decisions),
+          });
         for (const log of plan.logs) addLog(log.actor, log.text, log.type);
         if (plan.complete) setTimeout(completeBattle, BATTLE_CONFIG.resultDelayMs);
         return plan.fighters;
       });
     }, BATTLE_CONFIG.tickSeconds * 1000);
     return () => clearInterval(timer);
-  }, [phase, paused, speed, team, addLog, completeBattle]);
+  }, [phase, paused, speed, team, addLog, completeBattle, sampleAbilityGauges]);
 
   useEffect(() => {
     if (!toast) return;
@@ -579,7 +701,9 @@ export function App() {
             <div className="round">
               <small>ROUND</small>
               <b>{String(round).padStart(2, '0')}</b>
-              <span>1W / 0L</span>
+              <span>
+                {round} / {ENCOUNTERS.length}
+              </span>
             </div>
             <div className="wallet">
               <Coins size={16} />
@@ -598,6 +722,19 @@ export function App() {
         <Catalog />
       ) : phase === 'build' ? (
         <div className="build-layout">
+          <section className="encounter-strip" aria-label="次の敵編成">
+            <span>MISSION {String(round).padStart(2, '0')}</span>
+            <div>
+              <b>{currentEncounter.name}</b>
+              <small>{currentEncounter.briefing}</small>
+            </div>
+            <div className="encounter-enemies">
+              {currentEncounter.enemyUnitIds.map((id, index) => (
+                <span key={`${id}-${index}`}>{unitById.get(id)?.name ?? id}</span>
+              ))}
+            </div>
+            <em>勝利報酬 +{currentEncounter.reward}</em>
+          </section>
           <section className="workbench">
             <div className="section-head">
               <div>
@@ -1016,7 +1153,7 @@ export function App() {
               <button className={speed === 2 ? 'active' : ''} onClick={() => setSpeed(2)}>
                 x2
               </button>
-              <button onClick={reset}>
+              <button onClick={() => prepareBuild()}>
                 <RotateCcw />
               </button>
             </div>
@@ -1170,25 +1307,63 @@ export function App() {
             <div className="result-overlay">
               <div className="result-dialog">
                 <small>BATTLE COMPLETE</small>
-                <h1>{winner}</h1>
-                <p>{winner === '勝利' ? 'ロジックが敵チームを停止させました' : 'プログラムを調整して再実行できます'}</p>
-                <div>
+                <h1>{runComplete ? '全戦完了' : winner}</h1>
+                <p>
+                  {runComplete
+                    ? '5つの戦闘プロトコルをすべて突破しました'
+                    : winner === '勝利'
+                      ? `${currentEncounter.name}を突破。報酬 ${currentEncounter.reward} コインを獲得します`
+                      : 'このラウンドのまま、編成とプログラムを調整できます'}
+                </p>
+                <div className="result-summary">
                   <span>
                     実行イベント <b>{logs.length}</b>
                   </span>
                   <span>
                     戦闘時間 <b>{elapsed.toFixed(1)}s</b>
                   </span>
+                  <span>
+                    ゲージ空 <b>{Math.round(gaugeEmptyRate * 100)}%</b>
+                  </span>
+                  <span>
+                    ゲージ満タン <b>{Math.round(gaugeFullRate * 100)}%</b>
+                  </span>
                 </div>
-                <button
-                  onClick={() => {
-                    setRound((current) => current + 1);
-                    setCoins((current) => current + ECONOMY_CONFIG.roundReward);
-                    reset();
-                  }}
-                >
-                  次のラウンドへ
-                </button>
+                <section className="execution-report" aria-label="指示実行レポート">
+                  <header>
+                    <span>NORMAL LOOP TRACE</span>
+                    <b>なぜ動いたか、なぜ飛ばしたか</b>
+                  </header>
+                  <div className="report-row report-head">
+                    <span>UNIT / INSTRUCTION</span>
+                    <span>EXEC</span>
+                    <span>条件</span>
+                    <span>射程</span>
+                    <span>COST</span>
+                  </div>
+                  <div className="report-scroll">
+                    {reportRows.map((row) => (
+                      <div className="report-row" key={`${row.actorId}-${row.actionId}`}>
+                        <span>
+                          <small>{row.actorName}</small>
+                          <b>{actionLabel(row.actionId)}</b>
+                        </span>
+                        <strong>{row.executed}</strong>
+                        <em>{row.skipped.condition}</em>
+                        <em>{row.skipped.range}</em>
+                        <em>{row.skipped.cost}</em>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+                <div className="result-actions">
+                  <button className="replay-download" onClick={exportReplay}>
+                    <Download size={15} /> リプレイJSON
+                  </button>
+                  <button onClick={advanceRun}>
+                    {runComplete ? '新しいランへ' : winner === '勝利' ? '次のラウンドへ' : '編成を見直す'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

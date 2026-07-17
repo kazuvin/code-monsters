@@ -1,4 +1,12 @@
-import { BATTLE_CONFIG, DEFAULT_PROGRAMS, DEFAULT_REACTIONS, ROSTER_CONFIG, UNITS } from '../data.ts';
+import {
+  BATTLE_CONFIG,
+  DEFAULT_PROGRAMS,
+  DEFAULT_REACTIONS,
+  ENCOUNTERS,
+  ROSTER_CONFIG,
+  UNITS,
+  type EncounterDefinition,
+} from '../data.ts';
 import type { Fighter, UnitInventoryItem } from '../types.ts';
 import { instructionById } from './rules.ts';
 
@@ -20,10 +28,14 @@ export function createInventoryUnit(unitId: string, inventoryId: string): UnitIn
   };
 }
 
-export function createBattleFighters(team: UnitInventoryItem[]): Fighter[] {
-  const enemies = ROSTER_CONFIG.enemyUnitIds.map((id, index) =>
+export function createBattleFighters(
+  team: UnitInventoryItem[],
+  encounter: EncounterDefinition = ENCOUNTERS[0],
+): Fighter[] {
+  const enemies = (encounter?.enemyUnitIds ?? ROSTER_CONFIG.enemyUnitIds).map((id, index) =>
     createInventoryUnit(id, `enemy-template-${id}-${index}`),
   );
+  const enemyStatScale = encounter?.enemyStatScale ?? 1;
   const baseState = {
     z: 0,
     abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
@@ -48,10 +60,13 @@ export function createBattleFighters(team: UnitInventoryItem[]): Fighter[] {
     })),
     ...enemies.map((unit, index) => ({
       ...unit,
+      maxHp: Math.round(unit.maxHp * enemyStatScale),
+      attack: Math.round(unit.attack * enemyStatScale),
+      defense: Math.round(unit.defense * enemyStatScale),
       ...baseState,
       instanceId: `enemy-${unit.inventoryId}`,
       team: 'enemy' as const,
-      hp: unit.maxHp,
+      hp: Math.round(unit.maxHp * enemyStatScale),
       x: BATTLE_CONFIG.wallRight - BATTLE_CONFIG.initialPositionInset - index * BATTLE_CONFIG.teamPositionSpacing,
       cooldown: index * BATTLE_CONFIG.initialCooldownStaggerSeconds + BATTLE_CONFIG.enemyCooldownOffsetSeconds,
     })),

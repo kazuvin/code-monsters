@@ -102,11 +102,11 @@ const depthLayers = await page.locator('.sprite').evaluateAll((elements) =>
 await page.locator('.battle-controls button').last().click({ force: true });
 
 await page.reload({ waitUntil: 'networkidle' });
-await page.getByRole('button', { name: /更新/ }).click();
-await page.waitForTimeout(80);
-await page.getByRole('button', { name: /更新/ }).click();
-await page.waitForTimeout(80);
 const arrowCard = page.locator('.shop-item').filter({ hasText: 'アロー' }).first();
+for (let attempt = 0; attempt < 6 && (await arrowCard.count()) === 0; attempt += 1) {
+  await page.getByRole('button', { name: /更新/ }).click();
+  await page.waitForTimeout(80);
+}
 await arrowCard.getByRole('button', { name: /購入/ }).click();
 await page.locator('.inventory button').filter({ hasText: 'アロー' }).click();
 await page.locator('.unit-tabs button').filter({ hasText: 'アロー' }).click();

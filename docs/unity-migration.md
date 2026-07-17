@@ -58,3 +58,34 @@ Rename the version 3 condition IDs `enemyInRange` and `enemyOutOfRange` to `targ
 Add `abilityCost` to every instruction and add `abilityGaugeMax`, `abilityGaugeInitial`, and `abilityGaugeRegenPerSecond` under `battle`. Runtime fighter state now includes `abilityGauge`. Regenerate it by elapsed battle time, cap it at the configured maximum, and deduct the instruction cost only when an action or reaction is committed. If a normal-program instruction cannot afford its cost, continue evaluating later blocks so free attacks and movement can remain fallbacks. Reactions with insufficient gauge do not fire or consume their reaction cooldown. Add `balanceAnalysis.abilityReferenceSpeed` when importing the analyzer configuration.
 
 Instructions may also define the optional `params.fixedRange` value. Use it as the action's execution range instead of the acting unit's attack range; the `targetInRange` and `targetOutOfRange` conditions continue to describe the acting unit's own attack range. This keeps close-contact skills such as throws independent from the weapon range while preserving range-condition save semantics.
+
+## Schema version 6 migration
+
+Add the ordered `encounters` array. Each entry owns its stable ID, player-facing briefing, enemy unit IDs, enemy stat scale, and victory reward. The current round selects one encounter; defeat retries the same encounter without a reward, while victory advances to the next entry. Importers should keep `roster.enemyUnitIds` only as a legacy/default fallback and use `encounters` for the playable run.
+
+## Executable migration spike
+
+`unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
+
+- schema-v6 DTO loading and stable-ID/reference validation
+- actor-relative range and condition evaluation, including fixed-range contact skills
+- damage and knockback math
+- plain C# contracts for program blocks, decision traces, battle steps, and replay frames
+
+The TypeScript and C# combat resolvers both execute `game-data/golden/combat-cases.json`. Add formula edge cases to that shared fixture before expanding either implementation.
+
+The license-independent smoke gate compiles the same C# source with the Roslyn/Mono toolchain bundled in Unity and executes the shared fixtures:
+
+```bash
+pnpm test:unity-core
+```
+
+Run the spike with the pinned local editor:
+
+```bash
+UNITY=/Applications/Unity/Hub/Editor/6000.3.16f1/Unity.app/Contents/MacOS/Unity
+"$UNITY" -batchmode -nographics -projectPath unity/CodeMonsters \
+  -runTests -testPlatform EditMode -testResults /tmp/code-monsters-unity-tests.xml -quit
+```
+
+This spike deliberately stops before porting the full frame planner. The next Unity increment should implement target selection and roster construction, then compare serialized `BattleStep` snapshots from both runtimes before any scene or MonoBehaviour owns combat rules.

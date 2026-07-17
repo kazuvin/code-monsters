@@ -5,3 +5,8 @@ dist/
 vite.config.js
 vite.config.d.ts
 .DS_Store
+unity/CodeMonsters/Library/
+unity/CodeMonsters/Logs/
+unity/CodeMonsters/Temp/
+unity/CodeMonsters/UserSettings/
+unity/CodeMonsters/obj/

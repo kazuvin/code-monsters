@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { applyBattleStep, planBattleFrame } from '../src/core/battle-engine.ts';
 import { analyzeBalance } from '../src/core/balance.ts';
 import { createBattleFighters, createInventoryUnit } from '../src/core/roster.ts';
+import { summarizeDecisions } from '../src/core/replay.ts';
 import {
   actionCooldown,
   actionRange,
@@ -11,22 +12,37 @@ import {
   isConditionCompatibleWithTarget,
   isInstructionCompatibleWithTarget,
   jumpToward,
+  matchCondition,
   knockbackPosition,
   priorityEnemy,
   pullToward,
   retreatFrom,
+  resolveActionImpact,
   selectConditionTargets,
   throwBehind,
   tickCooldowns,
 } from '../src/core/rules.ts';
 import { createShop } from '../src/core/shop.ts';
-import { BATTLE_CONFIG, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
+import { BATTLE_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
 const fighters = createBattleFighters(team);
 assert.equal(BATTLE_CONFIG.abilityGaugeMax, 10, 'アビリティゲージの最大値が10ではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeInitial, 8, '技を連続使用できる初期ゲージ量ではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeRegenPerSecond, 1.5, 'アビリティゲージの回復速度が不正です');
+assert.equal(ENCOUNTERS.length, 5, '5ラウンドの遭遇定義がありません');
+const finalEncounterFighters = createBattleFighters(team, ENCOUNTERS.at(-1));
+assert.equal(
+  finalEncounterFighters.filter((fighter) => fighter.team === 'enemy').length,
+  3,
+  '最終ラウンドが3体編成になっていません',
+);
+assert.ok(
+  finalEncounterFighters
+    .filter((fighter) => fighter.team === 'enemy')
+    .every((fighter) => fighter.maxHp > (GAME_DATA.units.find((unit) => unit.id === fighter.id)?.maxHp ?? 0)),
+  '後半ラウンドの敵能力倍率が反映されていません',
+);
 assert.equal(
   fighters.filter((fighter) => fighter.team === 'ally').length,
   team.length,
@@ -129,6 +145,16 @@ assert.equal(
   '敵対象に回復アクションが表示されます',
 );
 assert.equal(
+  isInstructionCompatibleWithTarget(instructionById.get('saturation-fire'), 'allEnemies'),
+  true,
+  '敵全体に一斉射撃を設定できません',
+);
+assert.equal(
+  isInstructionCompatibleWithTarget(instructionById.get('saturation-fire'), 'nearestEnemy'),
+  false,
+  '敵全体固定スキルが単体対象へ表示されています',
+);
+assert.equal(
   actionCooldown(volt.speed),
   Math.max(BATTLE_CONFIG.minimumActionCooldownSeconds, BATTLE_CONFIG.baseActionCooldownSeconds / volt.speed),
 );
@@ -160,6 +186,8 @@ const plan = planBattleFrame({
 });
 assert.ok(plan.steps.length > 0, '戦闘エンジンが実行ステップを生成しません');
 assert.doesNotThrow(() => JSON.stringify(plan.steps), 'Unityへ渡す戦闘ステップはシリアライズ可能である必要があります');
+assert.ok(plan.decisions.length > 0, '戦闘エンジンが指示判定のトレースを生成しません');
+assert.doesNotThrow(() => JSON.stringify(plan.decisions), '指示判定トレースはシリアライズ可能である必要があります');
 const applied = applyBattleStep(plan.fighters, plan.steps[0]);
 assert.equal(applied.length, plan.fighters.length, '戦闘ステップ適用でユニット数が変化しました');
 
@@ -401,6 +429,11 @@ assert.ok(
   costFallbackPlan.steps.some((step) => step.flash.kind === 'attack'),
   'コスト不足時に後続の無料アクションへフォールバックしていません',
 );
+const costReport = summarizeDecisions(costFallbackPlan.decisions);
+const knockAwayReport = costReport.find((row) => row.actionId === 'knock-away');
+const attackReport = costReport.find((row) => row.actionId === 'attack-low');
+assert.equal(knockAwayReport?.skipped.cost, 1, '戦闘レポートがコスト不足を集計できません');
+assert.equal(attackReport?.executed, 1, '戦闘レポートが後続指示の実行を集計できません');
 
 const rangedThrowTeam = [createInventoryUnit('arrow', 'ranged-throw-arrow')];
 rangedThrowTeam[0].program = [
@@ -437,6 +470,74 @@ assert.ok(
   '背負い投げの固定射程外で後続の通常攻撃へフォールバックしません',
 );
 
+const supportTeam = [createInventoryUnit('mender', 'support-mender'), createInventoryUnit('volt', 'support-volt')];
+supportTeam[0].program = [{ targetId: 'lowestHpAlly', conditionId: 'targetInRange', actionId: 'field-repair' }];
+const supportFighters = createBattleFighters(supportTeam).map((fighter) => ({
+  ...fighter,
+  x: fighter.instanceId === 'support-mender' ? 40 : fighter.instanceId === 'support-volt' ? 46 : fighter.x,
+  hp: fighter.instanceId === 'support-volt' ? fighter.maxHp - 50 : fighter.hp,
+  cooldown: fighter.instanceId === 'support-mender' ? 0 : 10,
+}));
+const supportPlan = planBattleFrame({
+  fighters: supportFighters,
+  team: supportTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const supportHealStep = supportPlan.steps.find((step) => step.flash.kind === 'heal');
+assert.equal(supportHealStep?.updates[0]?.values.hp, 100, 'サポート専用の34HP回復量が適用されていません');
+
+const toxinTeam = [createInventoryUnit('toxin', 'status-toxin')];
+const toxinFighters = createBattleFighters(toxinTeam).map((fighter) => ({
+  ...fighter,
+  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 50 : 70,
+}));
+const toxinActor = toxinFighters.find((fighter) => fighter.instanceId === 'status-toxin');
+const cleanStatusTarget = toxinFighters.find((fighter) => fighter.team === 'enemy' && fighter.id === 'relay');
+const corrosionBurst = instructionById.get('corrosion-burst');
+assert.ok(toxinActor && cleanStatusTarget && corrosionBurst);
+const poisonedStatusTarget = { ...cleanStatusTarget, poison: 1 };
+assert.equal(
+  matchCondition('enemyHasStatus', toxinActor, [cleanStatusTarget]).length,
+  0,
+  '未付与の敵が状態条件に一致します',
+);
+assert.equal(
+  matchCondition('enemyHasStatus', toxinActor, [poisonedStatusTarget]).length,
+  1,
+  '腐食状態を検出できません',
+);
+assert.ok(
+  resolveActionImpact(toxinActor, poisonedStatusTarget, corrosionBurst).damage >
+    resolveActionImpact(toxinActor, cleanStatusTarget, corrosionBurst).damage,
+  '腐食起爆の状態特効ダメージが適用されていません',
+);
+
+const multiTeam = [createInventoryUnit('arrow', 'multi-arrow')];
+multiTeam[0].program = [{ targetId: 'allEnemies', conditionId: 'targetInRange', actionId: 'saturation-fire' }];
+const multiFighters = createBattleFighters(multiTeam).map((fighter) => ({
+  ...fighter,
+  x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 50 : 58,
+  abilityGauge: fighter.team === 'ally' ? BATTLE_CONFIG.abilityGaugeMax : fighter.abilityGauge,
+  cooldown: fighter.team === 'ally' ? 0 : 10,
+}));
+const multiPlan = planBattleFrame({
+  fighters: multiFighters,
+  team: multiTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const multiAttackSteps = multiPlan.steps.filter((step) => step.flash.actionLabel === '一斉射撃');
+assert.equal(multiAttackSteps.length, 2, '一斉射撃が射程内の敵全体へ命中していません');
+assert.equal(new Set(multiAttackSteps.map((step) => step.flash.targetId)).size, 2, '複数対象が同じ敵へ重複しています');
+assert.equal(
+  multiPlan.fighters.find((fighter) => fighter.instanceId === 'multi-arrow')?.abilityGauge,
+  BATTLE_CONFIG.abilityGaugeMax - (instructionById.get('saturation-fire')?.abilityCost ?? 0),
+  '複数対象スキルが対象数分のコストを消費しています',
+);
+
 const shop = createShop(0);
 assert.ok(
   shop.some((item) => item.kind === 'unit' && item.id === 'wrath'),
@@ -457,6 +558,18 @@ assert.ok(
 assert.ok(
   shop.some((item) => item.kind === 'instruction' && item.id === 'field-repair'),
   'ヒールが初期ショップにありません',
+);
+assert.ok(
+  shop.some((item) => item.kind === 'unit' && item.id === 'mender'),
+  'サポートユニットが初期ショップにありません',
+);
+assert.ok(
+  shop.some((item) => item.kind === 'unit' && item.id === 'toxin'),
+  '状態異常ユニットが初期ショップにありません',
+);
+assert.ok(
+  shop.some((item) => item.kind === 'instruction' && item.id === 'saturation-fire'),
+  '複数対象スキルが初期ショップにありません',
 );
 assert.ok(!instructionById.has('emergency-repair'), '回復スキルが複数残っています');
 assert.ok(instructionById.get('berserker-mode')?.params.speedScale === 3, 'バーサーカー倍率がデータ定義から読めません');

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "battle": {
     "tickSeconds": 0.22,
     "abilityGaugeMax": 10,
@@ -37,8 +37,8 @@
     "sellPricePenalty": 1
   },
   "shop": {
-    "size": 8,
-    "unitSlots": [0, 3],
+    "size": 12,
+    "unitSlots": [0, 3, 10, 11],
     "rarityWeights": {
       "common": 72,
       "rare": 23,
@@ -52,7 +52,11 @@
       { "slot": 4, "kind": "instruction", "id": "shoulder-throw" },
       { "slot": 5, "kind": "instruction", "id": "vault-over" },
       { "slot": 6, "kind": "instruction", "id": "knock-away" },
-      { "slot": 7, "kind": "instruction", "id": "field-repair" }
+      { "slot": 7, "kind": "instruction", "id": "field-repair" },
+      { "slot": 8, "kind": "instruction", "id": "saturation-fire" },
+      { "slot": 9, "kind": "instruction", "id": "toxic-mark" },
+      { "slot": 10, "kind": "unit", "id": "mender" },
+      { "slot": 11, "kind": "unit", "id": "toxin" }
     ]
   },
   "roster": {
@@ -61,6 +65,48 @@
     "startingActionIds": ["attack-low", "approach"],
     "startingConditionIds": ["targetInRange", "targetOutOfRange"]
   },
+  "encounters": [
+    {
+      "id": "opening-line",
+      "name": "接近戦プロトコル",
+      "briefing": "前衛同士の基準戦。距離条件と指示順を確認する。",
+      "enemyUnitIds": ["relay", "bastion"],
+      "enemyStatScale": 1,
+      "reward": 5
+    },
+    {
+      "id": "crossfire",
+      "name": "交差射線",
+      "briefing": "遠距離火力と高速接近が同時に戦線を揺らす。",
+      "enemyUnitIds": ["arrow", "relay"],
+      "enemyStatScale": 1.05,
+      "reward": 5
+    },
+    {
+      "id": "iron-wall",
+      "name": "鉄壁シフト",
+      "briefing": "高耐久の前衛と暴走火力を崩す中盤戦。",
+      "enemyUnitIds": ["bastion", "mender"],
+      "enemyStatScale": 1.1,
+      "reward": 6
+    },
+    {
+      "id": "split-front",
+      "name": "分断戦線",
+      "briefing": "三体編成が標的選択と範囲制御を試す。",
+      "enemyUnitIds": ["toxin", "arrow", "bastion"],
+      "enemyStatScale": 1.15,
+      "reward": 7
+    },
+    {
+      "id": "redline-core",
+      "name": "レッドライン・コア",
+      "briefing": "速度・耐久・暴走が揃う最終検証戦。",
+      "enemyUnitIds": ["wrath", "toxin", "mender"],
+      "enemyStatScale": 1.25,
+      "reward": 10
+    }
+  ],
   "balanceAnalysis": {
     "baselineActionId": "attack-low",
     "abilityReferenceSpeed": 1,
@@ -321,6 +367,42 @@
       "attackType": "blunt",
       "rarity": "rare",
       "programLimit": 4
+    },
+    {
+      "id": "mender",
+      "name": "メンダー",
+      "code": "M-04",
+      "role": "SUPPORT",
+      "color": "#78e6a1",
+      "maxHp": 118,
+      "attack": 17,
+      "defense": 9,
+      "speed": 0.92,
+      "price": 4,
+      "range": 14,
+      "knockbackPower": 2,
+      "weight": 5,
+      "attackType": "sniper",
+      "rarity": "common",
+      "programLimit": 5
+    },
+    {
+      "id": "toxin",
+      "name": "トキシン",
+      "code": "T-09",
+      "role": "VENOM",
+      "color": "#bd91ff",
+      "maxHp": 98,
+      "attack": 20,
+      "defense": 5,
+      "speed": 1.05,
+      "price": 5,
+      "range": 17,
+      "knockbackPower": 0,
+      "weight": 4,
+      "attackType": "sniper",
+      "rarity": "rare",
+      "programLimit": 5
     }
   ],
   "instructions": [
@@ -492,6 +574,63 @@
       "params": { "healAmount": 22, "supportHealAmount": 34, "fixedRange": 12 }
     },
     {
+      "id": "toxic-mark",
+      "title": "腐食弾を撃つ",
+      "short": "腐食付与",
+      "flavor": "まず印を付ける。次の一撃が本番。",
+      "action": "poison",
+      "abilityCost": 2,
+      "price": 3,
+      "rarity": "common",
+      "condition": "targetInRange",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "violet",
+      "params": { "attackScale": 0.45, "minimumDamage": 3, "knockbackPower": 0, "statusStacks": 1 }
+    },
+    {
+      "id": "corrosion-burst",
+      "title": "腐食を起爆する",
+      "short": "腐食起爆",
+      "flavor": "仕込みが済んだ相手だけを、内側から崩す。",
+      "action": "poison",
+      "abilityCost": 3,
+      "price": 0,
+      "rarity": "rare",
+      "condition": "enemyHasStatus",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "violet",
+      "fixedFor": "toxin",
+      "params": {
+        "attackScale": 0.7,
+        "statusTargetDamageBonus": 18,
+        "minimumDamage": 4,
+        "knockbackPower": 0
+      }
+    },
+    {
+      "id": "saturation-fire",
+      "title": "一斉射撃する",
+      "short": "一斉射撃",
+      "flavor": "標的を一体に絞らず、射程内すべてへ撃ち込む。",
+      "action": "attack",
+      "abilityCost": 5,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "targetInRange",
+      "target": "nearestEnemy",
+      "defaultTarget": "allEnemies",
+      "targetMode": "allEnemies",
+      "compatibleTargets": [],
+      "tone": "cyan",
+      "params": { "attackScale": 0.62, "minimumDamage": 3, "knockbackPower": 0 }
+    },
+    {
       "id": "berserker-mode",
       "title": "バーサーカーモード",
       "short": "バーサーカー",
@@ -590,13 +729,20 @@
     { "unitId": "bastion", "actionIds": ["attack-low", "approach"] },
     { "unitId": "relay", "actionIds": ["attack-low", "relay-dash", "approach"] },
     { "unitId": "arrow", "actionIds": ["attack-low", "approach"] },
-    { "unitId": "wrath", "actionIds": ["attack-low", "approach"] }
+    { "unitId": "wrath", "actionIds": ["attack-low", "approach"] },
+    { "unitId": "mender", "actionIds": ["field-repair", "attack-low", "approach"] },
+    {
+      "unitId": "toxin",
+      "actionIds": ["corrosion-burst", "toxic-mark", "attack-low", "approach"]
+    }
   ],
   "defaultReactions": [
     { "unitId": "volt", "trigger": "selfAttackHit", "actionId": "volt-follow", "fixedReaction": true },
     { "unitId": "bastion", "trigger": "selfHit", "actionId": "tank-guard", "fixedReaction": true },
     { "unitId": "relay", "trigger": null, "actionId": null, "fixedReaction": false },
     { "unitId": "arrow", "trigger": "selfHit", "actionId": "arrow-reposition", "fixedReaction": true },
-    { "unitId": "wrath", "trigger": "selfHpLow", "actionId": "berserker-mode", "fixedReaction": true }
+    { "unitId": "wrath", "trigger": "selfHpLow", "actionId": "berserker-mode", "fixedReaction": true },
+    { "unitId": "mender", "trigger": null, "actionId": null, "fixedReaction": false },
+    { "unitId": "toxin", "trigger": null, "actionId": null, "fixedReaction": false }
   ]
 }

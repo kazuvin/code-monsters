@@ -200,7 +200,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const requireTargetSelector = (id: string, context: string) => {
     if (!targetSelectors.has(id)) error('UNKNOWN_TARGET', `${context} が未定義対象 "${id}" を参照しています`);
   };
-  if (data.schemaVersion < 5) error('INVALID_SCHEMA_VERSION', 'schemaVersion は5以上である必要があります');
+  if (data.schemaVersion < 6) error('INVALID_SCHEMA_VERSION', 'schemaVersion は6以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     !Number.isInteger(data.battle.abilityGaugeMax) ||
@@ -367,6 +367,13 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_DEFAULT_REACTION', `${unit.id} にデフォルトリアクション定義がありません`);
   }
   for (const id of [...data.roster.startingUnitIds, ...data.roster.enemyUnitIds]) requireUnit(id, 'roster');
+  if (data.encounters.length !== 5) error('INVALID_ENCOUNTERS', 'encounters は5ラウンド定義してください');
+  for (const encounter of data.encounters) {
+    if (encounter.enemyUnitIds.length === 0) error('INVALID_ENCOUNTER', `${encounter.id} に敵が設定されていません`);
+    if (encounter.enemyStatScale <= 0 || encounter.reward < 0)
+      error('INVALID_ENCOUNTER', `${encounter.id} の倍率または報酬が不正です`);
+    for (const id of encounter.enemyUnitIds) requireUnit(id, `encounter ${encounter.id}`);
+  }
   for (const id of data.roster.startingActionIds) requireInstruction(id, 'roster.startingActionIds');
   for (const id of data.roster.startingConditionIds)
     if (!conditions.has(id)) error('UNKNOWN_CONDITION', `roster が未定義条件 "${id}" を参照しています`);

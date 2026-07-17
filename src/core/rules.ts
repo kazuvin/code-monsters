@@ -113,7 +113,9 @@ export function isConditionCompatibleWithTarget(condition: ConditionId, target: 
 }
 
 export function isInstructionCompatibleWithTarget(instruction: Instruction, target: TargetSelectorId): boolean {
-  return instruction.targetMode !== 'selected' || instruction.compatibleTargets.includes(target);
+  return instruction.targetMode === 'selected'
+    ? instruction.compatibleTargets.includes(target)
+    : instruction.defaultTarget === target;
 }
 
 export function actionCooldown(speed: number): number {

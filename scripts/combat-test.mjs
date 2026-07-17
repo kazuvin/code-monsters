@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { resolveImpact } from '../src/core/combat.ts';
 import { INSTRUCTIONS } from '../src/data.ts';
+
+const goldenFixture = JSON.parse(
+  fs.readFileSync(new URL('../game-data/golden/combat-cases.json', import.meta.url), 'utf8'),
+);
+for (const testCase of goldenFixture.cases) {
+  const actual = resolveImpact(testCase.input);
+  assert.equal(actual.damage, testCase.expected.damage, `${testCase.id}: ダメージが共有fixtureと一致しません`);
+  assert.ok(
+    Math.abs(actual.knockbackDistance - testCase.expected.knockbackDistance) < 0.0001,
+    `${testCase.id}: ノックバックが共有fixtureと一致しません`,
+  );
+}
 
 const target = {
   targetDefense: 6,
@@ -72,5 +85,16 @@ assert.ok(
 );
 
 console.log(
-  JSON.stringify({ normalSniper, knockbackOnlySniper, normalMelee, explicitNoKnockback, knockAway }, null, 2),
+  JSON.stringify(
+    {
+      goldenCases: goldenFixture.cases.length,
+      normalSniper,
+      knockbackOnlySniper,
+      normalMelee,
+      explicitNoKnockback,
+      knockAway,
+    },
+    null,
+    2,
+  ),
 );

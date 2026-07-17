@@ -56,6 +56,15 @@ export type ShopConfig = {
   initialPicks: { slot: number; kind: 'unit' | 'instruction'; id: string }[];
 };
 
+export type EncounterDefinition = {
+  id: string;
+  name: string;
+  briefing: string;
+  enemyUnitIds: string[];
+  enemyStatScale: number;
+  reward: number;
+};
+
 export type BalanceAnalysisConfig = {
   baselineActionId: string;
   abilityReferenceSpeed: number;
@@ -101,6 +110,7 @@ export type GameBalanceData = {
     startingActionIds: string[];
     startingConditionIds: ConditionId[];
   };
+  encounters: EncounterDefinition[];
   balanceAnalysis: BalanceAnalysisConfig;
   targetSelectors: TargetSelectorDefinition[];
   conditions: ConditionDefinition[];
@@ -122,6 +132,7 @@ export const BATTLE_CONFIG = GAME_DATA.battle;
 export const ECONOMY_CONFIG = GAME_DATA.economy;
 export const SHOP_CONFIG = GAME_DATA.shop;
 export const ROSTER_CONFIG = GAME_DATA.roster;
+export const ENCOUNTERS = GAME_DATA.encounters;
 export const BALANCE_ANALYSIS_CONFIG = GAME_DATA.balanceAnalysis;
 export const TARGET_SELECTORS = GAME_DATA.targetSelectors;
 export const CONDITIONS = GAME_DATA.conditions;

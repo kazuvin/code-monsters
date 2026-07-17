@@ -114,6 +114,57 @@ button:focus-visible {
   margin: auto;
   min-height: calc(100vh - 72px);
 }
+.encounter-strip {
+  position: relative;
+  grid-column: 1 / -1;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto auto;
+  align-items: center;
+  gap: 18px;
+  padding: 12px clamp(20px, 4vw, 54px);
+  border-bottom: 1px solid #343942;
+  background: linear-gradient(90deg, #151820, #1c2028 62%, #17181d);
+}
+.encounter-strip > span,
+.encounter-strip em {
+  font: 600 9px "IBM Plex Mono";
+  letter-spacing: 0.04em;
+}
+.encounter-strip > span {
+  color: var(--amber);
+  border: 1px solid #66542d;
+  padding: 5px 7px;
+}
+.encounter-strip > div > b,
+.encounter-strip > div > small {
+  display: block;
+}
+.encounter-strip > div > b {
+  font: 600 14px "Oxanium";
+}
+.encounter-strip > div > small {
+  margin-top: 3px;
+  color: #8c929c;
+  font-size: 10px;
+}
+.encounter-enemies {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.encounter-enemies span {
+  border: 1px solid #56363c;
+  color: #ff9299;
+  padding: 4px 7px;
+  font: 600 9px "IBM Plex Mono";
+}
+.encounter-strip em {
+  color: var(--lime);
+  font-style: normal;
+  white-space: nowrap;
+}
 .workbench {
   padding: 32px clamp(20px, 4vw, 54px) 56px;
   border-right: 1px solid #2c3038;
@@ -657,12 +708,16 @@ button:focus-visible {
   backdrop-filter: blur(8px);
   display: grid;
   place-items: center;
+  padding: 20px 0;
+  overflow-y: auto;
 }
 .result-dialog {
-  width: min(390px, calc(100% - 32px));
+  width: min(760px, calc(100% - 32px));
+  max-height: calc(100dvh - 112px);
+  overflow-y: auto;
   background: #191b20;
   border: 1px solid #494f59;
-  padding: 32px;
+  padding: 28px;
   text-align: center;
   box-shadow: 0 22px 80px #000;
 }
@@ -679,20 +734,106 @@ button:focus-visible {
   font-size: 11px;
   color: #8c939d;
 }
-.result-dialog > div {
-  display: flex;
-  justify-content: center;
-  gap: 28px;
-  margin: 24px 0;
+.result-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-block: 1px solid #30343d;
+  margin: 24px 0 18px;
 }
-.result-dialog span {
+.result-summary span {
+  padding: 14px 8px;
+  border-right: 1px solid #30343d;
   font-size: 9px;
   color: #777e89;
 }
-.result-dialog span b {
+.result-summary span:last-child {
+  border-right: 0;
+}
+.result-summary span b {
   display: block;
   color: white;
   font: 600 17px "Oxanium";
+  margin-top: 3px;
+}
+.execution-report {
+  text-align: left;
+  background: #101216;
+  border: 1px solid #30343d;
+}
+.execution-report > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 15px;
+  border-bottom: 1px solid #30343d;
+}
+.execution-report > header span {
+  color: var(--amber);
+  font: 600 9px "IBM Plex Mono";
+  letter-spacing: 0.08em;
+}
+.execution-report > header b {
+  color: #b8bec7;
+  font: 500 10px "IBM Plex Mono";
+}
+.report-scroll {
+  max-height: 206px;
+  overflow-y: auto;
+}
+.report-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) repeat(4, 56px);
+  align-items: center;
+  min-height: 42px;
+  border-bottom: 1px solid #25282e;
+}
+.report-row:last-child {
+  border-bottom: 0;
+}
+.report-row > * {
+  padding: 8px 10px;
+}
+.report-row > :not(:first-child) {
+  border-left: 1px solid #25282e;
+  text-align: center;
+}
+.report-row > span:first-child small,
+.report-row > span:first-child b {
+  display: block;
+}
+.report-row > span:first-child small {
+  color: #6f7680;
+  font: 500 8px "IBM Plex Mono";
+  text-transform: uppercase;
+}
+.report-row > span:first-child b {
+  color: #d7dbe0;
+  font: 600 11px "Oxanium";
+}
+.report-row strong {
+  color: var(--cyan);
+  font: 600 15px "Oxanium";
+}
+.report-row em {
+  color: #a36f45;
+  font: 500 12px "IBM Plex Mono";
+  font-style: normal;
+}
+.report-head {
+  min-height: 28px;
+  background: #17191e;
+}
+.report-head span {
+  color: #686f79;
+  font: 600 8px "IBM Plex Mono";
+  letter-spacing: 0.04em;
+}
+.result-actions {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.72fr) 1.28fr;
+  gap: 10px;
+  margin-top: 18px;
 }
 .result-dialog button {
   width: 100%;
@@ -702,6 +843,16 @@ button:focus-visible {
   border: 0;
   font-weight: 700;
   cursor: pointer;
+}
+.result-dialog .replay-download {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--cyan);
+  border: 1px solid #3a6874;
+  font: 600 10px "IBM Plex Mono";
 }
 .toast {
   position: fixed;
@@ -742,6 +893,21 @@ button:focus-visible {
   }
   .build-layout {
     display: block;
+  }
+  .encounter-strip {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 12px;
+    padding: 12px 14px;
+  }
+  .encounter-enemies {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .encounter-strip em {
+    position: absolute;
+    right: 14px;
+    margin-top: -44px;
   }
   .workbench {
     padding: 20px 14px 28px;
@@ -812,9 +978,21 @@ button:focus-visible {
   }
   .result-overlay {
     inset: 60px 0 0;
+    padding: 12px 0;
+    place-items: start center;
+  }
+  .result-dialog {
+    max-height: calc(100dvh - 84px);
+    padding: 22px 16px;
   }
   .result-dialog h1 {
     font-size: 52px;
+  }
+  .report-row {
+    grid-template-columns: minmax(132px, 1fr) repeat(4, 40px);
+  }
+  .report-row > * {
+    padding: 7px 5px;
   }
   .shop-grid {
     display: grid;

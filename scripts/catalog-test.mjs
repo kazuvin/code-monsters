@@ -47,7 +47,7 @@ for (const viewport of [
     await page.screenshot({ path: '/tmp/code-monsters-mobile-catalog-skills.png' });
   }
 
-  await page.getByRole('button', { name: /スキル 14/ }).click();
+  await page.getByRole('button', { name: new RegExp(`スキル ${data.instructions.length}`) }).click();
   await page.getByRole('searchbox', { name: 'カタログを検索' }).fill('ヒール');
   const searchResult = {
     instructions: await page.locator('.catalog-skill-card').count(),
