@@ -24,7 +24,7 @@ The ability-economy table reports each instruction's gauge cost, recovery time, 
 
 The in-app catalog reads the same source data and exposes all units, conditions, target selectors, and instructions as comparison cards. Its ten-cell cost rulers, recovery time, and sustainable uses-per-minute values are presentation of the analyzer inputs and output; they are not separately maintained balance data.
 
-The in-app debug room complements the static analyzer with reproducible live-engine measurements. It runs the same deterministic battle-frame planner as a normal match against an inert target rig, and reports actual damage, DPS, healing, gauge efficiency, movement, state stacks, and decision skip reasons for a configurable unit, instruction, target, condition, distance, and defense profile.
+The in-app debug room complements the static analyzer with reproducible live-engine measurements. It runs the same deterministic battle-frame planner as a normal match in a one-on-one training setup. Both units are locked inside each other's attack range, and the enemy's HP and both positions are restored after each recorded effect so repeated hits measure the same starting state. The target profile can override HP, defense, weight, role, poison, guard, berserk, and taunt state; reports include per-hit damage, total damage, DPS, healing, gauge efficiency, movement, state stacks, and decision skip reasons.
 
 This is a deterministic screening model, not proof of live-match fairness. It is intentionally good at finding broken references, impossible parameters, extreme same-rarity gaps, and price-efficiency outliers. Borderline spreads are warnings and should be followed by matchup simulation or playtesting. Exceeding configured hard limits exits non-zero.
 

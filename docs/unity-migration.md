@@ -31,7 +31,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 
 `BattleStep` contains only plain values: a visual event, optional log and damage events, and fighter field updates. Damage events carry the acting unit, stable action ID, actual HP damage, and whether the source was a normal instruction or reaction. There are no closures in the core queue. Unity can mirror this with serializable structs and let animation and report code consume events independently of the simulation.
 
-The debug-room harness constructs plain fighter/program inputs, advances `planBattleFrame` on a virtual clock, and derives DPS, resource efficiency, healing, displacement, state stacks, and skip reasons from normal battle outputs. Port the harness as an editor tool rather than duplicating combat formulas in Unity UI code; matching harness results provide a practical parity check during migration.
+The debug-room harness constructs a plain two-fighter/program input, places both fighters inside their mutual attack range, advances `planBattleFrame` on a virtual clock, and restores the dummy HP and both positions after recording each effect. Target stat and state overrides remain harness inputs rather than presentation-only modifiers. It derives per-hit damage, DPS, resource efficiency, healing, maximum displacement, state stacks, recovery count, and skip reasons from normal battle outputs. Port the harness as an editor tool rather than duplicating combat formulas in Unity UI code; matching harness results provide a practical parity check during migration.
 
 ## Suggested port order
 

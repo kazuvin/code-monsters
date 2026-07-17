@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { applyBattleStep, planBattleFrame } from '../src/core/battle-engine.ts';
 import { analyzeBalance } from '../src/core/balance.ts';
-import { runDebugSimulation } from '../src/core/debug-simulation.ts';
+import { createDebugFighters, runDebugSimulation } from '../src/core/debug-simulation.ts';
 import { createBattleFighters, createInventoryUnit } from '../src/core/roster.ts';
 import { summarizeDecisions } from '../src/core/replay.ts';
 import {
@@ -627,13 +627,25 @@ const debugBase = {
   mode: 'single',
   durationSeconds: 10,
   initialGauge: 8,
-  distance: 4,
+  actorHpRatio: 1,
   targetMaxHp: 1_000,
-  targetHpRatio: 1,
   targetDefense: 15,
   targetWeight: 14,
+  targetRole: 'TANK',
   targetPoison: 0,
+  targetGuarded: false,
+  targetBerserk: false,
+  targetTaunted: false,
 };
+const debugFighters = createDebugFighters(debugBase);
+assert.equal(debugFighters.length, 2, 'デバッグルームが1対1の戦闘状態を作れていません');
+const debugActor = debugFighters.find((fighter) => fighter.team === 'ally');
+const debugTarget = debugFighters.find((fighter) => fighter.team === 'enemy');
+assert.ok(debugActor && debugTarget, 'デバッグルームの攻撃側または敵側がありません');
+assert.ok(
+  Math.abs(debugActor.x - debugTarget.x) <= Math.min(debugActor.range, debugTarget.range),
+  'デバッグルームの2体が相互の攻撃射程内に配置されていません',
+);
 const debugSingle = runDebugSimulation(debugBase);
 assert.equal(debugSingle.executions, 1, 'デバッグルームの単発テストが技を1回実行していません');
 assert.equal(debugSingle.hits, 1, 'デバッグルームが実ダメージイベントを記録していません');
@@ -641,14 +653,15 @@ assert.ok(
   debugSingle.totalDamage > 0 && debugSingle.damagePerHit > 0,
   'デバッグルームが単発ダメージを集計していません',
 );
-const debugKill = runDebugSimulation({ ...debugBase, targetMaxHp: 10 });
-assert.equal(debugKill.finalTargetHp, 0, 'デバッグルームのサンドバッグを撃破できません');
-assert.ok(debugKill.timeToKill > 0, 'デバッグルームが撃破時間を記録していません');
+const debugRecovery = runDebugSimulation({ ...debugBase, targetMaxHp: 10 });
+assert.equal(debugRecovery.finalTargetHp, 10, '被弾した敵ユニットが最大HPまで自動回復していません');
+assert.equal(debugRecovery.targetRecoveryCount, 1, '敵ユニットの自動回復回数を記録できていません');
+assert.equal(debugRecovery.timeToKill, null, '自動回復する敵ユニットに撃破時間が記録されています');
 
 const debugMovement = runDebugSimulation({
   ...debugBase,
-  instructionId: 'approach',
-  distance: 30,
+  instructionId: 'retreat',
+  conditionId: 'targetInRange',
 });
 assert.ok(debugMovement.actorDisplacement > 0, 'デバッグルームが実行ユニットの移動量を計測していません');
 
@@ -669,14 +682,13 @@ assert.ok(
   debugTimeline.effectPerCost > 0 && debugTimeline.dps > 0,
   'デバッグルームがDPSとコスト効率を算出していません',
 );
+assert.equal(debugTimeline.finalTargetHp, 99_999, '継続計測中に敵ユニットのHPが満タンへ復元されていません');
 
-const debugRangeMiss = runDebugSimulation({
+const debugGuarded = runDebugSimulation({
   ...debugBase,
-  instructionId: 'shoulder-throw',
-  distance: 72,
+  targetGuarded: true,
 });
-assert.equal(debugRangeMiss.executions, 0, '固定射程外の背負い投げがデバッグルームで実行されています');
-assert.equal(debugRangeMiss.skipped.range, 1, 'デバッグルームが射程外のスキップ理由を記録していません');
+assert.ok(debugGuarded.totalDamage < debugSingle.totalDamage, '敵に設定したガード状態が実ダメージへ反映されていません');
 
 const debugPoison = runDebugSimulation({
   ...debugBase,
@@ -685,19 +697,21 @@ const debugPoison = runDebugSimulation({
 });
 assert.ok(debugPoison.finalPoison > 0, 'デバッグルームが毒スタックを計測していません');
 
-const debugHealing = runDebugSimulation({
+const debugHealingInput = {
   ...debugBase,
   actorUnitId: 'mender',
   instructionId: 'field-repair',
   conditionId: 'targetInRange',
   targetSelectorId: 'lowestHpAlly',
   targetMaxHp: 200,
-  targetHpRatio: 0.3,
+  actorHpRatio: 0.3,
   targetDefense: 5,
   targetWeight: 5,
-});
+};
+const debugHealing = runDebugSimulation(debugHealingInput);
 assert.ok(debugHealing.totalHealing > 0, 'デバッグルームが味方への実回復量を計測していません');
 assert.equal(debugHealing.verdict, 'healing', '回復テストの判定が回復になっていません');
+assert.equal(createDebugFighters(debugHealingInput).length, 2, '回復技の計測が1対1ではありません');
 
 const balance = analyzeBalance(GAME_DATA);
 assert.equal(

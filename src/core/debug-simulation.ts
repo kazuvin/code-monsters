@@ -1,8 +1,9 @@
-import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, TARGET_SELECTORS, UNITS } from '../data.ts';
+import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, UNITS } from '../data.ts';
 import type {
   ConditionId,
   Fighter,
   Instruction,
+  Role,
   TargetDomain,
   TargetSelectorId,
   UnitDefinition,
@@ -28,12 +29,15 @@ export type DebugSimulationInput = {
   mode: DebugRunMode;
   durationSeconds: number;
   initialGauge: number;
-  distance: number;
+  actorHpRatio: number;
   targetMaxHp: number;
-  targetHpRatio: number;
   targetDefense: number;
   targetWeight: number;
+  targetRole: Role;
   targetPoison: number;
+  targetGuarded: boolean;
+  targetBerserk: boolean;
+  targetTaunted: boolean;
 };
 
 export type DebugEffectEvent = {
@@ -49,13 +53,14 @@ export type DebugSimulationResult = {
   hits: number;
   totalDamage: number;
   damagePerHit: number;
+  lastDamage: number;
   dps: number;
   totalHealing: number;
   healingPerSecond: number;
   costSpent: number;
   effectPerCost: number | null;
   usesPerMinute: number;
-  timeToKill: number | null;
+  timeToKill: null;
   finalTargetHp: number;
   finalTargetHpRatio: number;
   finalPoison: number;
@@ -66,14 +71,28 @@ export type DebugSimulationResult = {
   effectState: 'BERSERK' | 'GUARD' | 'ACTIVE';
   minimumGauge: number;
   emptyGaugeRate: number;
+  mutualDistance: number;
+  targetRecoveryCount: number;
   skipped: Record<DecisionReason, number>;
   events: DebugEffectEvent[];
   verdict: 'damage' | 'healing' | 'effect' | 'blocked';
 };
 
+type DebugSetup = {
+  fighters: Fighter[];
+  team: UnitInventoryItem[];
+  actorId: string;
+  dummyId: string;
+  effectTargetId: string;
+  instruction: Instruction;
+  targetDomain: TargetDomain;
+  actorX: number;
+  targetX: number;
+  mutualDistance: number;
+};
+
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
 const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
-const targetById = new Map(TARGET_SELECTORS.map((target) => [target.id, target]));
 const conditionIds = new Set(CONDITIONS.map((condition) => condition.id));
 
 const round = (value: number, digits = 2) => Number(value.toFixed(digits));
@@ -104,50 +123,38 @@ function requireInstruction(id: string): Instruction {
   return instruction;
 }
 
-function inertFighter(
-  definition: UnitDefinition,
-  overrides: Pick<Fighter, 'instanceId' | 'team' | 'hp' | 'maxHp' | 'x' | 'cooldown'> & Partial<Fighter>,
-): Fighter {
-  return {
-    ...definition,
-    ...baseFighterState,
-    ...overrides,
-  };
+function mutualRangeDistance(actor: UnitDefinition, target: UnitDefinition): number {
+  return round(Math.max(2, Math.min(actor.range, target.range) * BATTLE_CONFIG.rangeStopRatio), 1);
 }
 
-function makeDebugSetup(input: DebugSimulationInput): {
-  fighters: Fighter[];
-  team: UnitInventoryItem[];
-  actorId: string;
-  targetId: string;
-  instruction: Instruction;
-  targetDomain: TargetDomain;
-} {
+function debugTargetSelector(instruction: Instruction, requested: TargetSelectorId): TargetSelectorId {
+  if (instruction.action === 'heal') return 'self';
+  if (instruction.targetMode === 'self') return 'self';
+  return instruction.targetMode === 'selected' ? requested : instruction.defaultTarget;
+}
+
+function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
   const actorDefinition = requireUnit(input.actorUnitId);
   const targetDefinition = requireUnit(input.targetUnitId);
   const instruction = requireInstruction(input.instructionId);
-  const selector = targetById.get(input.targetSelectorId);
-  if (!selector) throw new Error(`Unknown debug target selector: ${input.targetSelectorId}`);
   if (!conditionIds.has(input.conditionId)) throw new Error(`Unknown debug condition: ${input.conditionId}`);
 
   const actorId = 'debug-actor';
-  const actorX = 18;
-  const targetX = clamp(actorX + input.distance, BATTLE_CONFIG.wallLeft, BATTLE_CONFIG.wallRight);
+  const dummyId = 'debug-target';
+  const distance = mutualRangeDistance(actorDefinition, targetDefinition);
+  const actorX = round(50 - distance / 2, 1);
+  const targetX = round(50 + distance / 2, 1);
   const runDuration = input.mode === 'single' ? 12 : input.durationSeconds;
   const inertCooldown = runDuration + BATTLE_CONFIG.overheatStartSeconds + 10;
   const targetMaxHp = Math.max(1, Math.round(input.targetMaxHp));
-  const targetHp = Math.max(1, Math.round(targetMaxHp * clamp(input.targetHpRatio, 0.01, 1)));
+  const targetSelectorId = debugTargetSelector(instruction, input.targetSelectorId);
+  const targetDomain: TargetDomain = targetSelectorId === 'self' ? 'self' : 'enemy';
+  const guardInstruction = instructionById.get('tank-guard');
 
   const actorInventory: UnitInventoryItem = {
     ...actorDefinition,
     inventoryId: actorId,
-    program: [
-      {
-        actionId: instruction.id,
-        conditionId: input.conditionId,
-        targetId: input.targetSelectorId,
-      },
-    ],
+    program: [{ actionId: instruction.id, conditionId: input.conditionId, targetId: targetSelectorId }],
     reaction: null,
   };
   const actor: Fighter = {
@@ -155,78 +162,50 @@ function makeDebugSetup(input: DebugSimulationInput): {
     ...baseFighterState,
     instanceId: actorId,
     team: 'ally',
-    hp:
-      selector.domain === 'self'
-        ? Math.max(1, Math.round(actorDefinition.maxHp * clamp(input.targetHpRatio, 0.01, 1)))
-        : actorDefinition.maxHp,
+    hp: Math.max(1, Math.round(actorDefinition.maxHp * clamp(input.actorHpRatio, 0.01, 1))),
     abilityGauge: clamp(input.initialGauge, 0, BATTLE_CONFIG.abilityGaugeMax),
     x: actorX,
     cooldown: 0,
   };
-
-  if (selector.domain === 'enemy') {
-    const targetId = 'debug-target';
-    const target = inertFighter(targetDefinition, {
-      instanceId: targetId,
-      team: 'enemy',
-      name: `DUMMY / ${targetDefinition.name}`,
-      maxHp: targetMaxHp,
-      hp: targetHp,
-      defense: Math.max(0, Math.round(input.targetDefense)),
-      weight: Math.max(0, input.targetWeight),
-      poison: Math.max(0, Math.round(input.targetPoison)),
-      attack: 0,
-      x: targetX,
-      cooldown: inertCooldown,
-    });
-    return { fighters: [actor, target], team: [actorInventory], actorId, targetId, instruction, targetDomain: 'enemy' };
-  }
-
-  const anchor = inertFighter(targetDefinition, {
-    instanceId: 'debug-anchor',
+  const target: Fighter = {
+    ...targetDefinition,
+    ...baseFighterState,
+    instanceId: dummyId,
     team: 'enemy',
-    name: 'SAFETY ANCHOR',
-    maxHp: 999_999,
-    hp: 999_999,
-    defense: 999,
-    weight: 999,
-    attack: 0,
-    x: BATTLE_CONFIG.wallRight,
-    cooldown: inertCooldown,
-  });
-  if (selector.domain === 'self') {
-    return {
-      fighters: [actor, anchor],
-      team: [actorInventory],
-      actorId,
-      targetId: actorId,
-      instruction,
-      targetDomain: 'self',
-    };
-  }
-
-  const targetId = 'debug-target';
-  const allyTarget = inertFighter(targetDefinition, {
-    instanceId: targetId,
-    team: 'ally',
-    name: `ALLY RIG / ${targetDefinition.name}`,
+    name: `DUMMY / ${targetDefinition.name}`,
+    role: input.targetRole,
     maxHp: targetMaxHp,
-    hp: targetHp,
+    hp: targetMaxHp,
     defense: Math.max(0, Math.round(input.targetDefense)),
     weight: Math.max(0, input.targetWeight),
     poison: Math.max(0, Math.round(input.targetPoison)),
+    guarded: input.targetGuarded,
+    guardDamageScale: input.targetGuarded ? (guardInstruction?.params.incomingDamageScale ?? 1) : 1,
+    guardKnockbackScale: input.targetGuarded ? (guardInstruction?.params.incomingKnockbackScale ?? 1) : 1,
+    berserk: input.targetBerserk,
+    tauntTargetId: input.targetTaunted ? actorId : null,
+    tauntSeconds: input.targetTaunted ? inertCooldown : 0,
     attack: 0,
     x: targetX,
     cooldown: inertCooldown,
-  });
+  };
+
   return {
-    fighters: [actor, allyTarget, anchor],
+    fighters: [actor, target],
     team: [actorInventory],
     actorId,
-    targetId,
+    dummyId,
+    effectTargetId: targetDomain === 'self' ? actorId : dummyId,
     instruction,
-    targetDomain: 'ally',
+    targetDomain,
+    actorX,
+    targetX,
+    mutualDistance: distance,
   };
+}
+
+export function createDebugFighters(input: DebugSimulationInput): Fighter[] {
+  return makeDebugSetup(input).fighters;
 }
 
 function countSkips(decisions: DecisionTrace[], actionId: string): Record<DecisionReason, number> {
@@ -237,6 +216,14 @@ function countSkips(decisions: DecisionTrace[], actionId: string): Record<Decisi
     }
   }
   return skipped;
+}
+
+function restoreTrainingPositions(fighters: Fighter[], setup: DebugSetup): Fighter[] {
+  return fighters.map((fighter) => {
+    if (fighter.instanceId === setup.actorId) return { ...fighter, x: setup.actorX };
+    if (fighter.instanceId === setup.dummyId) return { ...fighter, x: setup.targetX, hp: fighter.maxHp };
+    return fighter;
+  });
 }
 
 export function runDebugSimulation(input: DebugSimulationInput): DebugSimulationResult {
@@ -250,18 +237,18 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
   let elapsed = 0;
   let previousElapsed = 0;
   let singleAttempted = false;
-  let timeToKill: number | null = null;
   let minimumGauge = clamp(input.initialGauge, 0, BATTLE_CONFIG.abilityGaugeMax);
   let emptyGaugeSeconds = 0;
   let totalDamage = 0;
   let totalHealing = 0;
   let hits = 0;
+  let targetRecoveryCount = 0;
+  let maximumTargetDisplacement = 0;
+  let maximumActorDisplacement = 0;
   const decisions: DecisionTrace[] = [];
   const events: DebugEffectEvent[] = [];
-  const initialActorX = fighters.find((fighter) => fighter.instanceId === setup.actorId)?.x ?? 0;
-  const initialActorAttack = fighters.find((fighter) => fighter.instanceId === setup.actorId)?.attack ?? 0;
-  const initialActorSpeed = fighters.find((fighter) => fighter.instanceId === setup.actorId)?.speed ?? 0;
-  const initialTargetX = fighters.find((fighter) => fighter.instanceId === setup.targetId)?.x ?? 0;
+  const initialActor = fighters.find((fighter) => fighter.instanceId === setup.actorId)!;
+  const initialEffectTarget = fighters.find((fighter) => fighter.instanceId === setup.effectTargetId)!;
 
   while (elapsed < limit - Number.EPSILON) {
     previousElapsed = elapsed;
@@ -278,16 +265,28 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
         if (step.damage?.actionId === setup.instruction.id && step.damage.actorId === setup.actorId) {
           totalDamage += step.damage.amount;
           hits += 1;
+          targetRecoveryCount += 1;
           events.push({ elapsed: round(elapsed), amount: step.damage.amount, kind: 'damage' });
         }
-        const beforeTargetHp = before.find((fighter) => fighter.instanceId === setup.targetId)?.hp ?? 0;
-        const afterTargetHp = fighters.find((fighter) => fighter.instanceId === setup.targetId)?.hp ?? beforeTargetHp;
+        const beforeTargetHp = before.find((fighter) => fighter.instanceId === setup.effectTargetId)?.hp ?? 0;
+        const afterTargetHp =
+          fighters.find((fighter) => fighter.instanceId === setup.effectTargetId)?.hp ?? beforeTargetHp;
         const healing = Math.max(0, afterTargetHp - beforeTargetHp);
         if (healing > 0) {
           totalHealing += healing;
           events.push({ elapsed: round(elapsed), amount: healing, kind: 'healing' });
         }
-        if (setup.targetDomain === 'enemy' && afterTargetHp <= 0 && timeToKill === null) timeToKill = elapsed;
+        const actor = fighters.find((fighter) => fighter.instanceId === setup.actorId);
+        const dummy = fighters.find((fighter) => fighter.instanceId === setup.dummyId);
+        maximumActorDisplacement = Math.max(
+          maximumActorDisplacement,
+          Math.abs((actor?.x ?? setup.actorX) - setup.actorX),
+        );
+        maximumTargetDisplacement = Math.max(
+          maximumTargetDisplacement,
+          Math.abs((dummy?.x ?? setup.targetX) - setup.targetX),
+        );
+        fighters = restoreTrainingPositions(fighters, setup);
       } else {
         fighters = tickCooldowns(fighters, tick);
       }
@@ -310,8 +309,6 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
       minimumGauge = Math.min(minimumGauge, actor.abilityGauge);
       if (actor.abilityGauge <= Number.EPSILON) emptyGaugeSeconds += tick;
     }
-    const target = fighters.find((fighter) => fighter.instanceId === setup.targetId);
-    if (setup.targetDomain === 'enemy' && target && target.hp <= 0 && queue.length === 0) break;
     if (input.mode === 'single' && singleAttempted && queue.length === 0) break;
   }
 
@@ -320,13 +317,14 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
   );
   const executions = actionDecisions.filter((decision) => decision.outcome === 'executed').length;
   const finalActor = fighters.find((fighter) => fighter.instanceId === setup.actorId);
-  const finalTarget = fighters.find((fighter) => fighter.instanceId === setup.targetId);
+  const finalTarget = fighters.find((fighter) => fighter.instanceId === setup.effectTargetId);
   const effectTotal = totalDamage + totalHealing;
   const costSpent = executions * setup.instruction.abilityCost;
+  const initialPoison = setup.fighters.find((fighter) => fighter.instanceId === setup.effectTargetId)?.poison ?? 0;
   const hasStateEffect =
-    (finalTarget?.poison ?? 0) !== input.targetPoison ||
-    Math.abs((finalTarget?.x ?? initialTargetX) - initialTargetX) > Number.EPSILON ||
-    Math.abs((finalActor?.x ?? initialActorX) - initialActorX) > Number.EPSILON ||
+    (finalTarget?.poison ?? 0) !== initialPoison ||
+    maximumTargetDisplacement > Number.EPSILON ||
+    maximumActorDisplacement > Number.EPSILON ||
     Boolean(finalActor?.berserk || finalActor?.guarded);
   const verdict =
     totalDamage > 0 ? 'damage' : totalHealing > 0 ? 'healing' : executions > 0 || hasStateEffect ? 'effect' : 'blocked';
@@ -338,23 +336,26 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
     hits,
     totalDamage,
     damagePerHit: hits > 0 ? round(totalDamage / hits, 1) : 0,
+    lastDamage: [...events].reverse().find((event) => event.kind === 'damage')?.amount ?? 0,
     dps: elapsed > 0 ? round(totalDamage / elapsed, 1) : 0,
     totalHealing,
     healingPerSecond: elapsed > 0 ? round(totalHealing / elapsed, 1) : 0,
     costSpent,
     effectPerCost: costSpent > 0 ? round(effectTotal / costSpent, 1) : null,
     usesPerMinute: elapsed > 0 ? round((executions / elapsed) * 60, 1) : 0,
-    timeToKill: timeToKill === null ? null : round(timeToKill),
+    timeToKill: null,
     finalTargetHp: Math.max(0, round(finalTarget?.hp ?? 0, 1)),
     finalTargetHpRatio: finalTarget ? round(finalTarget.hp / finalTarget.maxHp, 3) : 0,
     finalPoison: finalTarget?.poison ?? 0,
-    targetDisplacement: round(Math.abs((finalTarget?.x ?? initialTargetX) - initialTargetX), 1),
-    actorDisplacement: round(Math.abs((finalActor?.x ?? initialActorX) - initialActorX), 1),
-    attackDelta: round((finalActor?.attack ?? initialActorAttack) - initialActorAttack, 1),
-    speedDelta: round((finalActor?.speed ?? initialActorSpeed) - initialActorSpeed, 2),
+    targetDisplacement: round(maximumTargetDisplacement, 1),
+    actorDisplacement: round(maximumActorDisplacement, 1),
+    attackDelta: round((finalActor?.attack ?? initialActor.attack) - initialActor.attack, 1),
+    speedDelta: round((finalActor?.speed ?? initialActor.speed) - initialActor.speed, 2),
     effectState: finalActor?.berserk ? 'BERSERK' : finalActor?.guarded ? 'GUARD' : 'ACTIVE',
     minimumGauge: round(minimumGauge, 1),
     emptyGaugeRate: elapsed > 0 ? round(emptyGaugeSeconds / elapsed, 3) : 0,
+    mutualDistance: setup.mutualDistance,
+    targetRecoveryCount: targetRecoveryCount,
     skipped: countSkips(decisions, setup.instruction.id),
     events: events.slice(0, 160),
     verdict,

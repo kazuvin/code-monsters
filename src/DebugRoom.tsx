@@ -1,27 +1,44 @@
-import { type CSSProperties, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   Crosshair,
   Gauge,
-  HeartPulse,
   Play,
   RotateCcw,
   Settings2,
   Shield,
-  Timer,
+  Sparkles,
+  TimerReset,
   X,
   Zap,
 } from 'lucide-react';
-import { runDebugSimulation, type DebugSimulationInput, type DebugSimulationResult } from './core/debug-simulation';
-import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, TARGET_SELECTORS, UNITS } from './data';
-import type { ConditionId, TargetSelectorId } from './types';
+import { BattleScene } from './BattleScene';
+import {
+  createDebugFighters,
+  runDebugSimulation,
+  type DebugEffectEvent,
+  type DebugSimulationInput,
+  type DebugSimulationResult,
+} from './core/debug-simulation';
+import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, UNITS } from './data';
+import type { BattleFlash, Fighter, Role } from './types';
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
 const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
-const targetById = new Map(TARGET_SELECTORS.map((target) => [target.id, target]));
+const conditionById = new Map(CONDITIONS.map((condition) => [condition.id, condition]));
 
 const defaultTarget = unitById.get('bastion') ?? UNITS[0];
-const defaultInstruction = instructionById.get('knock-away') ?? INSTRUCTIONS[0];
+const defaultInstruction = instructionById.get('attack-low') ?? INSTRUCTIONS[0];
+
+const roles: Array<{ id: Role; label: string }> = [
+  { id: 'STRIKER', label: 'ストライカー' },
+  { id: 'TANK', label: 'タンク' },
+  { id: 'SUPPORT', label: 'サポート' },
+  { id: 'VENOM', label: 'ヴェノム' },
+  { id: 'CHASE', label: 'チェイス' },
+  { id: 'HACKER', label: 'ハッカー' },
+  { id: 'BERSERKER', label: 'バーサーカー' },
+];
 
 const createDefaultInput = (): DebugSimulationInput => ({
   actorUnitId: unitById.has('volt') ? 'volt' : UNITS[0].id,
@@ -29,15 +46,18 @@ const createDefaultInput = (): DebugSimulationInput => ({
   conditionId: defaultInstruction.condition,
   targetSelectorId: defaultInstruction.defaultTarget,
   targetUnitId: defaultTarget.id,
-  mode: 'timeline',
+  mode: 'single',
   durationSeconds: 10,
-  initialGauge: BATTLE_CONFIG.abilityGaugeInitial,
-  distance: 7,
+  initialGauge: BATTLE_CONFIG.abilityGaugeMax,
+  actorHpRatio: 1,
   targetMaxHp: defaultTarget.maxHp,
-  targetHpRatio: 1,
   targetDefense: defaultTarget.defense,
   targetWeight: defaultTarget.weight,
+  targetRole: defaultTarget.role,
   targetPoison: 0,
+  targetGuarded: false,
+  targetBerserk: false,
+  targetTaunted: false,
 });
 
 const skipLabels = {
@@ -45,13 +65,6 @@ const skipLabels = {
   range: '射程外',
   cost: 'コスト不足',
   state: '状態重複',
-};
-
-const verdictLabels: Record<DebugSimulationResult['verdict'], string> = {
-  damage: 'DAMAGE CONFIRMED',
-  healing: 'REPAIR CONFIRMED',
-  effect: 'EFFECT CONFIRMED',
-  blocked: 'NO EFFECT',
 };
 
 const actionLabels = {
@@ -72,6 +85,8 @@ const actionLabels = {
   follow: 'FOLLOW',
   wait: 'WAIT',
 };
+
+const damageActions = new Set(['attack', 'heavy', 'throw', 'poison', 'burn', 'follow']);
 
 function Metric({
   label,
@@ -117,6 +132,7 @@ function NumberControl({
       <span>{label}</span>
       <div>
         <input
+          aria-label={label}
           type="number"
           value={value}
           min={min}
@@ -130,80 +146,199 @@ function NumberControl({
   );
 }
 
+function visualKind(instruction: (typeof INSTRUCTIONS)[number]): BattleFlash['kind'] {
+  if (instruction.action === 'move') return instruction.visualKind === 'dash' ? 'dash' : 'move';
+  if (instruction.action === 'buff') return 'wait';
+  return instruction.action;
+}
+
+function DebugBattlePreview({
+  input,
+  result,
+  sequence,
+}: {
+  input: DebugSimulationInput;
+  result: DebugSimulationResult | null;
+  sequence: number;
+}) {
+  const initialFighters = useMemo(() => createDebugFighters(input), [input]);
+  const [fighters, setFighters] = useState<Fighter[]>(initialFighters);
+  const [flash, setFlash] = useState<BattleFlash | null>(null);
+  const [impact, setImpact] = useState<{ amount: number; kind: DebugEffectEvent['kind'] } | null>(null);
+  const [running, setRunning] = useState(false);
+  const instruction = instructionById.get(input.instructionId) ?? INSTRUCTIONS[0];
+
+  useEffect(() => {
+    const timers: number[] = [];
+    setFighters(initialFighters);
+    setFlash(null);
+    setImpact(null);
+    setRunning(false);
+    if (!result) return undefined;
+
+    const events =
+      result.events.length > 0 ? result.events.slice(0, 18) : [{ elapsed: 0, amount: 0, kind: 'damage' as const }];
+    const interval = Math.max(230, Math.min(620, Math.floor(3800 / events.length)));
+    const actorId = 'debug-actor';
+    const targetId = instruction.action === 'heal' || instruction.targetMode === 'self' ? actorId : 'debug-target';
+    setRunning(true);
+
+    events.forEach((event, index) => {
+      timers.push(
+        window.setTimeout(
+          () => {
+            const n = Date.now() + index;
+            setFlash({
+              id: actorId,
+              kind: visualKind(instruction),
+              n,
+              targetId,
+              attackType: initialFighters[0]?.attackType,
+              actionLabel: instruction.short,
+            });
+            if (event.amount > 0) {
+              setImpact({ amount: event.amount, kind: event.kind });
+              setFighters((current) =>
+                current.map((fighter) => {
+                  if (fighter.instanceId !== targetId) return fighter;
+                  const hp =
+                    event.kind === 'damage'
+                      ? Math.max(1, fighter.maxHp - event.amount)
+                      : Math.min(fighter.maxHp, fighter.hp + event.amount);
+                  return { ...fighter, hp };
+                }),
+              );
+              timers.push(
+                window.setTimeout(() => {
+                  setFighters((current) =>
+                    current.map((fighter) =>
+                      fighter.instanceId === 'debug-target' ? { ...fighter, hp: fighter.maxHp } : fighter,
+                    ),
+                  );
+                  setImpact(null);
+                }, 180),
+              );
+            }
+          },
+          180 + index * interval,
+        ),
+      );
+    });
+    timers.push(window.setTimeout(() => setRunning(false), 460 + events.length * interval));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [initialFighters, instruction, result, sequence]);
+
+  const actor = fighters.find((fighter) => fighter.instanceId === 'debug-actor') ?? fighters[0];
+  const target = fighters.find((fighter) => fighter.instanceId === 'debug-target') ?? fighters[1];
+  const elapsed = result?.elapsed ?? 0;
+
+  return (
+    <section className="debug-arena-stage" aria-label="1対1戦闘テスト">
+      <div className="battle-hud debug-battle-hud">
+        <div className="hud-team ally">
+          <small>ATTACKER</small>
+          <b>{Math.ceil(actor.hp)}</b>
+          <span>HP</span>
+        </div>
+        <div className="timer">
+          <small>{running ? 'MEASURING' : result ? 'COMPLETE' : 'STANDBY'}</small>
+          <b>
+            {Math.floor(elapsed / 60)}:{String(Math.floor(elapsed % 60)).padStart(2, '0')}
+          </b>
+        </div>
+        <div className="hud-team enemy">
+          <small>AUTO-RECOVERY DUMMY</small>
+          <b>{Math.ceil(target.hp)}</b>
+          <span>HP</span>
+        </div>
+      </div>
+      <BattleScene fighters={fighters} flash={flash} running={running} />
+      <div className="debug-range-lock">
+        <Crosshair size={13} />
+        <span>相互射程内</span>
+        <b>{(result?.mutualDistance ?? Math.abs(actor.x - target.x)).toFixed(1)} RNG</b>
+        <small>
+          {actor.range} / {target.range}
+        </small>
+      </div>
+      <div className="debug-auto-recovery">
+        <i />
+        <span>AUTO RECOVER</span>
+        <b>被弾後 0.18秒で全回復</b>
+      </div>
+      {impact && (
+        <div className={`debug-impact-pop ${impact.kind}`} key={`${sequence}-${flash?.n}`}>
+          <strong>
+            {impact.kind === 'damage' ? '-' : '+'}
+            {impact.amount}
+          </strong>
+          <span>{impact.kind === 'damage' ? 'DAMAGE' : 'REPAIR'}</span>
+        </div>
+      )}
+      <div className="debug-duel-bars">
+        {[actor, target].map((fighter) => (
+          <div className={fighter.team} key={fighter.instanceId}>
+            <span>{fighter.name}</span>
+            <b>
+              {Math.ceil(fighter.hp)} / {fighter.maxHp}
+            </b>
+            <i>
+              <span style={{ width: `${Math.max(0, (fighter.hp / fighter.maxHp) * 100)}%` }} />
+            </i>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function DebugRoom() {
   const [input, setInput] = useState<DebugSimulationInput>(createDefaultInput);
   const [measuredInput, setMeasuredInput] = useState<DebugSimulationInput>(createDefaultInput);
-  const [result, setResult] = useState<DebugSimulationResult>(() => runDebugSimulation(createDefaultInput()));
+  const [result, setResult] = useState<DebugSimulationResult | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
-  const [runKey, setRunKey] = useState(0);
+  const [sequence, setSequence] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const configScrollRef = useRef<HTMLDivElement>(null);
 
   const instruction = instructionById.get(input.instructionId) ?? INSTRUCTIONS[0];
-  const targetDefinition = targetById.get(input.targetSelectorId) ?? TARGET_SELECTORS[0];
   const measuredActor = unitById.get(measuredInput.actorUnitId) ?? UNITS[0];
   const measuredInstruction = instructionById.get(measuredInput.instructionId) ?? INSTRUCTIONS[0];
-  const measuredTargetPreset = unitById.get(measuredInput.targetUnitId) ?? UNITS[0];
-  const measuredTargetDefinition = targetById.get(measuredInput.targetSelectorId) ?? TARGET_SELECTORS[0];
-  const compatibleTargets = useMemo(
-    () =>
-      instruction.targetMode === 'selected'
-        ? TARGET_SELECTORS.filter((target) => instruction.compatibleTargets.includes(target.id))
-        : TARGET_SELECTORS.filter((target) => target.id === instruction.defaultTarget),
-    [instruction],
-  );
-  const compatibleConditions = useMemo(
-    () => CONDITIONS.filter((condition) => condition.compatibleTargets.includes(input.targetSelectorId)),
-    [input.targetSelectorId],
-  );
-  const maximumEvent = Math.max(1, ...result.events.map((event) => event.amount));
-  const primaryValue = result.totalDamage > 0 ? result.totalDamage : result.totalHealing;
-  const primaryLabel =
-    result.totalDamage > 0 ? 'TOTAL DAMAGE' : result.totalHealing > 0 ? 'TOTAL REPAIR' : 'TOTAL EFFECT';
-  const finalHpPercent = Math.max(0, Math.min(100, result.finalTargetHpRatio * 100));
-  const isSingle = measuredInput.mode === 'single';
+  const measuredTarget = unitById.get(measuredInput.targetUnitId) ?? UNITS[0];
   const isHealing = measuredInstruction.action === 'heal';
-  const isDamageAction = ['attack', 'heavy', 'throw', 'poison', 'burn', 'follow'].includes(measuredInstruction.action);
+  const isDamage = damageActions.has(measuredInstruction.action);
   const effectPerUse = isHealing
-    ? result.executions > 0
+    ? result && result.executions > 0
       ? Number((result.totalHealing / result.executions).toFixed(1))
       : 0
-    : result.damagePerHit;
-  const efficiencyValue =
-    result.totalDamage > 0 || result.totalHealing > 0
-      ? (result.effectPerCost ?? 'FREE')
-      : measuredInstruction.abilityCost === 0
-        ? 'FREE'
-        : '—';
+    : (result?.damagePerHit ?? 0);
+  const efficiency = result?.effectPerCost ?? (measuredInstruction.abilityCost === 0 ? 'FREE' : '—');
+  const activeStatuses = [
+    measuredInput.targetPoison > 0 ? `毒 ×${measuredInput.targetPoison}` : null,
+    measuredInput.targetGuarded ? 'ガード' : null,
+    measuredInput.targetBerserk ? 'バーサーク' : null,
+    measuredInput.targetTaunted ? '挑発' : null,
+  ].filter(Boolean);
 
   const updateInput = (next: Partial<DebugSimulationInput>) => {
     setInput((current) => ({ ...current, ...next }));
     setDirty(true);
   };
 
+  const openSettings = () => {
+    if (configScrollRef.current) configScrollRef.current.scrollTop = 0;
+    setSetupOpen(true);
+  };
+
   const selectInstruction = (instructionId: string) => {
     const nextInstruction = instructionById.get(instructionId);
     if (!nextInstruction) return;
-    const nextTarget = nextInstruction.defaultTarget;
-    const defaultCondition = CONDITIONS.find(
-      (condition) => condition.id === nextInstruction.condition && condition.compatibleTargets.includes(nextTarget),
-    );
-    const fallbackCondition = CONDITIONS.find((condition) => condition.compatibleTargets.includes(nextTarget));
     updateInput({
       instructionId,
-      targetSelectorId: nextTarget,
-      conditionId: (defaultCondition ?? fallbackCondition ?? CONDITIONS[0]).id,
-      targetHpRatio: nextInstruction.action === 'heal' ? 0.3 : input.targetHpRatio,
+      conditionId: nextInstruction.condition,
+      targetSelectorId: nextInstruction.defaultTarget,
+      actorHpRatio: nextInstruction.condition === 'selfHpBelow30' || nextInstruction.action === 'heal' ? 0.25 : 1,
     });
-  };
-
-  const selectTarget = (targetSelectorId: TargetSelectorId) => {
-    const conditionStillWorks = CONDITIONS.some(
-      (condition) => condition.id === input.conditionId && condition.compatibleTargets.includes(targetSelectorId),
-    );
-    const nextCondition = conditionStillWorks
-      ? input.conditionId
-      : (CONDITIONS.find((condition) => condition.compatibleTargets.includes(targetSelectorId))?.id ?? 'always');
-    updateInput({ targetSelectorId, conditionId: nextCondition });
   };
 
   const selectTargetPreset = (targetUnitId: string) => {
@@ -214,31 +349,64 @@ export function DebugRoom() {
       targetMaxHp: unit.maxHp,
       targetDefense: unit.defense,
       targetWeight: unit.weight,
+      targetRole: unit.role,
     });
   };
 
-  const run = () => {
-    setResult(runDebugSimulation(input));
-    setMeasuredInput({ ...input });
-    setRunKey((current) => current + 1);
+  const measure = () => {
+    const next = { ...input };
+    setMeasuredInput(next);
+    setResult(runDebugSimulation(next));
+    setSequence((current) => current + 1);
     setDirty(false);
     setSetupOpen(false);
   };
 
-  const reset = () => {
+  const resetBattle = () => {
+    setResult(null);
+    setSequence((current) => current + 1);
+  };
+
+  const applySettings = () => {
+    setMeasuredInput({ ...input });
+    setResult(null);
+    setSequence((current) => current + 1);
+    setDirty(false);
+    setSetupOpen(false);
+  };
+
+  const restoreDefaults = () => {
     const next = createDefaultInput();
     setInput(next);
     setMeasuredInput(next);
-    setResult(runDebugSimulation(next));
-    setRunKey((current) => current + 1);
+    setResult(null);
+    setSequence((current) => current + 1);
     setDirty(false);
   };
+
+  const primaryValue = result
+    ? isHealing
+      ? result.totalHealing
+      : isDamage
+        ? result.lastDamage
+        : result.executions
+    : 0;
+  const primaryLabel = isHealing ? 'TOTAL REPAIR' : isDamage ? 'LAST HIT DAMAGE' : 'EXECUTED';
+  const verdict = result
+    ? result.verdict === 'damage'
+      ? 'DAMAGE CONFIRMED'
+      : result.verdict === 'healing'
+        ? 'REPAIR CONFIRMED'
+        : result.verdict === 'effect'
+          ? 'EFFECT CONFIRMED'
+          : 'NO EFFECT'
+    : 'READY TO MEASURE';
 
   return (
     <div className="debug-room">
       <header className="debug-room-head">
-        <div>
-          <span>LIVE COMBAT HARNESS</span>
+        <div className="debug-room-title">
+          <span>ONE-ON-ONE COMBAT LAB</span>
           <h1>デバッグルーム</h1>
         </div>
         <div className="debug-mode-switch" aria-label="計測モード">
@@ -255,260 +423,58 @@ export function DebugRoom() {
             </button>
           ))}
         </div>
+        <div className="debug-head-actions">
+          <button className="debug-settings-button" onClick={openSettings}>
+            <Settings2 size={15} /> 設定
+          </button>
+          <button className="debug-reset-button" onClick={resetBattle}>
+            <RotateCcw size={15} /> リセット
+          </button>
+          <button className="debug-run-button" onClick={measure}>
+            <Play size={15} fill="currentColor" /> 計測開始
+          </button>
+        </div>
       </header>
 
       <div className="debug-workspace">
-        <aside className={`debug-config ${setupOpen ? 'is-open' : ''}`} aria-label="デバッグ設定">
-          <header>
-            <div>
-              <small>LOADOUT / TARGET</small>
-              <b>計測設定</b>
-            </div>
-            <button className="debug-config-close" aria-label="設定を閉じる" onClick={() => setSetupOpen(false)}>
-              <X size={18} />
-            </button>
-          </header>
-
-          <div className="debug-config-scroll">
-            <label className="debug-select-control">
-              <span>攻撃ユニット</span>
-              <select value={input.actorUnitId} onChange={(event) => updateInput({ actorUnitId: event.target.value })}>
-                {UNITS.map((unit) => (
-                  <option value={unit.id} key={unit.id}>
-                    {unit.name} / ATK {unit.attack} / SPD {unit.speed.toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="debug-select-control">
-              <span>実行する技</span>
-              <select value={input.instructionId} onChange={(event) => selectInstruction(event.target.value)}>
-                {INSTRUCTIONS.map((option) => (
-                  <option value={option.id} key={option.id}>
-                    {option.title} / COST {option.abilityCost}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="debug-select-control debug-config-mode">
-              <span>計測方法</span>
-              <select
-                value={input.mode === 'single' ? 'single' : String(input.durationSeconds)}
-                onChange={(event) =>
-                  event.target.value === 'single'
-                    ? updateInput({ mode: 'single' })
-                    : updateInput({ mode: 'timeline', durationSeconds: Number(event.target.value) })
-                }
-              >
-                <option value="single">単発</option>
-                <option value="10">10秒</option>
-                <option value="30">30秒</option>
-                <option value="60">60秒</option>
-              </select>
-            </label>
-
-            <NumberControl
-              label="開始コスト"
-              value={input.initialGauge}
-              min={0}
-              max={BATTLE_CONFIG.abilityGaugeMax}
-              step={0.5}
-              suffix={`/ ${BATTLE_CONFIG.abilityGaugeMax}`}
-              onChange={(initialGauge) => updateInput({ initialGauge })}
-            />
-
-            <div className="debug-control-pair">
-              <label className="debug-select-control">
-                <span>対象</span>
-                <select
-                  value={input.targetSelectorId}
-                  onChange={(event) => selectTarget(event.target.value as TargetSelectorId)}
-                >
-                  {compatibleTargets.map((target) => (
-                    <option value={target.id} key={target.id}>
-                      {target.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="debug-select-control">
-                <span>条件</span>
-                <select
-                  value={input.conditionId}
-                  onChange={(event) => updateInput({ conditionId: event.target.value as ConditionId })}
-                >
-                  {compatibleConditions.map((condition) => (
-                    <option value={condition.id} key={condition.id}>
-                      {condition.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {targetDefinition.domain !== 'self' && (
-              <>
-                <div className="debug-config-divider">
-                  <span>SANDBAG PROFILE</span>
-                </div>
-                <label className="debug-select-control">
-                  <span>サンドバッグ素体</span>
-                  <select value={input.targetUnitId} onChange={(event) => selectTargetPreset(event.target.value)}>
-                    {UNITS.map((unit) => (
-                      <option value={unit.id} key={unit.id}>
-                        {unit.name} / DEF {unit.defense} / WGT {unit.weight}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="debug-control-grid">
-                  <NumberControl
-                    label="最大HP"
-                    value={input.targetMaxHp}
-                    min={1}
-                    max={99999}
-                    onChange={(targetMaxHp) => updateInput({ targetMaxHp })}
-                  />
-                  <NumberControl
-                    label="現在HP"
-                    value={Math.round(input.targetHpRatio * 100)}
-                    min={1}
-                    max={100}
-                    suffix="%"
-                    onChange={(value) => updateInput({ targetHpRatio: value / 100 })}
-                  />
-                  <NumberControl
-                    label="防御"
-                    value={input.targetDefense}
-                    min={0}
-                    max={999}
-                    onChange={(targetDefense) => updateInput({ targetDefense })}
-                  />
-                  <NumberControl
-                    label="重量"
-                    value={input.targetWeight}
-                    min={0}
-                    max={999}
-                    step={0.5}
-                    onChange={(targetWeight) => updateInput({ targetWeight })}
-                  />
-                  <NumberControl
-                    label="距離"
-                    value={input.distance}
-                    min={0}
-                    max={72}
-                    step={0.5}
-                    onChange={(distance) => updateInput({ distance })}
-                  />
-                  <NumberControl
-                    label="毒"
-                    value={input.targetPoison}
-                    min={0}
-                    max={99}
-                    onChange={(targetPoison) => updateInput({ targetPoison })}
-                  />
-                </div>
-              </>
-            )}
-            {targetDefinition.domain === 'self' && (
-              <NumberControl
-                label="実行ユニットの現在HP"
-                value={Math.round(input.targetHpRatio * 100)}
-                min={1}
-                max={100}
-                suffix="%"
-                onChange={(value) => updateInput({ targetHpRatio: value / 100 })}
-              />
-            )}
-          </div>
-
-          <footer>
-            <button className="debug-reset" onClick={reset}>
-              <RotateCcw size={14} /> 初期値
-            </button>
-            <button className="debug-config-run" onClick={run}>
-              <Play size={15} fill="currentColor" /> 計測する
-            </button>
-          </footer>
-        </aside>
-
-        <main className="debug-bay" key={runKey}>
-          <header className="debug-bay-head">
+        <main className="debug-duel">
+          <header className="debug-duel-head">
             <div>
               <small>ATTACKER</small>
               <b>{measuredActor.name}</b>
               <span>
-                ATK {measuredActor.attack} · SPD {measuredActor.speed.toFixed(2)} · RNG {measuredActor.range}
+                ATK {measuredActor.attack} · RNG {measuredActor.range} · SPD {measuredActor.speed.toFixed(2)}
               </span>
             </div>
-            <div className="debug-skill-readout">
-              <small>{actionLabels[measuredInstruction.action]}</small>
-              <b>{measuredInstruction.title}</b>
-              <span>COST {measuredInstruction.abilityCost}</span>
+            <div className="debug-versus">VS</div>
+            <div className="enemy">
+              <small>RECOVERY DUMMY</small>
+              <b>{measuredTarget.name}</b>
+              <span>
+                DEF {measuredInput.targetDefense} · WGT {measuredInput.targetWeight} · {measuredInput.targetRole}
+              </span>
             </div>
           </header>
 
-          <section
-            className={`debug-stage verdict-${result.verdict} target-${measuredTargetDefinition.domain}`}
-            aria-label="攻撃テスト表示"
-            style={
-              {
-                '--debug-target-x': `${Math.min(86, 27 + (measuredInput.distance / 72) * 59)}%`,
-              } as CSSProperties
-            }
-          >
-            <div className="debug-stage-grid" />
-            {measuredTargetDefinition.domain !== 'self' && (
-              <div className="debug-range-line">
-                <span>{measuredInput.distance.toFixed(1)} RNG</span>
-              </div>
-            )}
-            <div className="debug-rig debug-actor-rig">
-              <span className="debug-rig-code">{measuredActor.code}</span>
-              <i style={{ '--rig-color': measuredActor.color } as CSSProperties} />
-              <b>{measuredActor.name}</b>
-            </div>
-            {measuredTargetDefinition.domain !== 'self' && (
-              <>
-                <div className="debug-impact-beam" />
-                <div className="debug-rig debug-target-rig">
-                  <span className="debug-rig-code">
-                    {measuredTargetDefinition.domain === 'ally' ? 'ALLY RIG' : 'DUMMY'}
-                  </span>
-                  <i />
-                  <b>{measuredTargetPreset.name}</b>
-                </div>
-              </>
-            )}
-            <div className="debug-verdict">
-              <small>{verdictLabels[result.verdict]}</small>
-              <strong>{primaryValue}</strong>
-              <span>{primaryLabel}</span>
-            </div>
-          </section>
+          <DebugBattlePreview input={measuredInput} result={result} sequence={sequence} />
 
-          <section className="debug-impact-tape" aria-label="効果発生タイムライン">
+          <section className="debug-impact-tape" aria-label="技別ダメージログ">
             <header>
-              <span>IMPACT TAPE</span>
-              <b>{result.elapsed.toFixed(1)} SEC</b>
+              <span>HIT LOG / {measuredInstruction.title}</span>
+              <b>{result ? `${result.events.length} EVENTS` : 'NO DATA'}</b>
             </header>
             <div>
-              {result.events.map((event, index) => (
-                <i
-                  className={event.kind}
-                  key={`${event.elapsed}-${index}`}
-                  style={
-                    {
-                      '--event-left': `${Math.min(100, (event.elapsed / Math.max(result.elapsed, 0.01)) * 100)}%`,
-                      '--event-height': `${Math.max(16, (event.amount / maximumEvent) * 100)}%`,
-                    } as CSSProperties
-                  }
-                  title={`${event.elapsed.toFixed(1)}秒 / ${event.amount} ${event.kind === 'damage' ? 'ダメージ' : '回復'}`}
-                />
-              ))}
-              {result.events.length === 0 && <span>効果イベントなし</span>}
+              {result?.events
+                .slice(-8)
+                .reverse()
+                .map((event, index) => (
+                  <article className={event.kind} key={`${event.elapsed}-${index}`}>
+                    <small>{event.elapsed.toFixed(1)}s</small>
+                    <span>{event.kind === 'damage' ? 'DAMAGE' : 'REPAIR'}</span>
+                    <b>{event.amount}</b>
+                  </article>
+                ))}
+              {!result?.events.length && <p>「計測開始」で、この技の実ダメージを記録します。</p>}
             </div>
           </section>
         </main>
@@ -518,88 +484,77 @@ export function DebugRoom() {
             <span>
               <Activity size={14} /> TELEMETRY
             </span>
-            <b className={dirty ? 'is-stale' : ''}>{dirty ? '設定変更あり' : '計測済み'}</b>
+            <b className={dirty ? 'is-stale' : ''}>{dirty ? '設定変更あり' : result ? '計測済み' : '待機中'}</b>
           </header>
-          <div className="debug-primary-metrics">
-            {isHealing ? (
-              <>
-                <Metric
-                  label={isSingle ? 'REPAIR' : 'HPS'}
-                  value={isSingle ? result.totalHealing : result.healingPerSecond}
-                  tone="cyan"
-                />
-                <Metric label="1 REPAIR" value={effectPerUse} tone="amber" />
-                <Metric label="REPAIR / COST" value={efficiencyValue} tone="lime" />
-              </>
-            ) : isDamageAction ? (
-              <>
-                <Metric
-                  label={isSingle ? 'DAMAGE' : 'DPS'}
-                  value={isSingle ? result.totalDamage : result.dps}
-                  tone="cyan"
-                />
-                <Metric label="1 HIT" value={effectPerUse} tone="amber" />
-                <Metric label="DMG / COST" value={efficiencyValue} tone="lime" />
-              </>
-            ) : (
-              <>
-                <Metric label="STATE" value={result.effectState} tone="cyan" />
-                <Metric
-                  label="ATK DELTA"
-                  value={result.attackDelta > 0 ? `+${result.attackDelta}` : result.attackDelta}
-                  tone="amber"
-                />
-                <Metric
-                  label="MOVE"
-                  value={Math.max(result.actorDisplacement, result.targetDisplacement)}
-                  tone="lime"
-                />
-              </>
-            )}
-            <Metric
-              label={isSingle ? 'ELAPSED' : 'USES / MIN'}
-              value={isSingle ? result.elapsed : result.usesPerMinute}
-              unit={isSingle ? 'SEC' : undefined}
-            />
-            <Metric label="EXECUTED" value={`${result.executions}/${result.attempts}`} />
-            <Metric label="MIN GAUGE" value={result.minimumGauge} unit={`/ ${BATTLE_CONFIG.abilityGaugeMax}`} />
+
+          <div className="debug-skill-readout">
+            <div>
+              <small>{actionLabels[measuredInstruction.action]}</small>
+              <b>{measuredInstruction.title}</b>
+            </div>
+            <span>COST {measuredInstruction.abilityCost}</span>
           </div>
 
-          <div className="debug-target-health">
-            <div>
-              <span>TARGET INTEGRITY</span>
-              <b>{Math.round(finalHpPercent)}%</b>
-            </div>
-            <i>
-              <span style={{ width: `${finalHpPercent}%` }} />
-            </i>
-            <small>
-              {result.finalTargetHp} HP
-              {result.timeToKill !== null && ` · TTK ${result.timeToKill.toFixed(1)}秒`}
-            </small>
+          <div className="debug-verdict">
+            <small>{verdict}</small>
+            <strong>{primaryValue}</strong>
+            <span>{primaryLabel}</span>
           </div>
+
+          <div className="debug-primary-metrics">
+            <Metric label={isHealing ? '1 REPAIR' : '1 HIT'} value={effectPerUse} tone="cyan" />
+            <Metric
+              label={isHealing ? 'TOTAL REPAIR' : 'TOTAL DAMAGE'}
+              value={isHealing ? (result?.totalHealing ?? 0) : (result?.totalDamage ?? 0)}
+              tone="amber"
+            />
+            <Metric
+              label={isHealing ? 'HPS' : 'DPS'}
+              value={isHealing ? (result?.healingPerSecond ?? 0) : (result?.dps ?? 0)}
+              tone="lime"
+            />
+            <Metric label={isHealing ? 'REPAIR / COST' : 'DMG / COST'} value={result ? efficiency : '—'} />
+            <Metric label="EXECUTED" value={result ? `${result.executions}/${result.attempts}` : '0/0'} />
+            <Metric label="AUTO RECOVER" value={result?.targetRecoveryCount ?? 0} />
+          </div>
+
+          <section className="debug-target-profile">
+            <header>
+              <span>ENEMY PROFILE</span>
+              <b>HP {measuredInput.targetMaxHp}</b>
+            </header>
+            <div className="debug-profile-stats">
+              <span>
+                DEF <b>{measuredInput.targetDefense}</b>
+              </span>
+              <span>
+                WGT <b>{measuredInput.targetWeight}</b>
+              </span>
+              <span>
+                ROLE <b>{measuredInput.targetRole}</b>
+              </span>
+            </div>
+            <div className="debug-profile-statuses">
+              {activeStatuses.length > 0 ? (
+                activeStatuses.map((status) => <span key={status}>{status}</span>)
+              ) : (
+                <span className="normal">状態なし</span>
+              )}
+            </div>
+          </section>
 
           <div className="debug-secondary-metrics">
             <span>
-              <Zap size={13} /> 消費コスト <b>{result.costSpent}</b>
+              <Zap size={13} /> 消費コスト <b>{result?.costSpent ?? 0}</b>
             </span>
             <span>
-              <Gauge size={13} /> ガス欠率 <b>{Math.round(result.emptyGaugeRate * 100)}%</b>
+              <Gauge size={13} /> 最低ゲージ <b>{result?.minimumGauge ?? measuredInput.initialGauge}</b>
             </span>
             <span>
-              <Crosshair size={13} /> 対象移動 <b>{result.targetDisplacement}</b>
+              <Crosshair size={13} /> 対象移動 <b>{result?.targetDisplacement ?? 0}</b>
             </span>
             <span>
-              <Timer size={13} /> 自分移動 <b>{result.actorDisplacement}</b>
-            </span>
-            <span>
-              <HeartPulse size={13} /> {isHealing ? '総回復' : 'SPD変化'}{' '}
-              <b>
-                {isHealing ? result.totalHealing : result.speedDelta > 0 ? `+${result.speedDelta}` : result.speedDelta}
-              </b>
-            </span>
-            <span>
-              <Shield size={13} /> 毒スタック <b>{result.finalPoison}</b>
+              <TimerReset size={13} /> 自分移動 <b>{result?.actorDisplacement ?? 0}</b>
             </span>
           </div>
 
@@ -607,8 +562,8 @@ export function DebugRoom() {
             <span>SKIPPED REASONS</span>
             <div>
               {(Object.keys(skipLabels) as Array<keyof typeof skipLabels>).map((reason) => (
-                <span className={result.skipped[reason] > 0 ? 'has-skips' : ''} key={reason}>
-                  {skipLabels[reason]} <b>{result.skipped[reason]}</b>
+                <span className={(result?.skipped[reason] ?? 0) > 0 ? 'has-skips' : ''} key={reason}>
+                  {skipLabels[reason]} <b>{result?.skipped[reason] ?? 0}</b>
                 </span>
               ))}
             </div>
@@ -616,17 +571,204 @@ export function DebugRoom() {
         </aside>
       </div>
 
+      <aside className={`debug-config ${setupOpen ? 'is-open' : ''}`} aria-label="デバッグ設定">
+        <header>
+          <div>
+            <small>DUEL LOADOUT</small>
+            <b>計測設定</b>
+          </div>
+          <button aria-label="設定を閉じる" onClick={() => setSetupOpen(false)}>
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="debug-config-scroll" ref={configScrollRef}>
+          <div className="debug-config-section">
+            <span>攻撃側</span>
+            <label className="debug-select-control">
+              <span>攻撃ユニット</span>
+              <select
+                aria-label="攻撃ユニット"
+                value={input.actorUnitId}
+                onChange={(event) => updateInput({ actorUnitId: event.target.value })}
+              >
+                {UNITS.map((unit) => (
+                  <option value={unit.id} key={unit.id}>
+                    {unit.name} / ATK {unit.attack} / RNG {unit.range}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="debug-select-control">
+              <span>計測する技</span>
+              <select
+                aria-label="計測する技"
+                value={input.instructionId}
+                onChange={(event) => selectInstruction(event.target.value)}
+              >
+                {INSTRUCTIONS.map((option) => (
+                  <option value={option.id} key={option.id}>
+                    {option.title} / COST {option.abilityCost}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="debug-readonly-condition">
+              <span>発動条件</span>
+              <b>{conditionById.get(instruction.condition)?.label ?? instruction.condition}</b>
+            </div>
+            <div className="debug-control-grid">
+              <NumberControl
+                label="開始コスト"
+                value={input.initialGauge}
+                min={0}
+                max={BATTLE_CONFIG.abilityGaugeMax}
+                step={0.5}
+                suffix={`/ ${BATTLE_CONFIG.abilityGaugeMax}`}
+                onChange={(initialGauge) => updateInput({ initialGauge })}
+              />
+              <NumberControl
+                label="攻撃側の現在HP"
+                value={Math.round(input.actorHpRatio * 100)}
+                min={1}
+                max={100}
+                suffix="%"
+                onChange={(value) => updateInput({ actorHpRatio: value / 100 })}
+              />
+            </div>
+          </div>
+
+          <div className="debug-config-section enemy">
+            <span>敵ユニット</span>
+            <label className="debug-select-control">
+              <span>素体</span>
+              <select
+                aria-label="敵ユニット"
+                value={input.targetUnitId}
+                onChange={(event) => selectTargetPreset(event.target.value)}
+              >
+                {UNITS.map((unit) => (
+                  <option value={unit.id} key={unit.id}>
+                    {unit.name} / DEF {unit.defense} / WGT {unit.weight}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="debug-select-control">
+              <span>ロール属性</span>
+              <select
+                aria-label="敵のロール属性"
+                value={input.targetRole}
+                onChange={(event) => updateInput({ targetRole: event.target.value as Role })}
+              >
+                {roles.map((role) => (
+                  <option value={role.id} key={role.id}>
+                    {role.label} / {role.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="debug-control-grid three">
+              <NumberControl
+                label="最大HP"
+                value={input.targetMaxHp}
+                min={1}
+                max={99999}
+                onChange={(targetMaxHp) => updateInput({ targetMaxHp })}
+              />
+              <NumberControl
+                label="防御"
+                value={input.targetDefense}
+                min={0}
+                max={999}
+                onChange={(targetDefense) => updateInput({ targetDefense })}
+              />
+              <NumberControl
+                label="重量"
+                value={input.targetWeight}
+                min={0}
+                max={999}
+                step={0.5}
+                onChange={(targetWeight) => updateInput({ targetWeight })}
+              />
+            </div>
+          </div>
+
+          <div className="debug-config-section status">
+            <span>敵の状態</span>
+            <NumberControl
+              label="毒スタック"
+              value={input.targetPoison}
+              min={0}
+              max={99}
+              onChange={(targetPoison) => updateInput({ targetPoison })}
+            />
+            <div className="debug-status-toggles">
+              <button
+                aria-pressed={input.targetGuarded}
+                className={input.targetGuarded ? 'active' : ''}
+                onClick={() => updateInput({ targetGuarded: !input.targetGuarded })}
+              >
+                <Shield size={14} />
+                <span>ガード</span>
+                <small>被ダメージ軽減</small>
+              </button>
+              <button
+                aria-pressed={input.targetBerserk}
+                className={input.targetBerserk ? 'active' : ''}
+                onClick={() => updateInput({ targetBerserk: !input.targetBerserk })}
+              >
+                <Sparkles size={14} />
+                <span>バーサーク</span>
+                <small>状態表示</small>
+              </button>
+              <button
+                aria-pressed={input.targetTaunted}
+                className={input.targetTaunted ? 'active' : ''}
+                onClick={() => updateInput({ targetTaunted: !input.targetTaunted })}
+              >
+                <Crosshair size={14} />
+                <span>挑発</span>
+                <small>標的固定</small>
+              </button>
+            </div>
+          </div>
+
+          <div className="debug-recovery-note">
+            <Activity size={15} />
+            <div>
+              <b>自動復元が常時有効</b>
+              <span>敵HPと両者の位置は、効果を記録した直後に初期状態へ戻ります。</span>
+            </div>
+          </div>
+        </div>
+
+        <footer>
+          <button className="debug-defaults-button" onClick={restoreDefaults}>
+            <RotateCcw size={14} /> 初期設定に戻す
+          </button>
+          <button className="debug-apply-button" onClick={applySettings}>
+            設定を適用
+          </button>
+        </footer>
+      </aside>
+
       {setupOpen && (
         <button className="debug-config-backdrop" aria-label="設定を閉じる" onClick={() => setSetupOpen(false)} />
       )}
+
       <footer className="debug-mobile-dock">
-        <button onClick={() => setSetupOpen((current) => !current)}>
-          {setupOpen ? <X size={17} /> : <Settings2 size={17} />}
-          {setupOpen ? '閉じる' : '設定'}
+        <button onClick={openSettings}>
+          <Settings2 size={17} />
+          設定
         </button>
-        <button className="debug-mobile-run" onClick={run}>
+        <button onClick={resetBattle}>
+          <RotateCcw size={17} />
+          リセット
+        </button>
+        <button className="debug-mobile-run" onClick={measure}>
           <Play size={17} fill="currentColor" />
-          {dirty ? 'この設定で計測' : 'もう一度計測'}
+          計測開始
         </button>
       </footer>
     </div>
