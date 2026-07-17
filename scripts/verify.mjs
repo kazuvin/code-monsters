@@ -3,10 +3,10 @@ import { spawnSync } from 'node:child_process';
 const packageManager = process.env.npm_execpath;
 const commands = [
   packageManager
-    ? { label: 'format check', command: process.execPath, args: [packageManager, 'format:check'] }
+    ? { label: 'format check', command: process.execPath, args: [packageManager, 'run', 'format:check'] }
     : { label: 'format check', command: process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', args: ['format:check'] },
   packageManager
-    ? { label: 'production build', command: process.execPath, args: [packageManager, 'build'] }
+    ? { label: 'production build', command: process.execPath, args: [packageManager, 'run', 'build'] }
     : { label: 'production build', command: process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', args: ['build'] },
   { label: 'core rules', command: process.execPath, args: ['scripts/core-test.mjs'] },
   { label: 'combat math', command: process.execPath, args: ['scripts/combat-test.mjs'] },
