@@ -20,7 +20,7 @@ import {
   type DebugSimulationInput,
   type DebugSimulationResult,
 } from './core/debug-simulation';
-import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, UNITS } from './data';
+import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, UNITS } from './data';
 import type { BattleFlash, Fighter, Role } from './types';
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
@@ -146,12 +146,6 @@ function NumberControl({
   );
 }
 
-function visualKind(instruction: (typeof INSTRUCTIONS)[number]): BattleFlash['kind'] {
-  if (instruction.action === 'move') return instruction.visualKind === 'dash' ? 'dash' : 'move';
-  if (instruction.action === 'buff') return 'wait';
-  return instruction.action;
-}
-
 function DebugBattlePreview({
   input,
   result,
@@ -166,71 +160,61 @@ function DebugBattlePreview({
   const [flash, setFlash] = useState<BattleFlash | null>(null);
   const [impact, setImpact] = useState<{ amount: number; kind: DebugEffectEvent['kind'] } | null>(null);
   const [running, setRunning] = useState(false);
-  const instruction = instructionById.get(input.instructionId) ?? INSTRUCTIONS[0];
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     const timers: number[] = [];
+    let recoveryTimer: number | null = null;
     setFighters(initialFighters);
     setFlash(null);
     setImpact(null);
     setRunning(false);
+    setRecovering(false);
     if (!result) return undefined;
 
-    const events =
-      result.events.length > 0 ? result.events.slice(0, 18) : [{ elapsed: 0, amount: 0, kind: 'damage' as const }];
-    const interval = Math.max(230, Math.min(620, Math.floor(3800 / events.length)));
-    const actorId = 'debug-actor';
-    const targetId = instruction.action === 'heal' || instruction.targetMode === 'self' ? actorId : 'debug-target';
-    setRunning(true);
+    const frames = result.playback.slice(0, 18);
+    if (frames.length === 0) return undefined;
+    const interval = Math.max(230, Math.min(620, Math.floor(3800 / frames.length)));
+    setRunning(frames.length > 0);
 
-    events.forEach((event, index) => {
+    frames.forEach((frame, index) => {
       timers.push(
         window.setTimeout(
           () => {
             const n = Date.now() + index;
-            setFlash({
-              id: actorId,
-              kind: visualKind(instruction),
-              n,
-              targetId,
-              attackType: initialFighters[0]?.attackType,
-              actionLabel: instruction.short,
-            });
-            if (event.amount > 0) {
-              setImpact({ amount: event.amount, kind: event.kind });
-              setFighters((current) =>
-                current.map((fighter) => {
-                  if (fighter.instanceId !== targetId) return fighter;
-                  const hp =
-                    event.kind === 'damage'
-                      ? Math.max(1, fighter.maxHp - event.amount)
-                      : Math.min(fighter.maxHp, fighter.hp + event.amount);
-                  return { ...fighter, hp };
-                }),
-              );
-              timers.push(
-                window.setTimeout(() => {
-                  setFighters((current) =>
-                    current.map((fighter) =>
-                      fighter.instanceId === 'debug-target' ? { ...fighter, hp: fighter.maxHp } : fighter,
-                    ),
-                  );
-                  setImpact(null);
-                }, 180),
-              );
+            setFlash({ ...frame.flash, n });
+            setFighters(frame.fighters.map((fighter) => ({ ...fighter })));
+            if (frame.effect) {
+              setImpact({ amount: frame.effect.amount, kind: frame.effect.kind });
+              timers.push(window.setTimeout(() => setImpact(null), 520));
+            }
+            if (frame.effect?.kind === 'damage') {
+              setRecovering(true);
+              if (recoveryTimer !== null) window.clearTimeout(recoveryTimer);
+              recoveryTimer = window.setTimeout(() => {
+                setFighters((current) =>
+                  current.map((fighter) =>
+                    fighter.instanceId === 'debug-target' ? { ...fighter, hp: fighter.maxHp } : fighter,
+                  ),
+                );
+                setRecovering(false);
+              }, DEBUG_TRAINING_CONFIG.recoveryDelaySeconds * 1000);
+              timers.push(recoveryTimer);
             }
           },
           180 + index * interval,
         ),
       );
     });
-    timers.push(window.setTimeout(() => setRunning(false), 460 + events.length * interval));
+    timers.push(window.setTimeout(() => setRunning(false), 460 + frames.length * interval));
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [initialFighters, instruction, result, sequence]);
+  }, [initialFighters, result, sequence]);
 
   const actor = fighters.find((fighter) => fighter.instanceId === 'debug-actor') ?? fighters[0];
   const target = fighters.find((fighter) => fighter.instanceId === 'debug-target') ?? fighters[1];
   const elapsed = result?.elapsed ?? 0;
+  const currentDistance = Math.abs(actor.x - target.x);
+  const mutuallyInRange = currentDistance <= actor.range && currentDistance <= target.range;
 
   return (
     <section className="debug-arena-stage" aria-label="1対1戦闘テスト">
@@ -253,18 +237,18 @@ function DebugBattlePreview({
         </div>
       </div>
       <BattleScene fighters={fighters} flash={flash} running={running} />
-      <div className="debug-range-lock">
+      <div className={`debug-range-lock ${mutuallyInRange ? '' : 'is-outside'}`}>
         <Crosshair size={13} />
-        <span>相互射程内</span>
-        <b>{(result?.mutualDistance ?? Math.abs(actor.x - target.x)).toFixed(1)} RNG</b>
+        <span>{mutuallyInRange ? '相互射程内' : '射程変化あり'}</span>
+        <b>{currentDistance.toFixed(1)} RNG</b>
         <small>
           {actor.range} / {target.range}
         </small>
       </div>
-      <div className="debug-auto-recovery">
+      <div className={`debug-auto-recovery ${recovering ? 'is-pending' : ''}`}>
         <i />
-        <span>AUTO RECOVER</span>
-        <b>被弾後 0.18秒で全回復</b>
+        <span>{recovering ? 'RECOVERING' : 'AUTO RECOVER'}</span>
+        <b>被弾後 {DEBUG_TRAINING_CONFIG.recoveryDelaySeconds.toFixed(1)}秒で全回復</b>
       </div>
       {impact && (
         <div className={`debug-impact-pop ${impact.kind}`} key={`${sequence}-${flash?.n}`}>
@@ -313,8 +297,12 @@ export function DebugRoom() {
       : 0
     : (result?.damagePerHit ?? 0);
   const efficiency = result?.effectPerCost ?? (measuredInstruction.abilityCost === 0 ? 'FREE' : '—');
+  const displayedTargetPoison =
+    measuredInstruction.action === 'poison'
+      ? (result?.finalPoison ?? measuredInput.targetPoison)
+      : measuredInput.targetPoison;
   const activeStatuses = [
-    measuredInput.targetPoison > 0 ? `毒 ×${measuredInput.targetPoison}` : null,
+    displayedTargetPoison > 0 ? `毒 ×${displayedTargetPoison}` : null,
     measuredInput.targetGuarded ? 'ガード' : null,
     measuredInput.targetBerserk ? 'バーサーク' : null,
     measuredInput.targetTaunted ? '挑発' : null,
@@ -456,7 +444,7 @@ export function DebugRoom() {
             </div>
           </header>
 
-          <DebugBattlePreview input={measuredInput} result={result} sequence={sequence} />
+          <DebugBattlePreview key={sequence} input={measuredInput} result={result} sequence={sequence} />
 
           <section className="debug-impact-tape" aria-label="技別ダメージログ">
             <header>
@@ -737,8 +725,12 @@ export function DebugRoom() {
           <div className="debug-recovery-note">
             <Activity size={15} />
             <div>
-              <b>自動復元が常時有効</b>
-              <span>敵HPと両者の位置は、効果を記録した直後に初期状態へ戻ります。</span>
+              <b>HPだけ自動復元</b>
+              <span>
+                敵はHP {DEBUG_TRAINING_CONFIG.minimumDummyHp}で耐え、
+                {DEBUG_TRAINING_CONFIG.recoveryDelaySeconds.toFixed(1)}
+                秒後に全回復。移動と状態はリセットまで保持します。
+              </span>
             </div>
           </div>
         </div>

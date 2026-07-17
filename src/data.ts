@@ -49,6 +49,11 @@ export type EconomyConfig = {
   sellPricePenalty: number;
 };
 
+export type DebugTrainingConfig = {
+  minimumDummyHp: number;
+  recoveryDelaySeconds: number;
+};
+
 export type ShopConfig = {
   size: number;
   unitSlots: number[];
@@ -102,6 +107,7 @@ export type ReactionTriggerDefinition = {
 export type GameBalanceData = {
   schemaVersion: number;
   battle: BattleConfig;
+  debugTraining: DebugTrainingConfig;
   economy: EconomyConfig;
   shop: ShopConfig;
   roster: {
@@ -129,6 +135,7 @@ export type GameBalanceData = {
 export const GAME_DATA = rawGameData as unknown as GameBalanceData;
 export const GAME_SCHEMA_VERSION = GAME_DATA.schemaVersion;
 export const BATTLE_CONFIG = GAME_DATA.battle;
+export const DEBUG_TRAINING_CONFIG = GAME_DATA.debugTraining;
 export const ECONOMY_CONFIG = GAME_DATA.economy;
 export const SHOP_CONFIG = GAME_DATA.shop;
 export const ROSTER_CONFIG = GAME_DATA.roster;

@@ -238,6 +238,11 @@
   color: var(--cyan);
 }
 
+.debug-range-lock.is-outside svg,
+.debug-range-lock.is-outside b {
+  color: var(--amber);
+}
+
 .debug-range-lock span,
 .debug-range-lock small,
 .debug-auto-recovery span,
@@ -271,6 +276,15 @@
   background: var(--lime);
   box-shadow: 0 0 10px var(--lime);
   animation: debug-recovery-pulse 0.9s ease-in-out infinite alternate;
+}
+
+.debug-auto-recovery.is-pending i {
+  background: var(--amber);
+  box-shadow: 0 0 10px var(--amber);
+}
+
+.debug-auto-recovery.is-pending span {
+  color: var(--amber);
 }
 
 .debug-auto-recovery span {

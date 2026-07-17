@@ -1,5 +1,6 @@
-import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, UNITS } from '../data.ts';
+import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, UNITS } from '../data.ts';
 import type {
+  BattleFlash,
   ConditionId,
   Fighter,
   Instruction,
@@ -16,7 +17,7 @@ import {
   type DecisionReason,
   type DecisionTrace,
 } from './battle-engine.ts';
-import { tickCooldowns } from './rules.ts';
+import { knockbackPosition, resolveActionImpact, throwBehind, tickCooldowns } from './rules.ts';
 
 export type DebugRunMode = 'single' | 'timeline';
 
@@ -44,6 +45,13 @@ export type DebugEffectEvent = {
   elapsed: number;
   amount: number;
   kind: 'damage' | 'healing';
+};
+
+export type DebugPlaybackFrame = {
+  elapsed: number;
+  fighters: Fighter[];
+  flash: BattleFlash;
+  effect: DebugEffectEvent | null;
 };
 
 export type DebugSimulationResult = {
@@ -75,6 +83,7 @@ export type DebugSimulationResult = {
   targetRecoveryCount: number;
   skipped: Record<DecisionReason, number>;
   events: DebugEffectEvent[];
+  playback: DebugPlaybackFrame[];
   verdict: 'damage' | 'healing' | 'effect' | 'blocked';
 };
 
@@ -218,12 +227,20 @@ function countSkips(decisions: DecisionTrace[], actionId: string): Record<Decisi
   return skipped;
 }
 
-function restoreTrainingPositions(fighters: Fighter[], setup: DebugSetup): Fighter[] {
-  return fighters.map((fighter) => {
-    if (fighter.instanceId === setup.actorId) return { ...fighter, x: setup.actorX };
-    if (fighter.instanceId === setup.dummyId) return { ...fighter, x: setup.targetX, hp: fighter.maxHp };
-    return fighter;
-  });
+const snapshotFighters = (fighters: Fighter[]) => fighters.map((fighter) => ({ ...fighter }));
+
+function keepDummyAlive(fighters: Fighter[], dummyId: string): Fighter[] {
+  return fighters.map((fighter) =>
+    fighter.instanceId === dummyId
+      ? { ...fighter, hp: Math.max(DEBUG_TRAINING_CONFIG.minimumDummyHp, fighter.hp) }
+      : fighter,
+  );
+}
+
+function recoverDummyHp(fighters: Fighter[], dummyId: string): Fighter[] {
+  return fighters.map((fighter) =>
+    fighter.instanceId === dummyId && fighter.hp < fighter.maxHp ? { ...fighter, hp: fighter.maxHp } : fighter,
+  );
 }
 
 export function runDebugSimulation(input: DebugSimulationInput): DebugSimulationResult {
@@ -243,10 +260,12 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
   let totalHealing = 0;
   let hits = 0;
   let targetRecoveryCount = 0;
+  let targetRecoveryAt: number | null = null;
   let maximumTargetDisplacement = 0;
   let maximumActorDisplacement = 0;
   const decisions: DecisionTrace[] = [];
   const events: DebugEffectEvent[] = [];
+  const playback: DebugPlaybackFrame[] = [];
   const initialActor = fighters.find((fighter) => fighter.instanceId === setup.actorId)!;
   const initialEffectTarget = fighters.find((fighter) => fighter.instanceId === setup.effectTargetId)!;
 
@@ -256,17 +275,55 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
     const tick = elapsed - previousElapsed;
     stepClock += tick;
 
+    if (targetRecoveryAt !== null && elapsed + Number.EPSILON >= targetRecoveryAt) {
+      fighters = recoverDummyHp(fighters, setup.dummyId);
+      targetRecoveryAt = null;
+    }
+
     if (queue.length > 0) {
-      const before = fighters;
       if (stepClock + Number.EPSILON >= stepInterval) {
         const step = queue.shift()!;
         stepClock = 0;
-        fighters = applyBattleStep(tickCooldowns(fighters, tick), step);
+        const before = tickCooldowns(fighters, tick);
+        fighters = keepDummyAlive(applyBattleStep(before, step), setup.dummyId);
+        let effect: DebugEffectEvent | null = null;
+        let trainingMovementStep: BattleStep | null = null;
         if (step.damage?.actionId === setup.instruction.id && step.damage.actorId === setup.actorId) {
-          totalDamage += step.damage.amount;
+          const damageActor = before.find((fighter) => fighter.instanceId === step.damage?.actorId);
+          const damageTarget = before.find((fighter) => fighter.instanceId === step.flash.targetId);
+          const impact =
+            damageActor && damageTarget ? resolveActionImpact(damageActor, damageTarget, setup.instruction) : null;
+          const measuredDamage = impact?.damage ?? step.damage.amount;
+          totalDamage += measuredDamage;
           hits += 1;
-          targetRecoveryCount += 1;
-          events.push({ elapsed: round(elapsed), amount: step.damage.amount, kind: 'damage' });
+          if (targetRecoveryAt === null) {
+            targetRecoveryAt = elapsed + DEBUG_TRAINING_CONFIG.recoveryDelaySeconds;
+            targetRecoveryCount += 1;
+          }
+          effect = { elapsed: round(elapsed), amount: measuredDamage, kind: 'damage' };
+          events.push(effect);
+          const movementAlreadyQueued = queue.some((queuedStep) =>
+            queuedStep.updates.some((update) => update.id === setup.dummyId && typeof update.values.x === 'number'),
+          );
+          if (damageActor && damageTarget?.instanceId === setup.dummyId && impact && !movementAlreadyQueued) {
+            const x =
+              setup.instruction.action === 'throw'
+                ? throwBehind(damageActor, damageTarget, setup.instruction.params.throwDistance ?? 0)
+                : impact.knockbackDistance > 0
+                  ? knockbackPosition(damageTarget, damageActor, impact.knockbackDistance)
+                  : damageTarget.x;
+            if (x !== damageTarget.x) {
+              trainingMovementStep = {
+                flash: {
+                  id: setup.dummyId,
+                  kind: setup.instruction.action === 'throw' ? 'thrown' : 'hit',
+                  actionLabel: setup.instruction.action === 'throw' ? 'THROW' : 'KNOCKBACK',
+                  n: 0,
+                },
+                updates: [{ id: setup.dummyId, values: { x } }],
+              };
+            }
+          }
         }
         const beforeTargetHp = before.find((fighter) => fighter.instanceId === setup.effectTargetId)?.hp ?? 0;
         const afterTargetHp =
@@ -274,7 +331,8 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
         const healing = Math.max(0, afterTargetHp - beforeTargetHp);
         if (healing > 0) {
           totalHealing += healing;
-          events.push({ elapsed: round(elapsed), amount: healing, kind: 'healing' });
+          effect = { elapsed: round(elapsed), amount: healing, kind: 'healing' };
+          events.push(effect);
         }
         const actor = fighters.find((fighter) => fighter.instanceId === setup.actorId);
         const dummy = fighters.find((fighter) => fighter.instanceId === setup.dummyId);
@@ -286,7 +344,15 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
           maximumTargetDisplacement,
           Math.abs((dummy?.x ?? setup.targetX) - setup.targetX),
         );
-        fighters = restoreTrainingPositions(fighters, setup);
+        if (!(step.flash.kind === 'death' && step.flash.id === setup.dummyId)) {
+          playback.push({
+            elapsed: round(elapsed),
+            fighters: snapshotFighters(fighters),
+            flash: { ...step.flash },
+            effect,
+          });
+        }
+        if (trainingMovementStep) queue.unshift(trainingMovementStep);
       } else {
         fighters = tickCooldowns(fighters, tick);
       }
@@ -358,6 +424,7 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
     targetRecoveryCount: targetRecoveryCount,
     skipped: countSkips(decisions, setup.instruction.id),
     events: events.slice(0, 160),
+    playback: playback.slice(0, 160),
     verdict,
   };
 }

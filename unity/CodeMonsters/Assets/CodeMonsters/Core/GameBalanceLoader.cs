@@ -35,6 +35,8 @@ namespace CodeMonsters.Core
                 );
             if (data.Encounters.Count != 5)
                 throw new InvalidDataException("The migration spike expects exactly five ordered encounters");
+            if (data.DebugTraining.MinimumDummyHp < 1 || data.DebugTraining.RecoveryDelaySeconds <= 0)
+                throw new InvalidDataException("Debug training HP and recovery delay must be positive");
 
             var unitIds = new HashSet<string>();
             foreach (var unit in data.Units)

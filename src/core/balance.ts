@@ -212,6 +212,12 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.battle.minimumActionCooldownSeconds <= 0
   )
     error('INVALID_BATTLE_CONFIG', '戦闘のtick/cooldown/abilityGauge設定が不正です');
+  if (
+    !Number.isInteger(data.debugTraining.minimumDummyHp) ||
+    data.debugTraining.minimumDummyHp < 1 ||
+    data.debugTraining.recoveryDelaySeconds <= 0
+  )
+    error('INVALID_DEBUG_TRAINING_CONFIG', 'デバッグ訓練の最低HPまたは回復待ち時間が不正です');
   if (data.balanceAnalysis.abilityReferenceSpeed <= 0)
     error('INVALID_BALANCE_CONFIG', 'abilityReferenceSpeed は正数である必要があります');
   if (data.balanceAnalysis.warningThresholdRatio <= 0 || data.balanceAnalysis.warningThresholdRatio >= 1)

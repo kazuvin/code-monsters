@@ -11,6 +11,9 @@ namespace CodeMonsters.Core
         [JsonProperty("battle")]
         public BattleConfig Battle = new BattleConfig();
 
+        [JsonProperty("debugTraining")]
+        public DebugTrainingConfig DebugTraining = new DebugTrainingConfig();
+
         [JsonProperty("units")]
         public List<UnitDefinition> Units = new List<UnitDefinition>();
 
@@ -49,6 +52,15 @@ namespace CodeMonsters.Core
 
         [JsonProperty("tankKnockbackScale")]
         public double TankKnockbackScale;
+    }
+
+    public sealed class DebugTrainingConfig
+    {
+        [JsonProperty("minimumDummyHp")]
+        public int MinimumDummyHp;
+
+        [JsonProperty("recoveryDelaySeconds")]
+        public double RecoveryDelaySeconds;
     }
 
     public sealed class UnitDefinition

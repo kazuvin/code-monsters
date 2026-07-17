@@ -24,7 +24,7 @@ import {
   tickCooldowns,
 } from '../src/core/rules.ts';
 import { createShop } from '../src/core/shop.ts';
-import { BATTLE_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
+import { BATTLE_CONFIG, DEBUG_TRAINING_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
 const fighters = createBattleFighters(team);
@@ -654,9 +654,18 @@ assert.ok(
   'デバッグルームが単発ダメージを集計していません',
 );
 const debugRecovery = runDebugSimulation({ ...debugBase, targetMaxHp: 10 });
-assert.equal(debugRecovery.finalTargetHp, 10, '被弾した敵ユニットが最大HPまで自動回復していません');
+assert.equal(
+  debugRecovery.finalTargetHp,
+  DEBUG_TRAINING_CONFIG.minimumDummyHp,
+  '被弾した敵ユニットが最低HPで耐えていません',
+);
 assert.equal(debugRecovery.targetRecoveryCount, 1, '敵ユニットの自動回復回数を記録できていません');
 assert.equal(debugRecovery.timeToKill, null, '自動回復する敵ユニットに撃破時間が記録されています');
+assert.equal(
+  debugRecovery.playback.at(-1)?.fighters.find((fighter) => fighter.team === 'enemy')?.hp,
+  DEBUG_TRAINING_CONFIG.minimumDummyHp,
+  'デバッグ再生で敵ユニットが最低HPを下回っています',
+);
 
 const debugMovement = runDebugSimulation({
   ...debugBase,
@@ -664,6 +673,23 @@ const debugMovement = runDebugSimulation({
   conditionId: 'targetInRange',
 });
 assert.ok(debugMovement.actorDisplacement > 0, 'デバッグルームが実行ユニットの移動量を計測していません');
+assert.notEqual(
+  debugMovement.playback.at(-1)?.fighters.find((fighter) => fighter.team === 'ally')?.x,
+  debugActor.x,
+  'デバッグ再生で実行ユニットの移動位置を保持していません',
+);
+
+const debugThrow = runDebugSimulation({
+  ...debugBase,
+  instructionId: 'shoulder-throw',
+  conditionId: 'targetInRange',
+  targetMaxHp: 10,
+});
+assert.ok(debugThrow.targetDisplacement > 0, '最低HPで耐えた敵に背負い投げの移動が反映されていません');
+assert.ok(
+  debugThrow.playback.some((frame) => frame.flash.kind === 'thrown'),
+  'デバッグ再生に背負い投げの移動フレームがありません',
+);
 
 const debugTimeline = runDebugSimulation({
   ...debugBase,
@@ -682,7 +708,8 @@ assert.ok(
   debugTimeline.effectPerCost > 0 && debugTimeline.dps > 0,
   'デバッグルームがDPSとコスト効率を算出していません',
 );
-assert.equal(debugTimeline.finalTargetHp, 99_999, '継続計測中に敵ユニットのHPが満タンへ復元されていません');
+assert.ok(debugTimeline.finalTargetHp >= DEBUG_TRAINING_CONFIG.minimumDummyHp, '継続計測中に敵が撃破されています');
+assert.ok(debugTimeline.targetRecoveryCount > 1, '継続計測中に3秒ごとのHP復元が予約されていません');
 
 const debugGuarded = runDebugSimulation({
   ...debugBase,
@@ -696,6 +723,10 @@ const debugPoison = runDebugSimulation({
   instructionId: 'toxic-mark',
 });
 assert.ok(debugPoison.finalPoison > 0, 'デバッグルームが毒スタックを計測していません');
+assert.ok(
+  (debugPoison.playback.at(-1)?.fighters.find((fighter) => fighter.team === 'enemy')?.poison ?? 0) > 0,
+  'デバッグ再生が付与された毒状態を保持していません',
+);
 
 const debugHealingInput = {
   ...debugBase,
@@ -734,6 +765,12 @@ const invalidReport = analyzeBalance(invalidData);
 assert.ok(
   invalidReport.issues.some((issue) => issue.code === 'UNKNOWN_INSTRUCTION'),
   '壊れたスキル参照を静的検査で検出できません',
+);
+const invalidDebugTraining = structuredClone(GAME_DATA);
+invalidDebugTraining.debugTraining.recoveryDelaySeconds = 0;
+assert.ok(
+  analyzeBalance(invalidDebugTraining).issues.some((issue) => issue.code === 'INVALID_DEBUG_TRAINING_CONFIG'),
+  'デバッグ訓練の不正な回復待ち時間を検出できません',
 );
 const invalidCostData = structuredClone(GAME_DATA);
 invalidCostData.instructions.find((instruction) => instruction.id === 'knock-away').abilityCost = 0;

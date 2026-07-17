@@ -29,6 +29,10 @@
     "resultDelayMs": 420,
     "maxLogEntries": 36
   },
+  "debugTraining": {
+    "minimumDummyHp": 1,
+    "recoveryDelaySeconds": 3
+  },
   "economy": {
     "startingCoins": 10,
     "refreshCost": 1,

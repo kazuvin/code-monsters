@@ -29,6 +29,9 @@ for (const viewport of [
         element.textContent?.trim(),
       ),
       targetClasses: document.querySelector('.debug-arena-stage .sprite.enemy')?.className,
+      actorLeft: document.querySelector('.debug-arena-stage .sprite.ally')?.style.left,
+      targetLeft: document.querySelector('.debug-arena-stage .sprite.enemy')?.style.left,
+      recovery: document.querySelector('.debug-auto-recovery')?.textContent?.replace(/\s+/g, ' ').trim(),
     }));
 
   const readMeasurement = async () => ({
@@ -54,9 +57,32 @@ for (const viewport of [
   const initial = await readMeasurement();
   await measure();
   const normalAttack = await readMeasurement();
+  await page.waitForTimeout(3000);
+  const normalRecovered = await readMeasurement();
 
   await page.getByRole('button', { name: 'リセット', exact: true }).click();
   const reset = await readMeasurement();
+
+  await openSettings();
+  await page.getByLabel('計測する技').selectOption('retreat');
+  await applySettings();
+  const movementStart = await readMeasurement();
+  await measure();
+  const movement = await readMeasurement();
+  await page.waitForTimeout(800);
+  const movementPersisted = await readMeasurement();
+  await page.getByRole('button', { name: 'リセット', exact: true }).click();
+  const movementReset = await readMeasurement();
+
+  await openSettings();
+  await page.getByLabel('計測する技').selectOption('toxic-mark');
+  await applySettings();
+  await measure();
+  const poisoned = await readMeasurement();
+  await page.waitForTimeout(800);
+  const poisonPersisted = await readMeasurement();
+  await page.getByRole('button', { name: 'リセット', exact: true }).click();
+  const poisonReset = await readMeasurement();
 
   await openSettings();
   const settingsScrollTop = await page.locator('.debug-config-scroll').evaluate((element) => element.scrollTop);
@@ -95,7 +121,15 @@ for (const viewport of [
     viewport: viewport.name,
     initial,
     normalAttack,
+    normalRecovered,
     reset,
+    movementStart,
+    movement,
+    movementPersisted,
+    movementReset,
+    poisoned,
+    poisonPersisted,
+    poisonReset,
     guarded,
     unguarded,
     configuredReset,
@@ -123,9 +157,15 @@ for (const result of results) {
     result.normalAttack.value <= 0 ||
     result.normalAttack.stage.eventRows !== 1 ||
     !result.normalAttack.metrics.includes('AUTO RECOVER 1') ||
-    result.normalAttack.stage.targetHp !== '176 / 176'
+    result.normalAttack.stage.targetHp === '176 / 176' ||
+    !result.normalAttack.stage.recovery.includes('RECOVERING')
   )
-    throw new Error(`${result.viewport}: 単発ダメージまたは敵の自動全回復を確認できません`);
+    throw new Error(`${result.viewport}: 単発ダメージまたは敵の最低HP維持を確認できません`);
+  if (
+    result.normalRecovered.stage.targetHp !== '176 / 176' ||
+    !result.normalRecovered.stage.recovery.includes('AUTO RECOVER')
+  )
+    throw new Error(`${result.viewport}: 被弾後3秒の敵HP全回復を確認できません`);
   if (
     result.reset.verdict !== 'READY TO MEASURE' ||
     result.reset.value !== 0 ||
@@ -134,8 +174,23 @@ for (const result of results) {
   )
     throw new Error(`${result.viewport}: リセットで戦闘の初期状態へ戻りません`);
   if (
+    result.movement.verdict !== 'EFFECT CONFIRMED' ||
+    result.movement.stage.actorLeft === result.movementStart.stage.actorLeft ||
+    result.movementPersisted.stage.actorLeft !== result.movement.stage.actorLeft ||
+    result.movementReset.stage.actorLeft !== result.movementStart.stage.actorLeft
+  )
+    throw new Error(`${result.viewport}: 技による移動がリセットまで保持されていません`);
+  if (
+    !result.poisoned.stage.statuses.includes('毒 ×1') ||
+    !result.poisoned.stage.targetClasses.includes('poisoned') ||
+    !result.poisonPersisted.stage.targetClasses.includes('poisoned') ||
+    result.poisonReset.stage.targetClasses.includes('poisoned') ||
+    !result.poisonReset.stage.statuses.includes('状態なし')
+  )
+    throw new Error(`${result.viewport}: 技で付与した毒状態がリセットまで保持されていません`);
+  if (
     result.guarded.value <= 0 ||
-    result.guarded.stage.targetHp !== '500 / 500' ||
+    result.guarded.stage.targetHp === '500 / 500' ||
     !result.guarded.stage.statuses.includes('毒 ×2') ||
     !result.guarded.stage.statuses.includes('ガード') ||
     !result.guarded.stage.statuses.includes('バーサーク') ||
