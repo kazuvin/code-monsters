@@ -26,9 +26,12 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | `src/core/roster.ts` | `RosterFactory.cs` | inventory units and battle-state construction |
 | `src/core/shop.ts` | `ShopGenerator.cs` | seeded shop generation |
 | `src/core/balance.ts` | editor/CLI validation | reference validation and power scoring |
+| `src/core/debug-simulation.ts` | editor test harness | deterministic single-action and timeline measurements using the live frame planner |
 | `src/App.tsx`, `src/BattleScene.tsx` | MonoBehaviours/UI Toolkit | orchestration, animation, audio, and presentation only |
 
 `BattleStep` contains only plain values: a visual event, optional log and damage events, and fighter field updates. Damage events carry the acting unit, stable action ID, actual HP damage, and whether the source was a normal instruction or reaction. There are no closures in the core queue. Unity can mirror this with serializable structs and let animation and report code consume events independently of the simulation.
+
+The debug-room harness constructs plain fighter/program inputs, advances `planBattleFrame` on a virtual clock, and derives DPS, resource efficiency, healing, displacement, state stacks, and skip reasons from normal battle outputs. Port the harness as an editor tool rather than duplicating combat formulas in Unity UI code; matching harness results provide a practical parity check during migration.
 
 ## Suggested port order
 

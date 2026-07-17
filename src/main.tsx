@@ -2,6 +2,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import './styles.css';
 import './catalog.css';
+import './debug-room.css';
 import './battle-status.css';
 import './berserker.css';
 

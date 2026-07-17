@@ -5,6 +5,7 @@ import {
   BookOpen,
   Coins,
   Download,
+  FlaskConical,
   Lock,
   LockOpen,
   Pause,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { BattleScene } from './BattleScene';
 import { Catalog } from './Catalog';
+import { DebugRoom } from './DebugRoom';
 import {
   applyBattleStep,
   isBattleComplete,
@@ -68,7 +70,7 @@ import type {
 } from './types';
 
 type Phase = 'build' | 'battle' | 'result';
-type AppView = 'game' | 'catalog';
+type AppView = 'game' | 'catalog' | 'debug';
 type MobileBuildPanel = 'program' | 'reaction' | 'squad' | 'shop' | null;
 type EditingSlot = { scope: 'program' | 'reaction'; index: number; field: 'target' | 'condition' | 'action' } | null;
 type GaugeTelemetry = { totalSeconds: number; emptySeconds: number; fullSeconds: number };
@@ -719,6 +721,20 @@ export function App() {
             <BookOpen size={14} />
             <span>カタログ</span>
           </button>
+          <button
+            className={view === 'debug' ? 'active' : ''}
+            aria-label="デバッグ"
+            aria-current={view === 'debug' ? 'page' : undefined}
+            onClick={() => {
+              setView('debug');
+              setPaused(true);
+              setLogsOpen(false);
+              setMobileBuildPanel(null);
+            }}
+          >
+            <FlaskConical size={14} />
+            <span>デバッグ</span>
+          </button>
         </nav>
         {view === 'game' ? (
           <>
@@ -735,15 +751,22 @@ export function App() {
               <small>COIN</small>
             </div>
           </>
-        ) : (
+        ) : view === 'catalog' ? (
           <div className="catalog-top-meta">
             <small>SOURCE OF TRUTH</small>
             <b>SCHEMA V{GAME_SCHEMA_VERSION}</b>
+          </div>
+        ) : (
+          <div className="catalog-top-meta debug-top-meta">
+            <small>DETERMINISTIC HARNESS</small>
+            <b>LIVE CORE</b>
           </div>
         )}
       </header>
       {view === 'catalog' ? (
         <Catalog />
+      ) : view === 'debug' ? (
+        <DebugRoom />
       ) : phase === 'build' ? (
         <div className={`build-layout ${mobileBuildPanel ? `mobile-panel-${mobileBuildPanel}` : ''}`}>
           {mobileBuildPanel && (

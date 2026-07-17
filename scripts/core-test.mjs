@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { applyBattleStep, planBattleFrame } from '../src/core/battle-engine.ts';
 import { analyzeBalance } from '../src/core/balance.ts';
+import { runDebugSimulation } from '../src/core/debug-simulation.ts';
 import { createBattleFighters, createInventoryUnit } from '../src/core/roster.ts';
 import { summarizeDecisions } from '../src/core/replay.ts';
 import {
@@ -616,6 +617,87 @@ assert.deepEqual(
   },
   '軽技・強技・奥義のコスト階層が不正です',
 );
+
+const debugBase = {
+  actorUnitId: 'volt',
+  instructionId: 'attack-low',
+  conditionId: 'always',
+  targetSelectorId: 'nearestEnemy',
+  targetUnitId: 'bastion',
+  mode: 'single',
+  durationSeconds: 10,
+  initialGauge: 8,
+  distance: 4,
+  targetMaxHp: 1_000,
+  targetHpRatio: 1,
+  targetDefense: 15,
+  targetWeight: 14,
+  targetPoison: 0,
+};
+const debugSingle = runDebugSimulation(debugBase);
+assert.equal(debugSingle.executions, 1, 'デバッグルームの単発テストが技を1回実行していません');
+assert.equal(debugSingle.hits, 1, 'デバッグルームが実ダメージイベントを記録していません');
+assert.ok(
+  debugSingle.totalDamage > 0 && debugSingle.damagePerHit > 0,
+  'デバッグルームが単発ダメージを集計していません',
+);
+const debugKill = runDebugSimulation({ ...debugBase, targetMaxHp: 10 });
+assert.equal(debugKill.finalTargetHp, 0, 'デバッグルームのサンドバッグを撃破できません');
+assert.ok(debugKill.timeToKill > 0, 'デバッグルームが撃破時間を記録していません');
+
+const debugMovement = runDebugSimulation({
+  ...debugBase,
+  instructionId: 'approach',
+  distance: 30,
+});
+assert.ok(debugMovement.actorDisplacement > 0, 'デバッグルームが実行ユニットの移動量を計測していません');
+
+const debugTimeline = runDebugSimulation({
+  ...debugBase,
+  instructionId: 'toxic-mark',
+  mode: 'timeline',
+  durationSeconds: 30,
+  targetMaxHp: 99_999,
+});
+assert.ok(debugTimeline.executions > 1, 'デバッグルームの継続テストが複数回の技を計測していません');
+assert.equal(
+  debugTimeline.costSpent,
+  debugTimeline.executions * instructionById.get('toxic-mark').abilityCost,
+  'デバッグルームの消費コスト集計が実行回数と一致しません',
+);
+assert.ok(
+  debugTimeline.effectPerCost > 0 && debugTimeline.dps > 0,
+  'デバッグルームがDPSとコスト効率を算出していません',
+);
+
+const debugRangeMiss = runDebugSimulation({
+  ...debugBase,
+  instructionId: 'shoulder-throw',
+  distance: 72,
+});
+assert.equal(debugRangeMiss.executions, 0, '固定射程外の背負い投げがデバッグルームで実行されています');
+assert.equal(debugRangeMiss.skipped.range, 1, 'デバッグルームが射程外のスキップ理由を記録していません');
+
+const debugPoison = runDebugSimulation({
+  ...debugBase,
+  actorUnitId: 'toxin',
+  instructionId: 'toxic-mark',
+});
+assert.ok(debugPoison.finalPoison > 0, 'デバッグルームが毒スタックを計測していません');
+
+const debugHealing = runDebugSimulation({
+  ...debugBase,
+  actorUnitId: 'mender',
+  instructionId: 'field-repair',
+  conditionId: 'targetInRange',
+  targetSelectorId: 'lowestHpAlly',
+  targetMaxHp: 200,
+  targetHpRatio: 0.3,
+  targetDefense: 5,
+  targetWeight: 5,
+});
+assert.ok(debugHealing.totalHealing > 0, 'デバッグルームが味方への実回復量を計測していません');
+assert.equal(debugHealing.verdict, 'healing', '回復テストの判定が回復になっていません');
 
 const balance = analyzeBalance(GAME_DATA);
 assert.equal(

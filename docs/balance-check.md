@@ -24,6 +24,8 @@ The ability-economy table reports each instruction's gauge cost, recovery time, 
 
 The in-app catalog reads the same source data and exposes all units, conditions, target selectors, and instructions as comparison cards. Its ten-cell cost rulers, recovery time, and sustainable uses-per-minute values are presentation of the analyzer inputs and output; they are not separately maintained balance data.
 
+The in-app debug room complements the static analyzer with reproducible live-engine measurements. It runs the same deterministic battle-frame planner as a normal match against an inert target rig, and reports actual damage, DPS, healing, gauge efficiency, movement, state stacks, and decision skip reasons for a configurable unit, instruction, target, condition, distance, and defense profile.
+
 This is a deterministic screening model, not proof of live-match fairness. It is intentionally good at finding broken references, impossible parameters, extreme same-rarity gaps, and price-efficiency outliers. Borderline spreads are warnings and should be followed by matchup simulation or playtesting. Exceeding configured hard limits exits non-zero.
 
 `pnpm verify` is the local completion gate. For this individual project it provides the useful part of CI without requiring GitHub Actions. If pull requests or collaborators are added later, the same command can be used unchanged in CI.
