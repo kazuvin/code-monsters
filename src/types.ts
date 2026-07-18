@@ -96,7 +96,8 @@ export type StatusEffectKind =
   | 'incomingKnockbackScale'
   | 'attackScale'
   | 'speedScale'
-  | 'targetLock';
+  | 'targetLock'
+  | 'damagePerSecond';
 
 export type StatusEffectDefinition = {
   kind: StatusEffectKind;
@@ -146,6 +147,7 @@ export type StatusInstance = {
   remainingSeconds: number | null;
   sourceId: string | null;
   targetId: string | null;
+  tickAccumulatorSeconds?: number;
 };
 
 export type BattleZoneTargetFilter = 'any' | 'ally' | 'enemy';
@@ -266,6 +268,7 @@ export type BattleFlash = {
     | 'guard'
     | 'berserk'
     | 'wait'
+    | 'status'
     | 'miss'
     | 'death';
   n: number;

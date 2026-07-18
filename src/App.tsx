@@ -33,7 +33,7 @@ import {
 import { summarizeDecisions, type BattleReplay } from './core/replay';
 import { applyBattleZoneChanges, tickBattleZones } from './core/battle-zones';
 import { createBattleFighters, createInventoryUnit, unitById } from './core/roster';
-import { activeStatusDetails, statusCardClasses } from './core/statuses';
+import { activeStatusDetails, statusById, statusCardClasses, statusDamagePerSecond } from './core/statuses';
 import {
   actionCooldown,
   conditionById,
@@ -86,7 +86,10 @@ const attackTypeLabels: Record<UnitDefinition['attackType'], string> = {
   blunt: '打撃',
   sniper: '狙撃',
 };
-const actionLabel = (id: string) => instructionById.get(id)?.title ?? id;
+const actionLabel = (id: string) => {
+  if (id.startsWith('status:')) return `${statusById.get(id.slice('status:'.length))?.label ?? id}ダメージ`;
+  return instructionById.get(id)?.title ?? id;
+};
 const conditionLabel = (id: ConditionId) => conditionById.get(id)?.label ?? id;
 const targetLabel = (id: TargetSelectorId) => targetSelectorById.get(id)?.label ?? id;
 const actionTargetLabels: Record<Instruction['targetMode'], string> = {
@@ -717,6 +720,8 @@ export function App() {
     const tags = details.length
       ? details.map(({ definition, instance }) => {
           if (definition.id === 'berserk') return '暴走';
+          if (definition.id === 'poison')
+            return `${definition.label} ×${instance.stacks} / ${statusDamagePerSecond(definition.id) * instance.stacks} DMG/s`;
           if (definition.visual.showStacks) return `${definition.label} ×${instance.stacks}`;
           if (definition.visual.showRemaining && instance.remainingSeconds !== null)
             return `${definition.label} ${instance.remainingSeconds.toFixed(1)}秒`;
@@ -1500,7 +1505,7 @@ export function App() {
                 <section className="execution-report" aria-label="指示実行レポート">
                   <header>
                     <span>COMBAT EXECUTION TRACE</span>
-                    <b>指示・リアクション・実ダメージ</b>
+                    <b>指示・リアクション・状態ダメージ</b>
                   </header>
                   <div className="report-row report-head">
                     <span>UNIT / INSTRUCTION</span>
@@ -1512,7 +1517,11 @@ export function App() {
                   </div>
                   <div className="report-scroll">
                     {reportRows.map((row) => (
-                      <div className="report-row" key={`${row.actorId}-${row.actionId}`}>
+                      <div
+                        className={`report-row ${row.actionId.startsWith('status:') ? 'report-status-damage' : ''}`}
+                        data-damage-source={row.actionId.startsWith('status:') ? 'status' : 'instruction'}
+                        key={`${row.actorId}-${row.actionId}`}
+                      >
                         <span>
                           <small>{row.actorName}</small>
                           <b>{actionLabel(row.actionId)}</b>

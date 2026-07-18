@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 11;
+        public const int SupportedSchemaVersion = 12;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -36,6 +36,8 @@ namespace CodeMonsters.Core
                 throw new InvalidDataException("The migration spike expects exactly five ordered encounters");
             if (data.Battle.TeamSize != 2)
                 throw new InvalidDataException("The current battle contract requires two fighters per team");
+            if (data.Battle.StatusDamageTickSeconds <= 0)
+                throw new InvalidDataException("Status damage tick interval must be positive");
             ValidateDebugTraining(data.DebugTraining);
 
             var unitIds = UniqueIds(data.Units, unit => unit.Id, "unit");
@@ -98,6 +100,7 @@ namespace CodeMonsters.Core
                 "attackScale",
                 "speedScale",
                 "targetLock",
+                "damagePerSecond",
             };
             var supportedCounterplay = new HashSet<string>
             {

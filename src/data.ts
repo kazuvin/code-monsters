@@ -17,6 +17,7 @@ import type {
 export type BattleConfig = {
   teamSize: number;
   tickSeconds: number;
+  statusDamageTickSeconds: number;
   abilityGaugeMax: number;
   abilityGaugeInitial: number;
   abilityGaugeRegenPerSecond: number;

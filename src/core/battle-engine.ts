@@ -28,7 +28,7 @@ import {
   type BattleZoneChange,
   type ZoneTrigger,
 } from './battle-zones.ts';
-import { clearActionStatuses, hasStatus } from './statuses.ts';
+import { clearActionStatuses, hasStatus, statusById, statusDamagePerSecond } from './statuses.ts';
 
 type MutableFighterFields = Pick<
   Fighter,
@@ -42,7 +42,8 @@ export type BattleDamagePayload = {
   team: Fighter['team'];
   actionId: string;
   amount: number;
-  source: 'normal' | 'reaction';
+  source: 'normal' | 'reaction' | 'status';
+  statusId?: string;
 };
 export type BattleStep = {
   flash: BattleFlash;
@@ -88,6 +89,17 @@ export function isBattleComplete(fighters: Fighter[]): boolean {
   return (
     !fighters.some((fighter) => fighter.team === 'ally' && fighter.hp > 0) ||
     !fighters.some((fighter) => fighter.team === 'enemy' && fighter.hp > 0)
+  );
+}
+
+const compareStableId = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
+
+export function compareReadyFighters(left: Fighter, right: Fighter): number {
+  return (
+    right.speed - left.speed ||
+    left.cooldown - right.cooldown ||
+    compareStableId(left.id, right.id) ||
+    compareStableId(left.instanceId, right.instanceId)
   );
 }
 
@@ -461,6 +473,69 @@ export function planBattleFrame({
       logs.push({ actor: 'SYSTEM', text: `OVERHEAT｜最大HPの ${(rate * 100).toFixed(0)}% ダメージ`, type: 'hit' });
   }
 
+  for (const target of [...next].filter((fighter) => fighter.hp > 0)) {
+    for (const status of target.statuses) {
+      const definition = statusById.get(status.statusId);
+      const damagePerSecond = statusDamagePerSecond(status.statusId);
+      const accumulatedSeconds = status.tickAccumulatorSeconds ?? 0;
+      const tickCount = Math.floor((accumulatedSeconds + Number.EPSILON) / BATTLE_CONFIG.statusDamageTickSeconds);
+      if (!definition || damagePerSecond <= 0 || tickCount <= 0) continue;
+
+      const currentTarget = next.find((fighter) => fighter.instanceId === target.instanceId);
+      if (!currentTarget) continue;
+      const statuses = currentTarget.statuses.map((candidate) =>
+        candidate.statusId === status.statusId
+          ? {
+              ...candidate,
+              tickAccumulatorSeconds: Math.max(
+                0,
+                accumulatedSeconds - tickCount * BATTLE_CONFIG.statusDamageTickSeconds,
+              ),
+            }
+          : candidate,
+      );
+      setNext(currentTarget.instanceId, { statuses });
+      displayNext = applyFighterUpdates(displayNext, [{ id: currentTarget.instanceId, values: { statuses } }]);
+
+      const source = next.find((fighter) => fighter.instanceId === status.sourceId);
+      const damagePerTick = Number((damagePerSecond * status.stacks).toFixed(4));
+      for (let tick = 0; tick < tickCount; tick += 1) {
+        const liveTarget = next.find((fighter) => fighter.instanceId === target.instanceId);
+        if (!liveTarget || liveTarget.hp <= 0) break;
+        const amount = Math.min(liveTarget.hp, damagePerTick);
+        const hp = Math.max(0, liveTarget.hp - amount);
+        setNext(liveTarget.instanceId, { hp });
+        queueStep({
+          flash: {
+            id: liveTarget.instanceId,
+            actorId: source?.instanceId,
+            kind: 'status',
+            targetId: liveTarget.instanceId,
+            actionLabel: `${definition.label}ダメージ ${Math.round(amount)}`,
+            n: 0,
+          },
+          log: {
+            actor: liveTarget.name,
+            text: `${definition.label} ×${status.stacks}｜${Math.round(amount)} 継続ダメージ`,
+            type: 'hit',
+          },
+          damage: {
+            actorId: source?.instanceId ?? `status:${status.statusId}`,
+            actorName: source?.name ?? definition.label,
+            team: source?.team ?? liveTarget.team,
+            actionId: `status:${status.statusId}`,
+            amount,
+            source: 'status',
+            statusId: status.statusId,
+          },
+          updates: [{ id: liveTarget.instanceId, values: { hp } }],
+        });
+        if (hp <= 0)
+          queueStep({ flash: { id: liveTarget.instanceId, kind: 'death', actionLabel: 'DOWN', n: 0 }, updates: [] });
+      }
+    }
+  }
+
   for (const fighter of next.filter(
     (candidate) => candidate.hp > 0 && candidate.hp / candidate.maxHp <= BATTLE_CONFIG.lowHpThreshold,
   )) {
@@ -469,7 +544,7 @@ export function planBattleFrame({
 
   for (const ready of [...next]
     .filter((fighter) => fighter.hp > 0 && fighter.cooldown <= 0)
-    .sort((a, b) => b.speed - a.speed)) {
+    .sort(compareReadyFighters)) {
     const actorIndex = next.findIndex((fighter) => fighter.instanceId === ready.instanceId && fighter.hp > 0);
     if (actorIndex < 0) continue;
     const actor = next[actorIndex];

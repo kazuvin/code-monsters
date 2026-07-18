@@ -212,6 +212,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'attackScale',
     'speedScale',
     'targetLock',
+    'damagePerSecond',
   ]);
   const supportedEffectKinds = new Set([
     'damage',
@@ -238,9 +239,10 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 11) error('INVALID_SCHEMA_VERSION', 'schemaVersion は11以上である必要があります');
+  if (data.schemaVersion < 12) error('INVALID_SCHEMA_VERSION', 'schemaVersion は12以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
+    data.battle.statusDamageTickSeconds <= 0 ||
     !Number.isInteger(data.battle.abilityGaugeMax) ||
     data.battle.abilityGaugeMax <= 0 ||
     data.battle.abilityGaugeInitial < 0 ||

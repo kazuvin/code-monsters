@@ -34,6 +34,7 @@ namespace CodeMonsters.Core
         public double? RemainingSeconds;
         public string SourceId = "";
         public string TargetId = "";
+        public double TickAccumulatorSeconds;
     }
 
     public static class BattleRules

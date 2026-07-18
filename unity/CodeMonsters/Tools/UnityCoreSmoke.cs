@@ -43,6 +43,7 @@ internal static class UnityCoreSmoke
         var selfInspired = data.Conditions.Single(condition => condition.Id == "selfInspired");
         var toxicCloud = data.BattleZones.Single(zone => zone.Id == "toxic-cloud");
         var toxicFlask = data.Instructions.Single(instruction => instruction.Id == "throw-toxic-flask");
+        var poison = data.Statuses.Single(status => status.Id == "poison");
         var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
         var actor = new FighterState { InstanceId = "arrow-1", X = 40, Range = arrow.Range, Hp = 74, MaxHp = 74 };
         var target = new FighterState { InstanceId = "enemy-1", X = 55, Range = 8, Hp = 100, MaxHp = 100 };
@@ -81,6 +82,8 @@ internal static class UnityCoreSmoke
             throw new InvalidDataException("Battle zone placement skill was not imported");
         if (!BattleRules.PathEntersZone(20, 80, 50, toxicCloud.Radius))
             throw new InvalidDataException("Battle zone path entry parity failed");
+        if (data.Battle.StatusDamageTickSeconds != 1 || poison.Effects.Single().Kind != "damagePerSecond")
+            throw new InvalidDataException("Periodic poison damage was not imported");
 
         Console.WriteLine(
             $"{{\"schemaVersion\":{data.SchemaVersion},\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"

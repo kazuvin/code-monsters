@@ -61,7 +61,7 @@ export function summarizeDecisions(
   for (const event of damageEvents.filter((entry) => entry.team === 'ally')) {
     const row = getRow(event.actorId, event.actorName, event.actionId);
     row.totalDamage += event.amount;
-    if (event.source === 'reaction') row.executed += 1;
+    if (event.source === 'reaction' || event.source === 'status') row.executed += 1;
   }
   return [...rows.values()].sort((a, b) => a.actorName.localeCompare(b.actorName) || b.executed - a.executed);
 }

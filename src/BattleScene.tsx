@@ -152,7 +152,7 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
           const showsImpact =
             isTarget &&
             flash?.kind !== 'miss' &&
-            (attackKinds.some((kind) => kind === flash?.kind) || flash?.kind === 'throw');
+            (attackKinds.some((kind) => kind === flash?.kind) || flash?.kind === 'throw' || flash?.kind === 'status');
           const isAttack = isActor && attackKinds.some((kind) => kind === flash?.kind);
           const attackType = isActor && flash?.attackType ? flash.attackType : fighter.attackType;
           const attackEffect = flash?.kind === 'follow' ? 'follow' : attackType;

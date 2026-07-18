@@ -38,6 +38,9 @@ namespace CodeMonsters.Core
         [JsonProperty("teamSize")]
         public int TeamSize;
 
+        [JsonProperty("statusDamageTickSeconds")]
+        public double StatusDamageTickSeconds;
+
         [JsonProperty("abilityGaugeMax")]
         public double AbilityGaugeMax;
 

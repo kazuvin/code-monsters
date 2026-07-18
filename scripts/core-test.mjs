@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { applyBattleStep, planBattleFrame } from '../src/core/battle-engine.ts';
+import { applyBattleStep, compareReadyFighters, planBattleFrame } from '../src/core/battle-engine.ts';
 import { analyzeBalance } from '../src/core/balance.ts';
 import { createDebugFighters, createDefaultDebugStatuses, runDebugSimulation } from '../src/core/debug-simulation.ts';
 import { applyInstructionStatusEffects, effectByKind } from '../src/core/instruction-effects.ts';
@@ -33,6 +33,7 @@ import { BATTLE_CONFIG, DEBUG_TRAINING_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CON
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
 const fighters = createBattleFighters(team);
+assert.equal(GAME_DATA.schemaVersion, 12, '継続状態ダメージ対応のスキーマではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeMax, 10, 'アビリティゲージの最大値が10ではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeInitial, 8, '技を連続使用できる初期ゲージ量ではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeRegenPerSecond, 1.5, 'アビリティゲージの回復速度が不正です');
@@ -140,6 +141,22 @@ assert.equal(
 assert.equal(
   actionCooldown(volt.speed),
   Math.max(BATTLE_CONFIG.minimumActionCooldownSeconds, BATTLE_CONFIG.baseActionCooldownSeconds / volt.speed),
+);
+const readyOrderBase = { ...volt, hp: volt.maxHp };
+const readyOrder = [
+  { ...readyOrderBase, id: 'slow', instanceId: 'slow', speed: 0.9, cooldown: -1 },
+  { ...readyOrderBase, id: 'zeta', instanceId: 'zeta', speed: 1, cooldown: -0.1 },
+  { ...readyOrderBase, id: 'alpha', instanceId: 'alpha-b', speed: 1, cooldown: -0.1 },
+  { ...readyOrderBase, id: 'alpha', instanceId: 'alpha-a', speed: 1, cooldown: -0.1 },
+  { ...readyOrderBase, id: 'overdue', instanceId: 'overdue', speed: 1, cooldown: -0.2 },
+  { ...readyOrderBase, id: 'fast', instanceId: 'fast', speed: 1.2, cooldown: 0 },
+]
+  .sort(compareReadyFighters)
+  .map((fighter) => fighter.instanceId);
+assert.deepEqual(
+  readyOrder,
+  ['fast', 'overdue', 'alpha-a', 'alpha-b', 'zeta', 'slow'],
+  'READY同着時の優先順位がSPD、超過時間、固定IDの順になっていません',
 );
 const regeneratedGauge = tickCooldowns([{ ...volt, abilityGauge: BATTLE_CONFIG.abilityGaugeMax - 0.1 }], 1)[0]
   .abilityGauge;
@@ -485,6 +502,11 @@ const poisonAmplify = instructionById.get('corrosion-burst');
 assert.ok(toxinActor && cleanStatusTarget && poisonAmplify);
 const poisonedStatusTarget = applyStatus(cleanStatusTarget, 'poison', { stacks: 2 });
 assert.equal(
+  statusStacks(applyStatus(cleanStatusTarget, 'poison', { stacks: 99 }), 'poison'),
+  5,
+  '毒が5スタックを超えています',
+);
+assert.equal(
   matchCondition('enemyHasStatus', toxinActor, [cleanStatusTarget]).length,
   0,
   '未付与の敵が状態条件に一致します',
@@ -509,6 +531,40 @@ const insufficientPoisonTarget = applyInstructionStatusEffects(
   'selected',
 );
 assert.equal(statusStacks(insufficientPoisonTarget, 'poison'), 1, '必要スタック未満の毒を誤って消費しています');
+
+const periodicPoisonTarget = applyStatus(cleanStatusTarget, 'poison', {
+  stacks: 2,
+  sourceId: toxinActor.instanceId,
+});
+periodicPoisonTarget.statuses = periodicPoisonTarget.statuses.map((status) =>
+  status.statusId === 'poison' ? { ...status, tickAccumulatorSeconds: 0.9 } : status,
+);
+const periodicPoisonFighters = toxinFighters.map((fighter) => {
+  if (fighter.instanceId === periodicPoisonTarget.instanceId) return { ...periodicPoisonTarget, cooldown: 10 };
+  return { ...fighter, cooldown: 10 };
+});
+const periodicPoisonPlan = planBattleFrame({
+  fighters: periodicPoisonFighters,
+  team: toxinTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const poisonDamageStep = periodicPoisonPlan.steps.find((step) => step.damage?.source === 'status');
+assert.equal(poisonDamageStep?.damage?.statusId, 'poison', '毒の継続ダメージに状態IDがありません');
+assert.equal(poisonDamageStep?.damage?.actorId, toxinActor.instanceId, '毒ダメージが付与元へ帰属していません');
+assert.equal(poisonDamageStep?.damage?.amount, 4, '毒2スタックが毎秒4ダメージになっていません');
+const poisonDamageApplied = applyBattleStep(periodicPoisonPlan.fighters, poisonDamageStep);
+assert.equal(
+  poisonDamageApplied.find((fighter) => fighter.instanceId === periodicPoisonTarget.instanceId)?.hp,
+  periodicPoisonTarget.hp - 4,
+  '毒の継続ダメージが対象HPへ反映されていません',
+);
+const poisonDamageReport = summarizeDecisions([], [poisonDamageStep.damage]).find(
+  (row) => row.actionId === 'status:poison',
+);
+assert.equal(poisonDamageReport?.executed, 1, '毒ダメージの発生回数がレポートへ集計されていません');
+assert.equal(poisonDamageReport?.totalDamage, 4, '毒ダメージがレポートへ集計されていません');
 
 const vulnerabilityProducer = instructionById.get('reveal-weakness');
 const vulnerabilityConsumer = instructionById.get('pierce-vulnerability');

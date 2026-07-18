@@ -33,6 +33,7 @@ namespace CodeMonsters.Core
         public string ActionId = "";
         public double Amount;
         public string Source = "";
+        public string StatusId = "";
     }
 
     public sealed class BattleStep

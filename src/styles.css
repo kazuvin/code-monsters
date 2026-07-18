@@ -999,6 +999,16 @@ button:focus-visible {
   color: #baff75;
   text-shadow: 0 0 9px #8cff4f33;
 }
+.report-row.report-status-damage {
+  background: linear-gradient(90deg, #2b173b66, transparent 62%);
+}
+.report-row.report-status-damage > span:first-child b {
+  color: #d6a7ff;
+}
+.report-row.report-status-damage .report-damage {
+  color: #baff75;
+  text-shadow: 0 0 10px #bc72ff55;
+}
 .report-row em {
   color: #a36f45;
   font: 500 12px "IBM Plex Mono";

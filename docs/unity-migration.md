@@ -32,7 +32,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | `src/core/debug-simulation.ts` | editor test harness | deterministic single-action and timeline measurements using the live frame planner |
 | `src/App.tsx`, `src/BattleScene.tsx` | MonoBehaviours/UI Toolkit | orchestration, animation, audio, and presentation only |
 
-`BattleStep` contains only plain values: a visual event, optional log and damage events, and fighter field updates. Damage events carry the acting unit, stable action ID, actual HP damage, and whether the source was a normal instruction or reaction. There are no closures in the core queue. Unity can mirror this with serializable structs and let animation and report code consume events independently of the simulation.
+`BattleStep` contains only plain values: a visual event, optional log and damage events, and fighter field updates. Damage events carry the acting unit, stable action ID, actual HP damage, and whether the source was a normal instruction, reaction, or status tick. Status damage also carries its stable status ID. There are no closures in the core queue. Unity can mirror this with serializable structs and let animation and report code consume events independently of the simulation.
 
 The debug-room harness constructs a plain two-fighter/program input and advances `planBattleFrame` on a virtual clock. Its start-distance presets come from `debugTraining.positionPresets`, while every configurable status is generated from the canonical top-level `statuses` registry; the same status runtime applies to the attacker and dummy. It preserves movement and status updates in serializable playback frames, clamps the dummy to `debugTraining.minimumDummyHp`, and restores only its HP after `debugTraining.recoveryDelaySeconds`; Reset recreates the configured initial fighters. Unit stat and state overrides remain harness inputs rather than presentation-only modifiers. It derives per-hit damage independent of remaining dummy HP, DPS, resource efficiency, healing, maximum displacement, state stacks, recovery count, and skip reasons from normal battle outputs. Port the harness as an editor tool rather than duplicating combat formulas in Unity UI code; matching harness results provide a practical parity check during migration.
 
@@ -109,11 +109,17 @@ Add `battle.teamSize` and set the standard battle contract to two allies against
 
 Replace the ally selectors `nearestAlly`, `lowestHpAlly`, `criticalAlly`, and `allAllies` with the single selector `partner`. Version 10 saved programs using any removed ally selector should migrate it to `partner`; healing now combines that selector with `partnerHpBelow50` instead of encoding urgency in the target selector. Rename the reaction trigger `allyAttackHit` to `partnerAttackHit`. Enemy target selectors remain unchanged because choosing between the nearer enemy and the lower-HP enemy is still meaningful in 2vs2.
 
+## Schema version 12 migration
+
+Add `battle.statusDamageTickSeconds` and the finite status effect `damagePerSecond`. Runtime status instances add `tickAccumulatorSeconds` so periodic damage remains deterministic even while presentation steps are queued. Each completed interval emits a serializable damage event with `source: "status"`, `statusId`, the original applier as actor, and the actual HP removed. Status damage bypasses defense and guard because its canonical value is fixed damage per stack; report and replay consumers must include it alongside instruction and reaction damage.
+
+Version 12 changes poison to a five-stack damage-over-time status. Each stack deals 2 fixed damage per second, while `corrosion-burst` still consumes two stacks for its existing bonus damage. Importers must add `damagePerSecond` to the status-effect allowlist and persist the accumulator in fighter snapshots.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v11 DTO loading and stable-ID/reference validation, including the 2vs2 team-size contract, finite instruction effects, battle zones, and canonical status values
+- schema-v12 DTO loading and stable-ID/reference validation, including the 2vs2 team-size contract, periodic status damage, finite instruction effects, battle zones, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

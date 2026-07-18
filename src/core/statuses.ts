@@ -25,6 +25,11 @@ export const statusRemaining = (fighter: Pick<Fighter, 'statuses'>, statusId: st
 export const statusTargetId = (fighter: Pick<Fighter, 'statuses'>, statusId: string) =>
   getStatus(fighter, statusId)?.targetId ?? null;
 
+export function statusDamagePerSecond(statusId: string): number {
+  const effect = requireStatusDefinition(statusId).effects.find((candidate) => candidate.kind === 'damagePerSecond');
+  return effect?.value ?? 0;
+}
+
 export function statusEffectTargetId(
   fighter: Pick<Fighter, 'statuses'>,
   kind: Extract<StatusEffectKind, 'targetLock'>,
@@ -65,6 +70,8 @@ export function applyStatus(
     1,
     definition.maxStacks,
   );
+  const tickAccumulatorSeconds =
+    statusDamagePerSecond(statusId) > 0 ? (existing?.tickAccumulatorSeconds ?? 0) : undefined;
   const instance: StatusInstance = {
     statusId,
     stacks,
@@ -72,6 +79,7 @@ export function applyStatus(
       options.remainingSeconds !== undefined ? options.remainingSeconds : definitionDuration(definition),
     sourceId: options.sourceId !== undefined ? options.sourceId : (existing?.sourceId ?? null),
     targetId: options.targetId !== undefined ? options.targetId : (existing?.targetId ?? null),
+    ...(tickAccumulatorSeconds === undefined ? {} : { tickAccumulatorSeconds }),
   };
   const statuses = existing
     ? fighter.statuses.map((status) => (status.statusId === statusId ? instance : status))
@@ -135,13 +143,20 @@ export function clearActionStatuses(fighter: Fighter): Fighter {
 
 export function tickStatusDurations(fighter: Fighter, dt: number): Fighter {
   return fighter.statuses.reduce((next, status) => {
-    if (status.remainingSeconds === null) return next;
-    const remainingSeconds = Math.max(0, status.remainingSeconds - dt);
-    if (remainingSeconds <= 0) return removeStatus(next, status.statusId);
+    const remainingSeconds = status.remainingSeconds === null ? null : Math.max(0, status.remainingSeconds - dt);
+    if (remainingSeconds !== null && remainingSeconds <= 0) return removeStatus(next, status.statusId);
+    const tickAccumulatorSeconds =
+      statusDamagePerSecond(status.statusId) > 0 ? (status.tickAccumulatorSeconds ?? 0) + dt : undefined;
     return {
       ...next,
       statuses: next.statuses.map((candidate) =>
-        candidate.statusId === status.statusId ? { ...candidate, remainingSeconds } : candidate,
+        candidate.statusId === status.statusId
+          ? {
+              ...candidate,
+              remainingSeconds,
+              ...(tickAccumulatorSeconds === undefined ? {} : { tickAccumulatorSeconds }),
+            }
+          : candidate,
       ),
     };
   }, fighter);

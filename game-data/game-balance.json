@@ -1,8 +1,9 @@
 {
-  "schemaVersion": 11,
+  "schemaVersion": 12,
   "battle": {
     "teamSize": 2,
     "tickSeconds": 0.22,
+    "statusDamageTickSeconds": 1,
     "abilityGaugeMax": 10,
     "abilityGaugeInitial": 8,
     "abilityGaugeRegenPerSecond": 1.5,
@@ -82,9 +83,9 @@
     {
       "id": "poison",
       "label": "毒",
-      "description": "毒スタックを保持",
+      "description": "1秒ごとに1スタックあたり2の固定ダメージ",
       "stacking": "stack",
-      "maxStacks": 99,
+      "maxStacks": 5,
       "clearOnAction": false,
       "duration": { "mode": "persistent" },
       "synergy": {
@@ -94,7 +95,7 @@
           "description": "増幅技で2スタックを消費する"
         }
       },
-      "debug": { "control": "stacks", "min": 0, "max": 99, "step": 1 },
+      "debug": { "control": "stacks", "min": 0, "max": 5, "step": 1 },
       "visual": {
         "className": "poisoned",
         "cardClass": "poisoned",
@@ -103,7 +104,7 @@
         "showStacks": true,
         "showRemaining": false
       },
-      "effects": []
+      "effects": [{ "kind": "damagePerSecond", "value": 2 }]
     },
     {
       "id": "vulnerable",
