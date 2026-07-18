@@ -338,12 +338,20 @@ export function DebugRoom() {
     const nextInstruction = instructionById.get(instructionId);
     if (!nextInstruction) return;
     const nextCondition = conditionById.get(nextInstruction.condition);
-    updateInput({
-      instructionId,
-      conditionId: nextInstruction.condition,
-      targetSelectorId: nextInstruction.defaultTarget,
-      actorHpRatio: nextCondition?.kind === 'selfHpBelow' || nextInstruction.action === 'heal' ? 0.25 : 1,
+    setInput((current) => {
+      const statusId = nextCondition?.kind === 'selfHasStatus' ? nextCondition.params.statusId : undefined;
+      return {
+        ...current,
+        instructionId,
+        conditionId: nextInstruction.condition,
+        targetSelectorId: nextInstruction.defaultTarget,
+        actorHpRatio: nextCondition?.kind === 'selfHpBelow' || nextInstruction.action === 'heal' ? 0.25 : 1,
+        actorStatuses: statusId
+          ? { ...current.actorStatuses, [statusId]: nextCondition?.params.minimumStacks ?? 1 }
+          : current.actorStatuses,
+      };
     });
+    setDirty(true);
   };
 
   const selectTargetPreset = (targetUnitId: string) => {

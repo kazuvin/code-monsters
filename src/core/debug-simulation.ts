@@ -202,7 +202,7 @@ export function readDebugStatusValues(fighter: Fighter): DebugStatusValues {
 }
 
 function debugTargetSelector(instruction: Instruction, requested: TargetSelectorId): TargetSelectorId {
-  if (instruction.action === 'heal') return 'self';
+  if (instruction.action === 'heal' || instruction.action === 'buff') return 'self';
   if (instruction.targetMode === 'self') return 'self';
   return instruction.targetMode === 'selected' ? requested : instruction.defaultTarget;
 }

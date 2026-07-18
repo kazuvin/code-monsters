@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "battle": {
     "tickSeconds": 0.22,
     "abilityGaugeMax": 10,
@@ -136,6 +136,32 @@
         "showRemaining": true
       },
       "effects": [{ "kind": "speedScale", "value": 0.75 }]
+    },
+    {
+      "id": "inspired",
+      "label": "鼓舞",
+      "description": "仲間の支援を受け、攻撃力が15%上昇",
+      "stacking": "replace",
+      "maxStacks": 1,
+      "clearOnAction": false,
+      "duration": { "mode": "application" },
+      "synergy": {
+        "mode": "combo",
+        "counterplay": {
+          "kind": "expires",
+          "description": "付与から6秒後、または利用技で消費されると解除される"
+        }
+      },
+      "debug": { "control": "toggle" },
+      "visual": {
+        "className": "inspired",
+        "cardClass": "inspired",
+        "chipClass": "inspired-chip",
+        "label": "INSPIRED",
+        "showStacks": false,
+        "showRemaining": true
+      },
+      "effects": [{ "kind": "attackScale", "value": 1.15 }]
     },
     {
       "id": "guarded",
@@ -458,6 +484,15 @@
       "label": "鈍足状態",
       "flavor": "冷却で動きが鈍った瞬間に、重い一撃を重ねる。",
       "effect": "対象が鈍足状態",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
+    },
+    {
+      "id": "selfInspired",
+      "kind": "selfHasStatus",
+      "params": { "statusId": "inspired", "minimumStacks": 1 },
+      "label": "自分が鼓舞状態",
+      "flavor": "託された勢いを、自分の一撃に変える。",
+      "effect": "このユニットが鼓舞状態",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
     }
   ],
@@ -790,6 +825,27 @@
       "effects": [{ "kind": "heal", "amount": 22, "supportAmount": 34 }]
     },
     {
+      "id": "tactical-support",
+      "title": "戦術支援する",
+      "short": "戦術支援",
+      "flavor": "仲間へ狙いどころを伝え、次の一撃を後押しする。",
+      "action": "buff",
+      "abilityCost": 3,
+      "price": 0,
+      "rarity": "common",
+      "condition": "targetInRange",
+      "target": "nearestAlly",
+      "defaultTarget": "nearestAlly",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestAlly", "lowestHpAlly", "criticalAlly"],
+      "tone": "lime",
+      "fixedFor": "mender",
+      "range": { "mode": "unit" },
+      "effects": [
+        { "kind": "applyStatus", "statusId": "inspired", "target": "selected", "stacks": 1, "durationSeconds": 6 }
+      ]
+    },
+    {
       "id": "toxic-mark",
       "title": "毒弾を撃つ",
       "short": "毒付与",
@@ -1000,6 +1056,50 @@
       "effects": [{ "kind": "damage", "attackScale": 0.58, "minimumDamage": 3, "knockbackPower": 0 }]
     },
     {
+      "id": "volt-inspired-strike",
+      "title": "電光強襲",
+      "short": "電光強襲",
+      "flavor": "仲間の号令を推進力に変え、一気に間合いを断つ。",
+      "action": "attack",
+      "abilityCost": 3,
+      "price": 0,
+      "rarity": "rare",
+      "condition": "selfInspired",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "cyan",
+      "fixedFor": "volt",
+      "range": { "mode": "unit" },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.75, "minimumDamage": 4, "knockbackPower": 0 },
+        { "kind": "consumeStatus", "statusId": "inspired", "target": "actor", "stacks": 1, "bonusDamage": 14 }
+      ]
+    },
+    {
+      "id": "wrath-inspired-smash",
+      "title": "決死撃",
+      "short": "決死撃",
+      "flavor": "背中を押す声ごと武器へ乗せ、渾身の一撃を叩き込む。",
+      "action": "heavy",
+      "abilityCost": 5,
+      "price": 0,
+      "rarity": "rare",
+      "condition": "selfInspired",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "amber",
+      "fixedFor": "wrath",
+      "range": { "mode": "fixed", "value": 9 },
+      "effects": [
+        { "kind": "damage", "attackScale": 1, "minimumDamage": 4, "knockbackPower": 105 },
+        { "kind": "consumeStatus", "statusId": "inspired", "target": "actor", "stacks": 1, "bonusDamage": 20 }
+      ]
+    },
+    {
       "id": "tank-guard",
       "title": "ガードする",
       "short": "防御",
@@ -1060,12 +1160,15 @@
     }
   ],
   "defaultPrograms": [
-    { "unitId": "volt", "actionIds": ["attack-low", "approach"] },
+    { "unitId": "volt", "actionIds": ["volt-inspired-strike", "attack-low", "approach"] },
     { "unitId": "bastion", "actionIds": ["shattering-blow", "attack-low", "approach"] },
     { "unitId": "relay", "actionIds": ["corner-slowed", "attack-low", "relay-dash"] },
     { "unitId": "arrow", "actionIds": ["pierce-vulnerability", "attack-low", "approach"] },
-    { "unitId": "wrath", "actionIds": ["attack-low", "approach"] },
-    { "unitId": "mender", "actionIds": ["field-repair", "attack-low", "approach"] },
+    { "unitId": "wrath", "actionIds": ["wrath-inspired-smash", "attack-low", "approach"] },
+    {
+      "unitId": "mender",
+      "actionIds": ["tactical-support", "field-repair", "attack-low", "approach"]
+    },
     {
       "unitId": "toxin",
       "actionIds": ["corrosion-burst", "toxic-mark", "attack-low", "approach"]

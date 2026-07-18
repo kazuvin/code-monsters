@@ -26,7 +26,8 @@ export type ConditionKind =
   | 'targetOutOfRange'
   | 'targetHpBelow'
   | 'selfHpBelow'
-  | 'targetHasStatus';
+  | 'targetHasStatus'
+  | 'selfHasStatus';
 export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'nearestAlly' | 'lowestHpAlly' | 'criticalAlly' | 'self';
 export type TargetSelectorId =
   | 'nearestEnemy'

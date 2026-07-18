@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 8;
+        public const int SupportedSchemaVersion = 9;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -150,12 +150,13 @@ namespace CodeMonsters.Core
                 "targetHpBelow",
                 "selfHpBelow",
                 "targetHasStatus",
+                "selfHasStatus",
             };
             foreach (var condition in conditions)
             {
                 if (!supportedKinds.Contains(condition.Kind))
                     throw new InvalidDataException($"Condition {condition.Id} has unsupported kind {condition.Kind}");
-                if (condition.Kind == "targetHasStatus")
+                if (condition.Kind == "targetHasStatus" || condition.Kind == "selfHasStatus")
                 {
                     if (!statusIds.Contains(condition.Params.StatusId))
                         throw new InvalidDataException($"Condition {condition.Id} references unknown status");
@@ -241,6 +242,8 @@ namespace CodeMonsters.Core
                     throw new InvalidDataException($"Status {status.Id} has no producer skill");
                 if (status.Synergy.Mode == "combo" && consumers.Count == 0)
                     throw new InvalidDataException($"Combo status {status.Id} has no consumer skill");
+                if (status.Synergy.Mode == "combo" && !HasStatusCondition(data.Conditions, status.Id))
+                    throw new InvalidDataException($"Combo status {status.Id} has no status condition");
                 if (status.Synergy.Mode == "combo" && !HasCrossUnitPath(producers, consumers, unitIds.Count))
                     throw new InvalidDataException($"Combo status {status.Id} has no cross-unit path");
 
@@ -271,6 +274,17 @@ namespace CodeMonsters.Core
                         || (unitCount > 1 && (string.IsNullOrEmpty(producer.FixedFor) || string.IsNullOrEmpty(consumer.FixedFor)))
                     )
                         return true;
+            return false;
+        }
+
+        private static bool HasStatusCondition(IEnumerable<ConditionDefinition> conditions, string statusId)
+        {
+            foreach (var condition in conditions)
+                if (
+                    (condition.Kind == "targetHasStatus" || condition.Kind == "selfHasStatus")
+                    && condition.Params.StatusId == statusId
+                )
+                    return true;
             return false;
         }
 

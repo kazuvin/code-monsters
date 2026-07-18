@@ -120,6 +120,8 @@ export function matchCondition(condition: ConditionId, actor: Fighter, targets: 
     );
   const statusId = definition.params.statusId;
   const minimumStacks = definition.params.minimumStacks ?? 1;
+  if (definition.kind === 'selfHasStatus')
+    return statusId && statusStacks(actor, statusId) >= minimumStacks ? targets : [];
   return statusId ? targets.filter((target) => statusStacks(target, statusId) >= minimumStacks) : [];
 }
 
@@ -158,7 +160,7 @@ export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
 
 export function rawActionDamage(actor: Fighter, instruction: Instruction, target: Fighter): number {
   const effect = requireEffect(instruction, 'damage');
-  return actor.attack * effect.attackScale + (effect.flatDamage ?? 0) + statusBonusDamage(instruction, target);
+  return actor.attack * effect.attackScale + (effect.flatDamage ?? 0) + statusBonusDamage(instruction, actor, target);
 }
 
 export function resolveActionImpact(actor: Fighter, target: Fighter, instruction: Instruction): ImpactResult {
@@ -273,6 +275,14 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
     ]);
   const modifier = effectByKind(instruction, 'modifyStat');
   if (instruction.action === 'buff' && modifier) return withCost([{ label: 'ATK', value: `+${modifier.amount}` }]);
+  if (instruction.action === 'buff' && application) {
+    const status = requireStatusDefinition(application.statusId);
+    const attackScale = status.effects.find((effect) => effect.kind === 'attackScale')?.value ?? 1;
+    return withCost([
+      { label: 'ATK', value: `+${Math.round((attackScale - 1) * 100)}%` },
+      { label: '持続', value: `${metricNumber(application.durationSeconds ?? 0)} s` },
+    ]);
+  }
   if (instruction.action === 'berserk' && application) {
     const status = requireStatusDefinition(application.statusId);
     const attackScale = status.effects.find((effect) => effect.kind === 'attackScale')?.value ?? 1;

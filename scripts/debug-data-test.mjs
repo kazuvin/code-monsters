@@ -82,11 +82,17 @@ for (const instruction of INSTRUCTIONS) {
     (instruction.fixedFor && unitById.get(instruction.fixedFor)) ||
     (instruction.action === 'heal' ? unitById.get('mender') : undefined) ||
     defaultActor;
+  const actorStatuses = createDefaultDebugStatuses();
   const targetStatuses = createDefaultDebugStatuses();
   if (condition.kind === 'targetHasStatus') {
     const statusId = condition.params.statusId;
     assert.ok(statusId, `${instruction.condition} に statusId がありません`);
     targetStatuses[statusId] = condition.params.minimumStacks ?? 1;
+  }
+  if (condition.kind === 'selfHasStatus') {
+    const statusId = condition.params.statusId;
+    assert.ok(statusId, `${instruction.condition} に statusId がありません`);
+    actorStatuses[statusId] = condition.params.minimumStacks ?? 1;
   }
   const input = makeInput({
     actorUnitId: actor.id,
@@ -100,6 +106,7 @@ for (const instruction of INSTRUCTIONS) {
             (preset) => preset.rangeReference === 'actor' && preset.relation === 'outside',
           )?.id
         : DEBUG_TRAINING_CONFIG.defaultPositionPresetId,
+    actorStatuses,
     targetStatuses,
   });
   const result = runDebugSimulation(input);

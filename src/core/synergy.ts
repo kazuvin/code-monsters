@@ -149,7 +149,8 @@ export function analyzeSynergies(data: GameBalanceData): SynergyReport {
       effectsByKind(instruction, 'consumeStatus').some((effect) => effect.statusId === status.id),
     );
     const conditions = data.conditions.filter(
-      (condition) => condition.kind === 'targetHasStatus' && condition.params.statusId === status.id,
+      (condition) =>
+        ['targetHasStatus', 'selfHasStatus'].includes(condition.kind) && condition.params.statusId === status.id,
     );
     const crossUnitLinks = distinctCrossUnitLinks(data, producers, consumers);
     const isCombo = status.synergy.mode === 'combo';

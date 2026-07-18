@@ -3787,6 +3787,44 @@ button:focus-visible {
   font: 700 7px "IBM Plex Mono";
   white-space: nowrap;
 }
+.sprite.inspired .team-ring {
+  border-color: #d7f36b;
+  background: #c9ef471f;
+  box-shadow:
+    0 0 5px #080a0d,
+    0 0 16px #c9ef4799,
+    inset 0 0 12px #f2ffae55;
+}
+.sprite.inspired .team-ring::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, #e9ff8d 0 4deg, transparent 4deg 45deg);
+  mask: radial-gradient(circle, transparent 0 54%, #000 56% 60%, transparent 62%);
+  filter: drop-shadow(0 0 5px #c9ef47);
+  pointer-events: none;
+  animation: inspired-pulse 1.2s steps(2) infinite alternate;
+}
+.inspired-chip {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 46px;
+  transform: translateX(-50%);
+  padding: 3px 5px;
+  border: 1px solid #d7f36b;
+  background: #26300ee8;
+  color: #f1ffb5;
+  box-shadow:
+    inset 3px 0 #93c83d,
+    0 0 11px #c9ef4766;
+  font: 700 7px "IBM Plex Mono";
+  white-space: nowrap;
+}
 @keyframes vulnerable-lock {
   to {
     opacity: 0.64;
@@ -3796,6 +3834,12 @@ button:focus-visible {
 @keyframes slowed-chill {
   to {
     transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+@keyframes inspired-pulse {
+  to {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1.12) rotate(12deg);
   }
 }
 @keyframes poison-scan {
@@ -3953,6 +3997,7 @@ button:focus-visible {
   .berserk-chip,
   .vulnerable-chip,
   .slow-chip,
+  .inspired-chip,
   .poison-chip {
     left: calc(50% + 23px);
     bottom: 14px;
@@ -3969,6 +4014,10 @@ button:focus-visible {
     left: calc(50% + 25px);
     bottom: 36px;
   }
+  .inspired-chip {
+    left: 50%;
+    bottom: 50px;
+  }
   .fx-taunt {
     width: 68px;
     height: 68px;
@@ -3984,6 +4033,7 @@ button:focus-visible {
   .sprite.taunt-locked .team-ring,
   .sprite.vulnerable .team-ring::after,
   .sprite.slowed .team-ring::before,
+  .sprite.inspired .team-ring::after,
   .poison-surface,
   .poison-haze,
   .sprite.is-taunt .sprite-body,

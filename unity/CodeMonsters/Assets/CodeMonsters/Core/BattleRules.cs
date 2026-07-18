@@ -70,6 +70,8 @@ namespace CodeMonsters.Core
                     && actor.Hp / actor.MaxHp <= condition.Params.Threshold.Value,
                 "targetHasStatus" => !string.IsNullOrEmpty(condition.Params.StatusId)
                     && target.StatusStacks(condition.Params.StatusId) >= (condition.Params.MinimumStacks ?? 1),
+                "selfHasStatus" => !string.IsNullOrEmpty(condition.Params.StatusId)
+                    && actor.StatusStacks(condition.Params.StatusId) >= (condition.Params.MinimumStacks ?? 1),
                 _ => throw new ArgumentOutOfRangeException(nameof(condition.Kind), condition.Kind, "Unknown condition"),
             };
         }

@@ -664,6 +664,102 @@ assert.ok(
   '実戦の冷却弾リアクションが対象速度を低下させません',
 );
 
+const inspiredProducer = instructionById.get('tactical-support');
+const inspiredStrike = instructionById.get('volt-inspired-strike');
+const inspiredSmash = instructionById.get('wrath-inspired-smash');
+assert.ok(inspiredProducer && inspiredStrike && inspiredSmash);
+const inspiredVolt = applyInstructionStatusEffects(volt, inspiredProducer, 'mender-source', 'selected');
+assert.equal(statusRemaining(inspiredVolt, 'inspired'), 6, '鼓舞の持続時間が付与技の定義と一致しません');
+assert.equal(inspiredVolt.attack, Math.round(volt.attack * 1.15), '鼓舞の攻撃力上昇が状態定義と一致しません');
+assert.equal(
+  matchCondition('selfInspired', inspiredVolt, nearestEnemyTargets).length,
+  nearestEnemyTargets.length,
+  '自分の鼓舞状態を条件にしながら敵対象を保持できません',
+);
+assert.equal(
+  matchCondition('selfInspired', volt, nearestEnemyTargets).length,
+  0,
+  '鼓舞されていない実行ユニットが自己状態条件に一致します',
+);
+assert.ok(
+  resolveActionImpact(inspiredVolt, nearestEnemyTargets[0], inspiredStrike).damage >
+    resolveActionImpact(volt, nearestEnemyTargets[0], inspiredStrike).damage,
+  '鼓舞消費技の自己状態ボーナスダメージが適用されていません',
+);
+const consumedInspiredVolt = applyInstructionStatusEffects(
+  inspiredVolt,
+  inspiredStrike,
+  inspiredVolt.instanceId,
+  'actor',
+);
+assert.equal(statusStacks(consumedInspiredVolt, 'inspired'), 0, '電光強襲が自分の鼓舞を消費しません');
+assert.equal(consumedInspiredVolt.attack, volt.attack, '鼓舞消費後に攻撃力が復元されません');
+
+const inspiredSupportTeam = [
+  createInventoryUnit('mender', 'inspired-mender'),
+  createInventoryUnit('volt', 'inspired-volt'),
+];
+inspiredSupportTeam[0].program = [
+  { targetId: 'nearestAlly', conditionId: 'targetInRange', actionId: 'tactical-support' },
+];
+const inspiredSupportFighters = createBattleFighters(inspiredSupportTeam).map((fighter) => ({
+  ...fighter,
+  x:
+    fighter.instanceId === 'inspired-mender'
+      ? 40
+      : fighter.instanceId === 'inspired-volt'
+        ? 46
+        : fighter.id === 'relay'
+          ? 52
+          : 72,
+  cooldown: fighter.instanceId === 'inspired-mender' ? 0 : 10,
+}));
+const inspiredSupportPlan = planBattleFrame({
+  fighters: inspiredSupportFighters,
+  team: inspiredSupportTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const inspiredSupportUpdate = inspiredSupportPlan.steps
+  .find((step) => step.flash.actionLabel === '強化')
+  ?.updates.find((update) => update.id === 'inspired-volt');
+assert.ok(
+  inspiredSupportUpdate?.values.statuses?.some((status) => status.statusId === 'inspired'),
+  'メンダーの戦術支援が選択した味方へ鼓舞を付与しません',
+);
+
+const inspiredAttackTeam = [createInventoryUnit('volt', 'inspired-attacker')];
+inspiredAttackTeam[0].program = [
+  { targetId: 'nearestEnemy', conditionId: 'selfInspired', actionId: 'volt-inspired-strike' },
+];
+const inspiredAttackFighters = createBattleFighters(inspiredAttackTeam).map((fighter) => {
+  const positioned = {
+    ...fighter,
+    x: fighter.team === 'ally' ? 40 : fighter.id === 'relay' ? 48 : 72,
+    cooldown: fighter.team === 'ally' ? 0 : 10,
+  };
+  return fighter.instanceId === 'inspired-attacker'
+    ? applyStatus(positioned, 'inspired', { stacks: 1, remainingSeconds: 6 })
+    : positioned;
+});
+const inspiredAttackPlan = planBattleFrame({
+  fighters: inspiredAttackFighters,
+  team: inspiredAttackTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const inspiredAttackStep = inspiredAttackPlan.steps.find((step) => step.damage?.actionId === 'volt-inspired-strike');
+const inspiredActorUpdate = inspiredAttackStep?.updates.find((update) => update.id === 'inspired-attacker');
+assert.ok(inspiredAttackStep, '自己鼓舞条件の電光強襲が敵へ実行されません');
+assert.equal(
+  inspiredActorUpdate?.values.statuses?.some((status) => status.statusId === 'inspired'),
+  false,
+  '命中後の戦闘ステップが実行ユニットの鼓舞を消費していません',
+);
+assert.equal(inspiredActorUpdate?.values.attack, volt.attack, '命中後の戦闘ステップが攻撃力を復元しません');
+
 const multiTeam = [createInventoryUnit('arrow', 'multi-arrow')];
 multiTeam[0].program = [{ targetId: 'allEnemies', conditionId: 'targetInRange', actionId: 'saturation-fire' }];
 const multiFighters = createBattleFighters(multiTeam).map((fighter) => ({
@@ -1021,6 +1117,9 @@ assert.equal(
   2,
   '鈍足の別ユニット連携数を集計できません',
 );
+const inspiredSynergy = synergyReport.packs.find((pack) => pack.statusId === 'inspired');
+assert.equal(inspiredSynergy?.conditions[0]?.id, 'selfInspired', '鼓舞の自己状態条件をシナジー監査できません');
+assert.equal(inspiredSynergy?.crossUnitLinks.length, 2, '鼓舞の別ユニット連携数を集計できません');
 const missingConditionData = structuredClone(GAME_DATA);
 missingConditionData.conditions = missingConditionData.conditions.filter((condition) => condition.id !== 'enemySlowed');
 assert.ok(

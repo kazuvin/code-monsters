@@ -36,6 +36,11 @@ internal static class UnityCoreSmoke
         var coolantShot = data.Instructions.Single(instruction => instruction.Id == "coolant-shot");
         var shatteringBlow = data.Instructions.Single(instruction => instruction.Id == "shattering-blow");
         var cornerSlowed = data.Instructions.Single(instruction => instruction.Id == "corner-slowed");
+        var inspired = data.Statuses.Single(status => status.Id == "inspired");
+        var tacticalSupport = data.Instructions.Single(instruction => instruction.Id == "tactical-support");
+        var inspiredStrike = data.Instructions.Single(instruction => instruction.Id == "volt-inspired-strike");
+        var inspiredSmash = data.Instructions.Single(instruction => instruction.Id == "wrath-inspired-smash");
+        var selfInspired = data.Conditions.Single(condition => condition.Id == "selfInspired");
         var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
         var actor = new FighterState { InstanceId = "arrow-1", X = 40, Range = arrow.Range, Hp = 74, MaxHp = 74 };
         var target = new FighterState { InstanceId = "enemy-1", X = 55, Range = 8, Hp = 100, MaxHp = 100 };
@@ -57,6 +62,17 @@ internal static class UnityCoreSmoke
             throw new InvalidDataException("Bastion slowed status consumer was not imported");
         if (!cornerSlowed.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "slowed"))
             throw new InvalidDataException("Relay slowed status consumer was not imported");
+        if (Math.Abs(inspired.Effects.Single(effect => effect.Kind == "attackScale").Value.GetValueOrDefault() - 1.15) >= 0.0001)
+            throw new InvalidDataException("Inspired status attack multiplier was not imported");
+        if (!tacticalSupport.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "inspired" && effect.DurationSeconds == 6))
+            throw new InvalidDataException("Inspired status producer was not imported");
+        if (!inspiredStrike.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "inspired" && effect.Target == "actor"))
+            throw new InvalidDataException("Volt inspired status consumer was not imported");
+        if (!inspiredSmash.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "inspired" && effect.Target == "actor"))
+            throw new InvalidDataException("Wrath inspired status consumer was not imported");
+        actor.Statuses.Add(new StatusInstance { StatusId = "inspired", Stacks = 1 });
+        if (!BattleRules.MatchesCondition(selfInspired, actor, target))
+            throw new InvalidDataException("Actor-owned inspired condition did not match an enemy target");
 
         Console.WriteLine(
             $"{{\"schemaVersion\":{data.SchemaVersion},\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"

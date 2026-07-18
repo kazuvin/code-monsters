@@ -28,11 +28,11 @@ export function instructionHasDamage(instruction: Instruction): boolean {
   return Boolean(effectByKind(instruction, 'damage'));
 }
 
-export function statusBonusDamage(instruction: Instruction, target: Fighter): number {
-  return effectsByKind(instruction, 'consumeStatus').reduce(
-    (total, effect) => total + (statusStacks(target, effect.statusId) >= effect.stacks ? (effect.bonusDamage ?? 0) : 0),
-    0,
-  );
+export function statusBonusDamage(instruction: Instruction, actor: Fighter, target: Fighter): number {
+  return effectsByKind(instruction, 'consumeStatus').reduce((total, effect) => {
+    const statusOwner = effect.target === 'actor' ? actor : target;
+    return total + (statusStacks(statusOwner, effect.statusId) >= effect.stacks ? (effect.bonusDamage ?? 0) : 0);
+  }, 0);
 }
 
 const targetsEffect = (effectTarget: EffectTarget, actualTarget: EffectTarget) => effectTarget === actualTarget;

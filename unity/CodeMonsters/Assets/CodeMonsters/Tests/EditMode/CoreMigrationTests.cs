@@ -20,7 +20,7 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(8));
+            Assert.That(data.SchemaVersion, Is.EqualTo(9));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));
             Assert.That(data.DebugTraining.RecoveryDelaySeconds, Is.EqualTo(3));
             Assert.That(data.DebugTraining.PositionPresets, Has.Count.EqualTo(3));
@@ -55,10 +55,13 @@ namespace CodeMonsters.Core.Tests
             var targetInRange = data.Conditions.Single(candidate => candidate.Id == "targetInRange");
             var enemyHasStatus = data.Conditions.Single(candidate => candidate.Id == "enemyHasStatus");
             var selfHpBelow = data.Conditions.Single(candidate => candidate.Id == "selfHpBelow30");
+            var selfInspired = data.Conditions.Single(candidate => candidate.Id == "selfInspired");
+            actor.Statuses.Add(new StatusInstance { StatusId = "inspired", Stacks = 1 });
 
             Assert.That(BattleRules.MatchesCondition(targetInRange, actor, ally), Is.True);
             Assert.That(BattleRules.MatchesCondition(enemyHasStatus, actor, enemy), Is.True);
             Assert.That(BattleRules.MatchesCondition(selfHpBelow, actor, ally), Is.False);
+            Assert.That(BattleRules.MatchesCondition(selfInspired, actor, enemy), Is.True);
         }
 
         [Test]

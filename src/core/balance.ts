@@ -177,6 +177,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'targetHpBelow',
     'selfHpBelow',
     'targetHasStatus',
+    'selfHasStatus',
   ]);
   const supportedActions = new Set([
     'attack',
@@ -246,7 +247,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 8) error('INVALID_SCHEMA_VERSION', 'schemaVersion は8以上である必要があります');
+  if (data.schemaVersion < 9) error('INVALID_SCHEMA_VERSION', 'schemaVersion は9以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     !Number.isInteger(data.battle.abilityGaugeMax) ||
@@ -351,7 +352,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       if (typeof threshold !== 'number' || threshold <= 0 || threshold >= 1)
         error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の threshold は0より大きく1未満で指定してください`);
     }
-    if (condition.kind === 'targetHasStatus') {
+    if (['targetHasStatus', 'selfHasStatus'].includes(condition.kind)) {
       if (!condition.params.statusId)
         error('MISSING_STATUS_REFERENCE', `条件 ${condition.id} に statusId がありません`);
       else requireStatus(condition.params.statusId, `条件 ${condition.id}.params.statusId`);
@@ -378,7 +379,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     retreat: new Set(['move']),
     heal: new Set(['heal']),
     guard: new Set(['applyStatus', 'removeStatus']),
-    buff: new Set(['modifyStat']),
+    buff: new Set(['applyStatus', 'removeStatus', 'modifyStat']),
     berserk: new Set(['applyStatus', 'removeStatus']),
     poison: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
     burn: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
@@ -508,8 +509,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         if (!['actor', 'selected'].includes(effect.target) || !Number.isInteger(effect.stacks) || effect.stacks < 1)
           error('INVALID_EFFECT', `${instruction.id} の consumeStatus 定義が不正です`);
         if ((effect.bonusDamage ?? 0) < 0) error('INVALID_EFFECT', `${instruction.id} の bonusDamage が負です`);
-        if (effect.target !== 'selected')
-          error('UNSUPPORTED_EFFECT_TARGET', `${instruction.id} の consumeStatus 対象は selected である必要があります`);
       } else if (effect.kind === 'removeStatus') {
         rejectUnknownKeys(effect, ['kind', 'statusId', 'target'], `スキル ${instruction.id}.removeStatus`);
         requireStatus(effect.statusId, `スキル ${instruction.id}.removeStatus`);
@@ -547,8 +546,12 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_EFFECT', `${instruction.id} には heal 効果が必要です`);
     if (instruction.action === 'wait' && !effectByKind(instruction, 'wait'))
       error('MISSING_EFFECT', `${instruction.id} には wait 効果が必要です`);
-    if (instruction.action === 'buff' && !effectByKind(instruction, 'modifyStat'))
-      error('MISSING_EFFECT', `${instruction.id} には modifyStat 効果が必要です`);
+    if (
+      instruction.action === 'buff' &&
+      !effectByKind(instruction, 'modifyStat') &&
+      !effectByKind(instruction, 'applyStatus')
+    )
+      error('MISSING_EFFECT', `${instruction.id} には modifyStat または applyStatus 効果が必要です`);
     if (['guard', 'berserk', 'taunt'].includes(instruction.action) && !effectByKind(instruction, 'applyStatus'))
       error('MISSING_STATUS_REFERENCE', `${instruction.id} には applyStatus 効果が必要です`);
   }

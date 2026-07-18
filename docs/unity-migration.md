@@ -90,11 +90,17 @@ Status definitions now own all canonical effect magnitudes through `effects[].va
 
 Each status also declares whether it is a `combo` or explicitly justified `standalone` pack and names a verifiable counterplay rule. Combo packs must have a producer, consumer, cross-unit ownership path, and working counterplay. `src/core/synergy.ts` derives that graph from canonical data; `pnpm balance:check` treats an incomplete pack as an error, while the Debug Room renders the same report as its Synergy Graph summary.
 
+## Schema version 9 migration
+
+Add the finite `selfHasStatus` condition kind. Unlike `targetHasStatus`, it evaluates the acting unit's status while preserving the selected action targets, so a program can require an actor-owned buff and still attack an enemy. Status-consuming effects may now explicitly use `target: "actor"`; calculate their bonus from the actor and consume the status only after a successful impact. Buff actions may apply a canonical status to their selected ally instead of owning a one-off stat magnitude.
+
+Importers must add `selfHasStatus` to their condition allowlist and validate its `statusId` and positive `minimumStacks` exactly like `targetHasStatus`. Synergy analyzers must count either condition kind as a status-condition path. Version 9's first pack is `inspired`: Mender applies the timed attack multiplier to an ally, while Volt and Wrath consume it from themselves for their own enemy-targeted attacks.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v8 DTO loading and stable-ID/reference validation, including finite instruction effects and canonical status values
+- schema-v9 DTO loading and stable-ID/reference validation, including finite instruction effects and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames
