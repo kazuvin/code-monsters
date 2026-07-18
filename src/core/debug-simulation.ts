@@ -17,6 +17,7 @@ import {
   type DecisionReason,
   type DecisionTrace,
 } from './battle-engine.ts';
+import { requireEffect } from './instruction-effects.ts';
 import { knockbackPosition, resolveActionImpact, throwBehind, tickCooldowns } from './rules.ts';
 import { applyStatus, hasStatus, statusStacks } from './statuses.ts';
 
@@ -374,7 +375,7 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
           if (damageActor && damageTarget?.instanceId === setup.dummyId && impact && !movementAlreadyQueued) {
             const x =
               setup.instruction.action === 'throw'
-                ? throwBehind(damageActor, damageTarget, setup.instruction.params.throwDistance ?? 0)
+                ? throwBehind(damageActor, damageTarget, requireEffect(setup.instruction, 'move').distance)
                 : impact.knockbackDistance > 0
                   ? knockbackPosition(damageTarget, damageActor, impact.knockbackDistance)
                   : damageTarget.x;

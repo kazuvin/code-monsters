@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { resolveImpact } from '../src/core/combat.ts';
+import { effectByKind } from '../src/core/instruction-effects.ts';
 import { INSTRUCTIONS } from '../src/data.ts';
 
 const goldenFixture = JSON.parse(
@@ -65,12 +66,14 @@ assert.equal(explicitNoKnockback.knockbackDistance, 0, 'アクション固有設
 
 const knockAwayInstruction = INSTRUCTIONS.find((instruction) => instruction.id === 'knock-away');
 assert.ok(knockAwayInstruction, '「ちょっと吹き飛ばす」の指示が登録されていません');
+const knockAwayDamage = effectByKind(knockAwayInstruction, 'damage');
+assert.ok(knockAwayDamage, '「ちょっと吹き飛ばす」にダメージ効果がありません');
 const knockAway = resolveImpact({
   rawDamage: 26,
   minimumDamage: 4,
   attackType: 'melee',
   attackerKnockbackPower: 8,
-  impact: { knockbackPower: knockAwayInstruction.params.knockbackPower },
+  impact: { knockbackPower: knockAwayDamage.knockbackPower },
   targetDefense: 15,
   targetWeight: 14,
   targetRole: 'TANK',

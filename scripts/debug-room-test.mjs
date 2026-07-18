@@ -1,6 +1,8 @@
+import fs from 'node:fs';
 import { chromium } from 'playwright-core';
 
 const targetUrl = process.argv[2] ?? 'http://127.0.0.1:5173/';
+const data = JSON.parse(fs.readFileSync(new URL('../game-data/game-balance.json', import.meta.url), 'utf8'));
 const browser = await chromium.launch({
   headless: true,
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -125,6 +127,19 @@ for (const viewport of [
   const configuredReset = await readMeasurement();
   const measuredSkillAfterReset = (await page.locator('.debug-skill-readout b').textContent())?.trim();
 
+  await page.getByRole('button', { name: 'シナジー', exact: true }).click();
+  await page.waitForSelector('.synergy-page');
+  const synergy = await page.evaluate(() => ({
+    packs: document.querySelectorAll('.synergy-pack').length,
+    ready: document.querySelectorAll('.synergy-pack.is-ready').length,
+    summary: document.querySelector('.synergy-summary')?.textContent?.replace(/\s+/g, ' ').trim(),
+    xOverflow:
+      document.querySelector('.synergy-page').scrollWidth - document.querySelector('.synergy-page').clientWidth,
+  }));
+  await page.screenshot({ path: `/tmp/code-monsters-${viewport.name}-synergy-graph.png`, fullPage: false });
+  await page.getByRole('button', { name: /デバッグルーム/ }).click();
+  await page.waitForSelector('.debug-room');
+
   const layout = await page.evaluate(() => ({
     xOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     yOverflow: document.documentElement.scrollHeight - document.documentElement.clientHeight,
@@ -151,6 +166,7 @@ for (const viewport of [
     actorReset,
     configuredReset,
     measuredSkillAfterReset,
+    synergy,
     settingsScrollTop,
     layout,
     errors,
@@ -239,6 +255,13 @@ for (const result of results) {
   )
     throw new Error(`${result.viewport}: リセット時に現在の計測設定を維持した初期状態へ戻りません`);
   if (result.settingsScrollTop !== 0) throw new Error(`${result.viewport}: 設定を開いたとき先頭が表示されません`);
+  if (
+    result.synergy.packs !== data.statuses.length ||
+    result.synergy.ready !== data.statuses.length ||
+    !result.synergy.summary.includes('全パック検証済み') ||
+    result.synergy.xOverflow > 0
+  )
+    throw new Error(`${result.viewport}: シナジーグラフが全状態パックを正しく表示していません`);
   if (result.layout.xOverflow > 0 || result.layout.yOverflow > 0 || result.layout.scrollY !== 0)
     throw new Error(`${result.viewport}: デバッグルームが画面からはみ出しています`);
   if (result.errors.length > 0) throw new Error(`${result.viewport}: ブラウザエラー: ${result.errors.join(', ')}`);

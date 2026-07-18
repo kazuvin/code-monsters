@@ -20,7 +20,7 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(7));
+            Assert.That(data.SchemaVersion, Is.EqualTo(8));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));
             Assert.That(data.DebugTraining.RecoveryDelaySeconds, Is.EqualTo(3));
             Assert.That(data.DebugTraining.PositionPresets, Has.Count.EqualTo(3));
@@ -36,10 +36,11 @@ namespace CodeMonsters.Core.Tests
         {
             var arrow = data.Units.Single(unit => unit.Id == "arrow");
             var shoulderThrow = data.Instructions.Single(instruction => instruction.Id == "shoulder-throw");
+            var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
             var actor = new FighterState { InstanceId = "arrow-1", X = 40, Range = arrow.Range, Hp = 74, MaxHp = 74 };
             var target = new FighterState { InstanceId = "enemy-1", X = 55, Range = 8, Hp = 100, MaxHp = 100 };
 
-            Assert.That(BattleRules.MatchesCondition("targetInRange", actor, target, data.Battle), Is.True);
+            Assert.That(BattleRules.MatchesCondition(targetInRange, actor, target), Is.True);
             Assert.That(BattleRules.ActionRange(actor, shoulderThrow), Is.EqualTo(9));
             Assert.That(BattleRules.DistanceTo(actor, target), Is.GreaterThan(BattleRules.ActionRange(actor, shoulderThrow)));
         }
@@ -50,12 +51,14 @@ namespace CodeMonsters.Core.Tests
             var actor = new FighterState { InstanceId = "mender-1", X = 40, Range = 14, Hp = 118, MaxHp = 118 };
             var ally = new FighterState { InstanceId = "volt-1", X = 52, Range = 10, Hp = 30, MaxHp = 116 };
             var enemy = new FighterState { InstanceId = "enemy-1", X = 54, Range = 10, Hp = 80, MaxHp = 100 };
-            enemy.Statuses.Add(new StatusInstance { StatusId = "poison", Stacks = 1 });
-            var condition = data.Conditions.Single(candidate => candidate.Id == "enemyHasStatus");
+            enemy.Statuses.Add(new StatusInstance { StatusId = "poison", Stacks = 2 });
+            var targetInRange = data.Conditions.Single(candidate => candidate.Id == "targetInRange");
+            var enemyHasStatus = data.Conditions.Single(candidate => candidate.Id == "enemyHasStatus");
+            var selfHpBelow = data.Conditions.Single(candidate => candidate.Id == "selfHpBelow30");
 
-            Assert.That(BattleRules.MatchesCondition("targetInRange", actor, ally, data.Battle), Is.True);
-            Assert.That(BattleRules.MatchesCondition("enemyHasStatus", actor, enemy, data.Battle, condition.StatusId), Is.True);
-            Assert.That(BattleRules.MatchesCondition("selfHpBelow30", actor, ally, data.Battle), Is.False);
+            Assert.That(BattleRules.MatchesCondition(targetInRange, actor, ally), Is.True);
+            Assert.That(BattleRules.MatchesCondition(enemyHasStatus, actor, enemy), Is.True);
+            Assert.That(BattleRules.MatchesCondition(selfHpBelow, actor, ally), Is.False);
         }
 
         [Test]

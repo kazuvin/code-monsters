@@ -19,6 +19,12 @@ namespace CodeMonsters.Core
         {
             return Statuses.Exists(status => status.StatusId == statusId && status.Stacks > 0);
         }
+
+        public int StatusStacks(string statusId)
+        {
+            var status = Statuses.Find(candidate => candidate.StatusId == statusId);
+            return status == null ? 0 : status.Stacks;
+        }
     }
 
     public sealed class StatusInstance
@@ -39,27 +45,32 @@ namespace CodeMonsters.Core
 
         public static double ActionRange(FighterState actor, InstructionDefinition instruction)
         {
-            return instruction.Params.FixedRange ?? actor.Range;
+            if (instruction.Range.Mode == "fixed")
+                return instruction.Range.Value ?? actor.Range;
+            if (instruction.Range.Mode == "scaled")
+                return actor.Range * (instruction.Range.Value ?? 1);
+            return actor.Range;
         }
 
         public static bool MatchesCondition(
-            string conditionId,
+            ConditionDefinition condition,
             FighterState actor,
-            FighterState target,
-            BattleConfig battle,
-            string statusId = ""
+            FighterState target
         )
         {
-            return conditionId switch
+            return condition.Kind switch
             {
                 "always" => true,
                 "targetInRange" => DistanceTo(actor, target) <= actor.Range,
                 "targetOutOfRange" => DistanceTo(actor, target) > actor.Range,
-                "enemyHpBelow50" => target.Hp / target.MaxHp <= battle.EnemyLowHpThreshold,
-                "selfHpBelow30" => target.InstanceId == actor.InstanceId
-                    && actor.Hp / actor.MaxHp <= battle.LowHpThreshold,
-                "enemyHasStatus" => !string.IsNullOrEmpty(statusId) && target.HasStatus(statusId),
-                _ => throw new ArgumentOutOfRangeException(nameof(conditionId), conditionId, "Unknown condition"),
+                "targetHpBelow" => condition.Params.Threshold.HasValue
+                    && target.Hp / target.MaxHp <= condition.Params.Threshold.Value,
+                "selfHpBelow" => condition.Params.Threshold.HasValue
+                    && target.InstanceId == actor.InstanceId
+                    && actor.Hp / actor.MaxHp <= condition.Params.Threshold.Value,
+                "targetHasStatus" => !string.IsNullOrEmpty(condition.Params.StatusId)
+                    && target.StatusStacks(condition.Params.StatusId) >= (condition.Params.MinimumStacks ?? 1),
+                _ => throw new ArgumentOutOfRangeException(nameof(condition.Kind), condition.Kind, "Unknown condition"),
             };
         }
     }

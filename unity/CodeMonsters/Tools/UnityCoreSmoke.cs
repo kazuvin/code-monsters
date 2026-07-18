@@ -29,9 +29,10 @@ internal static class UnityCoreSmoke
 
         var arrow = data.Units.Single(unit => unit.Id == "arrow");
         var shoulderThrow = data.Instructions.Single(instruction => instruction.Id == "shoulder-throw");
+        var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
         var actor = new FighterState { InstanceId = "arrow-1", X = 40, Range = arrow.Range, Hp = 74, MaxHp = 74 };
         var target = new FighterState { InstanceId = "enemy-1", X = 55, Range = 8, Hp = 100, MaxHp = 100 };
-        if (!BattleRules.MatchesCondition("targetInRange", actor, target, data.Battle))
+        if (!BattleRules.MatchesCondition(targetInRange, actor, target))
             throw new InvalidDataException("Actor-relative attack range condition did not match");
         if (BattleRules.ActionRange(actor, shoulderThrow) != 9)
             throw new InvalidDataException("Fixed contact-skill range was not preserved");

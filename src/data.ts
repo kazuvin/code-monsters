@@ -1,6 +1,7 @@
 import rawGameData from '../game-data/game-balance.json' with { type: 'json' };
 import type {
   ConditionId,
+  ConditionKind,
   Instruction,
   Rarity,
   ReactionBlock,
@@ -103,11 +104,16 @@ export type TargetSelectorDefinition = {
 };
 export type ConditionDefinition = {
   id: ConditionId;
+  kind: ConditionKind;
+  params: {
+    threshold?: number;
+    statusId?: string;
+    minimumStacks?: number;
+  };
   label: string;
   flavor: string;
   effect: string;
   compatibleTargets: TargetSelectorId[];
-  statusId?: string;
 };
 export type ReactionTriggerDefinition = {
   id: ReactionTrigger;

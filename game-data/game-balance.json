@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "battle": {
     "tickSeconds": 0.22,
     "abilityGaugeMax": 10,
@@ -67,6 +67,13 @@
       "maxStacks": 99,
       "clearOnAction": false,
       "duration": { "mode": "persistent" },
+      "synergy": {
+        "mode": "combo",
+        "counterplay": {
+          "kind": "consumedBySkill",
+          "description": "増幅技で2スタックを消費する"
+        }
+      },
       "debug": { "control": "stacks", "min": 0, "max": 99, "step": 1 },
       "visual": {
         "className": "poisoned",
@@ -86,6 +93,11 @@
       "maxStacks": 1,
       "clearOnAction": true,
       "duration": { "mode": "persistent" },
+      "synergy": {
+        "mode": "standalone",
+        "standaloneReason": "次の行動まで維持する防御姿勢",
+        "counterplay": { "kind": "clearsOnAction", "description": "次の行動開始時に解除される" }
+      },
       "debug": { "control": "toggle" },
       "visual": {
         "className": "guarded",
@@ -95,18 +107,7 @@
         "showStacks": false,
         "showRemaining": false
       },
-      "effects": [
-        {
-          "kind": "incomingDamageScale",
-          "sourceInstructionId": "tank-guard",
-          "parameter": "incomingDamageScale"
-        },
-        {
-          "kind": "incomingKnockbackScale",
-          "sourceInstructionId": "tank-guard",
-          "parameter": "incomingKnockbackScale"
-        }
-      ]
+      "effects": [{ "kind": "incomingDamageScale", "value": 0.82 }, { "kind": "incomingKnockbackScale", "value": 0.7 }]
     },
     {
       "id": "berserk",
@@ -116,6 +117,11 @@
       "maxStacks": 1,
       "clearOnAction": false,
       "duration": { "mode": "persistent" },
+      "synergy": {
+        "mode": "standalone",
+        "standaloneReason": "瀕死時にのみ起動できる固有モード",
+        "counterplay": { "kind": "lowHpRequirement", "description": "HP30%以下でのみ起動する" }
+      },
       "debug": { "control": "toggle" },
       "visual": {
         "className": "berserk-active",
@@ -125,18 +131,7 @@
         "showStacks": false,
         "showRemaining": false
       },
-      "effects": [
-        {
-          "kind": "attackScale",
-          "sourceInstructionId": "berserker-mode",
-          "parameter": "attackScale"
-        },
-        {
-          "kind": "speedScale",
-          "sourceInstructionId": "berserker-mode",
-          "parameter": "speedScale"
-        }
-      ]
+      "effects": [{ "kind": "attackScale", "value": 1.6 }, { "kind": "speedScale", "value": 3 }]
     },
     {
       "id": "taunted",
@@ -145,10 +140,14 @@
       "stacking": "replace",
       "maxStacks": 1,
       "clearOnAction": false,
-      "duration": {
-        "mode": "instructionParam",
-        "sourceInstructionId": "taunt",
-        "parameter": "durationSeconds"
+      "duration": { "mode": "application" },
+      "synergy": {
+        "mode": "standalone",
+        "standaloneReason": "標的固定そのものが完結した制御効果",
+        "counterplay": {
+          "kind": "expires",
+          "description": "付与技で指定された時間が経過すると解除される"
+        }
       },
       "debug": { "control": "toggle" },
       "visual": {
@@ -323,6 +322,8 @@
   "conditions": [
     {
       "id": "always",
+      "kind": "always",
+      "params": {},
       "label": "いつでも",
       "flavor": "迷わず、いつでも実行。",
       "effect": "常時",
@@ -330,6 +331,8 @@
     },
     {
       "id": "targetInRange",
+      "kind": "targetInRange",
+      "params": {},
       "label": "射程範囲内",
       "flavor": "手が届くなら、話は早い。",
       "effect": "対象との距離 ≤ このユニットのRNG",
@@ -345,6 +348,8 @@
     },
     {
       "id": "targetOutOfRange",
+      "kind": "targetOutOfRange",
+      "params": {},
       "label": "射程範囲外",
       "flavor": "まだ届かない。なら、次の手を。",
       "effect": "対象との距離 > このユニットのRNG",
@@ -360,6 +365,8 @@
     },
     {
       "id": "enemyHpBelow50",
+      "kind": "targetHpBelow",
+      "params": { "threshold": 0.5 },
       "label": "HP 50%以下",
       "flavor": "弱ったところを、見逃さない。",
       "effect": "対象のHP ≤ 50%",
@@ -367,6 +374,8 @@
     },
     {
       "id": "selfHpBelow30",
+      "kind": "selfHpBelow",
+      "params": { "threshold": 0.3 },
       "label": "HP 30%以下",
       "flavor": "あとがないので、ここから本気。",
       "effect": "対象のHP ≤ 30%",
@@ -374,10 +383,11 @@
     },
     {
       "id": "enemyHasStatus",
-      "label": "状態異常あり",
+      "kind": "targetHasStatus",
+      "params": { "statusId": "poison", "minimumStacks": 2 },
+      "label": "毒が2以上",
       "flavor": "仕込み済みなら、畳みかける。",
-      "effect": "対象が状態異常",
-      "statusId": "poison",
+      "effect": "対象の毒スタックが2以上",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
     }
   ],
@@ -556,7 +566,8 @@
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "cyan",
       "showAttackTypeLabel": true,
-      "params": { "attackScale": 1, "minimumDamage": 4 }
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "damage", "attackScale": 1, "minimumDamage": 4 }]
     },
     {
       "id": "knock-away",
@@ -573,13 +584,8 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "amber",
-      "params": {
-        "attackScale": 1,
-        "flatDamage": 10,
-        "minimumDamage": 4,
-        "knockbackPower": 120,
-        "fixedRange": 9
-      }
+      "range": { "mode": "fixed", "value": 9 },
+      "effects": [{ "kind": "damage", "attackScale": 1, "flatDamage": 10, "minimumDamage": 4, "knockbackPower": 120 }]
     },
     {
       "id": "approach",
@@ -596,7 +602,8 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "nearestAlly", "lowestHpAlly", "criticalAlly"],
       "tone": "amber",
-      "params": { "moveDistance": 5.2 }
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "move", "mode": "advance", "distance": 5.2 }]
     },
     {
       "id": "retreat",
@@ -613,7 +620,8 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "violet",
-      "params": { "moveDistance": 6.5, "fixedRange": 10 }
+      "range": { "mode": "fixed", "value": 10 },
+      "effects": [{ "kind": "move", "mode": "retreat", "distance": 6.5 }]
     },
     {
       "id": "vault-over",
@@ -631,7 +639,8 @@
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "amber",
       "visualKind": "jump",
-      "params": { "moveDistance": 14, "fixedRange": 9 }
+      "range": { "mode": "fixed", "value": 9 },
+      "effects": [{ "kind": "move", "mode": "jump", "distance": 14 }]
     },
     {
       "id": "shoulder-throw",
@@ -648,13 +657,11 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "amber",
-      "params": {
-        "attackScale": 0.8,
-        "minimumDamage": 4,
-        "knockbackPower": 0,
-        "throwDistance": 6,
-        "fixedRange": 9
-      }
+      "range": { "mode": "fixed", "value": 9 },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 0 },
+        { "kind": "move", "mode": "throwTarget", "distance": 6 }
+      ]
     },
     {
       "id": "taunt",
@@ -671,8 +678,10 @@
       "targetMode": "allEnemies",
       "compatibleTargets": [],
       "tone": "violet",
-      "appliesStatusId": "taunted",
-      "params": { "durationSeconds": 5 }
+      "range": { "mode": "unit" },
+      "effects": [
+        { "kind": "applyStatus", "statusId": "taunted", "target": "allEnemies", "stacks": 1, "durationSeconds": 5 }
+      ]
     },
     {
       "id": "pull-in",
@@ -689,7 +698,8 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "cyan",
-      "params": { "pullDistance": 4, "fixedRange": 40 }
+      "range": { "mode": "fixed", "value": 40 },
+      "effects": [{ "kind": "move", "mode": "pullTarget", "distance": 4 }]
     },
     {
       "id": "field-repair",
@@ -706,7 +716,8 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestAlly", "lowestHpAlly", "criticalAlly"],
       "tone": "lime",
-      "params": { "healAmount": 22, "supportHealAmount": 34, "fixedRange": 12 }
+      "range": { "mode": "fixed", "value": 12 },
+      "effects": [{ "kind": "heal", "amount": 22, "supportAmount": 34 }]
     },
     {
       "id": "toxic-mark",
@@ -723,8 +734,11 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "violet",
-      "appliesStatusId": "poison",
-      "params": { "attackScale": 0.45, "minimumDamage": 3, "knockbackPower": 0, "statusStacks": 1 }
+      "range": { "mode": "unit" },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.45, "minimumDamage": 3, "knockbackPower": 0 },
+        { "kind": "applyStatus", "statusId": "poison", "target": "selected", "stacks": 1 }
+      ]
     },
     {
       "id": "corrosion-burst",
@@ -742,13 +756,11 @@
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "violet",
       "fixedFor": "toxin",
-      "params": {
-        "attackScale": 0.7,
-        "statusTargetDamageBonus": 18,
-        "statusTargetId": "poison",
-        "minimumDamage": 4,
-        "knockbackPower": 0
-      }
+      "range": { "mode": "unit" },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.7, "minimumDamage": 4, "knockbackPower": 0 },
+        { "kind": "consumeStatus", "statusId": "poison", "target": "selected", "stacks": 2, "bonusDamage": 18 }
+      ]
     },
     {
       "id": "saturation-fire",
@@ -765,7 +777,8 @@
       "targetMode": "allEnemies",
       "compatibleTargets": [],
       "tone": "cyan",
-      "params": { "attackScale": 0.62, "minimumDamage": 3, "knockbackPower": 0 }
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "damage", "attackScale": 0.62, "minimumDamage": 3, "knockbackPower": 0 }]
     },
     {
       "id": "berserker-mode",
@@ -784,8 +797,8 @@
       "tone": "amber",
       "fixedFor": "wrath",
       "reactionOnly": true,
-      "appliesStatusId": "berserk",
-      "params": { "attackScale": 1.6, "speedScale": 3 }
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "applyStatus", "statusId": "berserk", "target": "actor", "stacks": 1 }]
     },
     {
       "id": "volt-follow",
@@ -803,7 +816,8 @@
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "cyan",
       "fixedFor": "volt",
-      "params": { "attackScale": 0.58, "minimumDamage": 3, "knockbackPower": 0 }
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "damage", "attackScale": 0.58, "minimumDamage": 3, "knockbackPower": 0 }]
     },
     {
       "id": "tank-guard",
@@ -821,8 +835,8 @@
       "compatibleTargets": [],
       "tone": "lime",
       "fixedFor": "bastion",
-      "appliesStatusId": "guarded",
-      "params": { "incomingDamageScale": 0.82, "incomingKnockbackScale": 0.7 }
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "applyStatus", "statusId": "guarded", "target": "actor", "stacks": 1 }]
     },
     {
       "id": "relay-dash",
@@ -841,7 +855,8 @@
       "tone": "amber",
       "fixedFor": "relay",
       "visualKind": "dash",
-      "params": { "moveDistance": 8.58 }
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "move", "mode": "advance", "distance": 8.58 }]
     },
     {
       "id": "arrow-reposition",
@@ -860,7 +875,8 @@
       "tone": "violet",
       "fixedFor": "arrow",
       "visualKind": "retreat",
-      "params": { "moveDistance": 9.43 }
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "move", "mode": "retreat", "distance": 9.43 }]
     }
   ],
   "defaultPrograms": [

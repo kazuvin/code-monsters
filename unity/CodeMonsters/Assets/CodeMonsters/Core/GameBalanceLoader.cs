@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
@@ -8,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 7;
+        public const int SupportedSchemaVersion = 8;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -35,119 +34,19 @@ namespace CodeMonsters.Core
                 );
             if (data.Encounters.Count != 5)
                 throw new InvalidDataException("The migration spike expects exactly five ordered encounters");
-            if (
-                data.DebugTraining.MinimumDummyHp < 1
-                || data.DebugTraining.RecoveryDelaySeconds <= 0
-                || data.DebugTraining.OutsideRangeGap <= 0
-                || data.DebugTraining.PositionPresets.Count == 0
-            )
-                throw new InvalidDataException("Debug training HP, recovery, and position data must be valid");
-            if (!data.DebugTraining.PositionPresets.Exists(preset => preset.Id == data.DebugTraining.DefaultPositionPresetId))
-                throw new InvalidDataException("Debug training default position preset is missing");
+            ValidateDebugTraining(data.DebugTraining);
 
-            var unitIds = new HashSet<string>();
-            foreach (var unit in data.Units)
-                if (!unitIds.Add(unit.Id))
-                    throw new InvalidDataException($"Duplicate unit id: {unit.Id}");
-
-            var instructionIds = new HashSet<string>();
-            var instructions = new Dictionary<string, InstructionDefinition>();
-            foreach (var instruction in data.Instructions)
-            {
-                if (!instructionIds.Add(instruction.Id))
-                    throw new InvalidDataException($"Duplicate instruction id: {instruction.Id}");
-                instructions.Add(instruction.Id, instruction);
-            }
-
-            var supportedStatusEffects = new HashSet<string>
-            {
-                "incomingDamageScale",
-                "incomingKnockbackScale",
-                "attackScale",
-                "speedScale",
-                "targetLock",
-            };
-            var statusIds = new HashSet<string>();
-            foreach (var status in data.Statuses)
-            {
-                if (!statusIds.Add(status.Id))
-                    throw new InvalidDataException($"Duplicate status id: {status.Id}");
-                if (status.Stacking != "stack" && status.Stacking != "replace")
-                    throw new InvalidDataException($"Status {status.Id} has unsupported stacking behavior");
-                if (status.MaxStacks < 1 || (status.Debug.Control != "toggle" && status.Debug.Control != "stacks"))
-                    throw new InvalidDataException($"Status {status.Id} has invalid stack or debug configuration");
-                if (
-                    string.IsNullOrEmpty(status.Visual.ClassName)
-                    || string.IsNullOrEmpty(status.Visual.CardClass)
-                    || string.IsNullOrEmpty(status.Visual.ChipClass)
-                )
-                    throw new InvalidDataException($"Status {status.Id} has incomplete visual configuration");
-                if (status.Duration.Mode != "persistent" && status.Duration.Mode != "instructionParam")
-                    throw new InvalidDataException($"Status {status.Id} has unsupported duration behavior");
-                if (status.Duration.Mode == "instructionParam")
-                {
-                    if (!instructions.TryGetValue(status.Duration.SourceInstructionId, out var durationInstruction))
-                        throw new InvalidDataException($"Status {status.Id} references unknown duration instruction");
-                    if (!HasNumericParameter(durationInstruction.Params, status.Duration.Parameter))
-                        throw new InvalidDataException($"Status {status.Id} references unknown duration parameter");
-                }
-                foreach (var effect in status.Effects)
-                {
-                    if (!supportedStatusEffects.Contains(effect.Kind))
-                        throw new InvalidDataException($"Status {status.Id} has unsupported effect {effect.Kind}");
-                    if (
-                        effect.Kind != "targetLock"
-                        && (string.IsNullOrEmpty(effect.SourceInstructionId) || string.IsNullOrEmpty(effect.Parameter))
-                    )
-                        throw new InvalidDataException($"Status {status.Id} numeric effect must reference a parameter");
-                    if (
-                        (effect.Kind == "attackScale" || effect.Kind == "speedScale")
-                        && (status.Duration.Mode != "persistent" || status.ClearOnAction || status.Stacking != "replace")
-                    )
-                        throw new InvalidDataException($"Status {status.Id} has unsupported stat effect lifecycle");
-                    if (!string.IsNullOrEmpty(effect.SourceInstructionId))
-                    {
-                        if (!instructions.TryGetValue(effect.SourceInstructionId, out var effectInstruction))
-                            throw new InvalidDataException($"Status {status.Id} references unknown effect instruction");
-                        if (!HasNumericParameter(effectInstruction.Params, effect.Parameter))
-                            throw new InvalidDataException($"Status {status.Id} references unknown effect parameter");
-                    }
-                }
-            }
+            var unitIds = UniqueIds(data.Units, unit => unit.Id, "unit");
+            var instructionIds = UniqueIds(data.Instructions, instruction => instruction.Id, "instruction");
+            var conditionIds = UniqueIds(data.Conditions, condition => condition.Id, "condition");
+            var statusIds = UniqueIds(data.Statuses, status => status.Id, "status");
             if (statusIds.Count == 0)
                 throw new InvalidDataException("The canonical status registry must not be empty");
 
-            foreach (var condition in data.Conditions)
-                if (!string.IsNullOrEmpty(condition.StatusId) && !statusIds.Contains(condition.StatusId))
-                    throw new InvalidDataException($"Condition {condition.Id} references unknown status {condition.StatusId}");
-
-            var statusActions = new HashSet<string> { "guard", "berserk", "taunt" };
-            var statusApplicationActions = new HashSet<string>
-            {
-                "attack",
-                "heavy",
-                "throw",
-                "taunt",
-                "guard",
-                "berserk",
-                "poison",
-                "burn",
-                "follow",
-            };
-            foreach (var instruction in data.Instructions)
-            {
-                if (statusActions.Contains(instruction.Action) && string.IsNullOrEmpty(instruction.AppliesStatusId))
-                    throw new InvalidDataException($"Instruction {instruction.Id} must declare appliesStatusId");
-                if (!string.IsNullOrEmpty(instruction.AppliesStatusId) && !statusIds.Contains(instruction.AppliesStatusId))
-                    throw new InvalidDataException($"Instruction {instruction.Id} references unknown applied status");
-                if (
-                    !string.IsNullOrEmpty(instruction.AppliesStatusId)
-                    && !statusApplicationActions.Contains(instruction.Action)
-                )
-                    throw new InvalidDataException($"Instruction {instruction.Id} has unsupported status application");
-                if (!string.IsNullOrEmpty(instruction.Params.StatusTargetId) && !statusIds.Contains(instruction.Params.StatusTargetId))
-                    throw new InvalidDataException($"Instruction {instruction.Id} references unknown target status");
-            }
+            ValidateStatuses(data.Statuses);
+            ValidateConditions(data.Conditions, statusIds);
+            ValidateInstructions(data.Instructions, instructionIds, conditionIds, statusIds);
+            ValidateSynergies(data, unitIds);
 
             foreach (var encounter in data.Encounters)
             {
@@ -159,23 +58,250 @@ namespace CodeMonsters.Core
             }
         }
 
-        private static bool HasNumericParameter(ActionParameters parameters, string parameter)
+        private static HashSet<string> UniqueIds<T>(IEnumerable<T> values, System.Func<T, string> getId, string kind)
         {
-            return parameter switch
+            var ids = new HashSet<string>();
+            foreach (var value in values)
             {
-                "attackScale" => parameters.AttackScale.HasValue,
-                "flatDamage" => parameters.FlatDamage.HasValue,
-                "minimumDamage" => parameters.MinimumDamage.HasValue,
-                "knockbackPower" => parameters.KnockbackPower.HasValue,
-                "fixedRange" => parameters.FixedRange.HasValue,
-                "statusStacks" => parameters.StatusStacks.HasValue,
-                "statusTargetDamageBonus" => parameters.StatusTargetDamageBonus.HasValue,
-                "durationSeconds" => parameters.DurationSeconds.HasValue,
-                "speedScale" => parameters.SpeedScale.HasValue,
-                "incomingDamageScale" => parameters.IncomingDamageScale.HasValue,
-                "incomingKnockbackScale" => parameters.IncomingKnockbackScale.HasValue,
-                _ => false,
+                var id = getId(value);
+                if (!ids.Add(id))
+                    throw new InvalidDataException($"Duplicate {kind} id: {id}");
+            }
+            return ids;
+        }
+
+        private static void ValidateDebugTraining(DebugTrainingConfig debug)
+        {
+            if (
+                debug.MinimumDummyHp < 1
+                || debug.RecoveryDelaySeconds <= 0
+                || debug.OutsideRangeGap <= 0
+                || debug.PositionPresets.Count == 0
+            )
+                throw new InvalidDataException("Debug training HP, recovery, and position data must be valid");
+            if (!debug.PositionPresets.Exists(preset => preset.Id == debug.DefaultPositionPresetId))
+                throw new InvalidDataException("Debug training default position preset is missing");
+        }
+
+        private static void ValidateStatuses(IEnumerable<StatusDefinition> statuses)
+        {
+            var supportedEffects = new HashSet<string>
+            {
+                "incomingDamageScale",
+                "incomingKnockbackScale",
+                "attackScale",
+                "speedScale",
+                "targetLock",
             };
+            var supportedCounterplay = new HashSet<string>
+            {
+                "expires",
+                "clearsOnAction",
+                "consumedBySkill",
+                "lowHpRequirement",
+            };
+            foreach (var status in statuses)
+            {
+                if (status.Stacking != "stack" && status.Stacking != "replace")
+                    throw new InvalidDataException($"Status {status.Id} has unsupported stacking behavior");
+                if (status.MaxStacks < 1 || (status.Debug.Control != "toggle" && status.Debug.Control != "stacks"))
+                    throw new InvalidDataException($"Status {status.Id} has invalid stack or debug configuration");
+                if (
+                    string.IsNullOrEmpty(status.Visual.ClassName)
+                    || string.IsNullOrEmpty(status.Visual.CardClass)
+                    || string.IsNullOrEmpty(status.Visual.ChipClass)
+                )
+                    throw new InvalidDataException($"Status {status.Id} has incomplete visual configuration");
+                if (status.Duration.Mode != "persistent" && status.Duration.Mode != "application")
+                    throw new InvalidDataException($"Status {status.Id} has unsupported duration behavior");
+                if (status.Synergy.Mode != "combo" && status.Synergy.Mode != "standalone")
+                    throw new InvalidDataException($"Status {status.Id} has unsupported synergy mode");
+                if (
+                    !supportedCounterplay.Contains(status.Synergy.Counterplay.Kind)
+                    || string.IsNullOrEmpty(status.Synergy.Counterplay.Description)
+                )
+                    throw new InvalidDataException($"Status {status.Id} has invalid counterplay metadata");
+                if (status.Synergy.Mode == "standalone" && string.IsNullOrEmpty(status.Synergy.StandaloneReason))
+                    throw new InvalidDataException($"Standalone status {status.Id} must explain why it is standalone");
+                foreach (var effect in status.Effects)
+                {
+                    if (!supportedEffects.Contains(effect.Kind))
+                        throw new InvalidDataException($"Status {status.Id} has unsupported effect {effect.Kind}");
+                    if (effect.Kind == "targetLock" && effect.Value.HasValue)
+                        throw new InvalidDataException($"Status {status.Id} targetLock cannot declare a numeric value");
+                    if (effect.Kind != "targetLock" && (!effect.Value.HasValue || effect.Value.Value <= 0))
+                        throw new InvalidDataException($"Status {status.Id} numeric effect must own a positive value");
+                    if (
+                        (effect.Kind == "attackScale" || effect.Kind == "speedScale")
+                        && (status.Duration.Mode != "persistent" || status.ClearOnAction || status.Stacking != "replace")
+                    )
+                        throw new InvalidDataException($"Status {status.Id} has unsupported stat effect lifecycle");
+                }
+            }
+        }
+
+        private static void ValidateConditions(IEnumerable<ConditionDefinition> conditions, HashSet<string> statusIds)
+        {
+            var supportedKinds = new HashSet<string>
+            {
+                "always",
+                "targetInRange",
+                "targetOutOfRange",
+                "targetHpBelow",
+                "selfHpBelow",
+                "targetHasStatus",
+            };
+            foreach (var condition in conditions)
+            {
+                if (!supportedKinds.Contains(condition.Kind))
+                    throw new InvalidDataException($"Condition {condition.Id} has unsupported kind {condition.Kind}");
+                if (condition.Kind == "targetHasStatus")
+                {
+                    if (!statusIds.Contains(condition.Params.StatusId))
+                        throw new InvalidDataException($"Condition {condition.Id} references unknown status");
+                    if (!condition.Params.MinimumStacks.HasValue || condition.Params.MinimumStacks.Value < 1)
+                        throw new InvalidDataException($"Condition {condition.Id} must require positive status stacks");
+                }
+            }
+        }
+
+        private static void ValidateInstructions(
+            IEnumerable<InstructionDefinition> instructions,
+            HashSet<string> instructionIds,
+            HashSet<string> conditionIds,
+            HashSet<string> statusIds
+        )
+        {
+            var supportedKinds = new HashSet<string>
+            {
+                "damage",
+                "move",
+                "heal",
+                "applyStatus",
+                "consumeStatus",
+                "removeStatus",
+                "modifyStat",
+                "wait",
+            };
+            var supportedRanges = new HashSet<string> { "unit", "fixed", "scaled" };
+            foreach (var instruction in instructions)
+            {
+                if (!instructionIds.Contains(instruction.Id))
+                    throw new InvalidDataException($"Unknown instruction {instruction.Id}");
+                if (!conditionIds.Contains(instruction.Condition))
+                    throw new InvalidDataException($"Instruction {instruction.Id} references unknown condition");
+                if (!supportedRanges.Contains(instruction.Range.Mode))
+                    throw new InvalidDataException($"Instruction {instruction.Id} has unsupported range mode");
+                if (
+                    instruction.Range.Mode != "unit"
+                    && (!instruction.Range.Value.HasValue || instruction.Range.Value.Value <= 0)
+                )
+                    throw new InvalidDataException($"Instruction {instruction.Id} range requires a positive value");
+                if (instruction.Effects.Count == 0)
+                    throw new InvalidDataException($"Instruction {instruction.Id} must declare finite effects");
+                foreach (var effect in instruction.Effects)
+                {
+                    if (!supportedKinds.Contains(effect.Kind))
+                        throw new InvalidDataException($"Instruction {instruction.Id} has unsupported effect {effect.Kind}");
+                    if (effect.Kind == "damage" && (!effect.AttackScale.HasValue || !effect.MinimumDamage.HasValue))
+                        throw new InvalidDataException($"Instruction {instruction.Id} damage effect is incomplete");
+                    if (effect.Kind == "move" && (!effect.Distance.HasValue || effect.Distance.Value <= 0))
+                        throw new InvalidDataException($"Instruction {instruction.Id} move effect is incomplete");
+                    if (effect.Kind == "heal" && (!effect.Amount.HasValue || effect.Amount.Value <= 0))
+                        throw new InvalidDataException($"Instruction {instruction.Id} heal effect is incomplete");
+                    if (effect.Kind == "applyStatus" || effect.Kind == "consumeStatus" || effect.Kind == "removeStatus")
+                    {
+                        if (!statusIds.Contains(effect.StatusId))
+                            throw new InvalidDataException($"Instruction {instruction.Id} references unknown status");
+                    }
+                }
+            }
+        }
+
+        private static void ValidateSynergies(GameBalanceData data, HashSet<string> unitIds)
+        {
+            var conditions = new Dictionary<string, ConditionDefinition>();
+            foreach (var condition in data.Conditions)
+                conditions[condition.Id] = condition;
+            foreach (var status in data.Statuses)
+            {
+                var producers = new List<InstructionDefinition>();
+                var consumers = new List<InstructionDefinition>();
+                foreach (var instruction in data.Instructions)
+                {
+                    foreach (var effect in instruction.Effects)
+                    {
+                        if (effect.Kind == "applyStatus" && effect.StatusId == status.Id)
+                            producers.Add(instruction);
+                        if (effect.Kind == "consumeStatus" && effect.StatusId == status.Id)
+                            consumers.Add(instruction);
+                    }
+                }
+                if (producers.Count == 0)
+                    throw new InvalidDataException($"Status {status.Id} has no producer skill");
+                if (status.Synergy.Mode == "combo" && consumers.Count == 0)
+                    throw new InvalidDataException($"Combo status {status.Id} has no consumer skill");
+                if (status.Synergy.Mode == "combo" && !HasCrossUnitPath(producers, consumers, unitIds.Count))
+                    throw new InvalidDataException($"Combo status {status.Id} has no cross-unit path");
+
+                var counterplayVerified = status.Synergy.Counterplay.Kind switch
+                {
+                    "expires" => status.Duration.Mode == "application" && HasTimedProducer(producers, status.Id),
+                    "clearsOnAction" => status.ClearOnAction,
+                    "consumedBySkill" => consumers.Count > 0,
+                    "lowHpRequirement" => HasLowHpProducer(producers, conditions),
+                    _ => false,
+                };
+                if (!counterplayVerified)
+                    throw new InvalidDataException($"Status {status.Id} counterplay does not match its data");
+            }
+        }
+
+        private static bool HasCrossUnitPath(
+            IEnumerable<InstructionDefinition> producers,
+            IEnumerable<InstructionDefinition> consumers,
+            int unitCount
+        )
+        {
+            foreach (var producer in producers)
+                foreach (var consumer in consumers)
+                    if (
+                        (!string.IsNullOrEmpty(producer.FixedFor) && !string.IsNullOrEmpty(consumer.FixedFor)
+                            && producer.FixedFor != consumer.FixedFor)
+                        || (unitCount > 1 && (string.IsNullOrEmpty(producer.FixedFor) || string.IsNullOrEmpty(consumer.FixedFor)))
+                    )
+                        return true;
+            return false;
+        }
+
+        private static bool HasTimedProducer(IEnumerable<InstructionDefinition> producers, string statusId)
+        {
+            foreach (var producer in producers)
+                foreach (var effect in producer.Effects)
+                    if (
+                        effect.Kind == "applyStatus"
+                        && effect.StatusId == statusId
+                        && effect.DurationSeconds.HasValue
+                        && effect.DurationSeconds.Value > 0
+                    )
+                        return true;
+            return false;
+        }
+
+        private static bool HasLowHpProducer(
+            IEnumerable<InstructionDefinition> producers,
+            Dictionary<string, ConditionDefinition> conditions
+        )
+        {
+            foreach (var producer in producers)
+                if (
+                    conditions.TryGetValue(producer.Condition, out var condition)
+                    && condition.Kind == "selfHpBelow"
+                    && condition.Params.Threshold.HasValue
+                    && condition.Params.Threshold.Value < 1
+                )
+                    return true;
+            return false;
         }
     }
 }

@@ -96,6 +96,12 @@ namespace CodeMonsters.Core
         [JsonProperty("id")]
         public string Id = "";
 
+        [JsonProperty("label")]
+        public string Label = "";
+
+        [JsonProperty("description")]
+        public string Description = "";
+
         [JsonProperty("stacking")]
         public string Stacking = "";
 
@@ -107,6 +113,9 @@ namespace CodeMonsters.Core
 
         [JsonProperty("duration")]
         public StatusDurationDefinition Duration = new StatusDurationDefinition();
+
+        [JsonProperty("synergy")]
+        public StatusSynergyDefinition Synergy = new StatusSynergyDefinition();
 
         [JsonProperty("debug")]
         public StatusDebugDefinition Debug = new StatusDebugDefinition();
@@ -123,11 +132,27 @@ namespace CodeMonsters.Core
         [JsonProperty("mode")]
         public string Mode = "";
 
-        [JsonProperty("sourceInstructionId")]
-        public string SourceInstructionId = "";
+    }
 
-        [JsonProperty("parameter")]
-        public string Parameter = "";
+    public sealed class StatusSynergyDefinition
+    {
+        [JsonProperty("mode")]
+        public string Mode = "";
+
+        [JsonProperty("standaloneReason")]
+        public string StandaloneReason = "";
+
+        [JsonProperty("counterplay")]
+        public StatusCounterplayDefinition Counterplay = new StatusCounterplayDefinition();
+    }
+
+    public sealed class StatusCounterplayDefinition
+    {
+        [JsonProperty("kind")]
+        public string Kind = "";
+
+        [JsonProperty("description")]
+        public string Description = "";
     }
 
     public sealed class StatusDebugDefinition
@@ -162,12 +187,8 @@ namespace CodeMonsters.Core
         [JsonProperty("kind")]
         public string Kind = "";
 
-        [JsonProperty("sourceInstructionId")]
-        public string SourceInstructionId = "";
-
-        [JsonProperty("parameter")]
-        public string Parameter = "";
-
+        [JsonProperty("value")]
+        public double? Value;
     }
 
     public sealed class ConditionDefinition
@@ -175,8 +196,26 @@ namespace CodeMonsters.Core
         [JsonProperty("id")]
         public string Id = "";
 
+        [JsonProperty("label")]
+        public string Label = "";
+
+        [JsonProperty("kind")]
+        public string Kind = "";
+
+        [JsonProperty("params")]
+        public ConditionParameters Params = new ConditionParameters();
+    }
+
+    public sealed class ConditionParameters
+    {
+        [JsonProperty("threshold")]
+        public double? Threshold;
+
         [JsonProperty("statusId")]
         public string StatusId = "";
+
+        [JsonProperty("minimumStacks")]
+        public int? MinimumStacks;
     }
 
     public sealed class UnitDefinition
@@ -223,8 +262,20 @@ namespace CodeMonsters.Core
         [JsonProperty("id")]
         public string Id = "";
 
+        [JsonProperty("title")]
+        public string Title = "";
+
         [JsonProperty("action")]
         public string Action = "";
+
+        [JsonProperty("condition")]
+        public string Condition = "";
+
+        [JsonProperty("target")]
+        public string Target = "";
+
+        [JsonProperty("fixedFor")]
+        public string FixedFor = "";
 
         [JsonProperty("abilityCost")]
         public double AbilityCost;
@@ -235,20 +286,47 @@ namespace CodeMonsters.Core
         [JsonProperty("targetMode")]
         public string TargetMode = "";
 
-        [JsonProperty("appliesStatusId")]
-        public string AppliesStatusId = "";
+        [JsonProperty("range")]
+        public InstructionRangeDefinition Range = new InstructionRangeDefinition();
 
-        [JsonProperty("params")]
-        public ActionParameters Params = new ActionParameters();
+        [JsonProperty("effects")]
+        public List<InstructionEffectDefinition> Effects = new List<InstructionEffectDefinition>();
     }
 
-    public sealed class ActionParameters
+    public sealed class InstructionRangeDefinition
     {
+        [JsonProperty("mode")]
+        public string Mode = "";
+
+        [JsonProperty("value")]
+        public double? Value;
+    }
+
+    public sealed class InstructionEffectDefinition
+    {
+        [JsonProperty("kind")]
+        public string Kind = "";
+
+        [JsonProperty("mode")]
+        public string Mode = "";
+
+        [JsonProperty("target")]
+        public string Target = "";
+
+        [JsonProperty("statusId")]
+        public string StatusId = "";
+
+        [JsonProperty("stat")]
+        public string Stat = "";
+
         [JsonProperty("attackScale")]
         public double? AttackScale;
 
         [JsonProperty("flatDamage")]
         public double? FlatDamage;
+
+        [JsonProperty("damageScale")]
+        public double? DamageScale;
 
         [JsonProperty("minimumDamage")]
         public double? MinimumDamage;
@@ -256,29 +334,23 @@ namespace CodeMonsters.Core
         [JsonProperty("knockbackPower")]
         public double? KnockbackPower;
 
-        [JsonProperty("fixedRange")]
-        public double? FixedRange;
+        [JsonProperty("distance")]
+        public double? Distance;
 
-        [JsonProperty("statusStacks")]
-        public int? StatusStacks;
+        [JsonProperty("amount")]
+        public double? Amount;
 
-        [JsonProperty("statusTargetDamageBonus")]
-        public double? StatusTargetDamageBonus;
+        [JsonProperty("supportAmount")]
+        public double? SupportAmount;
 
-        [JsonProperty("statusTargetId")]
-        public string StatusTargetId = "";
+        [JsonProperty("stacks")]
+        public int? Stacks;
 
         [JsonProperty("durationSeconds")]
         public double? DurationSeconds;
 
-        [JsonProperty("speedScale")]
-        public double? SpeedScale;
-
-        [JsonProperty("incomingDamageScale")]
-        public double? IncomingDamageScale;
-
-        [JsonProperty("incomingKnockbackScale")]
-        public double? IncomingKnockbackScale;
+        [JsonProperty("bonusDamage")]
+        public double? BonusDamage;
     }
 
     public sealed class EncounterDefinition

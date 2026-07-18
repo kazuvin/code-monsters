@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, Crosshair, Gauge, Play, RotateCcw, Settings2, TimerReset, X, Zap } from 'lucide-react';
+import { Activity, Crosshair, Gauge, Network, Play, RotateCcw, Settings2, TimerReset, X, Zap } from 'lucide-react';
 import { BattleScene } from './BattleScene';
+import { SynergyGraph } from './SynergyGraph';
 import {
   createDebugFighters,
   createDefaultDebugStatuses,
@@ -9,6 +10,7 @@ import {
   type DebugSimulationInput,
   type DebugSimulationResult,
 } from './core/debug-simulation';
+import { instructionHasDamage } from './core/instruction-effects';
 import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from './data';
 import type { BattleFlash, Fighter, Role } from './types';
 
@@ -47,10 +49,7 @@ const skipLabels = {
   state: '状態重複',
 };
 
-const damageParameterNames = ['attackScale', 'flatDamage', 'minimumDamage', 'statusTargetDamageBonus'] as const;
-
-const hasDamageEffect = (instruction: (typeof INSTRUCTIONS)[number]) =>
-  damageParameterNames.some((parameter) => instruction.params[parameter] !== undefined);
+const hasDamageEffect = (instruction: (typeof INSTRUCTIONS)[number]) => instructionHasDamage(instruction);
 
 const statusLabels = (values: Record<string, number>) =>
   STATUSES.flatMap((status) => {
@@ -301,6 +300,7 @@ function DebugBattlePreview({
 }
 
 export function DebugRoom() {
+  const [view, setView] = useState<'lab' | 'synergy'>('lab');
   const [input, setInput] = useState<DebugSimulationInput>(createDefaultInput);
   const [measuredInput, setMeasuredInput] = useState<DebugSimulationInput>(createDefaultInput);
   const [result, setResult] = useState<DebugSimulationResult | null>(null);
@@ -337,11 +337,12 @@ export function DebugRoom() {
   const selectInstruction = (instructionId: string) => {
     const nextInstruction = instructionById.get(instructionId);
     if (!nextInstruction) return;
+    const nextCondition = conditionById.get(nextInstruction.condition);
     updateInput({
       instructionId,
       conditionId: nextInstruction.condition,
       targetSelectorId: nextInstruction.defaultTarget,
-      actorHpRatio: nextInstruction.condition === 'selfHpBelow30' || nextInstruction.action === 'heal' ? 0.25 : 1,
+      actorHpRatio: nextCondition?.kind === 'selfHpBelow' || nextInstruction.action === 'heal' ? 0.25 : 1,
     });
   };
 
@@ -414,6 +415,8 @@ export function DebugRoom() {
           : 'NO EFFECT'
     : 'READY TO MEASURE';
 
+  if (view === 'synergy') return <SynergyGraph onBack={() => setView('lab')} />;
+
   return (
     <div className="debug-room">
       <header className="debug-room-head">
@@ -436,6 +439,9 @@ export function DebugRoom() {
           ))}
         </div>
         <div className="debug-head-actions">
+          <button className="debug-synergy-button" onClick={() => setView('synergy')}>
+            <Network size={15} /> シナジー
+          </button>
           <button className="debug-settings-button" onClick={openSettings}>
             <Settings2 size={15} /> 設定
           </button>
@@ -785,6 +791,10 @@ export function DebugRoom() {
       )}
 
       <footer className="debug-mobile-dock">
+        <button onClick={() => setView('synergy')}>
+          <Network size={17} />
+          シナジー
+        </button>
         <button onClick={openSettings}>
           <Settings2 size={17} />
           設定

@@ -1,8 +1,17 @@
 import { Search } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { analyzeBalance } from './core/balance';
-import { BATTLE_CONFIG, CONDITIONS, DEFAULT_REACTIONS, GAME_DATA, INSTRUCTIONS, TARGET_SELECTORS, UNITS } from './data';
-import type { ActionParameters, Instruction, UnitDefinition } from './types';
+import {
+  BATTLE_CONFIG,
+  CONDITIONS,
+  DEFAULT_REACTIONS,
+  GAME_DATA,
+  INSTRUCTIONS,
+  STATUSES,
+  TARGET_SELECTORS,
+  UNITS,
+} from './data';
+import type { Instruction, InstructionEffect, UnitDefinition } from './types';
 
 type CatalogKind = 'all' | 'unit' | 'condition' | 'target' | 'instruction';
 
@@ -27,34 +36,11 @@ const targetModeLabels: Record<Instruction['targetMode'], string> = {
 };
 const domainLabels = { enemy: '敵', ally: '味方', self: '自分' } as const;
 const cardinalityLabels = { one: '単体', many: '複数' } as const;
-const parameterLabels: Record<keyof ActionParameters, string> = {
-  attackScale: '攻撃倍率',
-  flatDamage: '固定ダメージ',
-  damageScale: 'ダメージ倍率',
-  statusTargetDamageBonus: '状態特効',
-  statusTargetId: '状態特効対象',
-  minimumDamage: '最低ダメージ',
-  knockbackPower: 'KB出力',
-  moveDistance: '移動距離',
-  throwDistance: '投げ距離',
-  pullDistance: '引寄距離',
-  rangeScale: '射程倍率',
-  fixedRange: '固定射程',
-  durationSeconds: '持続時間',
-  healAmount: '回復量',
-  supportHealAmount: '支援回復量',
-  attackFlat: '攻撃加算',
-  speedScale: '速度倍率',
-  cooldownSeconds: '待機時間',
-  statusStacks: '状態蓄積',
-  incomingDamageScale: '被ダメ倍率',
-  incomingKnockbackScale: '被KB倍率',
-};
-
 const targetById = new Map(TARGET_SELECTORS.map((target) => [target.id, target]));
 const conditionById = new Map(CONDITIONS.map((condition) => [condition.id, condition]));
 const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
+const statusById = new Map(STATUSES.map((status) => [status.id, status]));
 const reactionByUnit = new Map(Object.entries(DEFAULT_REACTIONS));
 const abilityMetricById = new Map(analyzeBalance(GAME_DATA).abilityMetrics.map((metric) => [metric.id, metric]));
 
@@ -66,13 +52,37 @@ const searchable = (query: string, values: Array<string | number | undefined>) =
       .includes(query),
   );
 
-const formatParameter = (key: keyof ActionParameters, value: number) => {
-  if (key.endsWith('Scale')) return `×${value}`;
-  if (key.endsWith('Seconds')) return `${value}秒`;
-  if (key.endsWith('Distance')) return `${value}m`;
-  if (key === 'fixedRange') return `${value}m`;
-  if (key.includes('heal') || key.includes('Heal')) return `${value} HP`;
-  return String(value);
+const effectSummary = (effect: InstructionEffect): { label: string; value: string } => {
+  switch (effect.kind) {
+    case 'damage':
+      return {
+        label: 'ダメージ',
+        value: `ATK×${effect.attackScale}${effect.flatDamage ? ` +${effect.flatDamage}` : ''} / 最低${effect.minimumDamage}`,
+      };
+    case 'move':
+      return { label: `移動・${effect.mode}`, value: `${effect.distance}m` };
+    case 'heal':
+      return {
+        label: '回復',
+        value: `${effect.amount} HP${effect.supportAmount ? ` / 支援${effect.supportAmount}` : ''}`,
+      };
+    case 'applyStatus':
+      return {
+        label: '状態付与',
+        value: `${statusById.get(effect.statusId)?.label ?? effect.statusId} ×${effect.stacks}${effect.durationSeconds ? ` / ${effect.durationSeconds}秒` : ''}`,
+      };
+    case 'consumeStatus':
+      return {
+        label: '状態消費',
+        value: `${statusById.get(effect.statusId)?.label ?? effect.statusId} ×${effect.stacks}${effect.bonusDamage ? ` / +${effect.bonusDamage} DMG` : ''}`,
+      };
+    case 'removeStatus':
+      return { label: '状態解除', value: statusById.get(effect.statusId)?.label ?? effect.statusId };
+    case 'modifyStat':
+      return { label: '能力変更', value: `${effect.stat} ${effect.amount > 0 ? '+' : ''}${effect.amount}` };
+    case 'wait':
+      return { label: '待機', value: `${effect.durationSeconds}秒` };
+  }
 };
 
 const CatalogSection = ({
@@ -132,6 +142,7 @@ export function Catalog() {
           instruction.flavor,
           instruction.action,
           instruction.rarity,
+          JSON.stringify(instruction.effects),
           conditionById.get(instruction.condition)?.label,
           targetById.get(instruction.defaultTarget)?.label,
           unitById.get(instruction.fixedFor ?? '')?.name,
@@ -350,7 +361,6 @@ export function Catalog() {
           <CatalogSection id="skills" label="スキル" count={filtered.instructions.length} wide>
             {filtered.instructions.map((instruction) => {
               const metric = abilityMetricById.get(instruction.id);
-              const parameters = Object.entries(instruction.params) as Array<[keyof ActionParameters, number]>;
               return (
                 <article
                   className={`catalog-card catalog-skill-card ${instruction.tone}`}
@@ -408,14 +418,17 @@ export function Catalog() {
                       </dd>
                     </div>
                   </dl>
-                  {parameters.length > 0 && (
+                  {instruction.effects.length > 0 && (
                     <div className="catalog-parameters">
-                      {parameters.map(([key, value]) => (
-                        <span key={key}>
-                          <small>{parameterLabels[key] ?? key}</small>
-                          <b>{formatParameter(key, value)}</b>
-                        </span>
-                      ))}
+                      {instruction.effects.map((effect, index) => {
+                        const summary = effectSummary(effect);
+                        return (
+                          <span key={`${effect.kind}-${index}`}>
+                            <small>{summary.label}</small>
+                            <b>{summary.value}</b>
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                   <footer>

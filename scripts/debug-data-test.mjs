@@ -5,7 +5,16 @@ import {
   readDebugStatusValues,
   runDebugSimulation,
 } from '../src/core/debug-simulation.ts';
-import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from '../src/data.ts';
+import { analyzeSynergies } from '../src/core/synergy.ts';
+import {
+  BATTLE_CONFIG,
+  CONDITIONS,
+  DEBUG_TRAINING_CONFIG,
+  GAME_DATA,
+  INSTRUCTIONS,
+  STATUSES,
+  UNITS,
+} from '../src/data.ts';
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
 const defaultActor = unitById.get('volt') ?? UNITS[0];
@@ -67,24 +76,26 @@ for (const preset of DEBUG_TRAINING_CONFIG.positionPresets) {
 }
 
 for (const instruction of INSTRUCTIONS) {
+  const condition = CONDITIONS.find((candidate) => candidate.id === instruction.condition);
+  assert.ok(condition, `${instruction.id} の条件を解決できません`);
   const actor =
     (instruction.fixedFor && unitById.get(instruction.fixedFor)) ||
     (instruction.action === 'heal' ? unitById.get('mender') : undefined) ||
     defaultActor;
   const targetStatuses = createDefaultDebugStatuses();
-  if (instruction.condition === 'enemyHasStatus') {
-    const statusId = CONDITIONS.find((condition) => condition.id === instruction.condition)?.statusId;
+  if (condition.kind === 'targetHasStatus') {
+    const statusId = condition.params.statusId;
     assert.ok(statusId, `${instruction.condition} に statusId がありません`);
-    targetStatuses[statusId] = 1;
+    targetStatuses[statusId] = condition.params.minimumStacks ?? 1;
   }
   const input = makeInput({
     actorUnitId: actor.id,
     instructionId: instruction.id,
     conditionId: instruction.condition,
     targetSelectorId: instruction.defaultTarget,
-    actorHpRatio: instruction.condition === 'selfHpBelow30' || instruction.action === 'heal' ? 0.25 : 1,
+    actorHpRatio: condition.kind === 'selfHpBelow' || instruction.action === 'heal' ? 0.25 : 1,
     positionPresetId:
-      instruction.condition === 'targetOutOfRange'
+      condition.kind === 'targetOutOfRange'
         ? DEBUG_TRAINING_CONFIG.positionPresets.find(
             (preset) => preset.rangeReference === 'actor' && preset.relation === 'outside',
           )?.id
@@ -95,6 +106,10 @@ for (const instruction of INSTRUCTIONS) {
   assert.ok(result.attempts > 0, `${instruction.id} がデバッグ計測の判定対象になっていません`);
   assert.ok(result.executions > 0, `${instruction.id} をデバッグルームで実行できません`);
 }
+
+const synergy = analyzeSynergies(GAME_DATA);
+assert.equal(synergy.packs.length, STATUSES.length, 'シナジーグラフへ全状態を自動反映できません');
+assert.equal(synergy.issues.length, 0, 'シナジーグラフの状態パックに不備があります');
 
 console.log(
   JSON.stringify({

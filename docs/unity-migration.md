@@ -27,6 +27,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | `src/core/roster.ts` | `RosterFactory.cs` | inventory units and battle-state construction |
 | `src/core/shop.ts` | `ShopGenerator.cs` | seeded shop generation |
 | `src/core/balance.ts` | editor/CLI validation | reference validation and power scoring |
+| `src/core/synergy.ts` | editor/CLI validation | status-pack graph generation and synergy completeness checks |
 | `src/core/debug-simulation.ts` | editor test harness | deterministic single-action and timeline measurements using the live frame planner |
 | `src/App.tsx`, `src/BattleScene.tsx` | MonoBehaviours/UI Toolkit | orchestration, animation, audio, and presentation only |
 
@@ -43,7 +44,7 @@ The debug-room harness constructs a plain two-fighter/program input and advances
 5. Build Unity presentation from battle-step events; do not move rules into MonoBehaviours.
 6. Keep `pnpm balance:check` available until the analyzer itself is ported to an editor tool or .NET CLI.
 
-When adding a parameter, add it under an instruction's `params` or a named configuration section, update the TypeScript type, add a focused test, then mirror the DTO in Unity. Add statuses once to the top-level `statuses` registry with their debug control and visual metadata; runtime fighters store only generic status instances. The web controls and status chips are generated from the registry, and `pnpm verify` checks every unit, status, position preset, and instruction. Unsupported status effects, duration modes, actions, conditions, or target structures fail validation rather than being silently omitted. Breaking schema changes require a `schemaVersion` increment and migration note.
+When adding behavior, compose the finite instruction `effects` primitives (`damage`, `move`, `heal`, `applyStatus`, `consumeStatus`, `removeStatus`, `modifyStat`, and `wait`) rather than embedding executable scripts. Update the TypeScript type and C# DTO/allowlist only when introducing a genuinely new runtime behavior, then add a focused parity test. Add statuses once to the top-level `statuses` registry with their debug control, visual metadata, canonical effect values, and synergy metadata; runtime fighters store only generic status instances. The web controls, status chips, and synergy graph are generated from the registry, and `pnpm verify` checks every unit, status, position preset, instruction, and status pack. Unsupported status effects, duration modes, instruction-effect kinds, condition kinds, or target structures fail validation rather than being silently omitted. Breaking schema changes require a `schemaVersion` increment and migration note.
 
 ## Schema version 2 migration
 
@@ -73,11 +74,19 @@ Move status definitions from `debugTraining.statuses` to the canonical top-level
 
 Importers must reject unknown status IDs and new unsupported effect or duration kinds. Debug tools should enumerate the registry instead of maintaining a separate status list. This makes data-only additions visible in the debug room and causes structural additions that require runtime work to fail CI until both TypeScript and Unity loaders support them.
 
+## Schema version 8 migration
+
+Replace each instruction's open-ended `params` object and `appliesStatusId` field with a typed `range` object and ordered `effects` array. Every effect must use one of the finite kinds supported by both runtimes. Damage, movement, healing, status application, status consumption, status removal, stat modification, and wait behavior now have explicit serializable payloads. Conditions keep stable IDs for saved programs but dispatch through a finite `kind` plus typed `params`, so new data-only condition IDs can reuse an existing runtime predicate.
+
+Status definitions now own all canonical effect magnitudes through `effects[].value`. An instruction applying a status owns only the target, stack count, and application duration. This guarantees that the same status ID cannot silently mean different guard, speed, or attack multipliers depending on its source skill. Application-duration statuses receive `durationSeconds` from each `applyStatus` effect; persistent statuses do not.
+
+Each status also declares whether it is a `combo` or explicitly justified `standalone` pack and names a verifiable counterplay rule. Combo packs must have a producer, consumer, cross-unit ownership path, and working counterplay. `src/core/synergy.ts` derives that graph from canonical data; `pnpm balance:check` treats an incomplete pack as an error, while the Debug Room renders the same report as its Synergy Graph summary.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v7 DTO loading and stable-ID/reference validation, including the canonical status registry
+- schema-v8 DTO loading and stable-ID/reference validation, including finite instruction effects and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

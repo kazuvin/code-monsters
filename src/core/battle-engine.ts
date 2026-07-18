@@ -19,7 +19,8 @@ import {
   throwBehind,
   tickCooldowns,
 } from './rules.ts';
-import { applyStatus, clearActionStatuses, hasStatus } from './statuses.ts';
+import { applyInstructionStatusEffects, effectByKind, requireEffect } from './instruction-effects.ts';
+import { clearActionStatuses, hasStatus } from './statuses.ts';
 
 type MutableFighterFields = Pick<
   Fighter,
@@ -141,8 +142,7 @@ export function planBattleFrame({
     if (instruction.action === 'guard') {
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
-      if (!instruction.appliesStatusId) return;
-      const guarded = applyStatus(reactor, instruction.appliesStatusId, { sourceId: reactor.instanceId });
+      const guarded = applyInstructionStatusEffects(reactor, instruction, reactor.instanceId, 'actor');
       const values = {
         statuses: guarded.statuses,
         reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds,
@@ -156,7 +156,8 @@ export function planBattleFrame({
       return;
     }
     if (instruction.action === 'berserk') {
-      if (!instruction.appliesStatusId || hasStatus(reactor, instruction.appliesStatusId)) return;
+      const application = requireEffect(instruction, 'applyStatus');
+      if (hasStatus(reactor, application.statusId)) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
       const boost = activateBerserker(reactor, instruction);
@@ -176,16 +177,12 @@ export function planBattleFrame({
     if (instruction.action === 'taunt') {
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
-      if (!instruction.appliesStatusId) return;
-      const duration = instruction.params.durationSeconds ?? 0;
+      const application = requireEffect(instruction, 'applyStatus');
+      const duration = application.durationSeconds ?? 0;
       const enemyUpdates = next
         .filter((fighter) => fighter.team !== reactor.team && fighter.hp > 0)
         .map((fighter) => {
-          const taunted = applyStatus(fighter, instruction.appliesStatusId!, {
-            sourceId: reactor.instanceId,
-            targetId: reactor.instanceId,
-            remainingSeconds: duration,
-          });
+          const taunted = applyInstructionStatusEffects(fighter, instruction, reactor.instanceId, 'allEnemies');
           return { id: fighter.instanceId, values: { statuses: taunted.statuses } };
         });
       const reactorUpdate = {
@@ -209,7 +206,7 @@ export function planBattleFrame({
       if (!target || target.hp <= 0) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
-      const x = retreatFrom(reactor, target, instruction.params.moveDistance ?? 0);
+      const x = retreatFrom(reactor, target, requireEffect(instruction, 'move').distance);
       const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
@@ -223,7 +220,7 @@ export function planBattleFrame({
       if (!target || target.hp <= 0) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
-      const x = jumpToward(reactor, target, instruction.params.moveDistance ?? 0);
+      const x = jumpToward(reactor, target, requireEffect(instruction, 'move').distance);
       const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
@@ -237,7 +234,7 @@ export function planBattleFrame({
       if (!target || target.hp <= 0 || distanceTo(reactor, target) <= actionRange(reactor, instruction)) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
-      const x = advanceToward(reactor, target, instruction.params.moveDistance ?? 0);
+      const x = advanceToward(reactor, target, requireEffect(instruction, 'move').distance);
       const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
@@ -273,7 +270,7 @@ export function planBattleFrame({
         });
         return;
       }
-      const x = pullToward(reactor, target, instruction.params.pullDistance ?? 0);
+      const x = pullToward(reactor, target, requireEffect(instruction, 'move').distance);
       setNext(reactor.instanceId, { reactionCooldown });
       setNext(target.instanceId, { x });
       queueStep({
@@ -322,16 +319,11 @@ export function planBattleFrame({
     }
     const impact = resolveActionImpact(reactor, target, instruction);
     const hp = Math.max(0, target.hp - impact.damage);
-    const affectedTarget = instruction.appliesStatusId
-      ? applyStatus(target, instruction.appliesStatusId, {
-          stacks: instruction.params.statusStacks ?? 1,
-          sourceId: reactor.instanceId,
-        })
-      : target;
+    const affectedTarget = applyInstructionStatusEffects(target, instruction, reactor.instanceId, 'selected');
     const statuses = affectedTarget.statuses;
     const x =
       hp > 0 && instruction.action === 'throw'
-        ? throwBehind(reactor, target, instruction.params.throwDistance ?? 0)
+        ? throwBehind(reactor, target, requireEffect(instruction, 'move').distance)
         : hp > 0 && impact.knockbackDistance > 0
           ? knockbackPosition(target, reactor, impact.knockbackDistance)
           : target.x;
@@ -502,11 +494,8 @@ export function planBattleFrame({
         traceDecision('skipped', 'range');
         continue;
       }
-      if (
-        instruction.action === 'berserk' &&
-        instruction.appliesStatusId &&
-        hasStatus(current, instruction.appliesStatusId)
-      ) {
+      const application = effectByKind(instruction, 'applyStatus');
+      if (instruction.action === 'berserk' && application && hasStatus(current, application.statusId)) {
         traceDecision('skipped', 'state');
         continue;
       }
@@ -520,14 +509,10 @@ export function planBattleFrame({
       acted = true;
 
       if (instruction.action === 'taunt') {
-        if (!instruction.appliesStatusId) throw new Error(`${instruction.id} has no appliesStatusId`);
-        const duration = instruction.params.durationSeconds ?? 0;
+        const statusApplication = requireEffect(instruction, 'applyStatus');
+        const duration = statusApplication.durationSeconds ?? 0;
         const updates = currentEnemies.map((enemy) => {
-          const taunted = applyStatus(enemy, instruction.appliesStatusId!, {
-            sourceId: current.instanceId,
-            targetId: current.instanceId,
-            remainingSeconds: duration,
-          });
+          const taunted = applyInstructionStatusEffects(enemy, instruction, current.instanceId, 'allEnemies');
           return { id: enemy.instanceId, values: { statuses: taunted.statuses } };
         });
         for (const update of updates) setNext(update.id, update.values);
@@ -548,7 +533,7 @@ export function planBattleFrame({
             updates: [],
           });
         } else {
-          const x = advanceToward(current, target, instruction.params.moveDistance ?? 0);
+          const x = advanceToward(current, target, requireEffect(instruction, 'move').distance);
           setNext(current.instanceId, { x });
           queueStep({
             flash: {
@@ -566,7 +551,7 @@ export function planBattleFrame({
           });
         }
       } else if (instruction.action === 'jump') {
-        const x = jumpToward(current, target, instruction.params.moveDistance ?? 0);
+        const x = jumpToward(current, target, requireEffect(instruction, 'move').distance);
         setNext(current.instanceId, { x });
         queueStep({
           flash: {
@@ -583,7 +568,7 @@ export function planBattleFrame({
           updates: [{ id: current.instanceId, values: { x } }],
         });
       } else if (instruction.action === 'pull') {
-        const x = pullToward(current, target, instruction.params.pullDistance ?? 0);
+        const x = pullToward(current, target, requireEffect(instruction, 'move').distance);
         setNext(target.instanceId, { x });
         queueStep({
           flash: {
@@ -605,11 +590,8 @@ export function planBattleFrame({
           updates: [{ id: target.instanceId, values: { x } }],
         });
       } else if (instruction.action === 'heal') {
-        const amount = Math.round(
-          current.role === 'SUPPORT'
-            ? (instruction.params.supportHealAmount ?? instruction.params.healAmount ?? 0)
-            : (instruction.params.healAmount ?? 0),
-        );
+        const heal = requireEffect(instruction, 'heal');
+        const amount = Math.round(current.role === 'SUPPORT' ? (heal.supportAmount ?? heal.amount) : heal.amount);
         const hp = Math.min(target.maxHp, target.hp + amount);
         setNext(target.instanceId, { hp });
         queueStep({
@@ -618,7 +600,7 @@ export function planBattleFrame({
           updates: [{ id: target.instanceId, values: { hp } }],
         });
       } else if (instruction.action === 'retreat') {
-        const x = retreatFrom(current, target, instruction.params.moveDistance ?? 0);
+        const x = retreatFrom(current, target, requireEffect(instruction, 'move').distance);
         setNext(current.instanceId, { x });
         queueStep({
           flash: {
@@ -635,8 +617,7 @@ export function planBattleFrame({
           updates: [{ id: current.instanceId, values: { x } }],
         });
       } else if (instruction.action === 'guard') {
-        if (!instruction.appliesStatusId) throw new Error(`${instruction.id} does not declare appliesStatusId`);
-        const guarded = applyStatus(current, instruction.appliesStatusId, { sourceId: current.instanceId });
+        const guarded = applyInstructionStatusEffects(current, instruction, current.instanceId, 'actor');
         const values = { statuses: guarded.statuses };
         setNext(current.instanceId, values);
         queueStep({
@@ -645,8 +626,8 @@ export function planBattleFrame({
           updates: [{ id: current.instanceId, values }],
         });
       } else if (instruction.action === 'berserk') {
-        if (!instruction.appliesStatusId) throw new Error(`${instruction.id} does not declare appliesStatusId`);
-        if (hasStatus(current, instruction.appliesStatusId)) {
+        const statusApplication = requireEffect(instruction, 'applyStatus');
+        if (hasStatus(current, statusApplication.statusId)) {
           queueStep({
             flash: { id: current.instanceId, kind: 'wait', actionLabel: '暴走継続', n: 0 },
             log: { actor: current.name, text: 'バーサーカーモードはすでに稼働中', type: 'info' },
@@ -666,15 +647,16 @@ export function planBattleFrame({
           });
         }
       } else if (instruction.action === 'buff') {
-        const attack = current.attack + (instruction.params.attackFlat ?? 0);
+        const modifier = requireEffect(instruction, 'modifyStat');
+        const attack = current.attack + modifier.amount;
         setNext(current.instanceId, { attack });
         queueStep({
           flash: { id: current.instanceId, kind: 'heal', actionLabel: '強化', n: 0 },
-          log: { actor: current.name, text: `攻撃出力を +${instruction.params.attackFlat ?? 0} 強化`, type: 'heal' },
+          log: { actor: current.name, text: `攻撃出力を +${modifier.amount} 強化`, type: 'heal' },
           updates: [{ id: current.instanceId, values: { attack } }],
         });
       } else if (instruction.action === 'wait') {
-        const waitCooldown = instruction.params.cooldownSeconds ?? 0;
+        const waitCooldown = requireEffect(instruction, 'wait').durationSeconds;
         setNext(current.instanceId, { cooldown: waitCooldown });
         queueStep({
           flash: { id: current.instanceId, kind: 'wait', actionLabel: '待機', n: 0 },
@@ -687,12 +669,7 @@ export function planBattleFrame({
           if (!liveTarget || liveTarget.hp <= 0) continue;
           const impact = resolveActionImpact(current, liveTarget, instruction);
           const hp = Math.max(0, liveTarget.hp - impact.damage);
-          const affectedTarget = instruction.appliesStatusId
-            ? applyStatus(liveTarget, instruction.appliesStatusId, {
-                stacks: instruction.params.statusStacks,
-                sourceId: current.instanceId,
-              })
-            : liveTarget;
+          const affectedTarget = applyInstructionStatusEffects(liveTarget, instruction, current.instanceId, 'selected');
           const statuses = affectedTarget.statuses;
           const x =
             hp > 0 && impact.knockbackDistance > 0
@@ -751,16 +728,11 @@ export function planBattleFrame({
       } else {
         const impact = resolveActionImpact(current, target, instruction);
         const hp = Math.max(0, target.hp - impact.damage);
-        const affectedTarget = instruction.appliesStatusId
-          ? applyStatus(target, instruction.appliesStatusId, {
-              stacks: instruction.params.statusStacks,
-              sourceId: current.instanceId,
-            })
-          : target;
+        const affectedTarget = applyInstructionStatusEffects(target, instruction, current.instanceId, 'selected');
         const statuses = affectedTarget.statuses;
         const x =
           hp > 0 && instruction.action === 'throw'
-            ? throwBehind(current, target, instruction.params.throwDistance ?? 0)
+            ? throwBehind(current, target, requireEffect(instruction, 'move').distance)
             : hp > 0 && impact.knockbackDistance > 0
               ? knockbackPosition(target, current, impact.knockbackDistance)
               : target.x;

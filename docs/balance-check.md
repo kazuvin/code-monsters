@@ -7,7 +7,9 @@ pnpm balance:check
 pnpm balance:check -- --json
 ```
 
-The analyzer first validates IDs and references across the roster, shop, programs, reactions, conditions, units, and instructions. Structural errors always fail the command.
+The analyzer first validates IDs and references across the roster, shop, programs, reactions, conditions, units, and instructions. It rejects unknown instruction-effect or condition kinds, so adding a behavior that neither runtime understands cannot silently pass as data. Structural errors always fail the command.
+
+The same gate derives a status synergy graph from canonical data. A combo status must have a producer, a consumer, a path where different units can cooperate, and a counterplay rule that matches real data (expiry, action clear, consumption, or low-HP activation). A deliberately standalone status must include its reason and a verifiable counterplay. The Debug Room's Synergy Graph page is a presentation of this exact CI report, not a separately maintained list.
 
 It then estimates every unit against the reference defense in `game-data/game-balance.json`:
 

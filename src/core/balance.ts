@@ -1,5 +1,7 @@
 import type { GameBalanceData } from '../data.ts';
 import type { Instruction, Rarity, ReactionTrigger, UnitDefinition } from '../types.ts';
+import { effectByKind, effectsByKind } from './instruction-effects.ts';
+import { analyzeSynergies } from './synergy.ts';
 
 export type BalanceSeverity = 'error' | 'warning';
 export type BalanceIssue = { severity: BalanceSeverity; code: string; message: string };
@@ -49,11 +51,12 @@ function defaultAttack(data: GameBalanceData): Instruction | undefined {
 }
 
 function expectedDamage(data: GameBalanceData, unit: UnitDefinition, instruction: Instruction): number {
-  const params = instruction.params ?? {};
-  const raw = unit.attack * (params.attackScale ?? 1) + (params.flatDamage ?? 0);
+  const effect = effectByKind(instruction, 'damage');
+  if (!effect) return 0;
+  const raw = unit.attack * effect.attackScale + (effect.flatDamage ?? 0);
   const base = Math.round(raw - data.balanceAnalysis.referenceDefense * data.battle.defenseDamageFactor);
-  const scale = params.damageScale ?? 1;
-  return scale <= 0 ? 0 : Math.max(params.minimumDamage ?? 0, Math.round(base * scale));
+  const scale = effect.damageScale ?? 1;
+  return scale <= 0 ? 0 : Math.max(effect.minimumDamage, Math.round(base * scale));
 }
 
 function cooldown(data: GameBalanceData, speed: number): number {
@@ -82,25 +85,31 @@ function resourceAdjustedUptime(
     : uptime * (sustainableUsesPerSecond / attemptedUsesPerSecond);
 }
 
+function statusEffectValue(data: GameBalanceData, instruction: Instruction, kind: string): number {
+  const statusId = effectByKind(instruction, 'applyStatus')?.statusId;
+  const status = data.statuses.find((candidate) => candidate.id === statusId);
+  return status?.effects.find((effect) => effect.kind === kind)?.value ?? 1;
+}
+
 function reactionContribution(data: GameBalanceData, unit: UnitDefinition, baseDps: number, effectiveHp: number) {
   const reaction = data.defaultReactions.find((entry) => entry.unitId === unit.id && entry.trigger && entry.actionId);
   if (!reaction?.trigger || !reaction.actionId) return { dps: baseDps, effectiveHp, factor: 1 };
   const instruction = data.instructions.find((candidate) => candidate.id === reaction.actionId);
   if (!instruction) return { dps: baseDps, effectiveHp, factor: 1 };
-  const params = instruction.params ?? {};
   const configuredUptime = data.balanceAnalysis.reactionUptime[reaction.trigger as ReactionTrigger] ?? 0;
   const uptime = resourceAdjustedUptime(data, instruction, configuredUptime, data.battle.reactionCooldownSeconds);
   if (instruction.action === 'berserk') {
-    const boosted = (params.attackScale ?? 1) * (params.speedScale ?? 1);
+    const boosted =
+      statusEffectValue(data, instruction, 'attackScale') * statusEffectValue(data, instruction, 'speedScale');
     const factor = 1 + uptime * (boosted - 1);
     return { dps: baseDps * factor, effectiveHp, factor };
   }
   if (instruction.action === 'guard') {
-    const damageScale = params.incomingDamageScale ?? 1;
+    const damageScale = statusEffectValue(data, instruction, 'incomingDamageScale');
     const factor = 1 + uptime * (1 / damageScale - 1);
     return { dps: baseDps, effectiveHp: effectiveHp * factor, factor };
   }
-  if (['attack', 'heavy', 'throw', 'follow', 'poison', 'burn'].includes(instruction.action)) {
+  if (effectByKind(instruction, 'damage')) {
     const attackInterval = cooldown(data, unit.speed);
     const attackUptime = resourceAdjustedUptime(data, instruction, configuredUptime, attackInterval);
     const reactionDps = (expectedDamage(data, unit, instruction) / attackInterval) * attackUptime;
@@ -112,11 +121,16 @@ function reactionContribution(data: GameBalanceData, unit: UnitDefinition, baseD
 
 function validateData(data: GameBalanceData): BalanceIssue[] {
   const issues: BalanceIssue[] = [];
-  const error = (code: string, message: string) => issues.push({ severity: 'error', code, message });
+  const error = (code: string, message: string) => issues.push({ severity: 'error' as const, code, message });
   const unique = (kind: string, ids: string[]) => {
     for (const id of new Set(ids))
       if (ids.filter((candidate) => candidate === id).length > 1)
         error('DUPLICATE_ID', `${kind} id "${id}" が重複しています`);
+  };
+  const rejectUnknownKeys = (value: object, allowed: string[], context: string) => {
+    const allowedKeys = new Set(allowed);
+    for (const key of Object.keys(value))
+      if (!allowedKeys.has(key)) error('UNKNOWN_EFFECT_FIELD', `${context} に未対応フィールド "${key}" があります`);
   };
   unique(
     'unit',
@@ -150,18 +164,19 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'status',
     data.statuses.map((status) => status.id),
   );
+
   const units = new Set(data.units.map((unit) => unit.id));
   const instructions = new Set(data.instructions.map((instruction) => instruction.id));
   const conditions = new Set(data.conditions.map((condition) => condition.id));
   const targetSelectors = new Set<string>(data.targetSelectors.map((target) => target.id));
   const statuses = new Set(data.statuses.map((status) => status.id));
-  const supportedConditions = new Set([
+  const supportedConditionKinds = new Set([
     'always',
     'targetInRange',
     'targetOutOfRange',
-    'enemyHpBelow50',
-    'selfHpBelow30',
-    'enemyHasStatus',
+    'targetHpBelow',
+    'selfHpBelow',
+    'targetHasStatus',
   ]);
   const supportedActions = new Set([
     'attack',
@@ -207,6 +222,17 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'speedScale',
     'targetLock',
   ]);
+  const supportedEffectKinds = new Set([
+    'damage',
+    'move',
+    'heal',
+    'applyStatus',
+    'consumeStatus',
+    'removeStatus',
+    'modifyStat',
+    'wait',
+  ]);
+  const supportedEffectTargets = new Set(['actor', 'selected', 'allEnemies', 'allAllies']);
   const requireUnit = (id: string, context: string) => {
     if (!units.has(id)) error('UNKNOWN_UNIT', `${context} が未定義ユニット "${id}" を参照しています`);
   };
@@ -219,7 +245,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const requireStatus = (id: string, context: string) => {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
-  if (data.schemaVersion < 7) error('INVALID_SCHEMA_VERSION', 'schemaVersion は7以上である必要があります');
+
+  if (data.schemaVersion < 8) error('INVALID_SCHEMA_VERSION', 'schemaVersion は8以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     !Number.isInteger(data.battle.abilityGaugeMax) ||
@@ -241,21 +268,27 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     error('INVALID_DEBUG_TRAINING_CONFIG', 'デバッグ訓練のHP・回復・距離設定が不正です');
   if (!data.debugTraining.positionPresets.some((preset) => preset.id === data.debugTraining.defaultPositionPresetId))
     error('INVALID_DEBUG_POSITION', 'デバッグ訓練のデフォルト開始位置が未定義です');
-  for (const preset of data.debugTraining.positionPresets) {
+  for (const preset of data.debugTraining.positionPresets)
     if (
       !['mutual', 'actor', 'target'].includes(preset.rangeReference) ||
       !['inside', 'outside'].includes(preset.relation)
     )
       error('INVALID_DEBUG_POSITION', `デバッグ開始位置 ${preset.id} の射程基準が不正です`);
-  }
+
   if (data.statuses.length === 0) error('MISSING_STATUS_REGISTRY', 'statuses に状態定義がありません');
   for (const status of data.statuses) {
     if (!status.id || !status.label || !status.description)
       error('INVALID_STATUS', '状態定義には id・label・description が必要です');
     if (!['stack', 'replace'].includes(status.stacking) || !Number.isInteger(status.maxStacks) || status.maxStacks < 1)
       error('INVALID_STATUS', `状態 ${status.id} の stacking または maxStacks が不正です`);
-    if (!['persistent', 'instructionParam'].includes(status.duration.mode))
+    if (!['persistent', 'application'].includes(status.duration.mode))
       error('UNSUPPORTED_STATUS_DURATION', `状態 ${status.id} の duration.mode はエンジン未対応です`);
+    if (!['combo', 'standalone'].includes(status.synergy?.mode))
+      error('INVALID_STATUS_SYNERGY', `状態 ${status.id} の synergy.mode が不正です`);
+    if (!status.synergy?.counterplay?.kind || !status.synergy.counterplay.description)
+      error('INVALID_STATUS_SYNERGY', `状態 ${status.id} に対抗手段の定義がありません`);
+    if (status.synergy?.mode === 'standalone' && !status.synergy.standaloneReason)
+      error('INVALID_STATUS_SYNERGY', `単独完結状態 ${status.id} には standaloneReason が必要です`);
     if (!['toggle', 'stacks'].includes(status.debug.control))
       error('INVALID_DEBUG_STATUS', `状態 ${status.id} のデバッグ操作が不正です`);
     if (
@@ -265,20 +298,15 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('INVALID_DEBUG_STATUS', `状態 ${status.id} のスタック範囲が不正です`);
     if (!status.visual.className || !status.visual.cardClass || !status.visual.chipClass || !status.visual.label)
       error('MISSING_STATUS_VISUAL', `状態 ${status.id} の表示定義が不足しています`);
-    if (status.duration.mode === 'instructionParam') {
-      const sourceInstruction = status.duration.sourceInstructionId
-        ? data.instructions.find((instruction) => instruction.id === status.duration.sourceInstructionId)
-        : undefined;
-      if (!sourceInstruction)
-        error('UNKNOWN_INSTRUCTION', `状態 ${status.id} の duration が未定義スキルを参照しています`);
-      else if (!status.duration.parameter || typeof sourceInstruction.params[status.duration.parameter] !== 'number')
-        error('INVALID_STATUS_DURATION', `状態 ${status.id} の duration が未定義パラメータを参照しています`);
-    }
+    rejectUnknownKeys(status.duration, ['mode'], `状態 ${status.id}.duration`);
     for (const effect of status.effects) {
+      rejectUnknownKeys(effect, ['kind', 'value'], `状態 ${status.id}.${effect.kind}`);
       if (!supportedStatusEffects.has(effect.kind))
         error('UNSUPPORTED_STATUS_EFFECT', `状態 ${status.id} の効果 "${effect.kind}" はエンジン未対応です`);
-      if (effect.kind !== 'targetLock' && (!effect.sourceInstructionId || !effect.parameter))
-        error('INVALID_STATUS_EFFECT', `状態 ${status.id} の数値効果にはスキルパラメータ参照が必要です`);
+      if (effect.kind === 'targetLock' && effect.value !== undefined)
+        error('INVALID_STATUS_EFFECT', `状態 ${status.id} の targetLock に value は指定できません`);
+      if (effect.kind !== 'targetLock' && (typeof effect.value !== 'number' || effect.value <= 0))
+        error('INVALID_STATUS_EFFECT', `状態 ${status.id} の数値効果は正の value を状態定義に持つ必要があります`);
       if (
         ['attackScale', 'speedScale'].includes(effect.kind) &&
         (status.duration.mode !== 'persistent' || status.clearOnAction || status.stacking !== 'replace')
@@ -287,16 +315,9 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
           'UNSUPPORTED_STATUS_EFFECT_LIFECYCLE',
           `状態 ${status.id} の能力倍率は永続・置換・行動解除なしの場合のみ対応しています`,
         );
-      if (effect.sourceInstructionId || effect.parameter) {
-        const sourceInstruction = effect.sourceInstructionId
-          ? data.instructions.find((instruction) => instruction.id === effect.sourceInstructionId)
-          : undefined;
-        if (!sourceInstruction) error('UNKNOWN_INSTRUCTION', `状態 ${status.id} の効果が未定義スキルを参照しています`);
-        else if (!effect.parameter || typeof sourceInstruction.params[effect.parameter] !== 'number')
-          error('INVALID_STATUS_EFFECT', `状態 ${status.id} の効果が未定義パラメータを参照しています`);
-      }
     }
   }
+
   if (data.balanceAnalysis.abilityReferenceSpeed <= 0)
     error('INVALID_BALANCE_CONFIG', 'abilityReferenceSpeed は正数である必要があります');
   if (data.balanceAnalysis.warningThresholdRatio <= 0 || data.balanceAnalysis.warningThresholdRatio >= 1)
@@ -306,7 +327,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   for (const [trigger, uptime] of Object.entries(data.balanceAnalysis.reactionUptime))
     if (uptime < 0 || uptime > 1)
       error('INVALID_BALANCE_CONFIG', `${trigger} の reactionUptime は0〜1で指定してください`);
-  for (const unit of data.units) {
+  for (const unit of data.units)
     if (
       unit.maxHp <= 0 ||
       unit.attack < 0 ||
@@ -317,7 +338,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       unit.weight <= 0
     )
       error('INVALID_UNIT_STAT', `${unit.id} に0以下または不正な戦闘パラメータがあります`);
-  }
   for (const target of data.targetSelectors) {
     if (!supportedTargetSelectors.has(target.id))
       error('UNSUPPORTED_TARGET', `対象セレクタ "${target.id}" はエンジン未対応です`);
@@ -325,14 +345,52 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('INVALID_TARGET', `${target.id} の domain または cardinality が不正です`);
   }
   for (const condition of data.conditions) {
+    if (!supportedConditionKinds.has(condition.kind))
+      error('UNSUPPORTED_CONDITION', `${condition.id} の kind "${condition.kind}" はエンジン未対応です`);
     if (condition.compatibleTargets.length === 0)
       error('MISSING_TARGET_COMPATIBILITY', `${condition.id} に対応対象がありません`);
     for (const targetId of condition.compatibleTargets)
       requireTargetSelector(targetId, `条件 ${condition.id}.compatibleTargets`);
-    if (condition.statusId) requireStatus(condition.statusId, `条件 ${condition.id}.statusId`);
-    if (condition.id === 'enemyHasStatus' && !condition.statusId)
-      error('MISSING_STATUS_REFERENCE', `条件 ${condition.id} に statusId がありません`);
+    rejectUnknownKeys(condition.params, ['threshold', 'statusId', 'minimumStacks'], `条件 ${condition.id}.params`);
+    if (['targetHpBelow', 'selfHpBelow'].includes(condition.kind)) {
+      const threshold = condition.params.threshold;
+      if (typeof threshold !== 'number' || threshold <= 0 || threshold >= 1)
+        error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の threshold は0より大きく1未満で指定してください`);
+    }
+    if (condition.kind === 'targetHasStatus') {
+      if (!condition.params.statusId)
+        error('MISSING_STATUS_REFERENCE', `条件 ${condition.id} に statusId がありません`);
+      else requireStatus(condition.params.statusId, `条件 ${condition.id}.params.statusId`);
+      if (!Number.isInteger(condition.params.minimumStacks) || (condition.params.minimumStacks ?? 0) < 1)
+        error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の minimumStacks は正の整数で指定してください`);
+    }
   }
+
+  const requiredMoveMode: Partial<Record<Instruction['action'], string>> = {
+    move: 'advance',
+    retreat: 'retreat',
+    jump: 'jump',
+    throw: 'throwTarget',
+    pull: 'pullTarget',
+  };
+  const allowedEffectKindsByAction: Record<Instruction['action'], Set<string>> = {
+    attack: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    heavy: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    move: new Set(['move']),
+    jump: new Set(['move']),
+    throw: new Set(['damage', 'move', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    taunt: new Set(['applyStatus', 'removeStatus']),
+    pull: new Set(['move']),
+    retreat: new Set(['move']),
+    heal: new Set(['heal']),
+    guard: new Set(['applyStatus', 'removeStatus']),
+    buff: new Set(['modifyStat']),
+    berserk: new Set(['applyStatus', 'removeStatus']),
+    poison: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    burn: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    follow: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    wait: new Set(['wait']),
+  };
   for (const instruction of data.instructions) {
     if (
       !Number.isInteger(instruction.abilityCost) ||
@@ -363,8 +421,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_ABILITY_COST', `${instruction.id} の強力な行動には正の abilityCost が必要です`);
     if (!conditions.has(instruction.condition))
       error('UNKNOWN_CONDITION', `${instruction.id} が未定義条件 "${instruction.condition}" を参照しています`);
-    if (!supportedConditions.has(instruction.condition))
-      error('UNSUPPORTED_CONDITION', `${instruction.id} の条件 "${instruction.condition}" はエンジン未対応です`);
     if (!supportedActions.has(instruction.action))
       error('UNSUPPORTED_ACTION', `${instruction.id} の action "${instruction.action}" はエンジン未対応です`);
     if (!supportedTargets.has(instruction.target))
@@ -379,70 +435,130 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     const defaultCondition = data.conditions.find((condition) => condition.id === instruction.condition);
     if (defaultCondition && !defaultCondition.compatibleTargets.includes(instruction.defaultTarget))
       error('INVALID_DEFAULT_TARGET', `${instruction.id} の defaultTarget が既定条件と互換ではありません`);
-    if (!instruction.params) {
-      error('MISSING_PARAMETER', `${instruction.id} に params がありません`);
-      continue;
-    }
-    if (
-      (['guard', 'berserk', 'taunt'].includes(instruction.action) || (instruction.params.statusStacks ?? 0) > 0) &&
-      !instruction.appliesStatusId
-    )
-      error('MISSING_STATUS_REFERENCE', `${instruction.id} に appliesStatusId がありません`);
-    if (instruction.appliesStatusId) requireStatus(instruction.appliesStatusId, `スキル ${instruction.id}`);
-    if (
-      instruction.appliesStatusId &&
-      !['attack', 'heavy', 'throw', 'taunt', 'guard', 'berserk', 'poison', 'burn', 'follow'].includes(
-        instruction.action,
-      )
-    )
-      error(
-        'UNSUPPORTED_STATUS_APPLICATION',
-        `${instruction.id} の action ${instruction.action} への状態付与はエンジン未対応です`,
-      );
-    if (instruction.params.statusTargetId) requireStatus(instruction.params.statusTargetId, `スキル ${instruction.id}`);
     if (instruction.fixedFor) requireUnit(instruction.fixedFor, `スキル ${instruction.id}`);
+    if (!instruction.range || !['unit', 'fixed', 'scaled'].includes(instruction.range.mode))
+      error('INVALID_RANGE', `${instruction.id} の range.mode が不正です`);
+    if (instruction.range) rejectUnknownKeys(instruction.range, ['mode', 'value'], `スキル ${instruction.id}.range`);
+    if (instruction.range?.mode !== 'unit' && (!(instruction.range.value ?? 0) || (instruction.range.value ?? 0) <= 0))
+      error('INVALID_RANGE', `${instruction.id} の固定・倍率射程には正の value が必要です`);
+    if (!Array.isArray(instruction.effects) || instruction.effects.length === 0)
+      error('MISSING_EFFECT', `${instruction.id} に effects がありません`);
+
+    for (const effect of instruction.effects ?? []) {
+      if (!supportedEffectKinds.has(effect.kind)) {
+        error('UNSUPPORTED_INSTRUCTION_EFFECT', `${instruction.id} の効果 "${effect.kind}" はエンジン未対応です`);
+        continue;
+      }
+      if (!allowedEffectKindsByAction[instruction.action]?.has(effect.kind))
+        error(
+          'UNSUPPORTED_EFFECT_COMBINATION',
+          `${instruction.id} の action ${instruction.action} は ${effect.kind} 効果を実行できません`,
+        );
+      if (effect.kind === 'damage') {
+        rejectUnknownKeys(
+          effect,
+          ['kind', 'attackScale', 'flatDamage', 'damageScale', 'minimumDamage', 'knockbackPower'],
+          `スキル ${instruction.id}.damage`,
+        );
+        if (effect.attackScale < 0 || effect.minimumDamage < 0 || (effect.damageScale ?? 1) < 0)
+          error('INVALID_EFFECT', `${instruction.id} の damage 数値が不正です`);
+      } else if (effect.kind === 'move') {
+        rejectUnknownKeys(effect, ['kind', 'mode', 'distance'], `スキル ${instruction.id}.move`);
+        if (!['advance', 'retreat', 'jump', 'throwTarget', 'pullTarget'].includes(effect.mode) || effect.distance <= 0)
+          error('INVALID_EFFECT', `${instruction.id} の move 定義が不正です`);
+      } else if (effect.kind === 'heal') {
+        rejectUnknownKeys(effect, ['kind', 'amount', 'supportAmount'], `スキル ${instruction.id}.heal`);
+        if (effect.amount <= 0 || (effect.supportAmount !== undefined && effect.supportAmount <= 0))
+          error('INVALID_EFFECT', `${instruction.id} の heal 数値が不正です`);
+      } else if (effect.kind === 'applyStatus') {
+        rejectUnknownKeys(
+          effect,
+          ['kind', 'statusId', 'target', 'stacks', 'durationSeconds'],
+          `スキル ${instruction.id}.applyStatus`,
+        );
+        requireStatus(effect.statusId, `スキル ${instruction.id}.applyStatus`);
+        if (!supportedEffectTargets.has(effect.target) || !Number.isInteger(effect.stacks) || effect.stacks < 1)
+          error('INVALID_EFFECT', `${instruction.id} の applyStatus 定義が不正です`);
+        const status = data.statuses.find((candidate) => candidate.id === effect.statusId);
+        if (
+          status?.duration.mode === 'application' &&
+          (!(effect.durationSeconds ?? 0) || (effect.durationSeconds ?? 0) <= 0)
+        )
+          error(
+            'INVALID_STATUS_DURATION',
+            `${instruction.id} は状態 ${effect.statusId} の持続時間を指定する必要があります`,
+          );
+        if (status?.duration.mode === 'persistent' && effect.durationSeconds !== undefined)
+          error(
+            'INVALID_STATUS_DURATION',
+            `${instruction.id} は永続状態 ${effect.statusId} に持続時間を指定できません`,
+          );
+        const expectedTarget =
+          instruction.action === 'taunt'
+            ? 'allEnemies'
+            : ['guard', 'berserk'].includes(instruction.action)
+              ? 'actor'
+              : 'selected';
+        if (effect.target !== expectedTarget)
+          error(
+            'UNSUPPORTED_EFFECT_TARGET',
+            `${instruction.id} の applyStatus 対象は ${expectedTarget} である必要があります`,
+          );
+      } else if (effect.kind === 'consumeStatus') {
+        rejectUnknownKeys(
+          effect,
+          ['kind', 'statusId', 'target', 'stacks', 'bonusDamage'],
+          `スキル ${instruction.id}.consumeStatus`,
+        );
+        requireStatus(effect.statusId, `スキル ${instruction.id}.consumeStatus`);
+        if (!['actor', 'selected'].includes(effect.target) || !Number.isInteger(effect.stacks) || effect.stacks < 1)
+          error('INVALID_EFFECT', `${instruction.id} の consumeStatus 定義が不正です`);
+        if ((effect.bonusDamage ?? 0) < 0) error('INVALID_EFFECT', `${instruction.id} の bonusDamage が負です`);
+        if (effect.target !== 'selected')
+          error('UNSUPPORTED_EFFECT_TARGET', `${instruction.id} の consumeStatus 対象は selected である必要があります`);
+      } else if (effect.kind === 'removeStatus') {
+        rejectUnknownKeys(effect, ['kind', 'statusId', 'target'], `スキル ${instruction.id}.removeStatus`);
+        requireStatus(effect.statusId, `スキル ${instruction.id}.removeStatus`);
+        if (!supportedEffectTargets.has(effect.target)) error('INVALID_EFFECT', `${instruction.id} の対象が不正です`);
+        const expectedTarget =
+          instruction.action === 'taunt'
+            ? 'allEnemies'
+            : ['guard', 'berserk'].includes(instruction.action)
+              ? 'actor'
+              : 'selected';
+        if (effect.target !== expectedTarget)
+          error(
+            'UNSUPPORTED_EFFECT_TARGET',
+            `${instruction.id} の removeStatus 対象は ${expectedTarget} である必要があります`,
+          );
+      } else if (effect.kind === 'modifyStat') {
+        rejectUnknownKeys(effect, ['kind', 'stat', 'amount', 'target'], `スキル ${instruction.id}.modifyStat`);
+        if (effect.stat !== 'attack' || effect.target !== 'actor' || effect.amount === 0)
+          error('INVALID_EFFECT', `${instruction.id} の modifyStat 定義が不正です`);
+      } else if (effect.kind === 'wait') {
+        rejectUnknownKeys(effect, ['kind', 'durationSeconds'], `スキル ${instruction.id}.wait`);
+        if (effect.durationSeconds <= 0) error('INVALID_EFFECT', `${instruction.id} の wait 時間が不正です`);
+      }
+    }
+
+    const moveMode = requiredMoveMode[instruction.action];
+    if (moveMode && !effectsByKind(instruction, 'move').some((effect) => effect.mode === moveMode))
+      error('MISSING_EFFECT', `${instruction.id} には ${moveMode} の move 効果が必要です`);
     if (
-      (instruction.action === 'move' || instruction.action === 'jump' || instruction.action === 'retreat') &&
-      (instruction.params.moveDistance ?? 0) <= 0
+      ['attack', 'heavy', 'throw', 'poison', 'burn', 'follow'].includes(instruction.action) &&
+      !effectByKind(instruction, 'damage')
     )
-      error('MISSING_PARAMETER', `${instruction.id} には正の moveDistance が必要です`);
-    if (
-      instruction.action === 'heal' &&
-      ((instruction.params.healAmount ?? 0) <= 0 || (instruction.params.supportHealAmount ?? 0) <= 0)
-    )
-      error('MISSING_PARAMETER', `${instruction.id} には正の healAmount と supportHealAmount が必要です`);
-    if (instruction.action === 'throw' && (instruction.params.throwDistance ?? 0) <= 0)
-      error('MISSING_PARAMETER', `${instruction.id} には正の throwDistance が必要です`);
-    if (instruction.action === 'pull' && (instruction.params.pullDistance ?? 0) <= 0)
-      error('MISSING_PARAMETER', `${instruction.id} には正の pullDistance が必要です`);
-    if (instruction.params.fixedRange !== undefined && instruction.params.fixedRange <= 0)
-      error('INVALID_PARAMETER', `${instruction.id} の fixedRange は正数で指定してください`);
-    if (
-      ['heavy', 'jump', 'throw', 'pull', 'heal'].includes(instruction.action) &&
-      (instruction.params.fixedRange ?? 0) <= 0
-    )
-      error('MISSING_PARAMETER', `${instruction.id} の行動には正の fixedRange が必要です`);
-    if (instruction.action === 'taunt' && (instruction.params.durationSeconds ?? 0) <= 0)
-      error('MISSING_PARAMETER', `${instruction.id} には正の durationSeconds が必要です`);
-    if (
-      instruction.action === 'berserk' &&
-      ((instruction.params.attackScale ?? 1) < 1 || (instruction.params.speedScale ?? 1) < 1)
-    )
-      error('MISSING_PARAMETER', `${instruction.id} のバーサーカーバフ倍率が不正です`);
-    if (
-      instruction.action === 'guard' &&
-      ((instruction.params.incomingDamageScale ?? 0) <= 0 ||
-        (instruction.params.incomingDamageScale ?? 1) > 1 ||
-        (instruction.params.incomingKnockbackScale ?? 0) <= 0 ||
-        (instruction.params.incomingKnockbackScale ?? 1) > 1)
-    )
-      error('INVALID_PARAMETER', `${instruction.id} のガード倍率は0より大きく1以下で指定してください`);
-    if (
-      ['attack', 'heavy', 'throw', 'follow', 'poison', 'burn'].includes(instruction.action) &&
-      (instruction.params.minimumDamage ?? 0) < 0
-    )
-      error('INVALID_PARAMETER', `${instruction.id} の minimumDamage が負です`);
+      error('MISSING_EFFECT', `${instruction.id} には damage 効果が必要です`);
+    if (instruction.action === 'heal' && !effectByKind(instruction, 'heal'))
+      error('MISSING_EFFECT', `${instruction.id} には heal 効果が必要です`);
+    if (instruction.action === 'wait' && !effectByKind(instruction, 'wait'))
+      error('MISSING_EFFECT', `${instruction.id} には wait 効果が必要です`);
+    if (instruction.action === 'buff' && !effectByKind(instruction, 'modifyStat'))
+      error('MISSING_EFFECT', `${instruction.id} には modifyStat 効果が必要です`);
+    if (['guard', 'berserk', 'taunt'].includes(instruction.action) && !effectByKind(instruction, 'applyStatus'))
+      error('MISSING_STATUS_REFERENCE', `${instruction.id} には applyStatus 効果が必要です`);
   }
+
   for (const entry of data.defaultPrograms) {
     requireUnit(entry.unitId, 'defaultPrograms');
     for (const actionId of entry.actionIds) requireInstruction(actionId, `defaultPrograms.${entry.unitId}`);
@@ -490,6 +606,11 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (pick.kind === 'unit') requireUnit(pick.id, 'shop.initialPicks');
     else requireInstruction(pick.id, 'shop.initialPicks');
   }
+  const canAnalyzeSynergies =
+    data.statuses.every((status) => status.synergy?.counterplay) &&
+    data.instructions.every((instruction) => Array.isArray(instruction.effects)) &&
+    data.conditions.every((condition) => condition.params);
+  if (canAnalyzeSynergies) for (const issue of analyzeSynergies(data).issues) error(issue.code, issue.message);
   return issues;
 }
 

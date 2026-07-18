@@ -19,13 +19,14 @@ export type ActionType =
 export type AttackType = 'melee' | 'blunt' | 'sniper';
 export type Rarity = 'common' | 'rare' | 'epic';
 export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'allyAttackHit' | 'selfHpLow';
-export type ConditionId =
+export type ConditionId = string;
+export type ConditionKind =
   | 'always'
   | 'targetInRange'
   | 'targetOutOfRange'
-  | 'enemyHpBelow50'
-  | 'selfHpBelow30'
-  | 'enemyHasStatus';
+  | 'targetHpBelow'
+  | 'selfHpBelow'
+  | 'targetHasStatus';
 export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'nearestAlly' | 'lowestHpAlly' | 'criticalAlly' | 'self';
 export type TargetSelectorId =
   | 'nearestEnemy'
@@ -40,29 +41,54 @@ export type TargetDomain = 'enemy' | 'ally' | 'self';
 export type TargetCardinality = 'one' | 'many';
 export type ActionTargetMode = 'selected' | 'self' | 'allEnemies' | 'allAllies';
 export type ImpactProfile = { damageScale?: number; knockbackPower?: number };
-export type ActionParameters = {
-  attackScale?: number;
+export type EffectTarget = 'actor' | 'selected' | 'allEnemies' | 'allAllies';
+export type InstructionRange = { mode: 'unit' | 'fixed' | 'scaled'; value?: number };
+export type DamageEffect = {
+  kind: 'damage';
+  attackScale: number;
   flatDamage?: number;
   damageScale?: number;
-  statusTargetDamageBonus?: number;
-  statusTargetId?: string;
-  minimumDamage?: number;
+  minimumDamage: number;
   knockbackPower?: number;
-  moveDistance?: number;
-  throwDistance?: number;
-  pullDistance?: number;
-  rangeScale?: number;
-  fixedRange?: number;
-  durationSeconds?: number;
-  healAmount?: number;
-  supportHealAmount?: number;
-  attackFlat?: number;
-  speedScale?: number;
-  cooldownSeconds?: number;
-  statusStacks?: number;
-  incomingDamageScale?: number;
-  incomingKnockbackScale?: number;
 };
+export type MoveEffect = {
+  kind: 'move';
+  mode: 'advance' | 'retreat' | 'jump' | 'throwTarget' | 'pullTarget';
+  distance: number;
+};
+export type HealEffect = { kind: 'heal'; amount: number; supportAmount?: number };
+export type ApplyStatusEffect = {
+  kind: 'applyStatus';
+  statusId: string;
+  target: EffectTarget;
+  stacks: number;
+  durationSeconds?: number;
+};
+export type ConsumeStatusEffect = {
+  kind: 'consumeStatus';
+  statusId: string;
+  target: Extract<EffectTarget, 'actor' | 'selected'>;
+  stacks: number;
+  bonusDamage?: number;
+};
+export type RemoveStatusEffect = {
+  kind: 'removeStatus';
+  statusId: string;
+  target: EffectTarget;
+};
+export type ModifyStatEffect = { kind: 'modifyStat'; stat: 'attack'; amount: number; target: 'actor' };
+export type WaitEffect = { kind: 'wait'; durationSeconds: number };
+export type InstructionEffect =
+  | DamageEffect
+  | MoveEffect
+  | HealEffect
+  | ApplyStatusEffect
+  | ConsumeStatusEffect
+  | RemoveStatusEffect
+  | ModifyStatEffect
+  | WaitEffect;
+export type InstructionEffectKind = InstructionEffect['kind'];
+export type InstructionEffectByKind<Kind extends InstructionEffectKind> = Extract<InstructionEffect, { kind: Kind }>;
 
 export type StatusEffectKind =
   | 'incomingDamageScale'
@@ -73,9 +99,10 @@ export type StatusEffectKind =
 
 export type StatusEffectDefinition = {
   kind: StatusEffectKind;
-  sourceInstructionId?: string;
-  parameter?: keyof ActionParameters;
+  value?: number;
 };
+
+export type StatusCounterplayKind = 'expires' | 'clearsOnAction' | 'consumedBySkill' | 'lowHpRequirement';
 
 export type StatusDefinition = {
   id: string;
@@ -85,9 +112,15 @@ export type StatusDefinition = {
   maxStacks: number;
   clearOnAction: boolean;
   duration: {
-    mode: 'persistent' | 'instructionParam';
-    sourceInstructionId?: string;
-    parameter?: keyof ActionParameters;
+    mode: 'persistent' | 'application';
+  };
+  synergy: {
+    mode: 'combo' | 'standalone';
+    counterplay: {
+      kind: StatusCounterplayKind;
+      description: string;
+    };
+    standaloneReason?: string;
   };
   debug: {
     control: 'toggle' | 'stacks';
@@ -148,8 +181,8 @@ export type Instruction = {
   targetMode: ActionTargetMode;
   compatibleTargets: TargetSelectorId[];
   tone: 'cyan' | 'amber' | 'lime' | 'violet';
-  params: ActionParameters;
-  appliesStatusId?: string;
+  range: InstructionRange;
+  effects: InstructionEffect[];
   fixedFor?: string;
   reactionOnly?: boolean;
   visualKind?: 'move' | 'dash' | 'jump' | 'retreat';

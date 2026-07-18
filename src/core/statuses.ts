@@ -1,8 +1,7 @@
-import { INSTRUCTIONS, STATUSES } from '../data.ts';
+import { STATUSES } from '../data.ts';
 import type { Fighter, StatusDefinition, StatusEffectKind, StatusInstance } from '../types.ts';
 
 export const statusById = new Map(STATUSES.map((status) => [status.id, status]));
-const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
 
 const round = (value: number, digits = 2) => Number(value.toFixed(digits));
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value));
@@ -36,22 +35,16 @@ export function statusEffectTargetId(
   return instance?.targetId ?? null;
 }
 
-function instructionParameter(instructionId: string | undefined, parameter: string | undefined): number {
-  const instruction = instructionId ? instructionById.get(instructionId) : undefined;
-  const value = parameter ? instruction?.params[parameter as keyof typeof instruction.params] : undefined;
-  if (typeof value !== 'number') throw new Error(`Invalid status parameter reference: ${instructionId}.${parameter}`);
-  return value;
-}
-
 function definitionDuration(definition: StatusDefinition): number | null {
   if (definition.duration.mode === 'persistent') return null;
-  return instructionParameter(definition.duration.sourceInstructionId, definition.duration.parameter);
+  throw new Error(`Status ${definition.id} requires durationSeconds from its application effect`);
 }
 
 function effectValue(definition: StatusDefinition, kind: StatusEffectKind): number {
   const effect = definition.effects.find((candidate) => candidate.kind === kind);
   if (!effect) return 1;
-  return instructionParameter(effect.sourceInstructionId, effect.parameter);
+  if (typeof effect.value !== 'number') throw new Error(`Status ${definition.id}.${kind} requires a numeric value`);
+  return effect.value;
 }
 
 export function applyStatus(
@@ -97,6 +90,30 @@ export function applyStatus(
 
 export function removeStatus(fighter: Fighter, statusId: string): Fighter {
   return { ...fighter, statuses: fighter.statuses.filter((status) => status.statusId !== statusId) };
+}
+
+export function consumeStatus(
+  fighter: Fighter,
+  statusId: string,
+  requestedStacks: number,
+): { fighter: Fighter; consumedStacks: number; fulfilled: boolean } {
+  const instance = getStatus(fighter, statusId);
+  const stacks = Math.max(1, Math.round(requestedStacks));
+  if (!instance || instance.stacks < stacks) return { fighter, consumedStacks: 0, fulfilled: false };
+  const remainingStacks = instance.stacks - stacks;
+  return {
+    fighter:
+      remainingStacks > 0
+        ? {
+            ...fighter,
+            statuses: fighter.statuses.map((status) =>
+              status.statusId === statusId ? { ...status, stacks: remainingStacks } : status,
+            ),
+          }
+        : removeStatus(fighter, statusId),
+    consumedStacks: stacks,
+    fulfilled: true,
+  };
 }
 
 export function clearActionStatuses(fighter: Fighter): Fighter {

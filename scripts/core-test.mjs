@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { applyBattleStep, planBattleFrame } from '../src/core/battle-engine.ts';
 import { analyzeBalance } from '../src/core/balance.ts';
 import { createDebugFighters, createDefaultDebugStatuses, runDebugSimulation } from '../src/core/debug-simulation.ts';
+import { applyInstructionStatusEffects, effectByKind } from '../src/core/instruction-effects.ts';
 import { createBattleFighters, createInventoryUnit } from '../src/core/roster.ts';
 import { summarizeDecisions } from '../src/core/replay.ts';
 import {
@@ -25,6 +26,7 @@ import {
 } from '../src/core/rules.ts';
 import { createShop } from '../src/core/shop.ts';
 import { applyStatus, hasStatus, statusRemaining, statusStacks, statusTargetId } from '../src/core/statuses.ts';
+import { analyzeSynergies } from '../src/core/synergy.ts';
 import { BATTLE_CONFIG, DEBUG_TRAINING_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
@@ -340,7 +342,7 @@ assert.ok(
     const taunted = update.values.statuses?.find((status) => status.statusId === 'taunted');
     return (
       taunted?.targetId === 'taunt-volt' &&
-      taunted.remainingSeconds === instructionById.get('taunt')?.params.durationSeconds
+      taunted.remainingSeconds === effectByKind(instructionById.get('taunt'), 'applyStatus')?.durationSeconds
     );
   }),
   '挑発が敵の標的を使用者へ固定しません',
@@ -506,7 +508,7 @@ const toxinActor = toxinFighters.find((fighter) => fighter.instanceId === 'statu
 const cleanStatusTarget = toxinFighters.find((fighter) => fighter.team === 'enemy' && fighter.id === 'relay');
 const poisonAmplify = instructionById.get('corrosion-burst');
 assert.ok(toxinActor && cleanStatusTarget && poisonAmplify);
-const poisonedStatusTarget = applyStatus(cleanStatusTarget, 'poison');
+const poisonedStatusTarget = applyStatus(cleanStatusTarget, 'poison', { stacks: 2 });
 assert.equal(
   matchCondition('enemyHasStatus', toxinActor, [cleanStatusTarget]).length,
   0,
@@ -518,6 +520,20 @@ assert.ok(
     resolveActionImpact(toxinActor, cleanStatusTarget, poisonAmplify).damage,
   '毒増幅の状態特効ダメージが適用されていません',
 );
+const consumedPoisonTarget = applyInstructionStatusEffects(
+  poisonedStatusTarget,
+  poisonAmplify,
+  toxinActor.instanceId,
+  'selected',
+);
+assert.equal(statusStacks(consumedPoisonTarget, 'poison'), 0, '毒増幅が指定した2スタックを消費しません');
+const insufficientPoisonTarget = applyInstructionStatusEffects(
+  applyStatus(cleanStatusTarget, 'poison'),
+  poisonAmplify,
+  toxinActor.instanceId,
+  'selected',
+);
+assert.equal(statusStacks(insufficientPoisonTarget, 'poison'), 1, '必要スタック未満の毒を誤って消費しています');
 
 const multiTeam = [createInventoryUnit('arrow', 'multi-arrow')];
 multiTeam[0].program = [{ targetId: 'allEnemies', conditionId: 'targetInRange', actionId: 'saturation-fire' }];
@@ -597,7 +613,12 @@ assert.ok(
   '複数対象スキルが初期ショップにありません',
 );
 assert.ok(!instructionById.has('emergency-repair'), '回復スキルが複数残っています');
-assert.ok(instructionById.get('berserker-mode')?.params.speedScale === 3, 'バーサーカー倍率がデータ定義から読めません');
+assert.equal(
+  GAME_DATA.statuses.find((status) => status.id === 'berserk')?.effects.find((effect) => effect.kind === 'speedScale')
+    ?.value,
+  3,
+  'バーサーカー倍率が状態定義から読めません',
+);
 assert.deepEqual(
   Object.fromEntries(
     ['knock-away', 'vault-over', 'pull-in', 'field-repair', 'berserker-mode', 'volt-follow', 'tank-guard'].map((id) => [
@@ -802,10 +823,10 @@ assert.ok(
   '強力なスキルの無料化を静的検査で検出できません',
 );
 const invalidRangeData = structuredClone(GAME_DATA);
-invalidRangeData.instructions.find((instruction) => instruction.id === 'shoulder-throw').params.fixedRange = 0;
+invalidRangeData.instructions.find((instruction) => instruction.id === 'shoulder-throw').range.value = 0;
 const invalidRangeReport = analyzeBalance(invalidRangeData);
 assert.ok(
-  invalidRangeReport.issues.some((issue) => issue.code === 'INVALID_PARAMETER' || issue.code === 'MISSING_PARAMETER'),
+  invalidRangeReport.issues.some((issue) => issue.code === 'INVALID_RANGE'),
   '接触スキルの不正な固定射程を静的検査で検出できません',
 );
 const unsupportedStatusEffectData = structuredClone(GAME_DATA);
@@ -827,19 +848,16 @@ assert.ok(
   '状態表示定義の欠落を静的検査で検出できません',
 );
 const unknownAppliedStatusData = structuredClone(GAME_DATA);
-unknownAppliedStatusData.instructions.find((instruction) => instruction.id === 'toxic-mark').appliesStatusId =
-  'unknown-status';
+unknownAppliedStatusData.instructions
+  .find((instruction) => instruction.id === 'toxic-mark')
+  .effects.find((effect) => effect.kind === 'applyStatus').statusId = 'unknown-status';
 assert.ok(
   analyzeBalance(unknownAppliedStatusData).issues.some((issue) => issue.code === 'UNKNOWN_STATUS'),
   'スキルの未知状態参照を静的検査で検出できません',
 );
 const unsupportedStatusLifecycleData = structuredClone(GAME_DATA);
 const berserkStatus = unsupportedStatusLifecycleData.statuses.find((status) => status.id === 'berserk');
-berserkStatus.duration = {
-  mode: 'instructionParam',
-  sourceInstructionId: 'taunt',
-  parameter: 'durationSeconds',
-};
+berserkStatus.duration = { mode: 'application' };
 assert.ok(
   analyzeBalance(unsupportedStatusLifecycleData).issues.some(
     (issue) => issue.code === 'UNSUPPORTED_STATUS_EFFECT_LIFECYCLE',
@@ -847,13 +865,35 @@ assert.ok(
   '未対応の能力倍率ライフサイクルを静的検査で検出できません',
 );
 const unsupportedStatusApplicationData = structuredClone(GAME_DATA);
-unsupportedStatusApplicationData.instructions.find((instruction) => instruction.id === 'field-repair').appliesStatusId =
-  'poison';
+unsupportedStatusApplicationData.instructions
+  .find((instruction) => instruction.id === 'field-repair')
+  .effects.push({ kind: 'runArbitraryScript', source: 'damage(9999)' });
 assert.ok(
   analyzeBalance(unsupportedStatusApplicationData).issues.some(
-    (issue) => issue.code === 'UNSUPPORTED_STATUS_APPLICATION',
+    (issue) => issue.code === 'UNSUPPORTED_INSTRUCTION_EFFECT',
   ),
-  '未対応アクションへの状態付与を静的検査で検出できません',
+  '許可されていない自由スクリプト効果を静的検査で検出できません',
+);
+const hiddenScriptFieldData = structuredClone(GAME_DATA);
+hiddenScriptFieldData.instructions
+  .find((instruction) => instruction.id === 'attack-low')
+  .effects.find((effect) => effect.kind === 'damage').script = 'target.hp = 0';
+assert.ok(
+  analyzeBalance(hiddenScriptFieldData).issues.some((issue) => issue.code === 'UNKNOWN_EFFECT_FIELD'),
+  '許可済み効果への任意フィールド追加を静的検査で検出できません',
+);
+
+const synergyReport = analyzeSynergies(GAME_DATA);
+assert.equal(synergyReport.issues.length, 0, '状態パックのシナジー構造に不備があります');
+assert.equal(synergyReport.packs.length, GAME_DATA.statuses.length, '全状態をシナジー監査できません');
+const incompleteSynergyData = structuredClone(GAME_DATA);
+incompleteSynergyData.instructions.find((instruction) => instruction.id === 'corrosion-burst').effects =
+  incompleteSynergyData.instructions
+    .find((instruction) => instruction.id === 'corrosion-burst')
+    .effects.filter((effect) => effect.kind !== 'consumeStatus');
+assert.ok(
+  analyzeBalance(incompleteSynergyData).issues.some((issue) => issue.code === 'MISSING_STATUS_CONSUMER'),
+  '状態の利用・消費技が欠けたパックをCI検査で検出できません',
 );
 
 console.log(
