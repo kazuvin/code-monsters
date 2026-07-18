@@ -55,6 +55,8 @@ export function BattleScene({ fighters, flash, running }: Props) {
       className={`side-battlefield ${running ? 'is-running' : 'is-paused'}`}
       aria-label="2D戦闘フィールド"
       data-event-id={flash?.n ?? ''}
+      data-event-kind={flash?.kind ?? ''}
+      data-action-label={flash?.actionLabel ?? ''}
     >
       <div className="stage-wall wall-ally" />
       <div className="stage-wall wall-enemy" />

@@ -56,42 +56,55 @@ await knockAwayRow.getByRole('button', { name: '上へ移動' }).click();
 await knockAwayRow.getByRole('button', { name: '上へ移動' }).click();
 const program = (await normalProgram.innerText()).replace(/\s+/g, ' ').trim();
 
-await page.getByRole('button', { name: /戦闘開始/ }).click();
-await page.getByRole('button', { name: 'x2' }).click();
+await page.getByRole('button', { name: 'デバッグ', exact: true }).evaluate((button) => button.click());
+await page.waitForSelector('.debug-room');
+await page.getByRole('button', { name: '設定', exact: true }).click();
+await page.waitForSelector('.debug-config.is-open');
+await page.getByLabel('攻撃ユニット').selectOption('volt');
+await page.getByLabel('計測する技').selectOption('knock-away');
+await page.getByLabel('敵ユニット').selectOption('bastion');
+await page.getByLabel('開始位置').selectOption('mutual-in-range');
+await page.getByRole('button', { name: '設定を適用', exact: true }).click();
+await page.waitForSelector('.debug-config:not(.is-open)');
+await page.getByRole('button', { name: '計測開始', exact: true }).click();
 
 const events = [];
 let lastEventId = '';
 let knockAwayTargetX = null;
 let knockbackTargetX = null;
-for (let tick = 0; tick < 1200 && knockbackTargetX === null; tick += 1) {
-  const battlefield = page.locator('.side-battlefield');
+for (let tick = 0; tick < 160 && knockbackTargetX === null; tick += 1) {
+  const battlefield = page.locator('.debug-arena-stage .side-battlefield');
   const eventId = await battlefield.getAttribute('data-event-id');
   if (eventId && eventId !== lastEventId) {
     lastEventId = eventId;
-    const active = page.locator('.unit-status-card.acting').first();
+    const label = (await battlefield.getAttribute('data-action-label')) ?? '';
+    const kind = (await battlefield.getAttribute('data-event-kind')) ?? '';
+    const active = page.locator(`.debug-arena-stage .sprite.is-${kind}`).first();
     const actor =
       (
         await active
-          .locator('.status-id strong')
+          .locator('.sprite-label')
           .textContent()
           .catch(() => '')
       )?.trim() ?? '';
-    const label =
-      (
-        await active
-          .locator('.card-action-bubble')
-          .textContent()
-          .catch(() => '')
-      )?.trim() ?? '';
-    const event = { id: eventId, actor, label, heavyAnimationCount: await page.locator('.sprite.is-heavy').count() };
+    const event = {
+      id: eventId,
+      actor,
+      label,
+      heavyAnimationCount: await page.locator('.debug-arena-stage .sprite.is-heavy').count(),
+    };
     events.push(event);
-    if (label === '吹き飛ばす') {
+    if (label === '吹き飛ばす' && (await page.locator('.debug-arena-stage .hit-spark').count()) > 0) {
       knockAwayTargetX = await page
-        .locator('.hit-spark')
+        .locator('.debug-arena-stage .hit-spark')
         .evaluate((element) => Number.parseFloat(element.closest('.sprite').style.left));
-    } else if (knockAwayTargetX !== null && label === 'KNOCKBACK') {
+    } else if (
+      knockAwayTargetX !== null &&
+      label === 'KNOCKBACK' &&
+      (await page.locator('.debug-arena-stage .sprite.is-hit').count()) > 0
+    ) {
       knockbackTargetX = await page
-        .locator('.sprite.is-hit')
+        .locator('.debug-arena-stage .sprite.is-hit')
         .evaluate((element) => Number.parseFloat(element.style.left));
     }
   }
