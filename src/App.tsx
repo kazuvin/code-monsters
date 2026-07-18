@@ -27,7 +27,6 @@ import {
   isBattleComplete,
   planBattleFrame,
   type BattleDamagePayload,
-  type BattleStatusChangePayload,
   type BattleStep,
   type DecisionTrace,
 } from './core/battle-engine';
@@ -89,9 +88,9 @@ const attackTypeLabels: Record<UnitDefinition['attackType'], string> = {
 };
 const actionLabel = (id: string) => {
   if (id.startsWith('status:')) {
-    const [, statusId, eventKind] = id.split(':');
+    const [, statusId] = id.split(':');
     const label = statusById.get(statusId)?.label ?? statusId;
-    return eventKind === 'decay' ? `${label}自然減衰` : `${label}ダメージ`;
+    return `${label}ダメージ`;
   }
   return instructionById.get(id)?.title ?? id;
 };
@@ -271,12 +270,10 @@ export function App() {
   const battleQueueRef = useRef<BattleStep[]>([]);
   const decisionTraceRef = useRef<DecisionTrace[]>([]);
   const damageTraceRef = useRef<BattleDamagePayload[]>([]);
-  const statusChangeTraceRef = useRef<BattleStatusChangePayload[]>([]);
   const replayRef = useRef<BattleReplay | null>(null);
   const gaugeTelemetryRef = useRef<GaugeTelemetry>({ totalSeconds: 0, emptySeconds: 0, fullSeconds: 0 });
   const [decisionReport, setDecisionReport] = useState<DecisionTrace[]>([]);
   const [damageReport, setDamageReport] = useState<BattleDamagePayload[]>([]);
-  const [statusChangeReport, setStatusChangeReport] = useState<BattleStatusChangePayload[]>([]);
   const lastStepAtRef = useRef(0);
   const [logsOpen, setLogsOpen] = useState(false);
   const [toast, setToast] = useState('');
@@ -293,10 +290,7 @@ export function App() {
         : '勝利'
       : '';
   const runComplete = winner === '勝利' && round === ENCOUNTERS.length;
-  const reportRows = useMemo(
-    () => summarizeDecisions(decisionReport, damageReport, statusChangeReport),
-    [decisionReport, damageReport, statusChangeReport],
-  );
+  const reportRows = useMemo(() => summarizeDecisions(decisionReport, damageReport), [decisionReport, damageReport]);
   const gaugeTelemetry = gaugeTelemetryRef.current;
   const gaugeEmptyRate =
     gaugeTelemetry.totalSeconds > 0 ? gaugeTelemetry.emptySeconds / gaugeTelemetry.totalSeconds : 0;
@@ -531,7 +525,6 @@ export function App() {
     battleQueueRef.current = [];
     decisionTraceRef.current = [];
     damageTraceRef.current = [];
-    statusChangeTraceRef.current = [];
     gaugeTelemetryRef.current = { totalSeconds: 0, emptySeconds: 0, fullSeconds: 0 };
     replayRef.current = {
       schemaVersion: GAME_SCHEMA_VERSION,
@@ -544,7 +537,6 @@ export function App() {
     };
     setDecisionReport([]);
     setDamageReport([]);
-    setStatusChangeReport([]);
     lastStepAtRef.current = 0;
     setFlash(null);
     setFighters(initialFighters);
@@ -613,7 +605,6 @@ export function App() {
     setLogsOpen(false);
     setDecisionReport([...decisionTraceRef.current]);
     setDamageReport([...damageTraceRef.current]);
-    setStatusChangeReport([...statusChangeTraceRef.current]);
     setPhase('result');
   }, []);
   const exportReplay = () => {
@@ -685,9 +676,6 @@ export function App() {
         battleQueueRef.current.push(...plan.steps);
         decisionTraceRef.current.push(...plan.decisions);
         damageTraceRef.current.push(...plan.steps.flatMap((step) => (step.damage ? [step.damage] : [])));
-        statusChangeTraceRef.current.push(
-          ...plan.steps.flatMap((step) => (step.statusChange ? [step.statusChange] : [])),
-        );
         if (replayRef.current && (plan.steps.length > 0 || plan.decisions.length > 0 || plan.complete))
           replayRef.current.frames.push({
             elapsed: elapsedRef.current,
@@ -737,7 +725,7 @@ export function App() {
       ? details.map(({ definition, instance }) => {
           if (definition.id === 'berserk') return '暴走';
           if (definition.id === 'poison')
-            return `${definition.label} ×${instance.stacks} / ${statusDamagePerSecond(definition.id) * BATTLE_CONFIG.statusDamageTickSeconds * instance.stacks} DMG / ${BATTLE_CONFIG.statusDamageTickSeconds}s / −1`;
+            return `${definition.label} ×${instance.stacks} / ${statusDamagePerSecond(definition.id) * BATTLE_CONFIG.statusDamageTickSeconds * instance.stacks} DMG / ${BATTLE_CONFIG.statusDamageTickSeconds}s`;
           if (definition.visual.showStacks) return `${definition.label} ×${instance.stacks}`;
           if (definition.visual.showRemaining && instance.remainingSeconds !== null)
             return `${definition.label} ${instance.remainingSeconds.toFixed(1)}秒`;
@@ -1521,7 +1509,7 @@ export function App() {
                 <section className="execution-report" aria-label="指示実行レポート">
                   <header>
                     <span>COMBAT EXECUTION TRACE</span>
-                    <b>指示・リアクション・状態ダメージ・自然減衰</b>
+                    <b>指示・リアクション・状態ダメージ</b>
                   </header>
                   <div className="report-row report-head">
                     <span>UNIT / INSTRUCTION</span>
@@ -1533,14 +1521,11 @@ export function App() {
                   </div>
                   <div className="report-scroll">
                     {reportRows.map((row) => {
-                      const isStatusChange = row.totalStatusStacksChanged > 0;
-                      const isStatusDamage = row.actionId.startsWith('status:') && !isStatusChange;
+                      const isStatusDamage = row.actionId.startsWith('status:');
                       return (
                         <div
-                          className={`report-row ${isStatusDamage ? 'report-status-damage' : ''} ${isStatusChange ? 'report-status-change' : ''}`}
-                          data-damage-source={
-                            isStatusChange ? 'status-change' : isStatusDamage ? 'status' : 'instruction'
-                          }
+                          className={`report-row ${isStatusDamage ? 'report-status-damage' : ''}`}
+                          data-damage-source={isStatusDamage ? 'status' : 'instruction'}
                           key={`${row.actorId}-${row.actionId}`}
                         >
                           <span>
@@ -1548,9 +1533,7 @@ export function App() {
                             <b>{actionLabel(row.actionId)}</b>
                           </span>
                           <strong>{row.executed}</strong>
-                          <strong className={isStatusChange ? 'report-status-delta' : 'report-damage'}>
-                            {isStatusChange ? `−${row.totalStatusStacksChanged}` : Math.round(row.totalDamage)}
-                          </strong>
+                          <strong className="report-damage">{Math.round(row.totalDamage)}</strong>
                           <em>{row.skipped.condition}</em>
                           <em>{row.skipped.range}</em>
                           <em>{row.skipped.cost}</em>

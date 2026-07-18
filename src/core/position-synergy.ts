@@ -54,7 +54,7 @@ export function analyzePositionSynergies(data: GameBalanceData): PositionSynergy
     const placers = data.instructions.filter((instruction) =>
       effectsByKind(instruction, 'placeZone').some((effect) => effect.zoneId === zone.id),
     );
-    const triggerCount = zone.trigger.kind === 'onEnter' && zone.trigger.effects.length > 0 ? 1 : 0;
+    const triggerCount = zone.trigger.effects.length > 0 ? 1 : 0;
     const statusLabels = [
       ...new Set(
         zone.trigger.effects.map(
@@ -84,7 +84,7 @@ export function analyzePositionSynergies(data: GameBalanceData): PositionSynergy
   const issues = packs.flatMap((pack) => {
     const checks = [
       ['MISSING_ZONE_PLACER', pack.placers.length > 0, '設置技がありません'],
-      ['MISSING_ZONE_TRIGGER', pack.triggerCount > 0, '侵入時効果がありません'],
+      ['MISSING_ZONE_TRIGGER', pack.triggerCount > 0, 'エリア発動効果がありません'],
       ['MISSING_SELF_MOVEMENT', pack.selfMovers.length > 0, '自発移動との連携がありません'],
       ['MISSING_FORCED_MOVEMENT', pack.forcedMovers.length > 0, '強制移動との連携がありません'],
     ] as const;

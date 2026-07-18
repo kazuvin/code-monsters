@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 13;
+        public const int SupportedSchemaVersion = 14;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -101,7 +101,6 @@ namespace CodeMonsters.Core
                 "speedScale",
                 "targetLock",
                 "damagePerSecond",
-                "decayStacksPerTick",
             };
             var supportedCounterplay = new HashSet<string>
             {
@@ -145,12 +144,6 @@ namespace CodeMonsters.Core
                     if (effect.Kind != "targetLock" && (!effect.Value.HasValue || effect.Value.Value <= 0))
                         throw new InvalidDataException($"Status {status.Id} numeric effect must own a positive value");
                     if (
-                        effect.Kind == "decayStacksPerTick"
-                        && effect.Value.HasValue
-                        && effect.Value.Value != System.Math.Floor(effect.Value.Value)
-                    )
-                        throw new InvalidDataException($"Status {status.Id} stack decay must be an integer");
-                    if (
                         (effect.Kind == "attackScale" || effect.Kind == "speedScale")
                         && status.Stacking != "replace"
                     )
@@ -173,7 +166,10 @@ namespace CodeMonsters.Core
                     || (zone.TargetFilter != "any" && zone.TargetFilter != "ally" && zone.TargetFilter != "enemy")
                 )
                     throw new InvalidDataException($"Battle zone {zone.Id} has invalid dimensions or target filter");
-                if (zone.Trigger.Kind != "onEnter" || zone.Trigger.Effects.Count == 0)
+                if (
+                    (zone.Trigger.Kind != "onEnter" && zone.Trigger.Kind != "onActionWhileInside")
+                    || zone.Trigger.Effects.Count == 0
+                )
                     throw new InvalidDataException($"Battle zone {zone.Id} has unsupported or empty trigger");
                 foreach (var effect in zone.Trigger.Effects)
                     if (effect.Kind != "applyStatus" || !statusIds.Contains(effect.StatusId) || effect.Stacks < 1)

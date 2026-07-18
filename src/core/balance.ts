@@ -213,7 +213,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'speedScale',
     'targetLock',
     'damagePerSecond',
-    'decayStacksPerTick',
   ]);
   const supportedEffectKinds = new Set([
     'damage',
@@ -240,7 +239,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 13) error('INVALID_SCHEMA_VERSION', 'schemaVersion は13以上である必要があります');
+  if (data.schemaVersion < 14) error('INVALID_SCHEMA_VERSION', 'schemaVersion は14以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -306,8 +305,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         error('INVALID_STATUS_EFFECT', `状態 ${status.id} の targetLock に value は指定できません`);
       if (effect.kind !== 'targetLock' && (typeof effect.value !== 'number' || effect.value <= 0))
         error('INVALID_STATUS_EFFECT', `状態 ${status.id} の数値効果は正の value を状態定義に持つ必要があります`);
-      if (effect.kind === 'decayStacksPerTick' && !Number.isInteger(effect.value))
-        error('INVALID_STATUS_EFFECT', `状態 ${status.id} の自然減衰スタック数は整数である必要があります`);
       if (['attackScale', 'speedScale'].includes(effect.kind) && status.stacking !== 'replace')
         error('UNSUPPORTED_STATUS_EFFECT_LIFECYCLE', `状態 ${status.id} の能力倍率は置換型の場合のみ対応しています`);
     }
@@ -325,10 +322,10 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!['any', 'ally', 'enemy'].includes(zone.targetFilter))
       error('UNSUPPORTED_BATTLE_ZONE_TARGET', `設置エリア ${zone.id} の対象 ${zone.targetFilter} は未対応です`);
     rejectUnknownKeys(zone.trigger, ['kind', 'effects'], `設置エリア ${zone.id}.trigger`);
-    if (zone.trigger.kind !== 'onEnter')
+    if (!['onEnter', 'onActionWhileInside'].includes(zone.trigger.kind))
       error('UNSUPPORTED_BATTLE_ZONE_TRIGGER', `設置エリア ${zone.id} の発動 ${zone.trigger.kind} は未対応です`);
     if (!Array.isArray(zone.trigger.effects) || zone.trigger.effects.length === 0)
-      error('MISSING_BATTLE_ZONE_EFFECT', `設置エリア ${zone.id} に侵入時効果がありません`);
+      error('MISSING_BATTLE_ZONE_EFFECT', `設置エリア ${zone.id} に発動効果がありません`);
     for (const effect of zone.trigger.effects ?? []) {
       rejectUnknownKeys(
         effect,

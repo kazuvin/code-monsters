@@ -19,6 +19,9 @@ await page.locator('.unit-tabs button').filter({ hasText: 'メンダー' }).clic
 await page.getByRole('button', { name: /売却/ }).click();
 await toxinCard.getByRole('button', { name: /購入/ }).click();
 await page.locator('.inventory button').filter({ hasText: 'トキシン' }).click();
+const toxinProgram = page.locator('.program-list.sentence-list').first();
+await toxinProgram.locator('.sentence-block').first().locator('button.word-slot').nth(1).click();
+await page.locator('.choice-list button').filter({ hasText: '射程範囲外' }).click();
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
@@ -60,26 +63,22 @@ const poisonReport = await page
       0,
     ),
   }));
-const poisonDecayReport = await page
+const unexpectedDecayRows = await page
   .locator('.execution-report .report-row[data-damage-source="status-change"]')
-  .evaluateAll((rows) => ({
-    count: rows.length,
-    text: rows.map((row) => row.textContent?.replace(/\s+/g, ' ').trim() ?? '').join(' | '),
-  }));
+  .count();
 await page.screenshot({ path: '/tmp/code-monsters-poison-report.png', fullPage: true });
 await browser.close();
 
-console.log(JSON.stringify({ poison, status, poisonReport, poisonDecayReport, overflow, errors }, null, 2));
+console.log(JSON.stringify({ poison, status, poisonReport, unexpectedDecayRows, overflow, errors }, null, 2));
 
-if (!poison.chip.includes('POISON') || !poison.chip.includes('×1') || poison.chipDisplay === 'none')
+if (!poison.chip.includes('POISON') || !/×\d+/.test(poison.chip) || poison.chipDisplay === 'none')
   throw new Error('戦場ユニットに毒状態ラベルが表示されていません');
 if (poison.surfaceAnimation === 'none' || poison.hazeAnimation === 'none' || poison.bodyShadow === 'none')
   throw new Error('毒状態の表面・粒子エフェクトが適用されていません');
-if (!status.tag.startsWith('毒 ×') || !status.text.includes('毒'))
+if (!status.tag.startsWith('毒 ×') || !status.text.includes('毒') || status.tag.includes('−1'))
   throw new Error('ユニット状態パネルに毒状態が表示されていません');
 if (poisonReport.count === 0 || !poisonReport.text.includes('毒ダメージ') || poisonReport.damage <= 0)
   throw new Error('戦闘結果レポートに毒の継続ダメージが集計されていません');
-if (poisonDecayReport.count === 0 || !poisonDecayReport.text.includes('毒自然減衰'))
-  throw new Error('戦闘結果レポートに毒の自然減衰が集計されていません');
+if (unexpectedDecayRows > 0) throw new Error('戦闘結果レポートに廃止済みの毒自然減衰が残っています');
 if (overflow > 0) throw new Error('毒表示で画面が横にはみ出しています');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

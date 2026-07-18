@@ -21,6 +21,7 @@ import {
 } from './rules.ts';
 import { applyInstructionStatusEffects, effectByKind, requireEffect } from './instruction-effects.ts';
 import {
+  applyZoneActionTriggers,
   applyZoneEntries,
   battleZoneById,
   createBattleZone,
@@ -28,15 +29,7 @@ import {
   type BattleZoneChange,
   type ZoneTrigger,
 } from './battle-zones.ts';
-import {
-  clearActionStatuses,
-  consumeStatus,
-  getStatus,
-  hasStatus,
-  statusById,
-  statusDamagePerSecond,
-  statusStackDecayPerTick,
-} from './statuses.ts';
+import { clearActionStatuses, getStatus, hasStatus, statusById, statusDamagePerSecond } from './statuses.ts';
 
 type MutableFighterFields = Pick<
   Fighter,
@@ -53,24 +46,10 @@ export type BattleDamagePayload = {
   source: 'normal' | 'reaction' | 'status';
   statusId?: string;
 };
-export type BattleStatusChangePayload = {
-  actorId: string;
-  actorName: string;
-  team: Fighter['team'];
-  targetId: string;
-  targetName: string;
-  actionId: string;
-  statusId: string;
-  kind: 'decay';
-  stacks: number;
-  stacksBefore: number;
-  stacksAfter: number;
-};
 export type BattleStep = {
   flash: BattleFlash;
   log?: BattleLogPayload;
   damage?: BattleDamagePayload;
-  statusChange?: BattleStatusChangePayload;
   updates: FighterUpdate[];
   zoneChanges?: BattleZoneChange[];
   zoneTriggers?: ZoneTrigger[];
@@ -154,15 +133,59 @@ export function planBattleFrame({
   };
   const canAffordAbility = (fighter: Fighter, abilityCost: number) =>
     fighter.abilityGauge + Number.EPSILON >= abilityCost;
-  const spendAbility = (fighterId: string, abilityCost: number) => {
-    if (abilityCost <= 0) return;
-    const fighter = next.find((candidate) => candidate.instanceId === fighterId);
-    if (!fighter) return;
-    const abilityGauge = Math.max(0, fighter.abilityGauge - abilityCost);
-    setNext(fighterId, { abilityGauge });
-    displayNext = applyFighterUpdates(displayNext, [{ id: fighterId, values: { abilityGauge } }]);
-  };
   const queueStep = (step: BattleStep) => steps.push(step);
+  const beginAction = (fighterId: string, abilityCost: number): Fighter | null => {
+    const fighter = next.find((candidate) => candidate.instanceId === fighterId);
+    if (!fighter) return null;
+    const triggered = applyZoneActionTriggers(fighter, nextZones);
+    if (triggered.triggers.length > 0) {
+      const values = {
+        statuses: triggered.fighter.statuses,
+        attack: triggered.fighter.attack,
+        speed: triggered.fighter.speed,
+      };
+      setNext(fighterId, values);
+      displayNext = applyFighterUpdates(displayNext, [{ id: fighterId, values }]);
+      const definitions = triggered.triggers
+        .map((trigger) => nextZones.find((zone) => zone.instanceId === trigger.zoneId))
+        .map((zone) => (zone ? battleZoneById.get(zone.zoneId) : undefined))
+        .filter((definition) => definition !== undefined);
+      const zoneLabels = [...new Set(definitions.map((definition) => definition.label))];
+      const effectLabels = [
+        ...new Set(
+          definitions.flatMap((definition) =>
+            definition.trigger.effects.map((effect) => {
+              const label = statusById.get(effect.statusId)?.label ?? effect.statusId;
+              return `${label} +${effect.stacks}`;
+            }),
+          ),
+        ),
+      ];
+      queueStep({
+        flash: {
+          id: fighterId,
+          kind: 'status',
+          actionLabel: effectLabels.join(' / ') || 'エリア効果',
+          n: 0,
+        },
+        log: {
+          actor: fighter.name,
+          text: `${zoneLabels.join(' / ')}｜行動時効果：${effectLabels.join(' / ')}`,
+          type: 'info',
+        },
+        updates: [{ id: fighterId, values }],
+        zoneTriggers: triggered.triggers,
+      });
+    }
+    if (abilityCost > 0) {
+      const current = next.find((candidate) => candidate.instanceId === fighterId);
+      if (!current) return null;
+      const abilityGauge = Math.max(0, current.abilityGauge - abilityCost);
+      setNext(fighterId, { abilityGauge });
+      displayNext = applyFighterUpdates(displayNext, [{ id: fighterId, values: { abilityGauge } }]);
+    }
+    return next.find((candidate) => candidate.instanceId === fighterId) ?? null;
+  };
   const moveThroughZones = (fighter: Fighter, x: number) => {
     const entry = applyZoneEntries(fighter, fighter.x, x, nextZones);
     return {
@@ -176,8 +199,9 @@ export function planBattleFrame({
       : (DEFAULT_REACTIONS[fighter.id] ?? null);
 
   const queueReaction = (reactorId: string, trigger: ReactionTrigger, sourceId: string, targetId: string) => {
-    const reactor = next.find((fighter) => fighter.instanceId === reactorId);
-    if (!reactor) return;
+    const foundReactor = next.find((fighter) => fighter.instanceId === reactorId);
+    if (!foundReactor) return;
+    let reactor: Fighter = foundReactor;
     const reaction = reactionFor(reactor);
     if (!reaction || reaction.trigger !== trigger || reactor.hp <= 0 || reactor.reactionCooldown > 0) return;
     const source = next.find((fighter) => fighter.instanceId === sourceId);
@@ -197,7 +221,7 @@ export function planBattleFrame({
 
     if (instruction.action === 'guard') {
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
-      spendAbility(reactor.instanceId, instruction.abilityCost);
+      reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
       const guarded = applyInstructionStatusEffects(reactor, instruction, reactor.instanceId, 'actor');
       const values = {
         statuses: guarded.statuses,
@@ -215,7 +239,7 @@ export function planBattleFrame({
       const application = requireEffect(instruction, 'applyStatus');
       if (hasStatus(reactor, application.statusId)) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
-      spendAbility(reactor.instanceId, instruction.abilityCost);
+      reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
       const boost = activateBerserker(reactor, instruction);
       const values = { ...boost, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
@@ -232,7 +256,7 @@ export function planBattleFrame({
     }
     if (instruction.action === 'taunt') {
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
-      spendAbility(reactor.instanceId, instruction.abilityCost);
+      reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
       const application = requireEffect(instruction, 'applyStatus');
       const duration = application.durationSeconds ?? 0;
       const enemyUpdates = next
@@ -261,7 +285,7 @@ export function planBattleFrame({
     if (instruction.action === 'retreat') {
       if (!target || target.hp <= 0) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
-      spendAbility(reactor.instanceId, instruction.abilityCost);
+      reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
       const x = retreatFrom(reactor, target, requireEffect(instruction, 'move').distance);
       const movement = moveThroughZones(reactor, x);
       const values = { ...movement.values, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
@@ -277,7 +301,7 @@ export function planBattleFrame({
     if (instruction.action === 'jump') {
       if (!target || target.hp <= 0) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
-      spendAbility(reactor.instanceId, instruction.abilityCost);
+      reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
       const x = jumpToward(reactor, target, requireEffect(instruction, 'move').distance);
       const movement = moveThroughZones(reactor, x);
       const values = { ...movement.values, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
@@ -293,7 +317,7 @@ export function planBattleFrame({
     if (instruction.action === 'move') {
       if (!target || target.hp <= 0 || distanceTo(reactor, target) <= actionRange(reactor, instruction)) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
-      spendAbility(reactor.instanceId, instruction.abilityCost);
+      reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
       const x = advanceToward(reactor, target, requireEffect(instruction, 'move').distance);
       const movement = moveThroughZones(reactor, x);
       const values = { ...movement.values, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
@@ -308,7 +332,7 @@ export function planBattleFrame({
     }
     if (!target || target.hp <= 0) return;
     if (!canAffordAbility(reactor, instruction.abilityCost)) return;
-    spendAbility(reactor.instanceId, instruction.abilityCost);
+    reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
     if (instruction.action === 'pull') {
       const reactionCooldown = BATTLE_CONFIG.reactionCooldownSeconds;
       if (distanceTo(reactor, target) > actionRange(reactor, instruction)) {
@@ -504,16 +528,13 @@ export function planBattleFrame({
       if (!definition || damagePerSecond <= 0 || tickCount <= 0) continue;
 
       const source = next.find((fighter) => fighter.instanceId === status.sourceId);
-      const decayStacksPerTick = statusStackDecayPerTick(status.statusId);
       for (let tick = 0; tick < tickCount; tick += 1) {
         const liveTarget = next.find((fighter) => fighter.instanceId === target.instanceId);
         if (!liveTarget || liveTarget.hp <= 0) break;
         const liveStatus = getStatus(liveTarget, status.statusId);
         if (!liveStatus) break;
-        const stacksBefore = liveStatus.stacks;
-        const damagePerTick = Number(
-          (damagePerSecond * BATTLE_CONFIG.statusDamageTickSeconds * stacksBefore).toFixed(4),
-        );
+        const stacks = liveStatus.stacks;
+        const damagePerTick = Number((damagePerSecond * BATTLE_CONFIG.statusDamageTickSeconds * stacks).toFixed(4));
         const amount = Math.min(liveTarget.hp, damagePerTick);
         const hp = Math.max(0, liveTarget.hp - amount);
         const tickedStatuses = liveTarget.statuses.map((candidate) =>
@@ -527,25 +548,20 @@ export function planBattleFrame({
               }
             : candidate,
         );
-        const tickedTarget = { ...liveTarget, hp, statuses: tickedStatuses };
-        const decayStacks = Math.min(stacksBefore, decayStacksPerTick);
-        const decayedTarget =
-          decayStacks > 0 ? consumeStatus(tickedTarget, status.statusId, decayStacks).fighter : tickedTarget;
-        const stacksAfter = getStatus(decayedTarget, status.statusId)?.stacks ?? 0;
         const values = {
           hp,
-          statuses: decayedTarget.statuses,
-          attack: decayedTarget.attack,
-          speed: decayedTarget.speed,
+          statuses: tickedStatuses,
+          attack: liveTarget.attack,
+          speed: liveTarget.speed,
         };
         setNext(liveTarget.instanceId, values);
         displayNext = applyFighterUpdates(displayNext, [
           {
             id: liveTarget.instanceId,
             values: {
-              statuses: decayedTarget.statuses,
-              attack: decayedTarget.attack,
-              speed: decayedTarget.speed,
+              statuses: tickedStatuses,
+              attack: liveTarget.attack,
+              speed: liveTarget.speed,
             },
           },
         ]);
@@ -560,7 +576,7 @@ export function planBattleFrame({
           },
           log: {
             actor: liveTarget.name,
-            text: `${definition.label} ×${stacksBefore}→×${stacksAfter}｜${Math.round(amount)} 継続ダメージ｜${decayStacks} 自然減衰`,
+            text: `${definition.label} ×${stacks}｜${Math.round(amount)} 継続ダメージ`,
             type: 'hit',
           },
           damage: {
@@ -572,23 +588,6 @@ export function planBattleFrame({
             source: 'status',
             statusId: status.statusId,
           },
-          ...(decayStacks > 0
-            ? {
-                statusChange: {
-                  actorId: source?.instanceId ?? `status:${status.statusId}`,
-                  actorName: source?.name ?? definition.label,
-                  team: source?.team ?? liveTarget.team,
-                  targetId: liveTarget.instanceId,
-                  targetName: liveTarget.name,
-                  actionId: `status:${status.statusId}:decay`,
-                  statusId: status.statusId,
-                  kind: 'decay' as const,
-                  stacks: decayStacks,
-                  stacksBefore,
-                  stacksAfter,
-                },
-              }
-            : {}),
           updates: [{ id: liveTarget.instanceId, values }],
         });
         if (hp <= 0)
@@ -635,8 +634,9 @@ export function planBattleFrame({
     let blockedByCost = false;
 
     for (const [blockIndex, block] of program.slice(0, actor.programLimit).entries()) {
-      const current = next.find((fighter) => fighter.instanceId === actor.instanceId);
-      if (!current || current.hp <= 0) break;
+      const foundCurrent = next.find((fighter) => fighter.instanceId === actor.instanceId);
+      if (!foundCurrent || foundCurrent.hp <= 0) break;
+      let current: Fighter = foundCurrent;
       const currentEnemies = next.filter((fighter) => fighter.team !== current.team && fighter.hp > 0);
       const currentAllies = next.filter((fighter) => fighter.team === current.team && fighter.hp > 0);
       if (currentEnemies.length === 0 || currentAllies.length === 0) break;
@@ -697,27 +697,13 @@ export function planBattleFrame({
         continue;
       }
       traceDecision('executed');
-      spendAbility(current.instanceId, instruction.abilityCost);
+      current = beginAction(current.instanceId, instruction.abilityCost) ?? current;
       acted = true;
 
       if (instruction.action === 'field') {
         const effect = requireEffect(instruction, 'placeZone');
         const zone = createBattleZone(effect, current, target, elapsed);
         nextZones = [...nextZones, zone];
-        const updates: FighterUpdate[] = [];
-        const zoneTriggers: ZoneTrigger[] = [];
-        for (const fighter of next.filter((candidate) => candidate.hp > 0)) {
-          const entry = applyZoneEntries(fighter, fighter.x, fighter.x, [zone], true);
-          if (entry.triggers.length === 0) continue;
-          const values = {
-            statuses: entry.fighter.statuses,
-            attack: entry.fighter.attack,
-            speed: entry.fighter.speed,
-          };
-          setNext(fighter.instanceId, values);
-          updates.push({ id: fighter.instanceId, values });
-          zoneTriggers.push(...entry.triggers);
-        }
         const definition = battleZoneById.get(zone.zoneId);
         queueStep({
           flash: { id: current.instanceId, kind: 'field', zoneX: zone.x, actionLabel: instruction.short, n: 0 },
@@ -726,9 +712,8 @@ export function planBattleFrame({
             text: `${instruction.short}｜${definition?.label ?? zone.zoneId}を戦線 ${Math.round(zone.x)} に設置`,
             type: 'info',
           },
-          updates,
+          updates: [],
           zoneChanges: [{ kind: 'add', zone }],
-          zoneTriggers,
         });
       } else if (instruction.action === 'taunt') {
         const statusApplication = requireEffect(instruction, 'applyStatus');

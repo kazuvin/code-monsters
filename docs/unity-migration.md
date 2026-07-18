@@ -121,11 +121,17 @@ Allow stacking statuses to set `maxStacks` to `null`, meaning that applications 
 
 Version 13 changes poison to an uncapped, naturally decaying status. `battle.statusDamageTickSeconds` is now 2, poison deals 1 damage per second per stack (therefore 2 fixed damage per stack on each tick), and then loses 1 stack. Damage and decay use the same deterministic queued step, while replays additionally serialize a `statusChange` event containing the source, target, status ID, amount, and before/after stack counts. Reports aggregate poison damage and natural decay separately. `corrosion-burst` continues to consume two stacks for 18 bonus damage.
 
+## Schema version 14 migration
+
+Remove the `decayStacksPerTick` status effect and the replay-only `statusChange` decay event. Poison remains uncapped and continues to deal 2 fixed damage per stack every 2 seconds, but stacks now persist until a skill explicitly consumes or removes them. Result reports continue to aggregate poison and other status damage through the existing serializable damage event.
+
+Battle-zone triggers may now use `onActionWhileInside`. The canonical `toxic-cloud` no longer fires on placement, entry, or path crossing. Instead, each successfully executed normal action or reaction adds 1 poison stack when the acting unit's action-start position is inside the zone. A skipped instruction does not fire the trigger; an executed miss does. Importers should retain `onEnter` support for compatible zone data, add `onActionWhileInside` to the finite trigger allowlist, and evaluate the trigger before resolving the action so movement uses the start position.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v13 DTO loading and stable-ID/reference validation, including the 2vs2 team-size contract, uncapped decaying status damage, finite instruction effects, battle zones, and canonical status values
+- schema-v14 DTO loading and stable-ID/reference validation, including the 2vs2 team-size contract, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

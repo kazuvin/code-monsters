@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 13,
+  "schemaVersion": 14,
   "battle": {
     "teamSize": 2,
     "tickSeconds": 0.22,
@@ -64,12 +64,12 @@
     {
       "id": "toxic-cloud",
       "label": "毒エリア",
-      "description": "侵入したユニットを敵味方の区別なく毒にする設置エリア",
+      "description": "範囲内で行動したユニットに、行動するたび毒を1スタック付与する設置エリア",
       "radius": 4,
       "durationSeconds": 8,
       "targetFilter": "any",
       "trigger": {
-        "kind": "onEnter",
+        "kind": "onActionWhileInside",
         "effects": [{ "kind": "applyStatus", "statusId": "poison", "stacks": 1 }]
       },
       "visual": {
@@ -83,7 +83,7 @@
     {
       "id": "poison",
       "label": "毒",
-      "description": "2秒ごとに1スタックあたり2の固定ダメージを与え、発動後に1スタック減衰",
+      "description": "2秒ごとに1スタックあたり2の固定ダメージを与え、自然減衰しない",
       "stacking": "stack",
       "maxStacks": null,
       "clearOnAction": false,
@@ -92,7 +92,7 @@
         "mode": "combo",
         "counterplay": {
           "kind": "consumedBySkill",
-          "description": "2秒ごとに1スタック自然減衰し、増幅技で2スタックを消費する"
+          "description": "自然減衰せず、増幅技で2スタックを消費する"
         }
       },
       "debug": { "control": "stacks", "min": 0, "max": 20, "step": 1 },
@@ -104,7 +104,7 @@
         "showStacks": true,
         "showRemaining": false
       },
-      "effects": [{ "kind": "damagePerSecond", "value": 1 }, { "kind": "decayStacksPerTick", "value": 1 }]
+      "effects": [{ "kind": "damagePerSecond", "value": 1 }]
     },
     {
       "id": "vulnerable",

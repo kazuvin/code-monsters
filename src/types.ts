@@ -97,8 +97,7 @@ export type StatusEffectKind =
   | 'attackScale'
   | 'speedScale'
   | 'targetLock'
-  | 'damagePerSecond'
-  | 'decayStacksPerTick';
+  | 'damagePerSecond';
 
 export type StatusEffectDefinition = {
   kind: StatusEffectKind;
@@ -152,6 +151,7 @@ export type StatusInstance = {
 };
 
 export type BattleZoneTargetFilter = 'any' | 'ally' | 'enemy';
+export type BattleZoneTriggerKind = 'onEnter' | 'onActionWhileInside';
 export type BattleZoneTriggerEffect = Omit<ApplyStatusEffect, 'target'>;
 export type BattleZoneDefinition = {
   id: string;
@@ -161,7 +161,7 @@ export type BattleZoneDefinition = {
   durationSeconds: number;
   targetFilter: BattleZoneTargetFilter;
   trigger: {
-    kind: 'onEnter';
+    kind: BattleZoneTriggerKind;
     effects: BattleZoneTriggerEffect[];
   };
   visual: {

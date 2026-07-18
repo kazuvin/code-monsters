@@ -76,7 +76,11 @@ internal static class UnityCoreSmoke
         actor.Statuses.Add(new StatusInstance { StatusId = "inspired", Stacks = 1 });
         if (!BattleRules.MatchesCondition(selfInspired, actor, target))
             throw new InvalidDataException("Actor-owned inspired condition did not match an enemy target");
-        if (toxicCloud.TargetFilter != "any" || toxicCloud.Trigger.Effects.Single().StatusId != "poison")
+        if (
+            toxicCloud.TargetFilter != "any"
+            || toxicCloud.Trigger.Kind != "onActionWhileInside"
+            || toxicCloud.Trigger.Effects.Single().StatusId != "poison"
+        )
             throw new InvalidDataException("Generic battle zone trigger was not imported");
         if (!toxicFlask.Effects.Any(effect => effect.Kind == "placeZone" && effect.ZoneId == "toxic-cloud"))
             throw new InvalidDataException("Battle zone placement skill was not imported");
@@ -86,9 +90,9 @@ internal static class UnityCoreSmoke
             data.Battle.StatusDamageTickSeconds != 2
             || poison.MaxStacks.HasValue
             || !poison.Effects.Any(effect => effect.Kind == "damagePerSecond" && effect.Value == 1)
-            || !poison.Effects.Any(effect => effect.Kind == "decayStacksPerTick" && effect.Value == 1)
+            || poison.Effects.Any(effect => effect.Kind == "decayStacksPerTick")
         )
-            throw new InvalidDataException("Unbounded decaying poison was not imported");
+            throw new InvalidDataException("Unbounded non-decaying poison was not imported");
 
         Console.WriteLine(
             $"{{\"schemaVersion\":{data.SchemaVersion},\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"

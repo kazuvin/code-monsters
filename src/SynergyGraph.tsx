@@ -237,13 +237,13 @@ function PositionDetail({ pack, onClose }: { pack: PositionSynergyPack; onClose:
           ))}
           <section className="counterplay">
             <header>
-              <span>侵入時効果</span>
+              <span>行動時効果</span>
               <b>{pack.triggerCount}</b>
             </header>
             <div>
               <span className="synergy-detail-item">
                 <b>{pack.statusLabels.join(' / ')}</b>
-                <small>敵味方を問わず移動経路で判定</small>
+                <small>敵味方を問わず行動開始地点で判定</small>
               </span>
             </div>
           </section>

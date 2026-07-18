@@ -20,7 +20,7 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(13));
+            Assert.That(data.SchemaVersion, Is.EqualTo(14));
             Assert.That(data.Battle.TeamSize, Is.EqualTo(2));
             Assert.That(data.Battle.StatusDamageTickSeconds, Is.EqualTo(2));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));
@@ -30,7 +30,7 @@ namespace CodeMonsters.Core.Tests
             var poison = data.Statuses.Single(status => status.Id == "poison");
             Assert.That(poison.MaxStacks, Is.Null);
             Assert.That(poison.Effects.Select(effect => effect.Kind), Does.Contain("damagePerSecond"));
-            Assert.That(poison.Effects.Select(effect => effect.Kind), Does.Contain("decayStacksPerTick"));
+            Assert.That(poison.Effects.Select(effect => effect.Kind), Does.Not.Contain("decayStacksPerTick"));
             Assert.That(data.BattleZones.Select(zone => zone.Id), Does.Contain("toxic-cloud"));
             Assert.That(data.Encounters, Has.Count.EqualTo(5));
             Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 2), Is.True);
@@ -39,14 +39,14 @@ namespace CodeMonsters.Core.Tests
         }
 
         [Test]
-        public void BattleZoneImportsFinitePlacementAndDetectsPathEntry()
+        public void BattleZoneImportsActionTriggerAndKeepsPathUtility()
         {
             var zone = data.BattleZones.Single(candidate => candidate.Id == "toxic-cloud");
             var skill = data.Instructions.Single(candidate => candidate.Id == "throw-toxic-flask");
             var effect = skill.Effects.Single(candidate => candidate.Kind == "placeZone");
 
             Assert.That(zone.TargetFilter, Is.EqualTo("any"));
-            Assert.That(zone.Trigger.Kind, Is.EqualTo("onEnter"));
+            Assert.That(zone.Trigger.Kind, Is.EqualTo("onActionWhileInside"));
             Assert.That(zone.Trigger.Effects.Single().StatusId, Is.EqualTo("poison"));
             Assert.That(effect.ZoneId, Is.EqualTo(zone.Id));
             Assert.That(BattleRules.PathEntersZone(20, 80, 50, zone.Radius), Is.True);

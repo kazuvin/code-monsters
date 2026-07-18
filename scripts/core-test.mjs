@@ -28,12 +28,12 @@ import { createShop } from '../src/core/shop.ts';
 import { applyStatus, hasStatus, statusRemaining, statusStacks, statusTargetId } from '../src/core/statuses.ts';
 import { analyzeSynergies } from '../src/core/synergy.ts';
 import { analyzePositionSynergies } from '../src/core/position-synergy.ts';
-import { applyZoneEntries, pathEntersZone } from '../src/core/battle-zones.ts';
+import { applyZoneActionTriggers, applyZoneEntries, pathEntersZone } from '../src/core/battle-zones.ts';
 import { BATTLE_CONFIG, DEBUG_TRAINING_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
 const fighters = createBattleFighters(team);
-assert.equal(GAME_DATA.schemaVersion, 13, '無制限スタックと自然減衰対応のスキーマではありません');
+assert.equal(GAME_DATA.schemaVersion, 14, '減衰なし毒と行動時エリア対応のスキーマではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeMax, 10, 'アビリティゲージの最大値が10ではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeInitial, 8, '技を連続使用できる初期ゲージ量ではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeRegenPerSecond, 1.5, 'アビリティゲージの回復速度が不正です');
@@ -554,9 +554,6 @@ const poisonDamageStep = periodicPoisonPlan.steps.find((step) => step.damage?.so
 assert.equal(poisonDamageStep?.damage?.statusId, 'poison', '毒の継続ダメージに状態IDがありません');
 assert.equal(poisonDamageStep?.damage?.actorId, toxinActor.instanceId, '毒ダメージが付与元へ帰属していません');
 assert.equal(poisonDamageStep?.damage?.amount, 4, '毒2スタックが2秒ごとに4ダメージになっていません');
-assert.equal(poisonDamageStep?.statusChange?.kind, 'decay', '毒ダメージ後の自然減衰イベントがありません');
-assert.equal(poisonDamageStep?.statusChange?.stacksBefore, 2, '毒の減衰前スタックが記録されていません');
-assert.equal(poisonDamageStep?.statusChange?.stacksAfter, 1, '毒がダメージ発生後に1スタック減衰しません');
 const poisonDamageApplied = applyBattleStep(periodicPoisonPlan.fighters, poisonDamageStep);
 assert.equal(
   poisonDamageApplied.find((fighter) => fighter.instanceId === periodicPoisonTarget.instanceId)?.hp,
@@ -568,19 +565,14 @@ assert.equal(
     poisonDamageApplied.find((fighter) => fighter.instanceId === periodicPoisonTarget.instanceId),
     'poison',
   ),
-  1,
-  '毒の自然減衰が戦闘状態へ反映されていません',
+  2,
+  '毒ダメージの発生時にスタックが減少しています',
 );
 const poisonDamageReport = summarizeDecisions([], [poisonDamageStep.damage]).find(
   (row) => row.actionId === 'status:poison',
 );
 assert.equal(poisonDamageReport?.executed, 1, '毒ダメージの発生回数がレポートへ集計されていません');
 assert.equal(poisonDamageReport?.totalDamage, 4, '毒ダメージがレポートへ集計されていません');
-const poisonDecayReport = summarizeDecisions([], [], [poisonDamageStep.statusChange]).find(
-  (row) => row.actionId === 'status:poison:decay',
-);
-assert.equal(poisonDecayReport?.executed, 1, '毒の自然減衰回数がレポートへ集計されていません');
-assert.equal(poisonDecayReport?.totalStatusStacksChanged, 1, '毒の自然減衰量がレポートへ集計されていません');
 
 const vulnerabilityProducer = instructionById.get('reveal-weakness');
 const vulnerabilityConsumer = instructionById.get('pierce-vulnerability');
@@ -692,8 +684,17 @@ const chillFighters = createBattleFighters(chillTeam).map((fighter) => ({
           : 70,
   cooldown: fighter.instanceId === 'chill-volt' ? 0 : 10,
 }));
+const chillActionZone = {
+  instanceId: 'chill-action-zone',
+  zoneId: 'toxic-cloud',
+  x: 41,
+  remainingSeconds: 8,
+  sourceId: 'chill-zone-source',
+  sourceTeam: 'ally',
+};
 const chillPlan = planBattleFrame({
   fighters: chillFighters,
+  zones: [chillActionZone],
   team: chillTeam,
   dt: BATTLE_CONFIG.tickSeconds,
   elapsed: BATTLE_CONFIG.tickSeconds,
@@ -709,6 +710,22 @@ assert.ok(
   (coolantReactionTarget.values.speed ?? Number.POSITIVE_INFINITY) <
     (chillFighters.find((fighter) => fighter.instanceId === coolantReactionTarget.id)?.speed ?? 0),
   '実戦の冷却弾リアクションが対象速度を低下させません',
+);
+assert.equal(
+  statusStacks(
+    chillPlan.fighters.find((fighter) => fighter.instanceId === 'chill-mender'),
+    'poison',
+  ),
+  1,
+  '毒床内で発動したメンダーのリアクションに毒が1スタック付与されません',
+);
+assert.equal(
+  statusStacks(
+    chillPlan.fighters.find((fighter) => fighter.instanceId === 'chill-volt'),
+    'poison',
+  ),
+  2,
+  '毒床内の通常行動と追撃リアクションがそれぞれ毒を1スタック付与しません',
 );
 
 const inspiredProducer = instructionById.get('tactical-support');
@@ -1190,8 +1207,13 @@ const crossingZone = {
 };
 const crossingFighter = { ...fighters[0], x: 20, statuses: [] };
 const crossed = applyZoneEntries(crossingFighter, 20, 80, [crossingZone]);
-assert.equal(statusStacks(crossed.fighter, 'poison'), 1, '敵味方共通エリアの侵入時状態を適用できません');
-assert.equal(crossed.triggers.length, 1, 'エリア侵入イベントを記録できません');
+assert.equal(statusStacks(crossed.fighter, 'poison'), 0, '毒床への侵入だけで毒が付与されています');
+assert.equal(crossed.triggers.length, 0, '毒床への侵入が行動時トリガーとして誤記録されています');
+const actedInsideZone = applyZoneActionTriggers({ ...crossingFighter, x: 50 }, [crossingZone]);
+assert.equal(statusStacks(actedInsideZone.fighter, 'poison'), 1, '毒床内の行動時効果を適用できません');
+assert.equal(actedInsideZone.triggers[0]?.kind, 'onActionWhileInside', '行動時トリガー種別を記録できません');
+const actedOutsideZone = applyZoneActionTriggers({ ...crossingFighter, x: 20 }, [crossingZone]);
+assert.equal(statusStacks(actedOutsideZone.fighter, 'poison'), 0, '毒床外の行動に毒が付与されています');
 const zoneMoveUnit = createInventoryUnit('volt', 'zone-mover');
 zoneMoveUnit.program = [{ targetId: 'nearestEnemy', conditionId: 'targetOutOfRange', actionId: 'approach' }];
 const zoneMoveFighters = createBattleFighters([zoneMoveUnit]).map((fighter) => {
@@ -1208,15 +1230,105 @@ const zoneMovePlan = planBattleFrame({
   previousElapsed: 0,
 });
 const zoneMoveStep = zoneMovePlan.steps.find((step) => step.flash.id === 'zone-mover');
-assert.equal(zoneMoveStep?.zoneTriggers?.length, 1, '実際の移動ステップがエリア侵入を記録できません');
+assert.equal(zoneMoveStep?.zoneTriggers?.length ?? 0, 0, '毒床外から始めた移動が行動時効果を誤発動しています');
 const zoneMovedFighters = zoneMoveStep ? applyBattleStep(zoneMoveFighters, zoneMoveStep) : zoneMoveFighters;
 assert.equal(
   statusStacks(
     zoneMovedFighters.find((fighter) => fighter.instanceId === 'zone-mover'),
     'poison',
   ),
-  1,
-  '実際の移動ステップへエリア状態が反映されません',
+  0,
+  '毒床への移動だけで毒が付与されています',
+);
+
+const zoneActionUnit = createInventoryUnit('volt', 'zone-actor');
+zoneActionUnit.program = [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }];
+const zoneActionFighters = createBattleFighters([zoneActionUnit]).map((fighter) => {
+  if (fighter.instanceId === 'zone-actor') return { ...fighter, x: 45, cooldown: 0 };
+  if (fighter.team === 'enemy' && fighter.id === 'relay') return { ...fighter, x: 52, cooldown: 99 };
+  return { ...fighter, hp: 0, cooldown: 99 };
+});
+const firstZoneActionPlan = planBattleFrame({
+  fighters: zoneActionFighters,
+  zones: [{ ...crossingZone, x: 45 }],
+  team: [zoneActionUnit],
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+assert.equal(
+  statusStacks(
+    firstZoneActionPlan.fighters.find((fighter) => fighter.instanceId === 'zone-actor'),
+    'poison',
+  ),
+  2,
+  '毒床内の通常行動と追撃リアクションのたびに毒が増えていません',
+);
+const secondZoneActionPlan = planBattleFrame({
+  fighters: firstZoneActionPlan.fighters.map((fighter) =>
+    fighter.instanceId === 'zone-actor' ? { ...fighter, cooldown: 0, reactionCooldown: 99 } : fighter,
+  ),
+  zones: firstZoneActionPlan.zones,
+  team: [zoneActionUnit],
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds * 2,
+  previousElapsed: BATTLE_CONFIG.tickSeconds,
+});
+assert.equal(
+  statusStacks(
+    secondZoneActionPlan.fighters.find((fighter) => fighter.instanceId === 'zone-actor'),
+    'poison',
+  ),
+  3,
+  '毒床内の次の行動で既存スタックへ1追加されません',
+);
+
+const blockedZoneUnit = createInventoryUnit('volt', 'zone-blocked');
+blockedZoneUnit.program = [{ targetId: 'nearestEnemy', conditionId: 'always', actionId: 'throw-toxic-flask' }];
+const blockedZoneFighters = createBattleFighters([blockedZoneUnit]).map((fighter) => {
+  if (fighter.instanceId === 'zone-blocked') return { ...fighter, x: 45, cooldown: 0, abilityGauge: 0 };
+  if (fighter.team === 'enemy' && fighter.id === 'relay') return { ...fighter, x: 52, cooldown: 99 };
+  return { ...fighter, hp: 0, cooldown: 99 };
+});
+const blockedZonePlan = planBattleFrame({
+  fighters: blockedZoneFighters,
+  zones: [{ ...crossingZone, x: 45 }],
+  team: [blockedZoneUnit],
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+assert.equal(
+  statusStacks(
+    blockedZonePlan.fighters.find((fighter) => fighter.instanceId === 'zone-blocked'),
+    'poison',
+  ),
+  0,
+  'コスト不足で実行されなかった指示に毒床効果が発動しています',
+);
+
+const zonePlacer = createInventoryUnit('volt', 'zone-placer');
+zonePlacer.program = [{ targetId: 'nearestEnemy', conditionId: 'always', actionId: 'throw-toxic-flask' }];
+const zonePlacementFighters = createBattleFighters([zonePlacer]).map((fighter) => {
+  if (fighter.instanceId === 'zone-placer') return { ...fighter, x: 45, cooldown: 0 };
+  if (fighter.team === 'enemy' && fighter.id === 'relay') return { ...fighter, x: 57, cooldown: 99 };
+  return { ...fighter, hp: 0, cooldown: 99 };
+});
+const zonePlacementPlan = planBattleFrame({
+  fighters: zonePlacementFighters,
+  team: [zonePlacer],
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+assert.equal(zonePlacementPlan.zones.length, 0, '設置アニメーション前に毒床が表示状態へ反映されています');
+assert.ok(
+  zonePlacementPlan.steps.some((step) => step.zoneChanges?.some((change) => change.kind === 'add')),
+  '毒床の設置ステップが生成されません',
+);
+assert.ok(
+  zonePlacementPlan.fighters.every((fighter) => statusStacks(fighter, 'poison') === 0),
+  '毒床を設置しただけで範囲内ユニットへ毒が付与されています',
 );
 
 console.log(

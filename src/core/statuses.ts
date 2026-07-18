@@ -30,11 +30,6 @@ export function statusDamagePerSecond(statusId: string): number {
   return effect?.value ?? 0;
 }
 
-export function statusStackDecayPerTick(statusId: string): number {
-  const effect = requireStatusDefinition(statusId).effects.find((candidate) => candidate.kind === 'decayStacksPerTick');
-  return effect?.value ?? 0;
-}
-
 export function statusEffectTargetId(
   fighter: Pick<Fighter, 'statuses'>,
   kind: Extract<StatusEffectKind, 'targetLock'>,

@@ -1,8 +1,14 @@
 import { BATTLE_CONFIG, BATTLE_ZONES } from '../data.ts';
-import type { BattleZoneDefinition, BattleZoneInstance, Fighter, PlaceZoneEffect } from '../types.ts';
+import type {
+  BattleZoneDefinition,
+  BattleZoneInstance,
+  BattleZoneTriggerKind,
+  Fighter,
+  PlaceZoneEffect,
+} from '../types.ts';
 import { applyStatus } from './statuses.ts';
 
-export type ZoneTrigger = { zoneId: string; fighterId: string };
+export type ZoneTrigger = { zoneId: string; fighterId: string; kind: BattleZoneTriggerKind };
 export type BattleZoneChange = { kind: 'add'; zone: BattleZoneInstance } | { kind: 'remove'; zoneId: string };
 
 export const battleZoneById = new Map(BATTLE_ZONES.map((zone) => [zone.id, zone]));
@@ -47,6 +53,20 @@ const canAffect = (fighter: Fighter, zone: BattleZoneInstance, definition: Battl
   (definition.targetFilter === 'ally' && fighter.team === zone.sourceTeam) ||
   (definition.targetFilter === 'enemy' && fighter.team !== zone.sourceTeam);
 
+const isInsideZone = (fighterX: number, zoneX: number, radius: number) => Math.abs(fighterX - zoneX) <= radius;
+
+const applyZoneEffects = (fighter: Fighter, zone: BattleZoneInstance, definition: BattleZoneDefinition) =>
+  definition.trigger.effects.reduce(
+    (affected, effect) =>
+      applyStatus(affected, effect.statusId, {
+        stacks: effect.stacks,
+        remainingSeconds: effect.durationSeconds ?? null,
+        sourceId: zone.sourceId,
+        targetId: affected.instanceId,
+      }),
+    fighter,
+  );
+
 export const pathEntersZone = (fromX: number, toX: number, zoneX: number, radius: number): boolean => {
   const wasInside = Math.abs(fromX - zoneX) <= radius;
   if (wasInside) return false;
@@ -66,20 +86,34 @@ export const applyZoneEntries = (
   const triggers: ZoneTrigger[] = [];
   for (const zone of zones) {
     const definition = battleZoneById.get(zone.zoneId);
-    if (!definition || !canAffect(affected, zone, definition)) continue;
+    if (!definition || definition.trigger.kind !== 'onEnter' || !canAffect(affected, zone, definition)) continue;
     const entered = includeCurrentPosition
-      ? Math.abs(toX - zone.x) <= definition.radius
+      ? isInsideZone(toX, zone.x, definition.radius)
       : pathEntersZone(fromX, toX, zone.x, definition.radius);
     if (!entered) continue;
-    for (const effect of definition.trigger.effects) {
-      affected = applyStatus(affected, effect.statusId, {
-        stacks: effect.stacks,
-        remainingSeconds: effect.durationSeconds ?? null,
-        sourceId: zone.sourceId,
-        targetId: affected.instanceId,
-      });
-    }
-    triggers.push({ zoneId: zone.instanceId, fighterId: affected.instanceId });
+    affected = applyZoneEffects(affected, zone, definition);
+    triggers.push({ zoneId: zone.instanceId, fighterId: affected.instanceId, kind: definition.trigger.kind });
+  }
+  return { fighter: affected, triggers };
+};
+
+export const applyZoneActionTriggers = (
+  fighter: Fighter,
+  zones: BattleZoneInstance[],
+): { fighter: Fighter; triggers: ZoneTrigger[] } => {
+  let affected = fighter;
+  const triggers: ZoneTrigger[] = [];
+  for (const zone of zones) {
+    const definition = battleZoneById.get(zone.zoneId);
+    if (
+      !definition ||
+      definition.trigger.kind !== 'onActionWhileInside' ||
+      !canAffect(affected, zone, definition) ||
+      !isInsideZone(affected.x, zone.x, definition.radius)
+    )
+      continue;
+    affected = applyZoneEffects(affected, zone, definition);
+    triggers.push({ zoneId: zone.instanceId, fighterId: affected.instanceId, kind: definition.trigger.kind });
   }
   return { fighter: affected, triggers };
 };

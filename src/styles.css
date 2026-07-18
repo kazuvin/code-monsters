@@ -1009,16 +1009,6 @@ button:focus-visible {
   color: #baff75;
   text-shadow: 0 0 10px #bc72ff55;
 }
-.report-row.report-status-change {
-  background: linear-gradient(90deg, #173b3566, transparent 62%);
-}
-.report-row.report-status-change > span:first-child b,
-.report-row .report-status-delta {
-  color: #7fe4c2;
-}
-.report-row .report-status-delta {
-  text-shadow: 0 0 10px #55d9b34d;
-}
 .report-row em {
   color: #a36f45;
   font: 500 12px "IBM Plex Mono";
