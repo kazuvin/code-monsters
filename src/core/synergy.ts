@@ -39,6 +39,24 @@ export type StatusSynergyReport = {
   ready: boolean;
 };
 
+export type SynergyMetricId = 'producer' | 'condition' | 'consumer' | 'crossUnit' | 'counterplay';
+
+export const synergyMetricCount = (pack: StatusSynergyReport, metricId: SynergyMetricId): number | null => {
+  if (pack.mode === 'standalone' && ['condition', 'consumer', 'crossUnit'].includes(metricId)) return null;
+  switch (metricId) {
+    case 'producer':
+      return pack.producers.length;
+    case 'condition':
+      return pack.conditions.length;
+    case 'consumer':
+      return pack.consumers.length;
+    case 'crossUnit':
+      return pack.crossUnitLinks.length;
+    case 'counterplay':
+      return pack.counterplay.verified ? 1 : 0;
+  }
+};
+
 export type SynergyIssue = {
   code:
     | 'MISSING_STATUS_PRODUCER'

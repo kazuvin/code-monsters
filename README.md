@@ -30,6 +30,7 @@ pnpm assets:python:setup
 ```bash
 pnpm dev
 pnpm verify
+pnpm synergy:report
 pnpm test:unity-core
 pnpm test:unity-assets:compile
 pnpm test:unity-assets

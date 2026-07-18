@@ -1,35 +1,23 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
-import { analyzeSynergies, type StatusSynergyReport, type SynergyInstructionRef } from './core/synergy';
+import {
+  analyzeSynergies,
+  type StatusSynergyReport,
+  type SynergyInstructionRef,
+  type SynergyMetricId,
+  synergyMetricCount,
+} from './core/synergy';
 import { GAME_DATA, UNITS } from './data';
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
 
-type MetricId = 'producer' | 'condition' | 'consumer' | 'crossUnit' | 'counterplay';
-
-const METRICS: Array<{ id: MetricId; label: string; shortLabel: string }> = [
+const METRICS: Array<{ id: SynergyMetricId; label: string; shortLabel: string }> = [
   { id: 'producer', label: '付与技', shortLabel: '付与' },
   { id: 'condition', label: '状態条件', shortLabel: '条件' },
   { id: 'consumer', label: '利用・消費技', shortLabel: '利用' },
   { id: 'crossUnit', label: '別ユニット連携', shortLabel: '連携' },
   { id: 'counterplay', label: '対抗手段', shortLabel: '対抗' },
 ];
-
-const metricCount = (pack: StatusSynergyReport, metricId: MetricId): number | null => {
-  if (pack.mode === 'standalone' && ['condition', 'consumer', 'crossUnit'].includes(metricId)) return null;
-  switch (metricId) {
-    case 'producer':
-      return pack.producers.length;
-    case 'condition':
-      return pack.conditions.length;
-    case 'consumer':
-      return pack.consumers.length;
-    case 'crossUnit':
-      return pack.crossUnitLinks.length;
-    case 'counterplay':
-      return pack.counterplay.verified ? 1 : 0;
-  }
-};
 
 const heatLevel = (count: number | null) => (count === null ? 'na' : `heat-${Math.min(3, count)}`);
 
@@ -78,7 +66,7 @@ function SynergyDetail({ pack, onClose }: { pack: StatusSynergyReport; onClose: 
 
         <div className="synergy-detail-density" aria-label={`${pack.label}の登録件数`}>
           {METRICS.map((metric) => {
-            const count = metricCount(pack, metric.id);
+            const count = synergyMetricCount(pack, metric.id);
             return (
               <div className={`synergy-density-cell ${heatLevel(count)}`} key={metric.id}>
                 <small>{metric.label}</small>
@@ -261,7 +249,7 @@ export function SynergyGraph({ onBack }: { onBack: () => void }) {
                     </button>
                   </th>
                   {METRICS.map((metric) => {
-                    const count = metricCount(pack, metric.id);
+                    const count = synergyMetricCount(pack, metric.id);
                     return (
                       <td key={metric.id}>
                         <button
