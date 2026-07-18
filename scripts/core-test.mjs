@@ -1016,6 +1016,17 @@ assert.ok(
 const synergyReport = analyzeSynergies(GAME_DATA);
 assert.equal(synergyReport.issues.length, 0, '状態パックのシナジー構造に不備があります');
 assert.equal(synergyReport.packs.length, GAME_DATA.statuses.length, '全状態をシナジー監査できません');
+assert.equal(
+  synergyReport.packs.find((pack) => pack.statusId === 'slowed').crossUnitLinks.length,
+  2,
+  '鈍足の別ユニット連携数を集計できません',
+);
+const missingConditionData = structuredClone(GAME_DATA);
+missingConditionData.conditions = missingConditionData.conditions.filter((condition) => condition.id !== 'enemySlowed');
+assert.ok(
+  analyzeSynergies(missingConditionData).issues.some((issue) => issue.code === 'MISSING_STATUS_CONDITION'),
+  '状態を検知する条件が欠けたパックをCI検査で検出できません',
+);
 const incompleteSynergyData = structuredClone(GAME_DATA);
 incompleteSynergyData.instructions.find((instruction) => instruction.id === 'corrosion-burst').effects =
   incompleteSynergyData.instructions

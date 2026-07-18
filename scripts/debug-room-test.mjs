@@ -166,13 +166,31 @@ for (const viewport of [
   await page.getByRole('button', { name: 'シナジー', exact: true }).click();
   await page.waitForSelector('.synergy-page');
   const synergy = await page.evaluate(() => ({
-    packs: document.querySelectorAll('.synergy-pack').length,
-    ready: document.querySelectorAll('.synergy-pack.is-ready').length,
+    packs: document.querySelectorAll('.synergy-matrix tbody tr').length,
+    ready: document.querySelectorAll('.synergy-matrix tbody tr.is-ready').length,
+    cells: document.querySelectorAll('.synergy-heat-cell').length,
+    denseCells: document.querySelectorAll('.synergy-heat-cell.heat-3').length,
+    notApplicableCells: document.querySelectorAll('.synergy-heat-cell.na').length,
     summary: document.querySelector('.synergy-summary')?.textContent?.replace(/\s+/g, ' ').trim(),
+    slowed: Array.from(document.querySelectorAll('.synergy-matrix tbody tr'))
+      .find((row) => row.textContent?.includes('鈍足'))
+      ?.textContent?.replace(/\s+/g, ' ')
+      .trim(),
+    poison: Array.from(document.querySelectorAll('.synergy-matrix tbody tr'))
+      .find((row) => row.textContent?.includes('毒'))
+      ?.textContent?.replace(/\s+/g, ' ')
+      .trim(),
     xOverflow:
       document.querySelector('.synergy-page').scrollWidth - document.querySelector('.synergy-page').clientWidth,
   }));
   await page.screenshot({ path: `/tmp/code-monsters-${viewport.name}-synergy-graph.png`, fullPage: false });
+  await page.locator('.synergy-matrix tbody tr').filter({ hasText: '鈍足' }).locator('th button').click();
+  await page.waitForSelector('.synergy-detail-dialog');
+  const synergyDetail = (await page.locator('.synergy-detail-dialog').innerText()).replace(/\s+/g, ' ').trim();
+  if (viewport.name === 'mobile') {
+    await page.screenshot({ path: '/tmp/code-monsters-mobile-synergy-detail.png', fullPage: false });
+  }
+  await page.getByRole('button', { name: 'シナジー詳細を閉じる' }).click();
   await page.getByRole('button', { name: /デバッグルーム/ }).click();
   await page.waitForSelector('.debug-room');
 
@@ -212,6 +230,7 @@ for (const viewport of [
     configuredReset,
     measuredSkillAfterReset,
     synergy,
+    synergyDetail,
     settingsScrollTop,
     layout,
     errors,
@@ -329,10 +348,17 @@ for (const result of results) {
   if (
     result.synergy.packs !== data.statuses.length ||
     result.synergy.ready !== data.statuses.length ||
-    !result.synergy.summary.includes('全パック検証済み') ||
+    result.synergy.cells !== data.statuses.length * 5 ||
+    result.synergy.denseCells < 1 ||
+    result.synergy.notApplicableCells < 1 ||
+    !result.synergy.summary.includes('全パック網羅済み') ||
+    !result.synergy.slowed.includes('1件1件2件2組1件') ||
+    !result.synergy.poison.includes('6組') ||
+    !result.synergyDetail.includes('メンダー → バスティオン') ||
+    !result.synergyDetail.includes('メンダー → リレイ') ||
     result.synergy.xOverflow > 0
   )
-    throw new Error(`${result.viewport}: シナジーグラフが全状態パックを正しく表示していません`);
+    throw new Error(`${result.viewport}: シナジーヒートマップが全状態パックを正しく表示していません`);
   if (result.layout.xOverflow > 0 || result.layout.yOverflow > 0 || result.layout.scrollY !== 0)
     throw new Error(`${result.viewport}: デバッグルームが画面からはみ出しています`);
   if (result.errors.length > 0) throw new Error(`${result.viewport}: ブラウザエラー: ${result.errors.join(', ')}`);

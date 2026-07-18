@@ -9,10 +9,15 @@ export type SynergyInstructionRef = {
 };
 
 export type SynergyCheck = {
-  id: 'producer' | 'consumer' | 'crossUnit' | 'counterplay';
+  id: 'producer' | 'condition' | 'consumer' | 'crossUnit' | 'counterplay';
   label: string;
   passed: boolean;
   detail: string;
+};
+
+export type SynergyUnitLink = {
+  producerUnitId: string;
+  consumerUnitId: string;
 };
 
 export type StatusSynergyReport = {
@@ -24,6 +29,7 @@ export type StatusSynergyReport = {
   producers: SynergyInstructionRef[];
   consumers: SynergyInstructionRef[];
   conditions: Array<Pick<ConditionDefinition, 'id' | 'label'>>;
+  crossUnitLinks: SynergyUnitLink[];
   counterplay: {
     kind: StatusCounterplayKind;
     description: string;
@@ -34,7 +40,12 @@ export type StatusSynergyReport = {
 };
 
 export type SynergyIssue = {
-  code: 'MISSING_STATUS_PRODUCER' | 'MISSING_STATUS_CONSUMER' | 'MISSING_CROSS_UNIT_SYNERGY' | 'INVALID_COUNTERPLAY';
+  code:
+    | 'MISSING_STATUS_PRODUCER'
+    | 'MISSING_STATUS_CONDITION'
+    | 'MISSING_STATUS_CONSUMER'
+    | 'MISSING_CROSS_UNIT_SYNERGY'
+    | 'INVALID_COUNTERPLAY';
   statusId: string;
   message: string;
 };
@@ -53,16 +64,27 @@ const instructionRef = (instruction: Instruction): SynergyInstructionRef => ({
   fixedFor: instruction.fixedFor ?? null,
 });
 
-const hasDistinctOwners = (data: GameBalanceData, producers: Instruction[], consumers: Instruction[]) => {
-  const owners = (instruction: Instruction) =>
-    instruction.fixedFor ? [instruction.fixedFor] : data.units.map((unit) => unit.id);
-  return producers.some((producer) =>
-    consumers.some((consumer) =>
-      owners(producer).some((producerOwner) =>
-        owners(consumer).some((consumerOwner) => producerOwner !== consumerOwner),
-      ),
-    ),
-  );
+const instructionOwners = (data: GameBalanceData, instruction: Instruction) =>
+  instruction.fixedFor ? [instruction.fixedFor] : data.units.map((unit) => unit.id);
+
+const distinctCrossUnitLinks = (
+  data: GameBalanceData,
+  producers: Instruction[],
+  consumers: Instruction[],
+): SynergyUnitLink[] => {
+  const links = new Map<string, SynergyUnitLink>();
+  for (const producer of producers) {
+    for (const consumer of consumers) {
+      for (const producerUnitId of instructionOwners(data, producer)) {
+        for (const consumerUnitId of instructionOwners(data, consumer)) {
+          if (producerUnitId === consumerUnitId) continue;
+          const link = { producerUnitId, consumerUnitId };
+          links.set(`${producerUnitId}:${consumerUnitId}`, link);
+        }
+      }
+    }
+  }
+  return [...links.values()];
 };
 
 const verifiesCounterplay = (
@@ -111,10 +133,12 @@ export function analyzeSynergies(data: GameBalanceData): SynergyReport {
     const conditions = data.conditions.filter(
       (condition) => condition.kind === 'targetHasStatus' && condition.params.statusId === status.id,
     );
+    const crossUnitLinks = distinctCrossUnitLinks(data, producers, consumers);
     const isCombo = status.synergy.mode === 'combo';
     const producerReady = producers.length > 0;
+    const conditionReady = !isCombo || conditions.length > 0;
     const consumerReady = !isCombo || consumers.length > 0;
-    const crossUnitReady = !isCombo || hasDistinctOwners(data, producers, consumers);
+    const crossUnitReady = !isCombo || crossUnitLinks.length > 0;
     const counterplayReady = verifiesCounterplay(data, status, producers, consumers);
     const checks = [
       check(
@@ -122,6 +146,12 @@ export function analyzeSynergies(data: GameBalanceData): SynergyReport {
         '付与技',
         producerReady,
         producerReady ? `${producers.length}件` : '状態を付与する技がありません',
+      ),
+      check(
+        'condition',
+        '状態条件',
+        conditionReady,
+        isCombo ? (conditionReady ? `${conditions.length}件` : '状態を検知する条件がありません') : '単独完結型',
       ),
       check(
         'consumer',
@@ -133,7 +163,7 @@ export function analyzeSynergies(data: GameBalanceData): SynergyReport {
         'crossUnit',
         '別ユニット連携',
         crossUnitReady,
-        isCombo ? (crossUnitReady ? '異なるユニットで連携可能' : '付与役と利用役が同一です') : '単独完結型',
+        isCombo ? (crossUnitReady ? `${crossUnitLinks.length}組で連携可能` : '付与役と利用役が同一です') : '単独完結型',
       ),
       check(
         'counterplay',
@@ -151,6 +181,7 @@ export function analyzeSynergies(data: GameBalanceData): SynergyReport {
       producers: producers.map(instructionRef),
       consumers: consumers.map(instructionRef),
       conditions: conditions.map(({ id, label }) => ({ id, label })),
+      crossUnitLinks,
       counterplay: {
         kind: status.synergy.counterplay.kind,
         description: status.synergy.counterplay.description,
@@ -163,6 +194,7 @@ export function analyzeSynergies(data: GameBalanceData): SynergyReport {
   const issues = packs.flatMap((pack): SynergyIssue[] => {
     const mappings: Array<[SynergyCheck['id'], SynergyIssue['code']]> = [
       ['producer', 'MISSING_STATUS_PRODUCER'],
+      ['condition', 'MISSING_STATUS_CONDITION'],
       ['consumer', 'MISSING_STATUS_CONSUMER'],
       ['crossUnit', 'MISSING_CROSS_UNIT_SYNERGY'],
       ['counterplay', 'INVALID_COUNTERPLAY'],
