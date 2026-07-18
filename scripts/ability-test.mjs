@@ -26,8 +26,8 @@ const reactionSnapshot = async () => {
   };
 };
 
-const fixedNormalInstruction = async () => {
-  const block = page.locator('.program-list .fixed-action').first();
+const fixedNormalInstruction = async (actionLabel) => {
+  const block = page.locator('.program-list .fixed-action').filter({ hasText: actionLabel }).first();
   return {
     text: (await block.innerText()).replace(/\s+/g, ' ').trim(),
     targetDisabled: await block.locator('.word-slot').first().isDisabled(),
@@ -44,7 +44,7 @@ const bastion = await reactionSnapshot();
 
 await page.locator('.unit-tabs button').filter({ hasText: 'リレイ' }).click();
 const relayEmpty = await reactionSnapshot();
-const relayNormal = await fixedNormalInstruction();
+const relayNormal = await fixedNormalInstruction('高速接近');
 await page.getByRole('button', { name: /リアクションを追加/ }).click();
 await page.locator('.reaction-code-block .word-slot').first().click();
 const reactionChoices = (await page.locator('.choice-list button').allTextContents()).map((text) => text.trim());

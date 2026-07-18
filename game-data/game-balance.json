@@ -112,6 +112,32 @@
       "effects": [{ "kind": "incomingDamageScale", "value": 1.15 }]
     },
     {
+      "id": "slowed",
+      "label": "鈍足",
+      "description": "冷却により移動・行動速度が25%低下",
+      "stacking": "replace",
+      "maxStacks": 1,
+      "clearOnAction": false,
+      "duration": { "mode": "application" },
+      "synergy": {
+        "mode": "combo",
+        "counterplay": {
+          "kind": "expires",
+          "description": "付与から5秒後、または利用技で消費されると解除される"
+        }
+      },
+      "debug": { "control": "toggle" },
+      "visual": {
+        "className": "slowed",
+        "cardClass": "slowed",
+        "chipClass": "slow-chip",
+        "label": "SLOW",
+        "showStacks": false,
+        "showRemaining": true
+      },
+      "effects": [{ "kind": "speedScale", "value": 0.75 }]
+    },
+    {
       "id": "guarded",
       "label": "ガード",
       "description": "被ダメージ・ノックバック軽減",
@@ -423,6 +449,15 @@
       "label": "脆弱状態",
       "flavor": "味方が暴いた隙を、見逃さず撃ち抜く。",
       "effect": "対象が脆弱状態",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
+    },
+    {
+      "id": "enemySlowed",
+      "kind": "targetHasStatus",
+      "params": { "statusId": "slowed", "minimumStacks": 1 },
+      "label": "鈍足状態",
+      "flavor": "冷却で動きが鈍った瞬間に、重い一撃を重ねる。",
+      "effect": "対象が鈍足状態",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
     }
   ],
@@ -841,6 +876,73 @@
       ]
     },
     {
+      "id": "coolant-shot",
+      "title": "冷却弾を撃つ",
+      "short": "冷却弾",
+      "flavor": "味方の攻撃に合わせて冷却剤を撃ち込み、敵の動きを鈍らせる。",
+      "action": "attack",
+      "abilityCost": 2,
+      "price": 0,
+      "rarity": "common",
+      "condition": "targetInRange",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "cyan",
+      "fixedFor": "mender",
+      "reactionOnly": true,
+      "range": { "mode": "fixed", "value": 24 },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.45, "minimumDamage": 3, "knockbackPower": 0 },
+        { "kind": "applyStatus", "statusId": "slowed", "target": "selected", "stacks": 1, "durationSeconds": 5 }
+      ]
+    },
+    {
+      "id": "shattering-blow",
+      "title": "粉砕打撃",
+      "short": "粉砕打撃",
+      "flavor": "冷えて脆くなった装甲を叩き割り、大きく吹き飛ばす。",
+      "action": "heavy",
+      "abilityCost": 4,
+      "price": 0,
+      "rarity": "rare",
+      "condition": "enemySlowed",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "amber",
+      "fixedFor": "bastion",
+      "range": { "mode": "fixed", "value": 9 },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 110 },
+        { "kind": "consumeStatus", "statusId": "slowed", "target": "selected", "stacks": 1, "bonusDamage": 18 }
+      ]
+    },
+    {
+      "id": "corner-slowed",
+      "title": "追い詰める",
+      "short": "追い詰める",
+      "flavor": "動きが鈍った敵の逃げ道を読み、確実な追撃を叩き込む。",
+      "action": "attack",
+      "abilityCost": 3,
+      "price": 0,
+      "rarity": "common",
+      "condition": "enemySlowed",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "cyan",
+      "fixedFor": "relay",
+      "range": { "mode": "unit" },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.7, "minimumDamage": 3, "knockbackPower": 0 },
+        { "kind": "consumeStatus", "statusId": "slowed", "target": "selected", "stacks": 1, "bonusDamage": 12 }
+      ]
+    },
+    {
       "id": "saturation-fire",
       "title": "一斉射撃する",
       "short": "一斉射撃",
@@ -959,8 +1061,8 @@
   ],
   "defaultPrograms": [
     { "unitId": "volt", "actionIds": ["attack-low", "approach"] },
-    { "unitId": "bastion", "actionIds": ["attack-low", "approach"] },
-    { "unitId": "relay", "actionIds": ["attack-low", "relay-dash", "approach"] },
+    { "unitId": "bastion", "actionIds": ["shattering-blow", "attack-low", "approach"] },
+    { "unitId": "relay", "actionIds": ["corner-slowed", "attack-low", "relay-dash"] },
     { "unitId": "arrow", "actionIds": ["pierce-vulnerability", "attack-low", "approach"] },
     { "unitId": "wrath", "actionIds": ["attack-low", "approach"] },
     { "unitId": "mender", "actionIds": ["field-repair", "attack-low", "approach"] },
@@ -975,7 +1077,7 @@
     { "unitId": "relay", "trigger": null, "actionId": null, "fixedReaction": false },
     { "unitId": "arrow", "trigger": "selfHit", "actionId": "arrow-reposition", "fixedReaction": true },
     { "unitId": "wrath", "trigger": "selfHpLow", "actionId": "berserker-mode", "fixedReaction": true },
-    { "unitId": "mender", "trigger": null, "actionId": null, "fixedReaction": false },
+    { "unitId": "mender", "trigger": "allyAttackHit", "actionId": "coolant-shot", "fixedReaction": true },
     { "unitId": "toxin", "trigger": null, "actionId": null, "fixedReaction": false }
   ]
 }

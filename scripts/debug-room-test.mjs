@@ -99,6 +99,31 @@ for (const viewport of [
   const vulnerabilityReset = await readMeasurement();
 
   await openSettings();
+  await page.getByLabel('計測する技').selectOption('coolant-shot');
+  await applySettings();
+  await measure();
+  const slowed = await readMeasurement();
+  await page.screenshot({ path: `/tmp/code-monsters-${viewport.name}-slowed.png`, fullPage: false });
+  await page.waitForTimeout(800);
+  const slowPersisted = await readMeasurement();
+  await page.getByRole('button', { name: 'リセット', exact: true }).click();
+  const slowReset = await readMeasurement();
+
+  await openSettings();
+  await page.getByLabel('攻撃ユニット').selectOption('bastion');
+  await page.getByLabel('計測する技').selectOption('shattering-blow');
+  await page.getByRole('button', { name: '敵側 鈍足 冷却により移動・行動速度が25%低下', exact: true }).click();
+  await applySettings();
+  const shatterStart = await readMeasurement();
+  await measure();
+  const shattered = await readMeasurement();
+  await page.getByRole('button', { name: 'リセット', exact: true }).click();
+  const shatterReset = await readMeasurement();
+  await openSettings();
+  await page.getByRole('button', { name: '敵側 鈍足 冷却により移動・行動速度が25%低下', exact: true }).click();
+  await applySettings();
+
+  await openSettings();
   const settingsScrollTop = await page.locator('.debug-config-scroll').evaluate((element) => element.scrollTop);
   await page.getByLabel('計測する技').selectOption('knock-away');
   await page.getByLabel('最大HP').fill('500');
@@ -173,6 +198,12 @@ for (const viewport of [
     vulnerable,
     vulnerabilityPersisted,
     vulnerabilityReset,
+    slowed,
+    slowPersisted,
+    slowReset,
+    shatterStart,
+    shattered,
+    shatterReset,
     guarded,
     unguarded,
     actorConfigured,
@@ -243,6 +274,24 @@ for (const result of results) {
     !result.vulnerabilityReset.stage.statuses.includes('状態なし')
   )
     throw new Error(`${result.viewport}: 技で付与した脆弱状態が表示され、リセットまで保持されていません`);
+  if (
+    !result.slowed.stage.statuses.includes('鈍足') ||
+    !result.slowed.stage.targetClasses.includes('slowed') ||
+    !result.slowPersisted.stage.targetClasses.includes('slowed') ||
+    result.slowReset.stage.targetClasses.includes('slowed') ||
+    !result.slowReset.stage.statuses.includes('状態なし')
+  )
+    throw new Error(`${result.viewport}: 技で付与した鈍足状態が表示され、リセットまで保持されていません`);
+  if (
+    !result.shatterStart.stage.statuses.includes('鈍足') ||
+    result.shattered.value <= 0 ||
+    result.shattered.stage.statuses.includes('鈍足') ||
+    result.shattered.stage.targetClasses.includes('slowed') ||
+    result.shattered.stage.targetLeft === result.shatterStart.stage.targetLeft ||
+    result.shatterReset.stage.targetLeft !== result.shatterStart.stage.targetLeft ||
+    !result.shatterReset.stage.statuses.includes('鈍足')
+  )
+    throw new Error(`${result.viewport}: 粉砕打撃が鈍足を消費してノックバックし、リセットで復元されません`);
   if (
     result.guarded.value <= 0 ||
     result.guarded.stage.targetHp === '500 / 500' ||

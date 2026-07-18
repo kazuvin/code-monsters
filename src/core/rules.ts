@@ -8,7 +8,7 @@ import {
   statusEffectMultiplier,
   statusEffectTargetId,
   statusStacks,
-  tickStatuses,
+  tickStatusDurations,
 } from './statuses.ts';
 
 export const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
@@ -142,16 +142,18 @@ export function actionCooldown(speed: number): number {
 }
 
 export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
-  return fighters.map((fighter) => ({
-    ...fighter,
-    cooldown: fighter.cooldown - dt,
-    abilityGauge: Math.min(
-      BATTLE_CONFIG.abilityGaugeMax,
-      fighter.abilityGauge + BATTLE_CONFIG.abilityGaugeRegenPerSecond * dt,
-    ),
-    reactionCooldown: fighter.reactionCooldown - dt,
-    statuses: tickStatuses(fighter.statuses, dt),
-  }));
+  return fighters.map((fighter) => {
+    const statusTicked = tickStatusDurations(fighter, dt);
+    return {
+      ...statusTicked,
+      cooldown: fighter.cooldown - dt,
+      abilityGauge: Math.min(
+        BATTLE_CONFIG.abilityGaugeMax,
+        fighter.abilityGauge + BATTLE_CONFIG.abilityGaugeRegenPerSecond * dt,
+      ),
+      reactionCooldown: fighter.reactionCooldown - dt,
+    };
+  });
 }
 
 export function rawActionDamage(actor: Fighter, instruction: Instruction, target: Fighter): number {

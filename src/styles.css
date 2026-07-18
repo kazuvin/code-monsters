@@ -3747,10 +3747,55 @@ button:focus-visible {
   font: 700 7px "IBM Plex Mono";
   white-space: nowrap;
 }
+.sprite.slowed .team-ring {
+  border-color: #8ceaff;
+  background: #62dfff1f;
+  box-shadow:
+    0 0 5px #080a0d,
+    0 0 16px #62dfff99,
+    inset 0 0 12px #c4f6ff55;
+}
+.sprite.slowed .team-ring::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  border: 1px dashed #b7f5ff;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 12deg, #a8f1ff88 0 3deg, transparent 3deg 30deg);
+  mask: radial-gradient(circle, transparent 0 48%, #000 50% 56%, transparent 58%);
+  filter: drop-shadow(0 0 4px #5ddcff);
+  pointer-events: none;
+  animation: slowed-chill 2.4s steps(12) infinite reverse;
+}
+.slow-chip {
+  position: absolute;
+  z-index: 6;
+  left: calc(50% + 34px);
+  bottom: 20px;
+  transform: translateX(-50%);
+  padding: 3px 5px;
+  border: 1px solid #8ceaff;
+  background: #102a34e8;
+  color: #cff8ff;
+  box-shadow:
+    inset 3px 0 #4ab9dc,
+    0 0 11px #62dfff66;
+  font: 700 7px "IBM Plex Mono";
+  white-space: nowrap;
+}
 @keyframes vulnerable-lock {
   to {
     opacity: 0.64;
     transform: translate(-50%, -50%) scale(1.1) rotate(8deg);
+  }
+}
+@keyframes slowed-chill {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 @keyframes poison-scan {
@@ -3907,6 +3952,7 @@ button:focus-visible {
   .taunt-chip,
   .berserk-chip,
   .vulnerable-chip,
+  .slow-chip,
   .poison-chip {
     left: calc(50% + 23px);
     bottom: 14px;
@@ -3917,6 +3963,10 @@ button:focus-visible {
   }
   .vulnerable-chip {
     left: 50%;
+    bottom: 36px;
+  }
+  .slow-chip {
+    left: calc(50% + 25px);
     bottom: 36px;
   }
   .fx-taunt {
@@ -3933,6 +3983,7 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .sprite.taunt-locked .team-ring,
   .sprite.vulnerable .team-ring::after,
+  .sprite.slowed .team-ring::before,
   .poison-surface,
   .poison-haze,
   .sprite.is-taunt .sprite-body,

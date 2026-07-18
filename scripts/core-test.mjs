@@ -579,6 +579,91 @@ assert.ok(
   '脆弱付与技がショップ候補に入りません',
 );
 
+const slowProducer = instructionById.get('coolant-shot');
+const shatterConsumer = instructionById.get('shattering-blow');
+const chaseConsumer = instructionById.get('corner-slowed');
+assert.ok(slowProducer && shatterConsumer && chaseConsumer);
+const slowedBySkill = applyInstructionStatusEffects(cleanStatusTarget, slowProducer, toxinActor.instanceId, 'selected');
+assert.equal(statusRemaining(slowedBySkill, 'slowed'), 5, '鈍足の持続時間が付与技の定義と一致しません');
+assert.equal(
+  slowedBySkill.speed,
+  Number((cleanStatusTarget.speed * 0.75).toFixed(4)),
+  '鈍足の速度低下が適用されません',
+);
+assert.equal(
+  matchCondition('enemySlowed', toxinActor, [slowedBySkill]).length,
+  1,
+  '鈍足状態を条件として検出できません',
+);
+const refreshedSlow = applyInstructionStatusEffects(slowedBySkill, slowProducer, toxinActor.instanceId, 'selected');
+assert.equal(refreshedSlow.speed, slowedBySkill.speed, '鈍足の再付与で速度倍率が重複しています');
+assert.equal(statusRemaining(refreshedSlow, 'slowed'), 5, '鈍足の再付与で持続時間が更新されません');
+assert.ok(
+  resolveActionImpact(toxinActor, slowedBySkill, shatterConsumer).damage >
+    resolveActionImpact(toxinActor, cleanStatusTarget, shatterConsumer).damage,
+  '粉砕打撃の鈍足特効ダメージが適用されていません',
+);
+assert.ok(
+  resolveActionImpact(toxinActor, slowedBySkill, shatterConsumer).knockbackDistance > 0,
+  '粉砕打撃のノックバックが適用されていません',
+);
+const shatteredTarget = applyInstructionStatusEffects(
+  slowedBySkill,
+  shatterConsumer,
+  toxinActor.instanceId,
+  'selected',
+);
+assert.equal(statusStacks(shatteredTarget, 'slowed'), 0, '粉砕打撃が鈍足を消費しません');
+assert.equal(shatteredTarget.speed, cleanStatusTarget.speed, '鈍足消費後に速度が復元されません');
+const expiredSlow = tickCooldowns([slowedBySkill], 5)[0];
+assert.equal(statusStacks(expiredSlow, 'slowed'), 0, '鈍足が5秒後に解除されません');
+assert.equal(expiredSlow.speed, cleanStatusTarget.speed, '鈍足の時間切れ後に速度が復元されません');
+assert.ok(
+  GAME_DATA.defaultPrograms.find((program) => program.unitId === 'bastion')?.actionIds.includes('shattering-blow'),
+  'バスティオンの既定指示に粉砕打撃が含まれていません',
+);
+assert.ok(
+  GAME_DATA.defaultPrograms.find((program) => program.unitId === 'relay')?.actionIds.includes('corner-slowed'),
+  'リレイの既定指示に鈍足利用技が含まれていません',
+);
+assert.deepEqual(
+  GAME_DATA.defaultReactions.find((reaction) => reaction.unitId === 'mender'),
+  { unitId: 'mender', trigger: 'allyAttackHit', actionId: 'coolant-shot', fixedReaction: true },
+  'メンダーの既定リアクションが冷却弾になっていません',
+);
+const chillTeam = [createInventoryUnit('mender', 'chill-mender'), createInventoryUnit('volt', 'chill-volt')];
+chillTeam[1].program = [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }];
+const chillFighters = createBattleFighters(chillTeam).map((fighter) => ({
+  ...fighter,
+  x:
+    fighter.instanceId === 'chill-mender'
+      ? 40
+      : fighter.instanceId === 'chill-volt'
+        ? 42
+        : fighter.id === 'relay'
+          ? 50
+          : 70,
+  cooldown: fighter.instanceId === 'chill-volt' ? 0 : 10,
+}));
+const chillPlan = planBattleFrame({
+  fighters: chillFighters,
+  team: chillTeam,
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const coolantReactionStep = chillPlan.steps.find((step) => step.flash.actionLabel === '⚡ 冷却弾');
+const coolantReactionTarget = coolantReactionStep?.updates.find((update) =>
+  update.values.statuses?.some((status) => status.statusId === 'slowed'),
+);
+assert.ok(coolantReactionStep?.flash.reaction, '味方の攻撃後にメンダーの冷却弾リアクションが発動しません');
+assert.ok(coolantReactionTarget, '冷却弾リアクションが命中対象へ鈍足を付与しません');
+assert.ok(
+  (coolantReactionTarget.values.speed ?? Number.POSITIVE_INFINITY) <
+    (chillFighters.find((fighter) => fighter.instanceId === coolantReactionTarget.id)?.speed ?? 0),
+  '実戦の冷却弾リアクションが対象速度を低下させません',
+);
+
 const multiTeam = [createInventoryUnit('arrow', 'multi-arrow')];
 multiTeam[0].program = [{ targetId: 'allEnemies', conditionId: 'targetInRange', actionId: 'saturation-fire' }];
 const multiFighters = createBattleFighters(multiTeam).map((fighter) => ({
@@ -901,7 +986,8 @@ assert.ok(
 );
 const unsupportedStatusLifecycleData = structuredClone(GAME_DATA);
 const berserkStatus = unsupportedStatusLifecycleData.statuses.find((status) => status.id === 'berserk');
-berserkStatus.duration = { mode: 'application' };
+berserkStatus.stacking = 'stack';
+berserkStatus.maxStacks = 2;
 assert.ok(
   analyzeBalance(unsupportedStatusLifecycleData).issues.some(
     (issue) => issue.code === 'UNSUPPORTED_STATUS_EFFECT_LIFECYCLE',

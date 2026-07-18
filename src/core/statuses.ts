@@ -84,12 +84,21 @@ export function applyStatus(
     ...fighter,
     statuses,
     attack: attackScale === 1 ? fighter.attack : Math.round(fighter.attack * attackScale),
-    speed: speedScale === 1 ? fighter.speed : round(fighter.speed * speedScale),
+    speed: speedScale === 1 ? fighter.speed : round(fighter.speed * speedScale, 4),
   };
 }
 
 export function removeStatus(fighter: Fighter, statusId: string): Fighter {
-  return { ...fighter, statuses: fighter.statuses.filter((status) => status.statusId !== statusId) };
+  const definition = requireStatusDefinition(statusId);
+  if (!getStatus(fighter, statusId)) return fighter;
+  const attackScale = effectValue(definition, 'attackScale');
+  const speedScale = effectValue(definition, 'speedScale');
+  return {
+    ...fighter,
+    statuses: fighter.statuses.filter((status) => status.statusId !== statusId),
+    attack: attackScale === 1 ? fighter.attack : Math.round(fighter.attack / attackScale),
+    speed: speedScale === 1 ? fighter.speed : round(fighter.speed / speedScale, 4),
+  };
 }
 
 export function consumeStatus(
@@ -117,18 +126,25 @@ export function consumeStatus(
 }
 
 export function clearActionStatuses(fighter: Fighter): Fighter {
-  return {
-    ...fighter,
-    statuses: fighter.statuses.filter((status) => !requireStatusDefinition(status.statusId).clearOnAction),
-  };
+  return fighter.statuses.reduce(
+    (next, status) =>
+      requireStatusDefinition(status.statusId).clearOnAction ? removeStatus(next, status.statusId) : next,
+    fighter,
+  );
 }
 
-export function tickStatuses(statuses: StatusInstance[], dt: number): StatusInstance[] {
-  return statuses.flatMap((status) => {
-    if (status.remainingSeconds === null) return [status];
+export function tickStatusDurations(fighter: Fighter, dt: number): Fighter {
+  return fighter.statuses.reduce((next, status) => {
+    if (status.remainingSeconds === null) return next;
     const remainingSeconds = Math.max(0, status.remainingSeconds - dt);
-    return remainingSeconds > 0 ? [{ ...status, remainingSeconds }] : [];
-  });
+    if (remainingSeconds <= 0) return removeStatus(next, status.statusId);
+    return {
+      ...next,
+      statuses: next.statuses.map((candidate) =>
+        candidate.statusId === status.statusId ? { ...candidate, remainingSeconds } : candidate,
+      ),
+    };
+  }, fighter);
 }
 
 export function statusEffectMultiplier(fighter: Pick<Fighter, 'statuses'>, kind: StatusEffectKind): number {

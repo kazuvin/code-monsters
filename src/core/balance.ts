@@ -307,14 +307,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         error('INVALID_STATUS_EFFECT', `状態 ${status.id} の targetLock に value は指定できません`);
       if (effect.kind !== 'targetLock' && (typeof effect.value !== 'number' || effect.value <= 0))
         error('INVALID_STATUS_EFFECT', `状態 ${status.id} の数値効果は正の value を状態定義に持つ必要があります`);
-      if (
-        ['attackScale', 'speedScale'].includes(effect.kind) &&
-        (status.duration.mode !== 'persistent' || status.clearOnAction || status.stacking !== 'replace')
-      )
-        error(
-          'UNSUPPORTED_STATUS_EFFECT_LIFECYCLE',
-          `状態 ${status.id} の能力倍率は永続・置換・行動解除なしの場合のみ対応しています`,
-        );
+      if (['attackScale', 'speedScale'].includes(effect.kind) && status.stacking !== 'replace')
+        error('UNSUPPORTED_STATUS_EFFECT_LIFECYCLE', `状態 ${status.id} の能力倍率は置換型の場合のみ対応しています`);
     }
   }
 

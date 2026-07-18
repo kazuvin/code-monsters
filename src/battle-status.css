@@ -401,6 +401,22 @@
     0 0 9px #ffac4d66;
 }
 
+.unit-status-card.slowed {
+  border-color: #417d92;
+  background: linear-gradient(100deg, #123b4c66 0 3px, transparent 3px), #18252b;
+  box-shadow: inset 0 0 18px #52d8ff22;
+}
+
+.unit-status-card.slowed .status-avatar {
+  border-color: #8ceaff;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 4px, #8ceaff33 4px 6px),
+    linear-gradient(160deg, #24576a, #0d171d 78%);
+  box-shadow:
+    inset 0 -3px #05070a,
+    0 0 9px #62dfff66;
+}
+
 .status-id {
   min-width: 0;
 }

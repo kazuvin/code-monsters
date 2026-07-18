@@ -133,7 +133,7 @@ namespace CodeMonsters.Core
                         throw new InvalidDataException($"Status {status.Id} numeric effect must own a positive value");
                     if (
                         (effect.Kind == "attackScale" || effect.Kind == "speedScale")
-                        && (status.Duration.Mode != "persistent" || status.ClearOnAction || status.Stacking != "replace")
+                        && status.Stacking != "replace"
                     )
                         throw new InvalidDataException($"Status {status.Id} has unsupported stat effect lifecycle");
                 }
