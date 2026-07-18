@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://code-monsters.local/schemas/asset-manifest.schema.json",
+  "title": "Code Monsters approved sprite asset manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "pipelineVersion",
+    "unitId",
+    "sourceRunId",
+    "sourceGameSchemaVersion",
+    "coordinateSystem",
+    "sheet",
+    "palette",
+    "pixelsPerUnit",
+    "motions",
+    "frames",
+    "fallbacks",
+    "qaSummary",
+    "contentHash"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "pipelineVersion": { "type": "integer", "minimum": 1 },
+    "unitId": { "$ref": "#/$defs/stableId" },
+    "sourceRunId": { "type": "string", "minLength": 1 },
+    "sourceGameSchemaVersion": { "type": "integer", "minimum": 1 },
+    "coordinateSystem": { "const": "top-left" },
+    "sheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fileName", "width", "height", "sha256"],
+      "properties": {
+        "fileName": { "type": "string", "pattern": "^[^/]+\\.png$" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "palette": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256", "colors"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "colors": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^#[0-9A-F]{6}$" }
+        }
+      }
+    },
+    "pixelsPerUnit": { "type": "number", "exclusiveMinimum": 0 },
+    "motions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["motionId", "fps", "loop", "frameIds"],
+        "properties": {
+          "motionId": { "$ref": "#/$defs/stableId" },
+          "fps": { "type": "number", "exclusiveMinimum": 0 },
+          "loop": { "type": "boolean" },
+          "frameIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["frameId", "motionId", "frameIndex", "rect", "pivot", "sha256"],
+        "properties": {
+          "frameId": { "type": "string", "minLength": 1 },
+          "motionId": { "$ref": "#/$defs/stableId" },
+          "frameIndex": { "type": "integer", "minimum": 0 },
+          "rect": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": { "type": "integer", "minimum": 0 },
+              "y": { "type": "integer", "minimum": 0 },
+              "width": { "type": "integer", "minimum": 1 },
+              "height": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "pivot": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y"],
+            "properties": {
+              "x": { "type": "number", "minimum": 0, "maximum": 1 },
+              "y": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "fallbacks": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/stableId" }
+    },
+    "qaSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["errors", "warnings", "infos"],
+      "properties": {
+        "errors": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "infos": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "approvedAt": { "type": "string", "format": "date-time" },
+    "approvedBy": { "type": "string", "minLength": 1 },
+    "contentHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  },
+  "$defs": {
+    "stableId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+  }
+}

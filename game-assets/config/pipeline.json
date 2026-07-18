@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "pipelineVersion": 1,
+  "canvas": {
+    "width": 96,
+    "height": 96,
+    "topMargin": 8,
+    "sideMargin": 8,
+    "bottomMargin": 10,
+    "pixelsPerUnit": 96
+  },
+  "background": {
+    "candidates": ["#00FF00", "#FF00FF", "#0066FF"],
+    "minimumPaletteDeltaE": 70,
+    "removalDeltaE": 26
+  },
+  "palette": {
+    "id": "code-monsters-v1",
+    "baseColors": ["#12151B", "#242932", "#3B424E", "#697482", "#AAB5C0", "#EEF4FB", "#FFFFFF", "#161018"]
+  },
+  "processing": {
+    "minimumComponentArea": 3,
+    "alphaThreshold": 128,
+    "orderedDither": false
+  },
+  "quality": {
+    "minimumOccupancyRatio": 0.08,
+    "maximumOccupancyRatio": 0.72,
+    "minimumTransparencyRatio": 0.28,
+    "maximumTransparencyRatio": 0.92,
+    "maximumConnectedComponents": 8,
+    "maximumBaselineDriftPixels": 1,
+    "maximumCentroidDriftRatio": 0.18,
+    "maximumDimensionChangeRatio": 0.38,
+    "minimumAdjacentDifferenceRatio": 0.004,
+    "maximumAdjacentDifferenceRatio": 0.78,
+    "minimumLoopClosureIou": 0.45,
+    "minimumAccentRatio": 0.002,
+    "maximumBorderForegroundPixels": 0
+  }
+}

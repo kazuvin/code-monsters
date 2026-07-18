@@ -1,0 +1,7 @@
+{
+  "name": "CodeMonsters.Presentation.Editor",
+  "rootNamespace": "CodeMonsters.Presentation.Editor",
+  "references": ["CodeMonsters.Presentation", "Unity.2D.Sprite.Editor", "Unity.Newtonsoft.Json"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

@@ -1,0 +1,20 @@
+[project]
+name = "code-monsters-sprite-pipeline"
+version = "0.1.0"
+description = "Deterministic sprite normalization and quality checks for Code Monsters"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2.0,<3",
+  "opencv-python-headless>=4.10,<5",
+  "Pillow>=11,<13",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+package = true

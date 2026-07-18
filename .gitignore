@@ -10,3 +10,9 @@ unity/CodeMonsters/Logs/
 unity/CodeMonsters/Temp/
 unity/CodeMonsters/UserSettings/
 unity/CodeMonsters/obj/
+.venv/
+.uv-cache/
+__pycache__/
+*.pyc
+*.egg-info/
+game-assets/runs/

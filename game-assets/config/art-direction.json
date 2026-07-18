@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "title": "Code Monsters side-view battle sprites",
+  "positiveConstraints": [
+    "small programmable combat robot",
+    "readable silhouette at 96 by 96 pixels",
+    "right-facing side view with minimal perspective",
+    "fixed orthographic camera and fixed ground line",
+    "complete body and weapon inside the frame",
+    "hard-surface mechanical construction",
+    "flat single-color background selected by the pipeline",
+    "no cast shadow"
+  ],
+  "negativeConstraints": [
+    "finished pixel art",
+    "low resolution",
+    "text",
+    "logo",
+    "user interface",
+    "floor",
+    "cast shadow",
+    "scenery",
+    "gradient background",
+    "multiple characters",
+    "cropped body",
+    "cropped weapon",
+    "perspective camera",
+    "motion blur",
+    "detached limbs",
+    "extra limbs",
+    "missing weapon",
+    "inconsistent armor",
+    "inconsistent proportions"
+  ]
+}

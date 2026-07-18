@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://code-monsters.local/schemas/quality-report.schema.json",
+  "title": "Code Monsters sprite quality report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "unitId", "generatedAt", "summary", "issues", "frameMetrics"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "unitId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["errors", "warnings", "infos"],
+      "properties": {
+        "errors": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "infos": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "severity", "unitId", "message", "suggestedAction"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "severity": { "enum": ["error", "warning", "info"] },
+          "unitId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "motionId": { "type": ["string", "null"] },
+          "frameIndex": { "type": ["integer", "null"], "minimum": 0 },
+          "measuredValue": {},
+          "threshold": {},
+          "message": { "type": "string", "minLength": 1 },
+          "suggestedAction": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "frameMetrics": { "type": "array", "items": { "type": "object" } }
+  }
+}

@@ -35,6 +35,14 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 
 The debug-room harness constructs a plain two-fighter/program input and advances `planBattleFrame` on a virtual clock. Its start-distance presets come from `debugTraining.positionPresets`, while every configurable status is generated from the canonical top-level `statuses` registry; the same status runtime applies to the attacker and dummy. It preserves movement and status updates in serializable playback frames, clamps the dummy to `debugTraining.minimumDummyHp`, and restores only its HP after `debugTraining.recoveryDelaySeconds`; Reset recreates the configured initial fighters. Unit stat and state overrides remain harness inputs rather than presentation-only modifiers. It derives per-hit damage independent of remaining dummy HP, DPS, resource efficiency, healing, maximum displacement, state stacks, recovery count, and skip reasons from normal battle outputs. Port the harness as an editor tool rather than duplicating combat formulas in Unity UI code; matching harness results provide a practical parity check during migration.
 
+## Sprite presentation assets
+
+The authoring pipeline publishes approved PNG and manifest pairs to `Assets/CodeMonsters/Presentation/Generated/<unitId>`. `SpriteAssetImporter` validates approval and content hashes, configures the texture, slices frames through `ISpriteEditorDataProvider`, and generates AnimationClips, an AnimatorController, and a presentation-only Prefab through Unity Editor APIs.
+
+Animation timing and fallback IDs come from the approved asset manifest. Gameplay data remains in `game-balance.json`; generated Prefabs contain no stats or instruction logic. A future Unity battle presenter should translate plain battle events to stable motion IDs and request them from the generated AnimatorController.
+
+Run `pnpm test:unity-assets:compile` for the license-independent C# smoke check and `pnpm test:unity-assets` for importer and idempotence coverage. See `docs/sprite-asset-workflow.md` for the operator flow and `docs/sprite-asset-architecture.md` for package boundaries.
+
 ## Suggested port order
 
 1. Define C# DTOs matching `game-balance.json` and reject unsupported `schemaVersion` values.

@@ -2,6 +2,7 @@
   "name": "code-monsters",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@10.28.1",
   "type": "module",
   "scripts": {
     "prepare": "husky",
@@ -32,7 +33,20 @@
     "test:poison": "node scripts/poison-test.mjs",
     "test:run": "node scripts/run-test.mjs",
     "test:unity-core": "node scripts/unity-core-check.mjs",
-    "test:visual": "node scripts/visual-test.mjs"
+    "test:unity-assets:compile": "node scripts/unity-assets-compile.mjs",
+    "test:unity-assets": "node scripts/unity-assets-test.mjs",
+    "test:visual": "node scripts/visual-test.mjs",
+    "assets:requirements": "pnpm --filter @code-monsters/asset-cli exec node src/cli.ts requirements",
+    "assets:generate": "pnpm --filter @code-monsters/asset-cli exec node src/cli.ts generate",
+    "assets:process": "pnpm --filter @code-monsters/asset-cli exec node src/cli.ts process",
+    "assets:validate": "pnpm --filter @code-monsters/asset-cli exec node src/cli.ts validate",
+    "assets:preview": "pnpm --filter @code-monsters/asset-cli exec node src/cli.ts preview",
+    "assets:approve": "pnpm --filter @code-monsters/asset-cli exec node src/cli.ts approve",
+    "assets:publish": "pnpm --filter @code-monsters/asset-cli exec node src/cli.ts publish",
+    "assets:check": "pnpm --filter @code-monsters/asset-cli exec node src/cli.ts check",
+    "assets:test": "pnpm --filter @code-monsters/asset-cli test",
+    "assets:python:setup": "node scripts/python-asset-setup.mjs",
+    "assets:python:test": "node scripts/python-asset-tests.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -55,5 +69,12 @@
   },
   "lint-staged": {
     "*.{js,mjs,cjs,ts,tsx,json,jsonc,css,html}": "biome format --write --no-errors-on-unmatched"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
   }
 }

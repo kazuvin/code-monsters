@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://code-monsters.local/schemas/process-request.schema.json",
+  "title": "Code Monsters sprite processing request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "unitId",
+    "sourceGameSchemaVersion",
+    "pipelineVersion",
+    "outputDirectory",
+    "backgroundColor",
+    "palette",
+    "settings",
+    "motions",
+    "fallbacks",
+    "frames"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "unitId": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "sourceGameSchemaVersion": { "type": "integer", "minimum": 1 },
+    "pipelineVersion": { "type": "integer", "minimum": 1 },
+    "outputDirectory": { "type": "string", "minLength": 1 },
+    "backgroundColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "palette": {
+      "type": "object",
+      "required": ["id", "colors"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "colors": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+        }
+      }
+    },
+    "settings": { "type": "object" },
+    "motions": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+    "fallbacks": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+    },
+    "frames": { "type": "array", "minItems": 1, "items": { "type": "object" } }
+  }
+}

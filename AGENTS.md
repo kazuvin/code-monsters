@@ -22,3 +22,14 @@
 - Prefer small deterministic functions over stateful UI callbacks.
 - Add schema fields compatibly and increment `schemaVersion` for breaking data changes.
 - Update `docs/unity-migration.md` when the core boundary or import strategy changes.
+
+## Sprite asset pipeline
+
+- Keep gameplay definitions in `game-data/game-balance.json`; art specs and manifests may reference a stable unit ID but must not duplicate stats or localized names.
+- Treat `game-assets/config/`, `game-assets/specs/`, and `packages/asset-contracts/schemas/` as reviewed authoring inputs. Keep unapproved `game-assets/runs/` out of Git.
+- Only `game-assets/approved/<unitId>/manifest.json` may be published to Web or Unity. QA errors block approval; warnings require human review.
+- Use `tools/sprite-pipeline` for deterministic pixel processing and `tools/asset-cli` for orchestration. Do not generate Unity YAML or `.meta` files from Python.
+- Unity presentation assets belong under `Assets/CodeMonsters/Presentation`; generated Prefabs must not own combat rules or duplicate balance data.
+- Preserve Unity YAML serialization, including the significant trailing spaces used by empty `TagManager.asset` layer entries.
+- After changing asset contracts, pipeline config, CLI, or Python processing, run `pnpm assets:check`, `pnpm assets:test`, and `pnpm assets:python:test`.
+- After changing the Unity sprite importer, also run `pnpm test:unity-assets` and inspect `/tmp/code-monsters-unity-asset-tests.log` when the Editor cannot complete.
