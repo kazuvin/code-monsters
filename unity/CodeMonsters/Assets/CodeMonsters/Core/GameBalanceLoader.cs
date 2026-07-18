@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 9;
+        public const int SupportedSchemaVersion = 10;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -40,12 +40,14 @@ namespace CodeMonsters.Core
             var instructionIds = UniqueIds(data.Instructions, instruction => instruction.Id, "instruction");
             var conditionIds = UniqueIds(data.Conditions, condition => condition.Id, "condition");
             var statusIds = UniqueIds(data.Statuses, status => status.Id, "status");
+            var battleZoneIds = UniqueIds(data.BattleZones, zone => zone.Id, "battle zone");
             if (statusIds.Count == 0)
                 throw new InvalidDataException("The canonical status registry must not be empty");
 
             ValidateStatuses(data.Statuses);
+            ValidateBattleZones(data.BattleZones, statusIds);
             ValidateConditions(data.Conditions, statusIds);
-            ValidateInstructions(data.Instructions, instructionIds, conditionIds, statusIds);
+            ValidateInstructions(data.Instructions, instructionIds, conditionIds, statusIds, battleZoneIds);
             ValidateSynergies(data, unitIds);
 
             foreach (var encounter in data.Encounters)
@@ -140,6 +142,30 @@ namespace CodeMonsters.Core
             }
         }
 
+        private static void ValidateBattleZones(
+            IEnumerable<BattleZoneDefinition> zones,
+            HashSet<string> statusIds
+        )
+        {
+            foreach (var zone in zones)
+            {
+                if (
+                    string.IsNullOrEmpty(zone.Label)
+                    || zone.Radius <= 0
+                    || zone.DurationSeconds <= 0
+                    || (zone.TargetFilter != "any" && zone.TargetFilter != "ally" && zone.TargetFilter != "enemy")
+                )
+                    throw new InvalidDataException($"Battle zone {zone.Id} has invalid dimensions or target filter");
+                if (zone.Trigger.Kind != "onEnter" || zone.Trigger.Effects.Count == 0)
+                    throw new InvalidDataException($"Battle zone {zone.Id} has unsupported or empty trigger");
+                foreach (var effect in zone.Trigger.Effects)
+                    if (effect.Kind != "applyStatus" || !statusIds.Contains(effect.StatusId) || effect.Stacks < 1)
+                        throw new InvalidDataException($"Battle zone {zone.Id} has invalid trigger effect");
+                if (string.IsNullOrEmpty(zone.Visual.ClassName) || string.IsNullOrEmpty(zone.Visual.Label))
+                    throw new InvalidDataException($"Battle zone {zone.Id} has incomplete visual definition");
+            }
+        }
+
         private static void ValidateConditions(IEnumerable<ConditionDefinition> conditions, HashSet<string> statusIds)
         {
             var supportedKinds = new HashSet<string>
@@ -170,7 +196,8 @@ namespace CodeMonsters.Core
             IEnumerable<InstructionDefinition> instructions,
             HashSet<string> instructionIds,
             HashSet<string> conditionIds,
-            HashSet<string> statusIds
+            HashSet<string> statusIds,
+            HashSet<string> battleZoneIds
         )
         {
             var supportedKinds = new HashSet<string>
@@ -182,6 +209,7 @@ namespace CodeMonsters.Core
                 "consumeStatus",
                 "removeStatus",
                 "modifyStat",
+                "placeZone",
                 "wait",
             };
             var supportedRanges = new HashSet<string> { "unit", "fixed", "scaled" };
@@ -210,6 +238,16 @@ namespace CodeMonsters.Core
                         throw new InvalidDataException($"Instruction {instruction.Id} move effect is incomplete");
                     if (effect.Kind == "heal" && (!effect.Amount.HasValue || effect.Amount.Value <= 0))
                         throw new InvalidDataException($"Instruction {instruction.Id} heal effect is incomplete");
+                    if (
+                        effect.Kind == "placeZone"
+                        && (
+                            !battleZoneIds.Contains(effect.ZoneId)
+                            || (effect.Anchor != "actor" && effect.Anchor != "target")
+                            || !effect.Offset.HasValue
+                            || effect.Offset.Value < 0
+                        )
+                    )
+                        throw new InvalidDataException($"Instruction {instruction.Id} placeZone effect is incomplete");
                     if (effect.Kind == "applyStatus" || effect.Kind == "consumeStatus" || effect.Kind == "removeStatus")
                     {
                         if (!statusIds.Contains(effect.StatusId))
@@ -222,8 +260,11 @@ namespace CodeMonsters.Core
         private static void ValidateSynergies(GameBalanceData data, HashSet<string> unitIds)
         {
             var conditions = new Dictionary<string, ConditionDefinition>();
+            var zones = new Dictionary<string, BattleZoneDefinition>();
             foreach (var condition in data.Conditions)
                 conditions[condition.Id] = condition;
+            foreach (var zone in data.BattleZones)
+                zones[zone.Id] = zone;
             foreach (var status in data.Statuses)
             {
                 var producers = new List<InstructionDefinition>();
@@ -234,6 +275,10 @@ namespace CodeMonsters.Core
                     {
                         if (effect.Kind == "applyStatus" && effect.StatusId == status.Id)
                             producers.Add(instruction);
+                        if (effect.Kind == "placeZone" && zones.TryGetValue(effect.ZoneId, out var zone))
+                            foreach (var zoneEffect in zone.Trigger.Effects)
+                                if (zoneEffect.StatusId == status.Id && !producers.Contains(instruction))
+                                    producers.Add(instruction);
                         if (effect.Kind == "consumeStatus" && effect.StatusId == status.Id)
                             consumers.Add(instruction);
                     }

@@ -12,7 +12,7 @@ import {
 } from './core/debug-simulation';
 import { instructionHasDamage } from './core/instruction-effects';
 import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from './data';
-import type { BattleFlash, Fighter, Role } from './types';
+import type { BattleFlash, BattleZoneInstance, Fighter, Role } from './types';
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
 const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
@@ -178,6 +178,7 @@ function DebugBattlePreview({
 }) {
   const initialFighters = useMemo(() => createDebugFighters(input), [input]);
   const [fighters, setFighters] = useState<Fighter[]>(initialFighters);
+  const [zones, setZones] = useState<BattleZoneInstance[]>([]);
   const [flash, setFlash] = useState<BattleFlash | null>(null);
   const [impact, setImpact] = useState<{ amount: number; kind: DebugEffectEvent['kind'] } | null>(null);
   const [running, setRunning] = useState(false);
@@ -187,6 +188,7 @@ function DebugBattlePreview({
     const timers: number[] = [];
     let recoveryTimer: number | null = null;
     setFighters(initialFighters);
+    setZones([]);
     setFlash(null);
     setImpact(null);
     setRunning(false);
@@ -205,6 +207,7 @@ function DebugBattlePreview({
             const n = Date.now() + index;
             setFlash({ ...frame.flash, n });
             setFighters(frame.fighters.map((fighter) => ({ ...fighter })));
+            setZones(frame.zones.map((zone) => ({ ...zone })));
             if (frame.effect) {
               setImpact({ amount: frame.effect.amount, kind: frame.effect.kind });
               timers.push(window.setTimeout(() => setImpact(null), 520));
@@ -259,7 +262,7 @@ function DebugBattlePreview({
           <span>HP</span>
         </div>
       </div>
-      <BattleScene fighters={fighters} flash={flash} running={running} />
+      <BattleScene fighters={fighters} zones={zones} flash={flash} running={running} />
       <div className={`debug-range-lock ${actorInRange ? '' : 'is-outside'}`}>
         <Crosshair size={13} />
         <span>{rangeLabel}</span>

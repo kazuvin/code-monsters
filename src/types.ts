@@ -15,6 +15,7 @@ export type ActionType =
   | 'poison'
   | 'burn'
   | 'follow'
+  | 'field'
   | 'wait';
 export type AttackType = 'melee' | 'blunt' | 'sniper';
 export type Rarity = 'common' | 'rare' | 'epic';
@@ -79,6 +80,12 @@ export type RemoveStatusEffect = {
 };
 export type ModifyStatEffect = { kind: 'modifyStat'; stat: 'attack'; amount: number; target: 'actor' };
 export type WaitEffect = { kind: 'wait'; durationSeconds: number };
+export type PlaceZoneEffect = {
+  kind: 'placeZone';
+  zoneId: string;
+  anchor: 'actor' | 'target';
+  offset: number;
+};
 export type InstructionEffect =
   | DamageEffect
   | MoveEffect
@@ -87,6 +94,7 @@ export type InstructionEffect =
   | ConsumeStatusEffect
   | RemoveStatusEffect
   | ModifyStatEffect
+  | PlaceZoneEffect
   | WaitEffect;
 export type InstructionEffectKind = InstructionEffect['kind'];
 export type InstructionEffectByKind<Kind extends InstructionEffectKind> = Extract<InstructionEffect, { kind: Kind }>;
@@ -146,6 +154,34 @@ export type StatusInstance = {
   remainingSeconds: number | null;
   sourceId: string | null;
   targetId: string | null;
+};
+
+export type BattleZoneTargetFilter = 'any' | 'ally' | 'enemy';
+export type BattleZoneTriggerEffect = Omit<ApplyStatusEffect, 'target'>;
+export type BattleZoneDefinition = {
+  id: string;
+  label: string;
+  description: string;
+  radius: number;
+  durationSeconds: number;
+  targetFilter: BattleZoneTargetFilter;
+  trigger: {
+    kind: 'onEnter';
+    effects: BattleZoneTriggerEffect[];
+  };
+  visual: {
+    className: string;
+    label: string;
+    color: string;
+  };
+};
+export type BattleZoneInstance = {
+  instanceId: string;
+  zoneId: string;
+  x: number;
+  remainingSeconds: number;
+  sourceId: string;
+  sourceTeam: Fighter['team'];
 };
 
 export type UnitDefinition = {
@@ -233,6 +269,7 @@ export type BattleFlash = {
     | 'poison'
     | 'burn'
     | 'follow'
+    | 'field'
     | 'guard'
     | 'berserk'
     | 'wait'
@@ -240,6 +277,7 @@ export type BattleFlash = {
     | 'death';
   n: number;
   targetId?: string;
+  zoneX?: number;
   attackType?: AttackType;
   actionLabel?: string;
   reaction?: boolean;

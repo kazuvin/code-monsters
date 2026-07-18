@@ -20,6 +20,14 @@ import {
   tickCooldowns,
 } from './rules.ts';
 import { applyInstructionStatusEffects, effectByKind, requireEffect } from './instruction-effects.ts';
+import {
+  applyZoneEntries,
+  battleZoneById,
+  createBattleZone,
+  tickBattleZones,
+  type BattleZoneChange,
+  type ZoneTrigger,
+} from './battle-zones.ts';
 import { clearActionStatuses, hasStatus } from './statuses.ts';
 
 type MutableFighterFields = Pick<
@@ -41,6 +49,8 @@ export type BattleStep = {
   log?: BattleLogPayload;
   damage?: BattleDamagePayload;
   updates: FighterUpdate[];
+  zoneChanges?: BattleZoneChange[];
+  zoneTriggers?: ZoneTrigger[];
 };
 export type DecisionReason = 'condition' | 'range' | 'cost' | 'state';
 export type DecisionTrace = {
@@ -54,6 +64,7 @@ export type DecisionTrace = {
 };
 export type BattlePlan = {
   fighters: Fighter[];
+  zones: import('../types.ts').BattleZoneInstance[];
   steps: BattleStep[];
   logs: BattleLogPayload[];
   decisions: DecisionTrace[];
@@ -82,12 +93,14 @@ export function isBattleComplete(fighters: Fighter[]): boolean {
 
 export function planBattleFrame({
   fighters,
+  zones = [],
   team,
   dt,
   elapsed,
   previousElapsed,
 }: {
   fighters: Fighter[];
+  zones?: import('../types.ts').BattleZoneInstance[];
   team: UnitInventoryItem[];
   dt: number;
   elapsed: number;
@@ -95,6 +108,8 @@ export function planBattleFrame({
 }): BattlePlan {
   let displayNext = tickCooldowns(fighters, dt);
   let next = displayNext.map((fighter) => ({ ...fighter }));
+  const displayZones = tickBattleZones(zones, dt);
+  let nextZones = displayZones.map((zone) => ({ ...zone }));
   const steps: BattleStep[] = [];
   const logs: BattleLogPayload[] = [];
   const decisions: DecisionTrace[] = [];
@@ -114,6 +129,13 @@ export function planBattleFrame({
     displayNext = applyFighterUpdates(displayNext, [{ id: fighterId, values: { abilityGauge } }]);
   };
   const queueStep = (step: BattleStep) => steps.push(step);
+  const moveThroughZones = (fighter: Fighter, x: number) => {
+    const entry = applyZoneEntries(fighter, fighter.x, x, nextZones);
+    return {
+      values: { x, statuses: entry.fighter.statuses, attack: entry.fighter.attack, speed: entry.fighter.speed },
+      triggers: entry.triggers,
+    };
+  };
   const reactionFor = (fighter: Fighter): ReactionBlock | null =>
     fighter.team === 'ally'
       ? (team.find((unit) => unit.inventoryId === fighter.instanceId)?.reaction ?? null)
@@ -207,12 +229,14 @@ export function planBattleFrame({
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
       const x = retreatFrom(reactor, target, requireEffect(instruction, 'move').distance);
-      const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
+      const movement = moveThroughZones(reactor, x);
+      const values = { ...movement.values, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
         flash: { id: reactor.instanceId, kind: instruction.visualKind ?? 'move', actionLabel, reaction: true, n: 0 },
         log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜戦線 ${Math.round(x)}`, type: 'reaction' },
         updates: [{ id: reactor.instanceId, values }],
+        zoneTriggers: movement.triggers,
       });
       return;
     }
@@ -221,12 +245,14 @@ export function planBattleFrame({
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
       const x = jumpToward(reactor, target, requireEffect(instruction, 'move').distance);
-      const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
+      const movement = moveThroughZones(reactor, x);
+      const values = { ...movement.values, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
         flash: { id: reactor.instanceId, kind: instruction.visualKind ?? 'jump', actionLabel, reaction: true, n: 0 },
         log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜戦線 ${Math.round(x)}`, type: 'reaction' },
         updates: [{ id: reactor.instanceId, values }],
+        zoneTriggers: movement.triggers,
       });
       return;
     }
@@ -235,12 +261,14 @@ export function planBattleFrame({
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       spendAbility(reactor.instanceId, instruction.abilityCost);
       const x = advanceToward(reactor, target, requireEffect(instruction, 'move').distance);
-      const values = { x, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
+      const movement = moveThroughZones(reactor, x);
+      const values = { ...movement.values, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
         flash: { id: reactor.instanceId, kind: instruction.visualKind ?? 'move', actionLabel, reaction: true, n: 0 },
         log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜戦線 ${Math.round(x)}`, type: 'reaction' },
         updates: [{ id: reactor.instanceId, values }],
+        zoneTriggers: movement.triggers,
       });
       return;
     }
@@ -271,8 +299,9 @@ export function planBattleFrame({
         return;
       }
       const x = pullToward(reactor, target, requireEffect(instruction, 'move').distance);
+      const movement = moveThroughZones(target, x);
       setNext(reactor.instanceId, { reactionCooldown });
-      setNext(target.instanceId, { x });
+      setNext(target.instanceId, movement.values);
       queueStep({
         flash: {
           id: reactor.instanceId,
@@ -291,7 +320,8 @@ export function planBattleFrame({
       });
       queueStep({
         flash: { id: target.instanceId, kind: 'pulled', actionLabel: 'PULL', n: 0 },
-        updates: [{ id: target.instanceId, values: { x } }],
+        updates: [{ id: target.instanceId, values: movement.values }],
+        zoneTriggers: movement.triggers,
       });
       return;
     }
@@ -321,13 +351,14 @@ export function planBattleFrame({
     const hp = Math.max(0, target.hp - impact.damage);
     const affectedTarget = applyInstructionStatusEffects(target, instruction, reactor.instanceId, 'selected');
     const affectedReactor = applyInstructionStatusEffects(reactor, instruction, reactor.instanceId, 'actor');
-    const statuses = affectedTarget.statuses;
     const x =
       hp > 0 && instruction.action === 'throw'
         ? throwBehind(reactor, target, requireEffect(instruction, 'move').distance)
         : hp > 0 && impact.knockbackDistance > 0
           ? knockbackPosition(target, reactor, impact.knockbackDistance)
           : target.x;
+    const movedTarget = applyZoneEntries(affectedTarget, target.x, x, nextZones);
+    const statuses = movedTarget.fighter.statuses;
     const reactorValues = {
       reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds,
       statuses: affectedReactor.statuses,
@@ -335,7 +366,13 @@ export function planBattleFrame({
       speed: affectedReactor.speed,
     };
     setNext(reactor.instanceId, reactorValues);
-    setNext(target.instanceId, { hp, statuses, attack: affectedTarget.attack, speed: affectedTarget.speed, x });
+    setNext(target.instanceId, {
+      hp,
+      statuses,
+      attack: movedTarget.fighter.attack,
+      speed: movedTarget.fighter.speed,
+      x,
+    });
     const attackKind =
       instruction.action === 'heavy' ||
       instruction.action === 'throw' ||
@@ -371,7 +408,7 @@ export function planBattleFrame({
         { id: reactor.instanceId, values: reactorValues },
         {
           id: target.instanceId,
-          values: { hp, statuses, attack: affectedTarget.attack, speed: affectedTarget.speed },
+          values: { hp, statuses, attack: movedTarget.fighter.attack, speed: movedTarget.fighter.speed },
         },
       ],
     });
@@ -384,6 +421,7 @@ export function planBattleFrame({
           n: 0,
         },
         updates: [{ id: target.instanceId, values: { x } }],
+        zoneTriggers: movedTarget.triggers,
       });
     if (hp <= 0 && target.hp > 0)
       queueStep({ flash: { id: target.instanceId, kind: 'death', actionLabel: 'DOWN', n: 0 }, updates: [] });
@@ -524,7 +562,37 @@ export function planBattleFrame({
       spendAbility(current.instanceId, instruction.abilityCost);
       acted = true;
 
-      if (instruction.action === 'taunt') {
+      if (instruction.action === 'field') {
+        const effect = requireEffect(instruction, 'placeZone');
+        const zone = createBattleZone(effect, current, target, elapsed);
+        nextZones = [...nextZones, zone];
+        const updates: FighterUpdate[] = [];
+        const zoneTriggers: ZoneTrigger[] = [];
+        for (const fighter of next.filter((candidate) => candidate.hp > 0)) {
+          const entry = applyZoneEntries(fighter, fighter.x, fighter.x, [zone], true);
+          if (entry.triggers.length === 0) continue;
+          const values = {
+            statuses: entry.fighter.statuses,
+            attack: entry.fighter.attack,
+            speed: entry.fighter.speed,
+          };
+          setNext(fighter.instanceId, values);
+          updates.push({ id: fighter.instanceId, values });
+          zoneTriggers.push(...entry.triggers);
+        }
+        const definition = battleZoneById.get(zone.zoneId);
+        queueStep({
+          flash: { id: current.instanceId, kind: 'field', zoneX: zone.x, actionLabel: instruction.short, n: 0 },
+          log: {
+            actor: current.name,
+            text: `${instruction.short}｜${definition?.label ?? zone.zoneId}を戦線 ${Math.round(zone.x)} に設置`,
+            type: 'info',
+          },
+          updates,
+          zoneChanges: [{ kind: 'add', zone }],
+          zoneTriggers,
+        });
+      } else if (instruction.action === 'taunt') {
         const statusApplication = requireEffect(instruction, 'applyStatus');
         const duration = statusApplication.durationSeconds ?? 0;
         const updates = currentEnemies.map((enemy) => {
@@ -550,7 +618,8 @@ export function planBattleFrame({
           });
         } else {
           const x = advanceToward(current, target, requireEffect(instruction, 'move').distance);
-          setNext(current.instanceId, { x });
+          const movement = moveThroughZones(current, x);
+          setNext(current.instanceId, movement.values);
           queueStep({
             flash: {
               id: current.instanceId,
@@ -563,12 +632,14 @@ export function planBattleFrame({
               text: `${target.name}へ${instruction.short}｜戦線 ${Math.round(x)}`,
               type: 'info',
             },
-            updates: [{ id: current.instanceId, values: { x } }],
+            updates: [{ id: current.instanceId, values: movement.values }],
+            zoneTriggers: movement.triggers,
           });
         }
       } else if (instruction.action === 'jump') {
         const x = jumpToward(current, target, requireEffect(instruction, 'move').distance);
-        setNext(current.instanceId, { x });
+        const movement = moveThroughZones(current, x);
+        setNext(current.instanceId, movement.values);
         queueStep({
           flash: {
             id: current.instanceId,
@@ -581,11 +652,13 @@ export function planBattleFrame({
             text: `${target.name}へ${instruction.short}｜戦線 ${Math.round(x)}`,
             type: 'info',
           },
-          updates: [{ id: current.instanceId, values: { x } }],
+          updates: [{ id: current.instanceId, values: movement.values }],
+          zoneTriggers: movement.triggers,
         });
       } else if (instruction.action === 'pull') {
         const x = pullToward(current, target, requireEffect(instruction, 'move').distance);
-        setNext(target.instanceId, { x });
+        const movement = moveThroughZones(target, x);
+        setNext(target.instanceId, movement.values);
         queueStep({
           flash: {
             id: current.instanceId,
@@ -603,7 +676,8 @@ export function planBattleFrame({
         });
         queueStep({
           flash: { id: target.instanceId, kind: 'pulled', actionLabel: 'PULL', n: 0 },
-          updates: [{ id: target.instanceId, values: { x } }],
+          updates: [{ id: target.instanceId, values: movement.values }],
+          zoneTriggers: movement.triggers,
         });
       } else if (instruction.action === 'heal') {
         const heal = requireEffect(instruction, 'heal');
@@ -617,7 +691,8 @@ export function planBattleFrame({
         });
       } else if (instruction.action === 'retreat') {
         const x = retreatFrom(current, target, requireEffect(instruction, 'move').distance);
-        setNext(current.instanceId, { x });
+        const movement = moveThroughZones(current, x);
+        setNext(current.instanceId, movement.values);
         queueStep({
           flash: {
             id: current.instanceId,
@@ -630,7 +705,8 @@ export function planBattleFrame({
             text: `${target.name}から${instruction.short}｜戦線 ${Math.round(x)}`,
             type: 'info',
           },
-          updates: [{ id: current.instanceId, values: { x } }],
+          updates: [{ id: current.instanceId, values: movement.values }],
+          zoneTriggers: movement.triggers,
         });
       } else if (instruction.action === 'guard') {
         const guarded = applyInstructionStatusEffects(current, instruction, current.instanceId, 'actor');
@@ -727,12 +803,13 @@ export function planBattleFrame({
             hp > 0 && impact.knockbackDistance > 0
               ? knockbackPosition(liveTarget, current, impact.knockbackDistance)
               : liveTarget.x;
+          const movedTarget = applyZoneEntries(affectedTarget, liveTarget.x, x, nextZones);
           setNext(liveTarget.instanceId, {
             x,
             hp,
-            statuses,
-            attack: affectedTarget.attack,
-            speed: affectedTarget.speed,
+            statuses: movedTarget.fighter.statuses,
+            attack: movedTarget.fighter.attack,
+            speed: movedTarget.fighter.speed,
           });
           if (actorUpdate) setNext(actorUpdate.id, actorUpdate.values);
           const attackKind =
@@ -772,7 +849,18 @@ export function planBattleFrame({
           if (hp > 0 && x !== liveTarget.x)
             queueStep({
               flash: { id: liveTarget.instanceId, kind: 'hit', actionLabel: 'KNOCKBACK', n: 0 },
-              updates: [{ id: liveTarget.instanceId, values: { x } }],
+              updates: [
+                {
+                  id: liveTarget.instanceId,
+                  values: {
+                    x,
+                    statuses: movedTarget.fighter.statuses,
+                    attack: movedTarget.fighter.attack,
+                    speed: movedTarget.fighter.speed,
+                  },
+                },
+              ],
+              zoneTriggers: movedTarget.triggers,
             });
           if (hp <= 0 && liveTarget.hp > 0)
             queueStep({ flash: { id: liveTarget.instanceId, kind: 'death', actionLabel: 'DOWN', n: 0 }, updates: [] });
@@ -802,12 +890,13 @@ export function planBattleFrame({
             : hp > 0 && impact.knockbackDistance > 0
               ? knockbackPosition(target, current, impact.knockbackDistance)
               : target.x;
+        const movedTarget = applyZoneEntries(affectedTarget, target.x, x, nextZones);
         setNext(target.instanceId, {
           x,
           hp,
-          statuses,
-          attack: affectedTarget.attack,
-          speed: affectedTarget.speed,
+          statuses: movedTarget.fighter.statuses,
+          attack: movedTarget.fighter.attack,
+          speed: movedTarget.fighter.speed,
         });
         const actorUpdate =
           affectedActor !== current
@@ -867,7 +956,18 @@ export function planBattleFrame({
               actionLabel: instruction.action === 'throw' ? 'THROW' : 'KNOCKBACK',
               n: 0,
             },
-            updates: [{ id: target.instanceId, values: { x } }],
+            updates: [
+              {
+                id: target.instanceId,
+                values: {
+                  x,
+                  statuses: movedTarget.fighter.statuses,
+                  attack: movedTarget.fighter.attack,
+                  speed: movedTarget.fighter.speed,
+                },
+              },
+            ],
+            zoneTriggers: movedTarget.triggers,
           });
         if (hp <= 0 && target.hp > 0)
           queueStep({ flash: { id: target.instanceId, kind: 'death', actionLabel: 'DOWN', n: 0 }, updates: [] });
@@ -882,5 +982,12 @@ export function planBattleFrame({
       });
   }
 
-  return { fighters: displayNext, steps, logs, decisions, complete: isBattleComplete(next) && steps.length === 0 };
+  return {
+    fighters: displayNext,
+    zones: displayZones,
+    steps,
+    logs,
+    decisions,
+    complete: isBattleComplete(next) && steps.length === 0,
+  };
 }

@@ -22,6 +22,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | --- | --- | --- |
 | `src/core/combat.ts` | `CombatResolver.cs` | damage and knockback math |
 | `src/core/statuses.ts` | `BattleRules.cs` / future `StatusRuntime.cs` | generic status instances, stacking, duration, effects, and visual metadata lookup |
+| `src/core/battle-zones.ts` | `BattleRules.cs` / future `BattleZoneRuntime.cs` | generic timed areas, path-entry detection, and typed trigger effects |
 | `src/core/rules.ts` | `BattleRules.cs` | target selection, per-target condition matching, cooldowns, movement, action effects |
 | `src/core/battle-engine.ts` | `BattleEngine.cs` | deterministic frame planning and serializable battle steps |
 | `src/core/roster.ts` | `RosterFactory.cs` | inventory units and battle-state construction |
@@ -52,7 +53,7 @@ Run `pnpm test:unity-assets:compile` for the license-independent C# smoke check 
 5. Build Unity presentation from battle-step events; do not move rules into MonoBehaviours.
 6. Keep `pnpm balance:check` available until the analyzer itself is ported to an editor tool or .NET CLI.
 
-When adding behavior, compose the finite instruction `effects` primitives (`damage`, `move`, `heal`, `applyStatus`, `consumeStatus`, `removeStatus`, `modifyStat`, and `wait`) rather than embedding executable scripts. Update the TypeScript type and C# DTO/allowlist only when introducing a genuinely new runtime behavior, then add a focused parity test. Add statuses once to the top-level `statuses` registry with their debug control, visual metadata, canonical effect values, and synergy metadata; runtime fighters store only generic status instances. The web controls, status chips, and synergy graph are generated from the registry, and `pnpm verify` checks every unit, status, position preset, instruction, and status pack. Unsupported status effects, duration modes, instruction-effect kinds, condition kinds, or target structures fail validation rather than being silently omitted. Breaking schema changes require a `schemaVersion` increment and migration note.
+When adding behavior, compose the finite instruction `effects` primitives (`damage`, `move`, `heal`, `applyStatus`, `consumeStatus`, `removeStatus`, `modifyStat`, `placeZone`, and `wait`) rather than embedding executable scripts. Update the TypeScript type and C# DTO/allowlist only when introducing a genuinely new runtime behavior, then add a focused parity test. Add statuses and battle zones once to their top-level registries with debug or visual metadata; runtime fighters and zones store only generic serializable instances. The web controls, chips, and synergy matrices are generated from those registries, and `pnpm verify` checks every unit, status, position preset, instruction, status pack, and position pack. Unsupported status effects, zone triggers, duration modes, instruction-effect kinds, condition kinds, or target structures fail validation rather than being silently omitted. Breaking schema changes require a `schemaVersion` increment and migration note.
 
 ## Schema version 2 migration
 
@@ -96,11 +97,17 @@ Add the finite `selfHasStatus` condition kind. Unlike `targetHasStatus`, it eval
 
 Importers must add `selfHasStatus` to their condition allowlist and validate its `statusId` and positive `minimumStacks` exactly like `targetHasStatus`. Synergy analyzers must count either condition kind as a status-condition path. Version 9's first pack is `inspired`: Mender applies the timed attack multiplier to an ally, while Volt and Wrath consume it from themselves for their own enemy-targeted attacks.
 
+## Schema version 10 migration
+
+Add the top-level `battleZones` registry and the finite `placeZone` instruction effect. A zone owns its radius, lifetime, team filter, typed `onEnter` effects, and visual metadata; a placement skill owns only its zone ID, anchor, and directional offset. Runtime state stores serializable zone instances and tests every movement segment against active zones. Entering from outside applies the configured effect once, including when a movement crosses the complete area between frames; starting inside and leaving does not retrigger it.
+
+Web, debug playback, and Unity replay contracts now carry zone state separately from fighters. The Debug Room and position-synergy matrix enumerate the same canonical data. Version 10's first content is `toxic-cloud`, but neither the runtime nor movement skills branch on poison: existing advance, retreat, jump, pull, throw, and knockback behaviors interact with any future zone definition automatically.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v9 DTO loading and stable-ID/reference validation, including finite instruction effects and canonical status values
+- schema-v10 DTO loading and stable-ID/reference validation, including finite instruction effects, battle zones, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

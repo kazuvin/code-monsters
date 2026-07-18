@@ -80,6 +80,8 @@ const effectSummary = (effect: InstructionEffect): { label: string; value: strin
       return { label: '状態解除', value: statusById.get(effect.statusId)?.label ?? effect.statusId };
     case 'modifyStat':
       return { label: '能力変更', value: `${effect.stat} ${effect.amount > 0 ? '+' : ''}${effect.amount}` };
+    case 'placeZone':
+      return { label: 'エリア設置', value: `${effect.zoneId} / ${effect.anchor} +${effect.offset}` };
     case 'wait':
       return { label: '待機', value: `${effect.durationSeconds}秒` };
   }

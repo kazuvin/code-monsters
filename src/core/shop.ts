@@ -1,7 +1,13 @@
 import { INSTRUCTIONS, ROSTER_CONFIG, SHOP_CONFIG, UNITS } from '../data.ts';
 import type { Rarity } from '../types.ts';
 
-export type ShopItem = { key: string; kind: 'unit' | 'instruction'; id: string; locked: boolean };
+export type ShopItem = {
+  key: string;
+  slot: number;
+  kind: 'unit' | 'instruction';
+  id: string;
+  locked: boolean;
+};
 
 const shopInstructions = INSTRUCTIONS.filter(
   (instruction) => !instruction.fixedFor && !ROSTER_CONFIG.startingActionIds.includes(instruction.id),
@@ -12,7 +18,8 @@ const seededRandom = (seed: number) => {
   return x - Math.floor(x);
 };
 
-const weightedPick = <T extends { rarity: Rarity }>(items: T[], seed: number) => {
+const weightedPick = <T extends { rarity: Rarity }>(items: T[], seed: number): T => {
+  if (items.length === 0) throw new Error('Shop candidate pool is empty');
   const total = items.reduce((sum, item) => sum + SHOP_CONFIG.rarityWeights[item.rarity], 0);
   let cursor = seededRandom(seed) * total;
   for (const item of items) {
@@ -22,17 +29,19 @@ const weightedPick = <T extends { rarity: Rarity }>(items: T[], seed: number) =>
   return items[items.length - 1];
 };
 
-export function createShop(seed = 0): ShopItem[] {
-  const picks = Array.from({ length: SHOP_CONFIG.size }, (_, index) => {
+export function createShop(seed = 0, current: ShopItem[] = []): ShopItem[] {
+  const retainedBySlot = new Map(current.filter((item) => item.locked).map((item) => [item.slot, item]));
+  const usedIds = new Set<string>();
+  return Array.from({ length: SHOP_CONFIG.size }, (_, index): ShopItem => {
+    const retained = retainedBySlot.get(index);
+    if (retained && !usedIds.has(retained.id)) {
+      usedIds.add(retained.id);
+      return retained;
+    }
     const kind = SHOP_CONFIG.unitSlots.includes(index) ? ('unit' as const) : ('instruction' as const);
-    const id =
-      kind === 'unit'
-        ? weightedPick(UNITS, seed * 11 + index + 1).id
-        : weightedPick(shopInstructions, seed * 13 + index + 5).id;
-    return { kind, id };
+    const candidates = (kind === 'unit' ? UNITS : shopInstructions).filter((item) => !usedIds.has(item.id));
+    const id = weightedPick(candidates, seed * 17 + index * 13 + 5).id;
+    usedIds.add(id);
+    return { key: `${seed}-${index}`, slot: index, kind, id, locked: false };
   });
-  if (seed === 0) {
-    for (const pick of SHOP_CONFIG.initialPicks) picks[pick.slot] = { kind: pick.kind, id: pick.id };
-  }
-  return picks.map((pick, index) => ({ ...pick, key: `${seed}-${index}`, locked: false }));
 }

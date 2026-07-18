@@ -20,15 +20,31 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(9));
+            Assert.That(data.SchemaVersion, Is.EqualTo(10));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));
             Assert.That(data.DebugTraining.RecoveryDelaySeconds, Is.EqualTo(3));
             Assert.That(data.DebugTraining.PositionPresets, Has.Count.EqualTo(3));
             Assert.That(data.Statuses.Select(status => status.Id), Does.Contain("poison"));
+            Assert.That(data.BattleZones.Select(zone => zone.Id), Does.Contain("toxic-cloud"));
             Assert.That(data.Encounters, Has.Count.EqualTo(5));
             Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 3), Is.True);
             Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("mender"));
             Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("toxin"));
+        }
+
+        [Test]
+        public void BattleZoneImportsFinitePlacementAndDetectsPathEntry()
+        {
+            var zone = data.BattleZones.Single(candidate => candidate.Id == "toxic-cloud");
+            var skill = data.Instructions.Single(candidate => candidate.Id == "throw-toxic-flask");
+            var effect = skill.Effects.Single(candidate => candidate.Kind == "placeZone");
+
+            Assert.That(zone.TargetFilter, Is.EqualTo("any"));
+            Assert.That(zone.Trigger.Kind, Is.EqualTo("onEnter"));
+            Assert.That(zone.Trigger.Effects.Single().StatusId, Is.EqualTo("poison"));
+            Assert.That(effect.ZoneId, Is.EqualTo(zone.Id));
+            Assert.That(BattleRules.PathEntersZone(20, 80, 50, zone.Radius), Is.True);
+            Assert.That(BattleRules.PathEntersZone(50, 80, 50, zone.Radius), Is.False);
         }
 
         [Test]

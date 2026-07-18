@@ -86,10 +86,12 @@ if (reportRows === 0 || !reportText.includes('COMBAT EXECUTION TRACE') || !repor
 if (reportedDamage <= 0) throw new Error('指示実行レポートに技別ダメージが集計されていません');
 for (const label of ['実行イベント', '戦闘時間', 'ゲージ空', 'ゲージ満タン'])
   if (!summaryText.includes(label)) throw new Error(`戦闘サマリーに${label}がありません`);
-if (replay.schemaVersion !== 9 || replay.encounter?.id !== 'opening-line')
+if (replay.schemaVersion !== 10 || replay.encounter?.id !== 'opening-line')
   throw new Error('リプレイJSONに遭遇とスキーマ情報が保存されていません');
 if (!Array.isArray(replay.frames) || replay.frames.length === 0)
   throw new Error('リプレイJSONに戦闘フレームがありません');
+if (!Array.isArray(replay.initialZones) || replay.frames.some((frame) => !Array.isArray(frame.zones)))
+  throw new Error('リプレイJSONに設置エリアの状態が保存されていません');
 if (replay.frames.flatMap((frame) => frame.decisions ?? []).length === 0)
   throw new Error('リプレイJSONに指示判定がありません');
 if (

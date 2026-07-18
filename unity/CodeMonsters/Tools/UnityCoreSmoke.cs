@@ -41,6 +41,8 @@ internal static class UnityCoreSmoke
         var inspiredStrike = data.Instructions.Single(instruction => instruction.Id == "volt-inspired-strike");
         var inspiredSmash = data.Instructions.Single(instruction => instruction.Id == "wrath-inspired-smash");
         var selfInspired = data.Conditions.Single(condition => condition.Id == "selfInspired");
+        var toxicCloud = data.BattleZones.Single(zone => zone.Id == "toxic-cloud");
+        var toxicFlask = data.Instructions.Single(instruction => instruction.Id == "throw-toxic-flask");
         var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
         var actor = new FighterState { InstanceId = "arrow-1", X = 40, Range = arrow.Range, Hp = 74, MaxHp = 74 };
         var target = new FighterState { InstanceId = "enemy-1", X = 55, Range = 8, Hp = 100, MaxHp = 100 };
@@ -73,6 +75,12 @@ internal static class UnityCoreSmoke
         actor.Statuses.Add(new StatusInstance { StatusId = "inspired", Stacks = 1 });
         if (!BattleRules.MatchesCondition(selfInspired, actor, target))
             throw new InvalidDataException("Actor-owned inspired condition did not match an enemy target");
+        if (toxicCloud.TargetFilter != "any" || toxicCloud.Trigger.Effects.Single().StatusId != "poison")
+            throw new InvalidDataException("Generic battle zone trigger was not imported");
+        if (!toxicFlask.Effects.Any(effect => effect.Kind == "placeZone" && effect.ZoneId == "toxic-cloud"))
+            throw new InvalidDataException("Battle zone placement skill was not imported");
+        if (!BattleRules.PathEntersZone(20, 80, 50, toxicCloud.Radius))
+            throw new InvalidDataException("Battle zone path entry parity failed");
 
         Console.WriteLine(
             $"{{\"schemaVersion\":{data.SchemaVersion},\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"

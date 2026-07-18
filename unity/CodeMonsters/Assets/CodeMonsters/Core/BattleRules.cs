@@ -52,6 +52,15 @@ namespace CodeMonsters.Core
             return actor.Range;
         }
 
+        public static bool PathEntersZone(double fromX, double toX, double zoneX, double radius)
+        {
+            if (Math.Abs(fromX - zoneX) <= radius)
+                return false;
+            var low = Math.Min(fromX, toX);
+            var high = Math.Max(fromX, toX);
+            return high >= zoneX - radius && low <= zoneX + radius;
+        }
+
         public static bool MatchesCondition(
             ConditionDefinition condition,
             FighterState actor,

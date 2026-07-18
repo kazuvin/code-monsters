@@ -1,6 +1,7 @@
 import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from '../data.ts';
 import type {
   BattleFlash,
+  BattleZoneInstance,
   ConditionId,
   Fighter,
   Instruction,
@@ -20,6 +21,7 @@ import {
 import { requireEffect } from './instruction-effects.ts';
 import { knockbackPosition, resolveActionImpact, throwBehind, tickCooldowns } from './rules.ts';
 import { applyStatus, hasStatus, statusStacks } from './statuses.ts';
+import { applyBattleZoneChanges, tickBattleZones } from './battle-zones.ts';
 
 export type DebugRunMode = 'single' | 'timeline';
 export type DebugStatusValues = Record<string, number>;
@@ -52,6 +54,7 @@ export type DebugEffectEvent = {
 export type DebugPlaybackFrame = {
   elapsed: number;
   fighters: Fighter[];
+  zones: BattleZoneInstance[];
   flash: BattleFlash;
   effect: DebugEffectEvent | null;
 };
@@ -76,6 +79,7 @@ export type DebugSimulationResult = {
   finalPoison: number;
   finalActorStatuses: DebugStatusValues;
   finalTargetStatuses: DebugStatusValues;
+  activeZoneCount: number;
   targetDisplacement: number;
   actorDisplacement: number;
   attackDelta: number;
@@ -318,6 +322,7 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
   let fighters = setup.fighters;
   let queue: BattleStep[] = [];
   let stepClock = 0;
+  let zones: BattleZoneInstance[] = [];
   let elapsed = 0;
   let previousElapsed = 0;
   let singleAttempted = false;
@@ -353,6 +358,7 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
         stepClock = 0;
         const before = tickCooldowns(fighters, tick);
         fighters = keepDummyAlive(applyBattleStep(before, step), setup.dummyId);
+        zones = applyBattleZoneChanges(tickBattleZones(zones, tick), step.zoneChanges);
         let effect: DebugEffectEvent | null = null;
         let trainingMovementStep: BattleStep | null = null;
         if (step.damage?.actionId === setup.instruction.id && step.damage.actorId === setup.actorId) {
@@ -415,6 +421,7 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
           playback.push({
             elapsed: round(elapsed),
             fighters: snapshotFighters(fighters),
+            zones: structuredClone(zones),
             flash: { ...step.flash },
             effect,
           });
@@ -422,10 +429,12 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
         if (trainingMovementStep) queue.unshift(trainingMovementStep);
       } else {
         fighters = tickCooldowns(fighters, tick);
+        zones = tickBattleZones(zones, tick);
       }
     } else {
-      const plan = planBattleFrame({ fighters, team: setup.team, dt: tick, elapsed, previousElapsed });
+      const plan = planBattleFrame({ fighters, zones, team: setup.team, dt: tick, elapsed, previousElapsed });
       fighters = plan.fighters;
+      zones = plan.zones;
       queue = plan.steps;
       decisions.push(...plan.decisions);
       if (
@@ -460,8 +469,15 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
     maximumTargetDisplacement > Number.EPSILON ||
     maximumActorDisplacement > Number.EPSILON ||
     Boolean(finalActor && finalActor.statuses.length > 0);
+  const hasZoneEffect = zones.length > 0 || playback.some((frame) => frame.zones.length > 0);
   const verdict =
-    totalDamage > 0 ? 'damage' : totalHealing > 0 ? 'healing' : executions > 0 || hasStateEffect ? 'effect' : 'blocked';
+    totalDamage > 0
+      ? 'damage'
+      : totalHealing > 0
+        ? 'healing'
+        : executions > 0 || hasStateEffect || hasZoneEffect
+          ? 'effect'
+          : 'blocked';
 
   return {
     elapsed: round(elapsed),
@@ -483,6 +499,7 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
     finalPoison: finalTarget ? statusStacks(finalTarget, 'poison') : 0,
     finalActorStatuses: finalActor ? readDebugStatusValues(finalActor) : createDefaultDebugStatuses(),
     finalTargetStatuses: finalDummy ? readDebugStatusValues(finalDummy) : createDefaultDebugStatuses(),
+    activeZoneCount: zones.length,
     targetDisplacement: round(maximumTargetDisplacement, 1),
     actorDisplacement: round(maximumActorDisplacement, 1),
     attackDelta: round((finalActor?.attack ?? initialActor.attack) - initialActor.attack, 1),

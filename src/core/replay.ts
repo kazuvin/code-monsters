@@ -1,10 +1,11 @@
 import type { EncounterDefinition } from '../data.ts';
-import type { Fighter, UnitInventoryItem } from '../types.ts';
+import type { BattleZoneInstance, Fighter, UnitInventoryItem } from '../types.ts';
 import type { BattleDamagePayload, BattleStep, DecisionReason, DecisionTrace } from './battle-engine.ts';
 
 export type ReplayFrame = {
   elapsed: number;
   fighters: Fighter[];
+  zones: BattleZoneInstance[];
   queuedSteps: BattleStep[];
   decisions: DecisionTrace[];
 };
@@ -15,11 +16,13 @@ export type BattleReplay = {
   encounter: EncounterDefinition;
   team: UnitInventoryItem[];
   initialFighters: Fighter[];
+  initialZones: BattleZoneInstance[];
   frames: ReplayFrame[];
   result?: {
     winner: '勝利' | '敗北';
     elapsed: number;
     finalFighters: Fighter[];
+    finalZones: BattleZoneInstance[];
   };
 };
 

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "battle": {
     "tickSeconds": 0.22,
     "abilityGaugeMax": 10,
@@ -58,6 +58,25 @@
       }
     ]
   },
+  "battleZones": [
+    {
+      "id": "toxic-cloud",
+      "label": "毒エリア",
+      "description": "侵入したユニットを敵味方の区別なく毒にする設置エリア",
+      "radius": 4,
+      "durationSeconds": 8,
+      "targetFilter": "any",
+      "trigger": {
+        "kind": "onEnter",
+        "effects": [{ "kind": "applyStatus", "statusId": "poison", "stacks": 1 }]
+      },
+      "visual": {
+        "className": "toxic-cloud-zone",
+        "label": "TOXIC FIELD",
+        "color": "#a7ff4f"
+      }
+    }
+  ],
   "statuses": [
     {
       "id": "poison",
@@ -247,27 +266,14 @@
     "sellPricePenalty": 1
   },
   "shop": {
-    "size": 12,
-    "unitSlots": [0, 3, 10, 11],
+    "size": 4,
+    "unitSlots": [0],
     "rarityWeights": {
       "common": 72,
       "rare": 23,
       "epic": 5
     },
-    "initialPicks": [
-      { "slot": 0, "kind": "unit", "id": "relay" },
-      { "slot": 1, "kind": "instruction", "id": "taunt" },
-      { "slot": 2, "kind": "instruction", "id": "pull-in" },
-      { "slot": 3, "kind": "unit", "id": "wrath" },
-      { "slot": 4, "kind": "instruction", "id": "shoulder-throw" },
-      { "slot": 5, "kind": "instruction", "id": "vault-over" },
-      { "slot": 6, "kind": "instruction", "id": "knock-away" },
-      { "slot": 7, "kind": "instruction", "id": "field-repair" },
-      { "slot": 8, "kind": "instruction", "id": "saturation-fire" },
-      { "slot": 9, "kind": "instruction", "id": "toxic-mark" },
-      { "slot": 10, "kind": "unit", "id": "mender" },
-      { "slot": 11, "kind": "unit", "id": "toxin" }
-    ]
+    "initialPicks": []
   },
   "roster": {
     "startingUnitIds": ["volt", "bastion", "relay"],
@@ -844,6 +850,24 @@
       "effects": [
         { "kind": "applyStatus", "statusId": "inspired", "target": "selected", "stacks": 1, "durationSeconds": 6 }
       ]
+    },
+    {
+      "id": "throw-toxic-flask",
+      "title": "毒瓶を投げる",
+      "short": "毒エリア設置",
+      "flavor": "前方へ瓶を放り、誰にとっても危険な領域を残す。",
+      "action": "field",
+      "abilityCost": 4,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "always",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "lime",
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "placeZone", "zoneId": "toxic-cloud", "anchor": "actor", "offset": 12 }]
     },
     {
       "id": "toxic-mark",

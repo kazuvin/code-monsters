@@ -27,6 +27,8 @@ import {
 import { createShop } from '../src/core/shop.ts';
 import { applyStatus, hasStatus, statusRemaining, statusStacks, statusTargetId } from '../src/core/statuses.ts';
 import { analyzeSynergies } from '../src/core/synergy.ts';
+import { analyzePositionSynergies } from '../src/core/position-synergy.ts';
+import { applyZoneEntries, pathEntersZone } from '../src/core/battle-zones.ts';
 import { BATTLE_CONFIG, DEBUG_TRAINING_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CONFIG } from '../src/data.ts';
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
@@ -805,38 +807,31 @@ assert.equal(
 assert.ok((multiDamageReport?.totalDamage ?? 0) > 0, '戦闘レポートのダメージが0になっています');
 
 const shop = createShop(0);
+const sampledShops = Array.from({ length: 200 }, (_, seed) => createShop(seed));
+assert.equal(shop.length, 4, 'ショップが4枠排出ではありません');
+assert.deepEqual(createShop(42), createShop(42), '同じシードでショップを再現できません');
 assert.ok(
-  shop.some((item) => item.kind === 'unit' && item.id === 'wrath'),
-  '初期ショップ定義が反映されていません',
+  sampledShops.every(
+    (items) =>
+      items.length === 4 &&
+      new Set(items.map((item) => item.id)).size === 4 &&
+      items.filter((item) => item.kind === 'unit').length === 1 &&
+      items.filter((item) => item.kind === 'instruction').length === 3,
+  ),
+  'ショップが1ユニット・3スキルを重複なしで排出していません',
 );
 assert.ok(
-  shop.some((item) => item.kind === 'instruction' && item.id === 'shoulder-throw'),
-  '背負い投げが初期ショップにありません',
+  new Set(sampledShops.map((items) => items.map((item) => item.id).join(':'))).size > 1,
+  'シードを変えてもショップ内容が変化しません',
 );
-assert.ok(
-  shop.some((item) => item.kind === 'instruction' && item.id === 'taunt'),
-  '挑発が初期ショップにありません',
-);
-assert.ok(
-  shop.some((item) => item.kind === 'instruction' && item.id === 'pull-in'),
-  '引き寄せが初期ショップにありません',
-);
-assert.ok(
-  shop.some((item) => item.kind === 'instruction' && item.id === 'field-repair'),
-  'ヒールが初期ショップにありません',
-);
-assert.ok(
-  shop.some((item) => item.kind === 'unit' && item.id === 'mender'),
-  'サポートユニットが初期ショップにありません',
-);
-assert.ok(
-  shop.some((item) => item.kind === 'unit' && item.id === 'toxin'),
-  '状態異常ユニットが初期ショップにありません',
-);
-assert.ok(
-  shop.some((item) => item.kind === 'instruction' && item.id === 'saturation-fire'),
-  '複数対象スキルが初期ショップにありません',
-);
+const lockedShop = shop.map((item) => (item.slot === 1 ? { ...item, locked: true } : item));
+const refreshedShop = createShop(1, lockedShop);
+assert.equal(refreshedShop.find((item) => item.slot === 1)?.id, shop[1].id, 'ロック商品が更新後に保持されません');
+assert.equal(new Set(refreshedShop.map((item) => item.id)).size, 4, 'ロック更新後のショップに重複があります');
+const sampledShopIds = new Set(sampledShops.flatMap((items) => items.map((item) => item.id)));
+for (const id of ['wrath', 'mender', 'toxin', 'shoulder-throw', 'taunt', 'pull-in', 'field-repair', 'saturation-fire'])
+  assert.ok(sampledShopIds.has(id), `${id} がランダムショップ候補に入りません`);
+assert.equal(GAME_DATA.shop.initialPicks.length, 0, '初回ショップに固定排出が残っています');
 assert.ok(!instructionById.has('emergency-repair'), '回復スキルが複数残っています');
 assert.equal(
   GAME_DATA.statuses.find((status) => status.id === 'berserk')?.effects.find((effect) => effect.kind === 'speedScale')
@@ -1134,6 +1129,50 @@ incompleteSynergyData.instructions.find((instruction) => instruction.id === 'cor
 assert.ok(
   analyzeBalance(incompleteSynergyData).issues.some((issue) => issue.code === 'MISSING_STATUS_CONSUMER'),
   '状態の利用・消費技が欠けたパックをCI検査で検出できません',
+);
+
+const positionReport = analyzePositionSynergies(GAME_DATA);
+assert.equal(positionReport.issues.length, 0, '設置エリアと移動技の位置シナジーに不足があります');
+assert.ok(positionReport.packs[0]?.interactionCount > 0, '位置シナジーの組み合わせ数を集計できません');
+assert.equal(pathEntersZone(20, 80, 50, 4), true, 'エリアを横切る移動を検出できません');
+assert.equal(pathEntersZone(50, 70, 50, 4), false, 'エリア内からの移動を再侵入として扱っています');
+const crossingZone = {
+  instanceId: 'test-zone',
+  zoneId: 'toxic-cloud',
+  x: 50,
+  remainingSeconds: 8,
+  sourceId: 'test-source',
+  sourceTeam: 'ally',
+};
+const crossingFighter = { ...fighters[0], x: 20, statuses: [] };
+const crossed = applyZoneEntries(crossingFighter, 20, 80, [crossingZone]);
+assert.equal(statusStacks(crossed.fighter, 'poison'), 1, '敵味方共通エリアの侵入時状態を適用できません');
+assert.equal(crossed.triggers.length, 1, 'エリア侵入イベントを記録できません');
+const zoneMoveUnit = createInventoryUnit('volt', 'zone-mover');
+zoneMoveUnit.program = [{ targetId: 'nearestEnemy', conditionId: 'targetOutOfRange', actionId: 'approach' }];
+const zoneMoveFighters = createBattleFighters([zoneMoveUnit]).map((fighter) => {
+  if (fighter.instanceId === 'zone-mover') return { ...fighter, x: 40, cooldown: 0 };
+  if (fighter.team === 'enemy' && fighter.id === 'relay') return { ...fighter, x: 80, cooldown: 99 };
+  return { ...fighter, hp: 0, cooldown: 99 };
+});
+const zoneMovePlan = planBattleFrame({
+  fighters: zoneMoveFighters,
+  zones: [{ ...crossingZone, x: 45 }],
+  team: [zoneMoveUnit],
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: BATTLE_CONFIG.tickSeconds,
+  previousElapsed: 0,
+});
+const zoneMoveStep = zoneMovePlan.steps.find((step) => step.flash.id === 'zone-mover');
+assert.equal(zoneMoveStep?.zoneTriggers?.length, 1, '実際の移動ステップがエリア侵入を記録できません');
+const zoneMovedFighters = zoneMoveStep ? applyBattleStep(zoneMoveFighters, zoneMoveStep) : zoneMoveFighters;
+assert.equal(
+  statusStacks(
+    zoneMovedFighters.find((fighter) => fighter.instanceId === 'zone-mover'),
+    'poison',
+  ),
+  1,
+  '実際の移動ステップへエリア状態が反映されません',
 );
 
 console.log(

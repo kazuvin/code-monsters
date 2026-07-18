@@ -164,12 +164,17 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'status',
     data.statuses.map((status) => status.id),
   );
+  unique(
+    'battleZone',
+    data.battleZones.map((zone) => zone.id),
+  );
 
   const units = new Set(data.units.map((unit) => unit.id));
   const instructions = new Set(data.instructions.map((instruction) => instruction.id));
   const conditions = new Set(data.conditions.map((condition) => condition.id));
   const targetSelectors = new Set<string>(data.targetSelectors.map((target) => target.id));
   const statuses = new Set(data.statuses.map((status) => status.id));
+  const battleZones = new Set(data.battleZones.map((zone) => zone.id));
   const supportedConditionKinds = new Set([
     'always',
     'targetInRange',
@@ -195,6 +200,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'poison',
     'burn',
     'follow',
+    'field',
     'wait',
   ]);
   const supportedTargets = new Set([
@@ -231,6 +237,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'consumeStatus',
     'removeStatus',
     'modifyStat',
+    'placeZone',
     'wait',
   ]);
   const supportedEffectTargets = new Set(['actor', 'selected', 'allEnemies', 'allAllies']);
@@ -247,7 +254,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 9) error('INVALID_SCHEMA_VERSION', 'schemaVersion は9以上である必要があります');
+  if (data.schemaVersion < 10) error('INVALID_SCHEMA_VERSION', 'schemaVersion は10以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     !Number.isInteger(data.battle.abilityGaugeMax) ||
@@ -311,6 +318,47 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       if (['attackScale', 'speedScale'].includes(effect.kind) && status.stacking !== 'replace')
         error('UNSUPPORTED_STATUS_EFFECT_LIFECYCLE', `状態 ${status.id} の能力倍率は置換型の場合のみ対応しています`);
     }
+  }
+
+  if (data.battleZones.length === 0) error('MISSING_BATTLE_ZONE_REGISTRY', 'battleZones に設置エリア定義がありません');
+  for (const zone of data.battleZones) {
+    rejectUnknownKeys(
+      zone,
+      ['id', 'label', 'description', 'radius', 'durationSeconds', 'targetFilter', 'trigger', 'visual'],
+      `設置エリア ${zone.id}`,
+    );
+    if (!zone.id || !zone.label || !zone.description || zone.radius <= 0 || zone.durationSeconds <= 0)
+      error('INVALID_BATTLE_ZONE', `設置エリア ${zone.id} の基本定義が不正です`);
+    if (!['any', 'ally', 'enemy'].includes(zone.targetFilter))
+      error('UNSUPPORTED_BATTLE_ZONE_TARGET', `設置エリア ${zone.id} の対象 ${zone.targetFilter} は未対応です`);
+    rejectUnknownKeys(zone.trigger, ['kind', 'effects'], `設置エリア ${zone.id}.trigger`);
+    if (zone.trigger.kind !== 'onEnter')
+      error('UNSUPPORTED_BATTLE_ZONE_TRIGGER', `設置エリア ${zone.id} の発動 ${zone.trigger.kind} は未対応です`);
+    if (!Array.isArray(zone.trigger.effects) || zone.trigger.effects.length === 0)
+      error('MISSING_BATTLE_ZONE_EFFECT', `設置エリア ${zone.id} に侵入時効果がありません`);
+    for (const effect of zone.trigger.effects ?? []) {
+      rejectUnknownKeys(
+        effect,
+        ['kind', 'statusId', 'stacks', 'durationSeconds'],
+        `設置エリア ${zone.id}.trigger.applyStatus`,
+      );
+      if (effect.kind !== 'applyStatus')
+        error('UNSUPPORTED_BATTLE_ZONE_EFFECT', `設置エリア ${zone.id} の効果 ${effect.kind} は未対応です`);
+      requireStatus(effect.statusId, `設置エリア ${zone.id}.trigger`);
+      if (!Number.isInteger(effect.stacks) || effect.stacks < 1)
+        error('INVALID_BATTLE_ZONE_EFFECT', `設置エリア ${zone.id} の状態スタックが不正です`);
+      const status = data.statuses.find((candidate) => candidate.id === effect.statusId);
+      if (status?.duration.mode === 'application' && (effect.durationSeconds ?? 0) <= 0)
+        error('INVALID_STATUS_DURATION', `設置エリア ${zone.id} は状態 ${effect.statusId} の持続時間が必要です`);
+      if (status?.duration.mode === 'persistent' && effect.durationSeconds !== undefined)
+        error(
+          'INVALID_STATUS_DURATION',
+          `設置エリア ${zone.id} は永続状態 ${effect.statusId} に持続時間を指定できません`,
+        );
+    }
+    rejectUnknownKeys(zone.visual, ['className', 'label', 'color'], `設置エリア ${zone.id}.visual`);
+    if (!zone.visual.className || !zone.visual.label || !zone.visual.color)
+      error('MISSING_BATTLE_ZONE_VISUAL', `設置エリア ${zone.id} の表示定義が不足しています`);
   }
 
   if (data.balanceAnalysis.abilityReferenceSpeed <= 0)
@@ -384,6 +432,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     poison: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
     burn: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
     follow: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    field: new Set(['placeZone']),
     wait: new Set(['wait']),
   };
   for (const instruction of data.instructions) {
@@ -410,6 +459,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         'poison',
         'burn',
         'follow',
+        'field',
       ].includes(instruction.action) &&
       instruction.abilityCost <= 0
     )
@@ -465,6 +515,12 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         rejectUnknownKeys(effect, ['kind', 'amount', 'supportAmount'], `スキル ${instruction.id}.heal`);
         if (effect.amount <= 0 || (effect.supportAmount !== undefined && effect.supportAmount <= 0))
           error('INVALID_EFFECT', `${instruction.id} の heal 数値が不正です`);
+      } else if (effect.kind === 'placeZone') {
+        rejectUnknownKeys(effect, ['kind', 'zoneId', 'anchor', 'offset'], `スキル ${instruction.id}.placeZone`);
+        if (!battleZones.has(effect.zoneId))
+          error('UNKNOWN_BATTLE_ZONE', `${instruction.id} が未定義設置エリア "${effect.zoneId}" を参照しています`);
+        if (!['actor', 'target'].includes(effect.anchor) || effect.offset < 0)
+          error('INVALID_EFFECT', `${instruction.id} の placeZone 定義が不正です`);
       } else if (effect.kind === 'applyStatus') {
         rejectUnknownKeys(
           effect,
@@ -597,6 +653,23 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   for (const id of data.roster.startingActionIds) requireInstruction(id, 'roster.startingActionIds');
   for (const id of data.roster.startingConditionIds)
     if (!conditions.has(id)) error('UNKNOWN_CONDITION', `roster が未定義条件 "${id}" を参照しています`);
+  if (data.shop.size !== 4) error('INVALID_SHOP_SIZE', 'ショップの排出数は4枠にしてください');
+  if (
+    data.shop.unitSlots.length !== 1 ||
+    new Set(data.shop.unitSlots).size !== data.shop.unitSlots.length ||
+    data.shop.unitSlots.some((slot) => !Number.isInteger(slot) || slot < 0 || slot >= data.shop.size)
+  )
+    error('INVALID_SHOP_LAYOUT', 'ショップは重複しない1ユニット・3スキル構成にしてください');
+  const shopInstructionCount = data.instructions.filter(
+    (instruction) => !instruction.fixedFor && !data.roster.startingActionIds.includes(instruction.id),
+  ).length;
+  if (
+    data.units.length < data.shop.unitSlots.length ||
+    shopInstructionCount < data.shop.size - data.shop.unitSlots.length
+  )
+    error('INSUFFICIENT_SHOP_POOL', '重複なしで4枠を生成できるショップ候補がありません');
+  if (data.shop.initialPicks.length > 0)
+    error('NON_RANDOM_INITIAL_SHOP', 'ランダムショップでは initialPicks を空にしてください');
   for (const pick of data.shop.initialPicks) {
     if (pick.slot < 0 || pick.slot >= data.shop.size)
       error('INVALID_SHOP_SLOT', `shop.initialPicks の slot ${pick.slot} はショップ範囲外です`);

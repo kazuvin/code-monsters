@@ -85,6 +85,15 @@ const instructionRef = (instruction: Instruction): SynergyInstructionRef => ({
 const instructionOwners = (data: GameBalanceData, instruction: Instruction) =>
   instruction.fixedFor ? [instruction.fixedFor] : data.units.map((unit) => unit.id);
 
+const zoneStatusEffectsForInstruction = (data: GameBalanceData, instruction: Instruction) =>
+  effectsByKind(instruction, 'placeZone').flatMap(
+    (effect) => data.battleZones.find((zone) => zone.id === effect.zoneId)?.trigger.effects ?? [],
+  );
+
+const instructionProducesStatus = (data: GameBalanceData, instruction: Instruction, statusId: string) =>
+  effectsByKind(instruction, 'applyStatus').some((effect) => effect.statusId === statusId) ||
+  zoneStatusEffectsForInstruction(data, instruction).some((effect) => effect.statusId === statusId);
+
 const distinctCrossUnitLinks = (
   data: GameBalanceData,
   producers: Instruction[],
@@ -116,7 +125,7 @@ const verifiesCounterplay = (
       return (
         status.duration.mode === 'application' &&
         producers.some((instruction) =>
-          effectsByKind(instruction, 'applyStatus').some(
+          [...effectsByKind(instruction, 'applyStatus'), ...zoneStatusEffectsForInstruction(data, instruction)].some(
             (effect) => effect.statusId === status.id && (effect.durationSeconds ?? 0) > 0,
           ),
         )
@@ -143,7 +152,7 @@ const check = (id: SynergyCheck['id'], label: string, passed: boolean, detail: s
 export function analyzeSynergies(data: GameBalanceData): SynergyReport {
   const packs = data.statuses.map((status): StatusSynergyReport => {
     const producers = data.instructions.filter((instruction) =>
-      effectsByKind(instruction, 'applyStatus').some((effect) => effect.statusId === status.id),
+      instructionProducesStatus(data, instruction, status.id),
     );
     const consumers = data.instructions.filter((instruction) =>
       effectsByKind(instruction, 'consumeStatus').some((effect) => effect.statusId === status.id),

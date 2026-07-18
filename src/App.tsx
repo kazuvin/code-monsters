@@ -31,6 +31,7 @@ import {
   type DecisionTrace,
 } from './core/battle-engine';
 import { summarizeDecisions, type BattleReplay } from './core/replay';
+import { applyBattleZoneChanges, tickBattleZones } from './core/battle-zones';
 import { createBattleFighters, createInventoryUnit, unitById } from './core/roster';
 import { activeStatusDetails, statusCardClasses } from './core/statuses';
 import {
@@ -57,6 +58,7 @@ import {
 } from './data';
 import type {
   BattleFlash,
+  BattleZoneInstance,
   ConditionId,
   Fighter,
   Instruction,
@@ -109,6 +111,7 @@ const actionKindLabels: Record<Instruction['action'], string> = {
   poison: 'POISON',
   burn: 'BURN',
   follow: 'FOLLOW',
+  field: 'FIELD',
   wait: 'WAIT',
 };
 
@@ -231,6 +234,8 @@ let inventorySequence = 0;
 const newInventoryUnit = (unitId: string) => createInventoryUnit(unitId, `${unitId}-${++inventorySequence}`);
 const createStartingTeam = () => ROSTER_CONFIG.startingUnitIds.map(newInventoryUnit);
 const initialUnits = createStartingTeam();
+const randomShopSeed = () => Math.floor(Math.random() * 0x7fffffff);
+const initialShopSeed = randomShopSeed();
 
 export function App() {
   const [view, setView] = useState<AppView>('game');
@@ -244,9 +249,11 @@ export function App() {
   const [lastPurchasedAction, setLastPurchasedAction] = useState<string | null>(null);
   const [ownedConditions, setOwnedConditions] = useState<ConditionId[]>([...ROSTER_CONFIG.startingConditionIds]);
   const [editingSlot, setEditingSlot] = useState<EditingSlot>({ scope: 'program', index: 0, field: 'condition' });
-  const [shopSeed, setShopSeed] = useState(0);
-  const [shop, setShop] = useState(() => createShop());
+  const [, setShopSeed] = useState(initialShopSeed);
+  const [shop, setShop] = useState(() => createShop(initialShopSeed));
   const [fighters, setFighters] = useState(() => createBattleFighters(initialUnits, ENCOUNTERS[0]));
+  const [zones, setZones] = useState<BattleZoneInstance[]>([]);
+  const zonesRef = useRef<BattleZoneInstance[]>([]);
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef(0);
@@ -332,10 +339,10 @@ export function App() {
       return;
     }
     setCoins((current) => current - ECONOMY_CONFIG.refreshCost);
-    setShopSeed((current) => current + 1);
-    setShop((current) => {
-      const next = createShop(shopSeed + 1);
-      return next.map((item, index) => (current[index]?.locked ? current[index] : item));
+    setShopSeed((currentSeed) => {
+      const nextSeed = currentSeed + 1;
+      setShop((current) => createShop(nextSeed, current));
+      return nextSeed;
     });
   };
 
@@ -510,6 +517,7 @@ export function App() {
       encounter: structuredClone(currentEncounter),
       team: structuredClone(team),
       initialFighters: structuredClone(initialFighters),
+      initialZones: [],
       frames: [],
     };
     setDecisionReport([]);
@@ -517,6 +525,8 @@ export function App() {
     lastStepAtRef.current = 0;
     setFlash(null);
     setFighters(initialFighters);
+    zonesRef.current = [];
+    setZones([]);
     setLogs([]);
     setElapsed(0);
     elapsedRef.current = 0;
@@ -532,6 +542,8 @@ export function App() {
     setFlash(null);
     setPhase('build');
     setFighters(createBattleFighters(nextTeam, encounter));
+    zonesRef.current = [];
+    setZones([]);
     setLogs([]);
     setLogsOpen(false);
     setMobileBuildPanel(null);
@@ -542,8 +554,7 @@ export function App() {
     setShopSeed((currentSeed) => {
       const nextSeed = currentSeed + 1;
       setShop((current) => {
-        const next = createShop(nextSeed);
-        return next.map((item, index) => (current[index]?.locked ? current[index] : item));
+        return createShop(nextSeed, current);
       });
       return nextSeed;
     });
@@ -563,8 +574,9 @@ export function App() {
       setOwnedActions([...ROSTER_CONFIG.startingActionIds]);
       setOwnedConditions([...ROSTER_CONFIG.startingConditionIds]);
       setLastPurchasedAction(null);
-      setShopSeed(0);
-      setShop(createShop());
+      const freshShopSeed = randomShopSeed();
+      setShopSeed(freshShopSeed);
+      setShop(createShop(freshShopSeed));
       prepareBuild(ENCOUNTERS[0], freshTeam);
       return;
     }
@@ -588,6 +600,7 @@ export function App() {
         winner,
         elapsed,
         finalFighters: structuredClone(fighters),
+        finalZones: structuredClone(zonesRef.current),
       },
     };
     const blob = new Blob([JSON.stringify(replay, null, 2)], { type: 'application/json' });
@@ -615,6 +628,8 @@ export function App() {
         setFighters((current) => {
           sampleAbilityGauges(current, dt);
           const next = applyBattleStep(tickCooldowns(current, dt), queuedStep);
+          zonesRef.current = applyBattleZoneChanges(tickBattleZones(zonesRef.current, dt), queuedStep.zoneChanges);
+          setZones(zonesRef.current);
           setFlash({ ...queuedStep.flash, n: now });
           if (queuedStep.log) addLog(queuedStep.log.actor, queuedStep.log.text, queuedStep.log.type);
           if (isBattleComplete(next)) setTimeout(completeBattle, BATTLE_CONFIG.resultDelayMs);
@@ -623,6 +638,8 @@ export function App() {
         return;
       }
       if (queuedStep) {
+        zonesRef.current = tickBattleZones(zonesRef.current, dt);
+        setZones(zonesRef.current);
         setFighters((current) => {
           sampleAbilityGauges(current, dt);
           return tickCooldowns(current, dt);
@@ -631,7 +648,16 @@ export function App() {
       }
       setFighters((current) => {
         sampleAbilityGauges(current, dt);
-        const plan = planBattleFrame({ fighters: current, team, dt, elapsed: elapsedRef.current, previousElapsed });
+        const plan = planBattleFrame({
+          fighters: current,
+          zones: zonesRef.current,
+          team,
+          dt,
+          elapsed: elapsedRef.current,
+          previousElapsed,
+        });
+        zonesRef.current = plan.zones;
+        setZones(plan.zones);
         battleQueueRef.current.push(...plan.steps);
         decisionTraceRef.current.push(...plan.decisions);
         damageTraceRef.current.push(...plan.steps.flatMap((step) => (step.damage ? [step.damage] : [])));
@@ -639,6 +665,7 @@ export function App() {
           replayRef.current.frames.push({
             elapsed: elapsedRef.current,
             fighters: structuredClone(plan.fighters),
+            zones: structuredClone(plan.zones),
             queuedSteps: structuredClone(plan.steps),
             decisions: structuredClone(plan.decisions),
           });
@@ -1153,6 +1180,7 @@ export function App() {
               <div>
                 <span className="step-no">02</span>
                 <h2>ショップ</h2>
+                <small className="shop-rule">4 PICKS / UNIQUE</small>
               </div>
               <button className="refresh" onClick={refresh}>
                 <RefreshCw size={15} />
@@ -1279,7 +1307,7 @@ export function App() {
                 <span>HP</span>
               </div>
             </div>
-            <BattleScene fighters={fighters} flash={flash} running={phase === 'battle' && !paused} />
+            <BattleScene fighters={fighters} zones={zones} flash={flash} running={phase === 'battle' && !paused} />
             <div className="unit-bars">
               {fighters.map((fighter) => (
                 <div className={fighter.team} key={fighter.instanceId}>

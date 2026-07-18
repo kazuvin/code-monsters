@@ -14,6 +14,9 @@ namespace CodeMonsters.Core
         [JsonProperty("debugTraining")]
         public DebugTrainingConfig DebugTraining = new DebugTrainingConfig();
 
+        [JsonProperty("battleZones")]
+        public List<BattleZoneDefinition> BattleZones = new List<BattleZoneDefinition>();
+
         [JsonProperty("statuses")]
         public List<StatusDefinition> Statuses = new List<StatusDefinition>();
 
@@ -89,6 +92,54 @@ namespace CodeMonsters.Core
 
         [JsonProperty("relation")]
         public string Relation = "";
+    }
+
+    public sealed class BattleZoneDefinition
+    {
+        [JsonProperty("id")]
+        public string Id = "";
+
+        [JsonProperty("label")]
+        public string Label = "";
+
+        [JsonProperty("description")]
+        public string Description = "";
+
+        [JsonProperty("radius")]
+        public double Radius;
+
+        [JsonProperty("durationSeconds")]
+        public double DurationSeconds;
+
+        [JsonProperty("targetFilter")]
+        public string TargetFilter = "";
+
+        [JsonProperty("trigger")]
+        public BattleZoneTriggerDefinition Trigger = new BattleZoneTriggerDefinition();
+
+        [JsonProperty("visual")]
+        public BattleZoneVisualDefinition Visual = new BattleZoneVisualDefinition();
+    }
+
+    public sealed class BattleZoneTriggerDefinition
+    {
+        [JsonProperty("kind")]
+        public string Kind = "";
+
+        [JsonProperty("effects")]
+        public List<InstructionEffectDefinition> Effects = new List<InstructionEffectDefinition>();
+    }
+
+    public sealed class BattleZoneVisualDefinition
+    {
+        [JsonProperty("className")]
+        public string ClassName = "";
+
+        [JsonProperty("label")]
+        public string Label = "";
+
+        [JsonProperty("color")]
+        public string Color = "";
     }
 
     public sealed class StatusDefinition
@@ -351,6 +402,15 @@ namespace CodeMonsters.Core
 
         [JsonProperty("bonusDamage")]
         public double? BonusDamage;
+
+        [JsonProperty("zoneId")]
+        public string ZoneId = "";
+
+        [JsonProperty("anchor")]
+        public string Anchor = "";
+
+        [JsonProperty("offset")]
+        public double? Offset;
     }
 
     public sealed class EncounterDefinition

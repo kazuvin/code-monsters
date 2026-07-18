@@ -42,12 +42,31 @@ namespace CodeMonsters.Core
         public string TargetId = "";
         public BattleDamagePayload Damage;
         public List<FighterUpdate> Updates = new List<FighterUpdate>();
+        public List<BattleZoneChange> ZoneChanges = new List<BattleZoneChange>();
+    }
+
+    public sealed class BattleZoneState
+    {
+        public string InstanceId = "";
+        public string ZoneId = "";
+        public double X;
+        public double RemainingSeconds;
+        public string SourceId = "";
+        public string SourceTeam = "";
+    }
+
+    public sealed class BattleZoneChange
+    {
+        public string Kind = "";
+        public string ZoneId = "";
+        public BattleZoneState Zone;
     }
 
     public sealed class ReplayFrame
     {
         public double Elapsed;
         public List<FighterState> Fighters = new List<FighterState>();
+        public List<BattleZoneState> Zones = new List<BattleZoneState>();
         public List<BattleStep> QueuedSteps = new List<BattleStep>();
         public List<DecisionTrace> Decisions = new List<DecisionTrace>();
     }

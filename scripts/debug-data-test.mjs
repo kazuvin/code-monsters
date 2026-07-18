@@ -6,6 +6,7 @@ import {
   runDebugSimulation,
 } from '../src/core/debug-simulation.ts';
 import { analyzeSynergies } from '../src/core/synergy.ts';
+import { analyzePositionSynergies } from '../src/core/position-synergy.ts';
 import {
   BATTLE_CONFIG,
   CONDITIONS,
@@ -117,6 +118,9 @@ for (const instruction of INSTRUCTIONS) {
 const synergy = analyzeSynergies(GAME_DATA);
 assert.equal(synergy.packs.length, STATUSES.length, 'シナジーグラフへ全状態を自動反映できません');
 assert.equal(synergy.issues.length, 0, 'シナジーグラフの状態パックに不備があります');
+const positionSynergy = analyzePositionSynergies(GAME_DATA);
+assert.equal(positionSynergy.packs.length, GAME_DATA.battleZones.length, '全設置エリアを位置監査へ反映できません');
+assert.equal(positionSynergy.issues.length, 0, '位置シナジーグラフのパックに不備があります');
 
 console.log(
   JSON.stringify({

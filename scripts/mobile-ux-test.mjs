@@ -70,6 +70,10 @@ const shopFlow = await page.locator('.mobile-panel-shop .shop-grid').evaluate((e
   clientHeight: element.clientHeight,
   scrollHeight: element.scrollHeight,
 }));
+const shopItems = {
+  count: await page.locator('.mobile-panel-shop .shop-item').count(),
+  labels: await page.locator('.mobile-panel-shop .shop-item > strong').allInnerTexts(),
+};
 await page.screenshot({ path: '/tmp/code-monsters-mobile-command-shop.png' });
 
 await page.locator('.mobile-build-dock button').filter({ hasText: '編成' }).click();
@@ -90,7 +94,7 @@ const result = {
   dockLabels,
   program: { ...program, rows: programRows, title: programPanelTitle },
   reaction: { ...reaction, visible: reactionVisible },
-  shop: { ...shop, flow: shopFlow },
+  shop: { ...shop, flow: shopFlow, items: shopItems },
   squad: { ...squad, actions: squadActions },
   closed,
   errors,
@@ -123,10 +127,12 @@ if (!reactionVisible || !reaction.panelHeader || !reaction.choicePanel)
   throw new Error('リアクションシートが表示されていません');
 if (
   !shop.shopPanel ||
-  shopFlow.scrollWidth <= shopFlow.clientWidth ||
+  shopItems.count !== 4 ||
+  new Set(shopItems.labels).size !== 4 ||
+  shopFlow.scrollWidth > shopFlow.clientWidth + 1 ||
   shopFlow.scrollHeight > shopFlow.clientHeight + 1
 )
-  throw new Error('ショップが縦長ページではなく横スワイプシートになっていません');
+  throw new Error('ショップの重複なし4商品が1画面内に収まっていません');
 if (!squadActions.sell || !squadActions.bench || !squadActions.inventory)
   throw new Error('編成シートで売却・外す・控え操作を行えません');
 if (closed.documentOverflow.y > 0 || errors.length > 0) throw new Error(`モバイルUIエラー: ${errors.join(', ')}`);

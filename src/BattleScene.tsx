@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { BATTLE_ZONES } from './data';
 import { activeStatusDetails, hasStatus, statusEffectTargetId, statusVisualClasses } from './core/statuses';
-import type { BattleFlash, Fighter } from './types';
+import type { BattleFlash, BattleZoneInstance, Fighter } from './types';
 
-type Props = { fighters: Fighter[]; flash: BattleFlash | null; running: boolean };
+type Props = { fighters: Fighter[]; zones?: BattleZoneInstance[]; flash: BattleFlash | null; running: boolean };
+const zoneById = new Map(BATTLE_ZONES.map((zone) => [zone.id, zone]));
 
 const FORMATION_LANES = 3;
 const LANE_SPACING_PX = 22;
@@ -25,7 +27,7 @@ const nearestOpponent = (fighter: Fighter, fighters: Fighter[]) => {
     : opponents[0];
 };
 
-export function BattleScene({ fighters, flash, running }: Props) {
+export function BattleScene({ fighters, zones = [], flash, running }: Props) {
   const [missNotice, setMissNotice] = useState<BattleFlash | null>(null);
   useEffect(() => {
     if (flash?.kind === 'miss') setMissNotice(flash);
@@ -49,6 +51,10 @@ export function BattleScene({ fighters, flash, running }: Props) {
     attackKinds.some((kind) => kind === flash.kind)
       ? { actor: flashActor, target: flashTarget }
       : null;
+  const fieldProjectile =
+    flash?.kind === 'field' && flashActor && flash.zoneX !== undefined
+      ? { actor: flashActor, targetX: flash.zoneX }
+      : null;
 
   return (
     <div
@@ -68,6 +74,27 @@ export function BattleScene({ fighters, flash, running }: Props) {
       </div>
       <div className="battle-road">
         <div className="frontline" style={{ left: `${Math.max(14, Math.min(86, (allyFront + enemyFront) / 2))}%` }} />
+        {zones.map((zone) => {
+          const definition = zoneById.get(zone.zoneId);
+          if (!definition) return null;
+          return (
+            <div
+              className={`battle-zone ${definition.visual.className}`}
+              data-zone-id={zone.zoneId}
+              key={zone.instanceId}
+              aria-label={`${definition.label} 残り${zone.remainingSeconds.toFixed(1)}秒`}
+              style={{
+                left: `${zone.x - definition.radius}%`,
+                width: `${definition.radius * 2}%`,
+                ['--zone-color' as string]: definition.visual.color,
+              }}
+            >
+              <i aria-hidden="true" />
+              <span>{definition.visual.label}</span>
+              <small>{zone.remainingSeconds.toFixed(1)}s</small>
+            </div>
+          );
+        })}
         {projectileAttack && (
           <i
             aria-hidden="true"
@@ -78,6 +105,19 @@ export function BattleScene({ fighters, flash, running }: Props) {
               ['--projectile-end-x' as string]: `${projectileAttack.target.x}%`,
               ['--projectile-start-lane' as string]: `${laneOffset(projectileAttack.actor, fighters)}px`,
               ['--projectile-end-lane' as string]: `${laneOffset(projectileAttack.target, fighters)}px`,
+            }}
+          />
+        )}
+        {fieldProjectile && (
+          <i
+            aria-hidden="true"
+            className={`battle-projectile projectile-flask ${fieldProjectile.targetX < fieldProjectile.actor.x ? 'flies-left' : 'flies-right'}`}
+            key={`field-projectile-${flash?.n}`}
+            style={{
+              ['--projectile-start-x' as string]: `${fieldProjectile.actor.x}%`,
+              ['--projectile-end-x' as string]: `${fieldProjectile.targetX}%`,
+              ['--projectile-start-lane' as string]: `${laneOffset(fieldProjectile.actor, fighters)}px`,
+              ['--projectile-end-lane' as string]: '0px',
             }}
           />
         )}
@@ -97,6 +137,7 @@ export function BattleScene({ fighters, flash, running }: Props) {
               flash?.kind === 'taunt' ||
               flash?.kind === 'pull' ||
               flash?.kind === 'retreat' ||
+              flash?.kind === 'field' ||
               flash?.kind === 'guard')
               ? flash.kind
               : null;

@@ -2,6 +2,7 @@ import rawGameData from '../game-data/game-balance.json' with { type: 'json' };
 import type {
   ConditionId,
   ConditionKind,
+  BattleZoneDefinition,
   Instruction,
   Rarity,
   ReactionBlock,
@@ -127,6 +128,7 @@ export type GameBalanceData = {
   schemaVersion: number;
   battle: BattleConfig;
   debugTraining: DebugTrainingConfig;
+  battleZones: BattleZoneDefinition[];
   statuses: StatusDefinition[];
   economy: EconomyConfig;
   shop: ShopConfig;
@@ -156,6 +158,7 @@ export const GAME_DATA = rawGameData as unknown as GameBalanceData;
 export const GAME_SCHEMA_VERSION = GAME_DATA.schemaVersion;
 export const BATTLE_CONFIG = GAME_DATA.battle;
 export const DEBUG_TRAINING_CONFIG = GAME_DATA.debugTraining;
+export const BATTLE_ZONES = GAME_DATA.battleZones;
 export const STATUSES = GAME_DATA.statuses;
 export const ECONOMY_CONFIG = GAME_DATA.economy;
 export const SHOP_CONFIG = GAME_DATA.shop;

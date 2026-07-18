@@ -35,6 +35,9 @@ for (const viewport of [
       actorLeft: document.querySelector('.debug-arena-stage .sprite.ally')?.style.left,
       targetLeft: document.querySelector('.debug-arena-stage .sprite.enemy')?.style.left,
       recovery: document.querySelector('.debug-auto-recovery')?.textContent?.replace(/\s+/g, ' ').trim(),
+      zones: document.querySelectorAll('.debug-arena-stage .battle-zone').length,
+      zoneText: document.querySelector('.debug-arena-stage .battle-zone')?.textContent?.replace(/\s+/g, ' ').trim(),
+      fieldProjectile: document.querySelectorAll('.debug-arena-stage .projectile-flask').length,
     }));
 
   const readMeasurement = async () => ({
@@ -163,6 +166,17 @@ for (const viewport of [
   const configuredReset = await readMeasurement();
   const measuredSkillAfterReset = (await page.locator('.debug-skill-readout b').textContent())?.trim();
 
+  await openSettings();
+  await page.getByLabel('計測する技').selectOption('throw-toxic-flask');
+  await page.getByLabel('開始位置').selectOption('mutual-in-range');
+  await applySettings();
+  await measure();
+  const fieldPlaced = await readMeasurement();
+  await page.waitForTimeout(700);
+  const fieldPersisted = await readMeasurement();
+  await page.getByRole('button', { name: 'リセット', exact: true }).click();
+  const fieldReset = await readMeasurement();
+
   await page.getByRole('button', { name: 'シナジー', exact: true }).click();
   await page.waitForSelector('.synergy-page');
   const synergy = await page.evaluate(() => ({
@@ -191,6 +205,20 @@ for (const viewport of [
     await page.screenshot({ path: '/tmp/code-monsters-mobile-synergy-detail.png', fullPage: false });
   }
   await page.getByRole('button', { name: 'シナジー詳細を閉じる' }).click();
+  await page.getByRole('button', { name: '位置シナジー', exact: true }).click();
+  const positionSynergy = await page.evaluate(() => ({
+    packs: document.querySelectorAll('.synergy-matrix tbody tr').length,
+    ready: document.querySelectorAll('.synergy-matrix tbody tr.is-ready').length,
+    field: document.querySelector('.synergy-matrix tbody tr')?.textContent?.replace(/\s+/g, ' ').trim(),
+    summary: document.querySelector('.synergy-summary')?.textContent?.replace(/\s+/g, ' ').trim(),
+    xOverflow:
+      document.querySelector('.synergy-page').scrollWidth - document.querySelector('.synergy-page').clientWidth,
+  }));
+  await page.screenshot({ path: `/tmp/code-monsters-${viewport.name}-position-synergy.png`, fullPage: false });
+  await page.locator('.synergy-matrix tbody tr').first().locator('th button').click();
+  await page.waitForSelector('.synergy-detail-dialog');
+  const positionDetail = (await page.locator('.synergy-detail-dialog').innerText()).replace(/\s+/g, ' ').trim();
+  await page.getByRole('button', { name: '位置シナジー詳細を閉じる' }).click();
   await page.getByRole('button', { name: /デバッグルーム/ }).click();
   await page.waitForSelector('.debug-room');
 
@@ -227,10 +255,15 @@ for (const viewport of [
     actorConfigured,
     actorMeasured,
     actorReset,
+    fieldPlaced,
+    fieldPersisted,
+    fieldReset,
     configuredReset,
     measuredSkillAfterReset,
     synergy,
     synergyDetail,
+    positionSynergy,
+    positionDetail,
     settingsScrollTop,
     layout,
     errors,
@@ -339,6 +372,15 @@ for (const result of results) {
   )
     throw new Error(`${result.viewport}: 攻撃側の状態または射程プリセットが戦闘・リセットへ反映されていません`);
   if (
+    result.fieldPlaced.verdict !== 'EFFECT CONFIRMED' ||
+    result.fieldPlaced.stage.zones !== 1 ||
+    result.fieldPlaced.stage.fieldProjectile !== 1 ||
+    !result.fieldPlaced.stage.zoneText.includes('TOXIC FIELD') ||
+    result.fieldPersisted.stage.zones !== 1 ||
+    result.fieldReset.stage.zones !== 0
+  )
+    throw new Error(`${result.viewport}: 設置エリアの表示・保持・リセットを確認できません`);
+  if (
     result.configuredReset.verdict !== 'READY TO MEASURE' ||
     result.configuredReset.stage.targetHp !== '500 / 500' ||
     result.measuredSkillAfterReset !== '引き寄せる'
@@ -359,6 +401,17 @@ for (const result of results) {
     result.synergy.xOverflow > 0
   )
     throw new Error(`${result.viewport}: シナジーヒートマップが全状態パックを正しく表示していません`);
+  if (
+    result.positionSynergy.packs !== data.battleZones.length ||
+    result.positionSynergy.ready !== data.battleZones.length ||
+    !result.positionSynergy.field.includes('1件1件5件5件10組') ||
+    !result.positionSynergy.summary.includes('全パック網羅済み') ||
+    !result.positionDetail.includes('毒瓶を投げる') ||
+    !result.positionDetail.includes('前進する') ||
+    !result.positionDetail.includes('背負い投げ') ||
+    result.positionSynergy.xOverflow > 0
+  )
+    throw new Error(`${result.viewport}: 位置シナジーヒートマップが設置・移動連携を正しく表示していません`);
   if (result.layout.xOverflow > 0 || result.layout.yOverflow > 0 || result.layout.scrollY !== 0)
     throw new Error(`${result.viewport}: デバッグルームが画面からはみ出しています`);
   if (result.errors.length > 0) throw new Error(`${result.viewport}: ブラウザエラー: ${result.errors.join(', ')}`);

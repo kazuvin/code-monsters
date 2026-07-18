@@ -162,6 +162,14 @@
       "generationHints": "Activation pose only; runtime owns the persistent aura and color treatment."
     },
     {
+      "motionId": "field",
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "fallbackMotionId": "attack",
+      "generationHints": "Throw or deploy a field payload toward the right; runtime owns the persistent area effect."
+    },
+    {
       "motionId": "wait",
       "frames": 1,
       "fps": 1,
