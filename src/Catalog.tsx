@@ -34,7 +34,7 @@ const targetModeLabels: Record<Instruction['targetMode'], string> = {
   allEnemies: '敵全体固定',
   allAllies: '味方全体固定',
 };
-const domainLabels = { enemy: '敵', ally: '味方', self: '自分' } as const;
+const domainLabels = { enemy: '敵', ally: '相棒', self: '自分' } as const;
 const cardinalityLabels = { one: '単体', many: '複数' } as const;
 const targetById = new Map(TARGET_SELECTORS.map((target) => [target.id, target]));
 const conditionById = new Map(CONDITIONS.map((condition) => [condition.id, condition]));

@@ -13,9 +13,10 @@ page.on('pageerror', (error) => errors.push(error.message));
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 const normalProgram = page.locator('.program-list').first();
-const attackRow = normalProgram.locator('.sentence-block').first();
+const attackRow = normalProgram.locator('.sentence-block').filter({ hasText: '通常攻撃' });
 await attackRow.locator('.word-slot').nth(1).click();
 await page.locator('.condition-choice-card').filter({ hasText: '射程範囲外' }).click();
+await attackRow.getByRole('button', { name: '上へ移動' }).click();
 const program = (await normalProgram.innerText()).replace(/\s+/g, ' ').trim();
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
@@ -28,18 +29,12 @@ for (let tick = 0; tick < 800 && !missEvent; tick += 1) {
   const eventId = await battlefield.getAttribute('data-event-id');
   if (eventId && eventId !== lastEventId) {
     lastEventId = eventId;
-    const active = page.locator('.unit-status-card.acting').first();
-    const label =
-      (
-        await active
-          .locator('.card-action-bubble')
-          .textContent()
-          .catch(() => '')
-      )?.trim() ?? '';
+    const readout = page.locator('.battle-action-readout').first();
+    const label = (await readout.textContent().catch(() => ''))?.trim() ?? '';
     if (label.includes('MISS')) {
       missEvent = {
         id: eventId,
-        actor: (await active.locator('.status-id strong').textContent())?.trim() ?? '',
+        actor: (await readout.locator('span').first().textContent())?.trim() ?? '',
         label,
         missAnimationCount: await page.locator('.sprite.is-miss').count(),
         missCallout: (await page.locator('.miss-callout').textContent())?.replace(/\s+/g, ' ').trim() ?? '',

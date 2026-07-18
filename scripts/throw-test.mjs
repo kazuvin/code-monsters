@@ -10,13 +10,20 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  Math.random = () => 0.25 / 0x7fffffff;
+});
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 const throwCard = page.locator('.instruction-shop-item').filter({ hasText: '背負い投げ' }).first();
 const shopText = (await throwCard.innerText()).replace(/\s+/g, ' ').trim();
 await throwCard.getByRole('button', { name: /購入/ }).click();
 
-const firstProgramBlock = page.locator('.workbench > .program-list').first().locator('.sentence-block').first();
+const firstProgramBlock = page
+  .locator('.workbench > .program-list')
+  .first()
+  .locator('.sentence-block')
+  .filter({ hasText: '通常攻撃' });
 await firstProgramBlock.locator('.word-slot').last().click();
 await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '背負い投げ' }).click();
 const configuredProgram = (await firstProgramBlock.innerText()).replace(/\s+/g, ' ').trim();
@@ -30,7 +37,8 @@ let throwAnimation = '';
 let thrownAnimation = '';
 const actions = new Set();
 for (let tick = 0; tick < 900; tick += 1) {
-  for (const label of await page.locator('.card-action-bubble').allTextContents()) actions.add(label.trim());
+  const actionLabel = await page.locator('.side-battlefield').getAttribute('data-action-label');
+  if (actionLabel) actions.add(actionLabel.trim());
   const volt = page.locator('.sprite.ally.unit-volt').first();
   const className = (await volt.getAttribute('class')) ?? '';
   if (className.includes('is-throw')) {

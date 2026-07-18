@@ -1,6 +1,7 @@
 {
-  "schemaVersion": 10,
+  "schemaVersion": 11,
   "battle": {
+    "teamSize": 2,
     "tickSeconds": 0.22,
     "abilityGaugeMax": 10,
     "abilityGaugeInitial": 8,
@@ -159,7 +160,7 @@
     {
       "id": "inspired",
       "label": "鼓舞",
-      "description": "仲間の支援を受け、攻撃力が15%上昇",
+      "description": "相棒の支援を受け、攻撃力が15%上昇",
       "stacking": "replace",
       "maxStacks": 1,
       "clearOnAction": false,
@@ -276,17 +277,17 @@
     "initialPicks": []
   },
   "roster": {
-    "startingUnitIds": ["volt", "bastion", "relay"],
-    "enemyUnitIds": ["relay", "bastion", "volt"],
-    "startingActionIds": ["attack-low", "approach"],
-    "startingConditionIds": ["targetInRange", "targetOutOfRange"]
+    "startingUnitIds": ["volt", "mender"],
+    "enemyUnitIds": ["relay", "bastion"],
+    "startingActionIds": ["attack-low", "approach", "field-repair"],
+    "startingConditionIds": ["targetInRange", "targetOutOfRange", "partnerHpBelow50"]
   },
   "encounters": [
     {
       "id": "opening-line",
       "name": "接近戦プロトコル",
-      "briefing": "三体編成の基準戦。距離条件と指示順を確認する。",
-      "enemyUnitIds": ["relay", "bastion", "volt"],
+      "briefing": "前衛二体の基準戦。相棒との役割分担と指示順を確認する。",
+      "enemyUnitIds": ["relay", "bastion"],
       "enemyStatScale": 1,
       "reward": 5
     },
@@ -294,31 +295,31 @@
       "id": "crossfire",
       "name": "交差射線",
       "briefing": "遠距離火力と高速接近が同時に戦線を揺らす。",
-      "enemyUnitIds": ["arrow", "relay", "toxin"],
+      "enemyUnitIds": ["arrow", "relay"],
       "enemyStatScale": 1.05,
       "reward": 5
     },
     {
       "id": "iron-wall",
       "name": "鉄壁シフト",
-      "briefing": "高耐久の前衛・修復役・暴走火力を崩す中盤戦。",
-      "enemyUnitIds": ["bastion", "mender", "wrath"],
+      "briefing": "メンダーが作った鈍足をバスティオンが粉砕する連携戦。",
+      "enemyUnitIds": ["bastion", "mender"],
       "enemyStatScale": 1.1,
       "reward": 6
     },
     {
       "id": "split-front",
       "name": "分断戦線",
-      "briefing": "三体編成が標的選択と範囲制御を試す。",
-      "enemyUnitIds": ["toxin", "arrow", "bastion"],
+      "briefing": "毒の範囲制御と狙撃の標的選択を二体で重ねる。",
+      "enemyUnitIds": ["toxin", "arrow"],
       "enemyStatScale": 1.15,
       "reward": 7
     },
     {
       "id": "redline-core",
       "name": "レッドライン・コア",
-      "briefing": "速度・耐久・暴走が揃う最終検証戦。",
-      "enemyUnitIds": ["wrath", "toxin", "mender"],
+      "briefing": "メンダーの鼓舞をラースが決死撃へ変える最終連携戦。",
+      "enemyUnitIds": ["wrath", "mender"],
       "enemyStatScale": 1.25,
       "reward": 10
     }
@@ -338,7 +339,7 @@
     "reactionUptime": {
       "selfAttackHit": 1,
       "selfHit": 0.65,
-      "allyAttackHit": 0.5,
+      "partnerAttackHit": 0.5,
       "selfHpLow": 0.3
     },
     "warningThresholdRatio": 0.85,
@@ -375,32 +376,11 @@
       "cardinality": "one"
     },
     {
-      "id": "nearestAlly",
-      "label": "一番近い味方",
-      "flavor": "自分を除く味方のうち、最も近い1体を選ぶ。",
+      "id": "partner",
+      "label": "相棒",
+      "flavor": "2vs2で共に出撃している、もう1体を選ぶ。",
       "domain": "ally",
       "cardinality": "one"
-    },
-    {
-      "id": "lowestHpAlly",
-      "label": "HPが最も低い味方",
-      "flavor": "自分を除く味方から残りHP割合が最も低い1体を選ぶ。",
-      "domain": "ally",
-      "cardinality": "one"
-    },
-    {
-      "id": "criticalAlly",
-      "label": "HP 30%以下の味方",
-      "flavor": "危険域にいる味方のうち、残りHP割合が最も低い1体を選ぶ。",
-      "domain": "ally",
-      "cardinality": "one"
-    },
-    {
-      "id": "allAllies",
-      "label": "味方全体",
-      "flavor": "自分を含む生存中の味方すべてを監視する。",
-      "domain": "ally",
-      "cardinality": "many"
     }
   ],
   "conditions": [
@@ -420,15 +400,7 @@
       "label": "射程範囲内",
       "flavor": "手が届くなら、話は早い。",
       "effect": "対象との距離 ≤ このユニットのRNG",
-      "compatibleTargets": [
-        "nearestEnemy",
-        "lowestHpEnemy",
-        "allEnemies",
-        "nearestAlly",
-        "lowestHpAlly",
-        "criticalAlly",
-        "allAllies"
-      ]
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies", "partner"]
     },
     {
       "id": "targetOutOfRange",
@@ -437,15 +409,16 @@
       "label": "射程範囲外",
       "flavor": "まだ届かない。なら、次の手を。",
       "effect": "対象との距離 > このユニットのRNG",
-      "compatibleTargets": [
-        "nearestEnemy",
-        "lowestHpEnemy",
-        "allEnemies",
-        "nearestAlly",
-        "lowestHpAlly",
-        "criticalAlly",
-        "allAllies"
-      ]
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies", "partner"]
+    },
+    {
+      "id": "partnerHpBelow50",
+      "kind": "targetHpBelow",
+      "params": { "threshold": 0.5 },
+      "label": "相棒のHP 50%以下",
+      "flavor": "相棒が崩れる前に、立て直す。",
+      "effect": "相棒のHP ≤ 50%",
+      "compatibleTargets": ["partner"]
     },
     {
       "id": "enemyHpBelow50",
@@ -479,7 +452,7 @@
       "kind": "targetHasStatus",
       "params": { "statusId": "vulnerable", "minimumStacks": 1 },
       "label": "脆弱状態",
-      "flavor": "味方が暴いた隙を、見逃さず撃ち抜く。",
+      "flavor": "相棒が暴いた隙を、見逃さず撃ち抜く。",
       "effect": "対象が脆弱状態",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
     },
@@ -518,11 +491,11 @@
       "effect": "自分がダメージを受ける"
     },
     {
-      "id": "allyAttackHit",
-      "label": "味方の攻撃がヒットしたら",
-      "title": "味方ヒット時",
-      "flavor": "仲間の一撃に、ぴったり便乗。",
-      "effect": "味方の攻撃命中"
+      "id": "partnerAttackHit",
+      "label": "相棒の攻撃がヒットしたら",
+      "title": "相棒ヒット時",
+      "flavor": "相棒の一撃に、ぴったり便乗。",
+      "effect": "相棒の攻撃命中"
     },
     {
       "id": "selfHpLow",
@@ -711,7 +684,7 @@
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "nearestAlly", "lowestHpAlly", "criticalAlly"],
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
       "tone": "amber",
       "range": { "mode": "unit" },
       "effects": [{ "kind": "move", "mode": "advance", "distance": 5.2 }]
@@ -816,16 +789,16 @@
       "id": "field-repair",
       "title": "ヒールする",
       "short": "ヒール",
-      "flavor": "射程内の味方を、その場で立て直す。",
+      "flavor": "射程内の相棒を、その場で立て直す。",
       "action": "heal",
       "abilityCost": 2,
       "price": 3,
       "rarity": "common",
-      "condition": "targetInRange",
-      "target": "lowestHpAlly",
-      "defaultTarget": "lowestHpAlly",
+      "condition": "partnerHpBelow50",
+      "target": "partner",
+      "defaultTarget": "partner",
       "targetMode": "selected",
-      "compatibleTargets": ["nearestAlly", "lowestHpAlly", "criticalAlly"],
+      "compatibleTargets": ["partner"],
       "tone": "lime",
       "range": { "mode": "fixed", "value": 12 },
       "effects": [{ "kind": "heal", "amount": 22, "supportAmount": 34 }]
@@ -834,16 +807,16 @@
       "id": "tactical-support",
       "title": "戦術支援する",
       "short": "戦術支援",
-      "flavor": "仲間へ狙いどころを伝え、次の一撃を後押しする。",
+      "flavor": "相棒へ狙いどころを伝え、次の一撃を後押しする。",
       "action": "buff",
       "abilityCost": 3,
       "price": 0,
       "rarity": "common",
       "condition": "targetInRange",
-      "target": "nearestAlly",
-      "defaultTarget": "nearestAlly",
+      "target": "partner",
+      "defaultTarget": "partner",
       "targetMode": "selected",
-      "compatibleTargets": ["nearestAlly", "lowestHpAlly", "criticalAlly"],
+      "compatibleTargets": ["partner"],
       "tone": "lime",
       "fixedFor": "mender",
       "range": { "mode": "unit" },
@@ -916,7 +889,7 @@
       "id": "reveal-weakness",
       "title": "弱点を暴く",
       "short": "脆弱付与",
-      "flavor": "装甲の隙を見つけ、味方にも狙いどころを共有する。",
+      "flavor": "装甲の隙を見つけ、相棒にも狙いどころを共有する。",
       "action": "attack",
       "abilityCost": 2,
       "price": 3,
@@ -937,7 +910,7 @@
       "id": "pierce-vulnerability",
       "title": "弱点を撃ち抜く",
       "short": "精密射撃",
-      "flavor": "味方が暴いた隙へ、遠距離から決定打を通す。",
+      "flavor": "相棒が暴いた隙へ、遠距離から決定打を通す。",
       "action": "attack",
       "abilityCost": 4,
       "price": 0,
@@ -959,7 +932,7 @@
       "id": "coolant-shot",
       "title": "冷却弾を撃つ",
       "short": "冷却弾",
-      "flavor": "味方の攻撃に合わせて冷却剤を撃ち込み、敵の動きを鈍らせる。",
+      "flavor": "相棒の攻撃に合わせて冷却剤を撃ち込み、敵の動きを鈍らせる。",
       "action": "attack",
       "abilityCost": 2,
       "price": 0,
@@ -1083,7 +1056,7 @@
       "id": "volt-inspired-strike",
       "title": "電光強襲",
       "short": "電光強襲",
-      "flavor": "仲間の号令を推進力に変え、一気に間合いを断つ。",
+      "flavor": "相棒の号令を推進力に変え、一気に間合いを断つ。",
       "action": "attack",
       "abilityCost": 3,
       "price": 0,
@@ -1204,7 +1177,7 @@
     { "unitId": "relay", "trigger": null, "actionId": null, "fixedReaction": false },
     { "unitId": "arrow", "trigger": "selfHit", "actionId": "arrow-reposition", "fixedReaction": true },
     { "unitId": "wrath", "trigger": "selfHpLow", "actionId": "berserker-mode", "fixedReaction": true },
-    { "unitId": "mender", "trigger": "allyAttackHit", "actionId": "coolant-shot", "fixedReaction": true },
+    { "unitId": "mender", "trigger": "partnerAttackHit", "actionId": "coolant-shot", "fixedReaction": true },
     { "unitId": "toxin", "trigger": null, "actionId": null, "fixedReaction": false }
   ]
 }

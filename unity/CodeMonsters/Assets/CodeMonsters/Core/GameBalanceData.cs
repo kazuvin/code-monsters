@@ -35,6 +35,9 @@ namespace CodeMonsters.Core
 
     public sealed class BattleConfig
     {
+        [JsonProperty("teamSize")]
+        public int TeamSize;
+
         [JsonProperty("abilityGaugeMax")]
         public double AbilityGaugeMax;
 

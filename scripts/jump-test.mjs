@@ -10,13 +10,20 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  Math.random = () => 5.25 / 0x7fffffff;
+});
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 const jumpCard = page.locator('.instruction-shop-item').filter({ hasText: '跳び越える' }).first();
 const shopText = (await jumpCard.innerText()).replace(/\s+/g, ' ').trim();
 await jumpCard.getByRole('button', { name: /購入/ }).click();
 
-const firstProgramBlock = page.locator('.workbench > .program-list').first().locator('.sentence-block').first();
+const firstProgramBlock = page
+  .locator('.workbench > .program-list')
+  .first()
+  .locator('.sentence-block')
+  .filter({ hasText: '通常攻撃' });
 await firstProgramBlock.locator('.word-slot').last().click();
 await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '跳び越える' }).click();
 const configuredProgram = (await firstProgramBlock.innerText()).replace(/\s+/g, ' ').trim();

@@ -22,10 +22,7 @@ export const nearestEnemy = (actor: Fighter, enemies: Fighter[]) =>
 export const lowestHpRatio = (fighters: Fighter[]) => [...fighters].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
 export const otherAllies = (actor: Fighter, allies: Fighter[]) =>
   allies.filter((ally) => ally.instanceId !== actor.instanceId);
-export const nearestAlly = (actor: Fighter, allies: Fighter[]) =>
-  [...otherAllies(actor, allies)].sort((a, b) => distanceTo(actor, a) - distanceTo(actor, b))[0];
-export const criticalAlly = (actor: Fighter, allies: Fighter[]) =>
-  lowestHpRatio(otherAllies(actor, allies).filter((ally) => ally.hp / ally.maxHp <= BATTLE_CONFIG.lowHpThreshold));
+export const partner = (actor: Fighter, allies: Fighter[]) => otherAllies(actor, allies)[0];
 
 export const forcedEnemy = (actor: Fighter, enemies: Fighter[]) => {
   const targetId = statusEffectTargetId(actor, 'targetLock');
@@ -88,16 +85,8 @@ export function selectConditionTargets(
     const target = lowestHpRatio(enemies);
     return target ? [target] : [];
   }
-  if (selector === 'nearestAlly') {
-    const target = nearestAlly(actor, allies);
-    return target ? [target] : [];
-  }
-  if (selector === 'lowestHpAlly') {
-    const target = lowestHpRatio(otherAllies(actor, allies));
-    return target ? [target] : [];
-  }
-  if (selector === 'criticalAlly') {
-    const target = criticalAlly(actor, allies);
+  if (selector === 'partner') {
+    const target = partner(actor, allies);
     return target ? [target] : [];
   }
   if (selector === 'allEnemies') return enemies;
@@ -209,9 +198,7 @@ export function selectInstructionTarget(
   const forced = forcedEnemy(actor, enemies);
   if (forced) return forced;
   if (instruction.target === 'lowestHpEnemy') return lowestHpRatio(enemies);
-  if (instruction.target === 'nearestAlly') return nearestAlly(actor, allies);
-  if (instruction.target === 'lowestHpAlly') return lowestHpRatio(otherAllies(actor, allies));
-  if (instruction.target === 'criticalAlly') return criticalAlly(actor, allies);
+  if (instruction.target === 'partner') return partner(actor, allies);
   return nearestEnemy(actor, enemies);
 }
 

@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 10;
+        public const int SupportedSchemaVersion = 11;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -34,6 +34,8 @@ namespace CodeMonsters.Core
                 );
             if (data.Encounters.Count != 5)
                 throw new InvalidDataException("The migration spike expects exactly five ordered encounters");
+            if (data.Battle.TeamSize != 2)
+                throw new InvalidDataException("The current battle contract requires two fighters per team");
             ValidateDebugTraining(data.DebugTraining);
 
             var unitIds = UniqueIds(data.Units, unit => unit.Id, "unit");
@@ -52,8 +54,10 @@ namespace CodeMonsters.Core
 
             foreach (var encounter in data.Encounters)
             {
-                if (encounter.EnemyUnitIds.Count != 3)
-                    throw new InvalidDataException($"Encounter {encounter.Id} must contain three enemies");
+                if (encounter.EnemyUnitIds.Count != data.Battle.TeamSize)
+                    throw new InvalidDataException(
+                        $"Encounter {encounter.Id} must contain {data.Battle.TeamSize} enemies"
+                    );
                 foreach (var unitId in encounter.EnemyUnitIds)
                     if (!unitIds.Contains(unitId))
                         throw new InvalidDataException($"Encounter {encounter.Id} references unknown unit {unitId}");

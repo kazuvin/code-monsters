@@ -9,13 +9,16 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  Math.random = () => 26.25 / 0x7fffffff;
+});
 
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 const toxinCard = page.locator('.shop-item').filter({ hasText: 'トキシン' }).first();
+await page.locator('.unit-tabs button').filter({ hasText: 'メンダー' }).click();
+await page.getByRole('button', { name: /売却/ }).click();
 await toxinCard.getByRole('button', { name: /購入/ }).click();
 await page.locator('.inventory button').filter({ hasText: 'トキシン' }).click();
-await page.locator('.unit-tabs button').filter({ hasText: 'リレイ' }).click();
-await page.getByRole('button', { name: '外す' }).click();
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();

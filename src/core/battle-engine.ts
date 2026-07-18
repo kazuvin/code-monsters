@@ -284,6 +284,7 @@ export function planBattleFrame({
           flash: {
             id: reactor.instanceId,
             kind: 'miss',
+            targetId: target.instanceId,
             attackType: reactor.attackType,
             actionLabel: `${actionLabel}｜MISS`,
             reaction: true,
@@ -333,6 +334,7 @@ export function planBattleFrame({
         flash: {
           id: reactor.instanceId,
           kind: 'miss',
+          targetId: target.instanceId,
           attackType: reactor.attackType,
           actionLabel: `${actionLabel}｜MISS`,
           reaction: true,
@@ -440,7 +442,7 @@ export function planBattleFrame({
     for (const ally of next.filter(
       (fighter) => fighter.team === attacker.team && fighter.instanceId !== attacker.instanceId && fighter.hp > 0,
     )) {
-      queueReaction(ally.instanceId, 'allyAttackHit', attacker.instanceId, target.instanceId);
+      queueReaction(ally.instanceId, 'partnerAttackHit', attacker.instanceId, target.instanceId);
     }
   };
 
@@ -624,6 +626,7 @@ export function planBattleFrame({
             flash: {
               id: current.instanceId,
               kind: instruction.visualKind ?? 'move',
+              targetId: target.instanceId,
               actionLabel: instruction.short,
               n: 0,
             },
@@ -644,6 +647,7 @@ export function planBattleFrame({
           flash: {
             id: current.instanceId,
             kind: instruction.visualKind ?? 'jump',
+            targetId: target.instanceId,
             actionLabel: instruction.short,
             n: 0,
           },
@@ -685,7 +689,14 @@ export function planBattleFrame({
         const hp = Math.min(target.maxHp, target.hp + amount);
         setNext(target.instanceId, { hp });
         queueStep({
-          flash: { id: target.instanceId, kind: 'heal', actionLabel: '回復', n: 0 },
+          flash: {
+            id: target.instanceId,
+            actorId: current.instanceId,
+            kind: 'heal',
+            targetId: target.instanceId,
+            actionLabel: instruction.short,
+            n: 0,
+          },
           log: { actor: current.name, text: `${target.name}を ${amount} 修復`, type: 'heal' },
           updates: [{ id: target.instanceId, values: { hp } }],
         });
@@ -697,6 +708,7 @@ export function planBattleFrame({
           flash: {
             id: current.instanceId,
             kind: instruction.visualKind ?? 'move',
+            targetId: target.instanceId,
             actionLabel: instruction.short,
             n: 0,
           },
@@ -758,7 +770,14 @@ export function planBattleFrame({
           };
           setNext(target.instanceId, values);
           queueStep({
-            flash: { id: target.instanceId, kind: 'heal', actionLabel: '強化', n: 0 },
+            flash: {
+              id: target.instanceId,
+              actorId: current.instanceId,
+              kind: 'heal',
+              targetId: target.instanceId,
+              actionLabel: instruction.short,
+              n: 0,
+            },
             log: {
               actor: current.name,
               text: `${instruction.short} → ${target.name}｜${application.durationSeconds ?? 0}秒`,
@@ -871,6 +890,7 @@ export function planBattleFrame({
           flash: {
             id: current.instanceId,
             kind: 'miss',
+            targetId: target.instanceId,
             attackType: current.attackType,
             actionLabel: `${instruction.short}｜MISS`,
             n: 0,

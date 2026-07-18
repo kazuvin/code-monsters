@@ -203,24 +203,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'field',
     'wait',
   ]);
-  const supportedTargets = new Set([
-    'nearestEnemy',
-    'lowestHpEnemy',
-    'nearestAlly',
-    'lowestHpAlly',
-    'criticalAlly',
-    'self',
-  ]);
-  const supportedTargetSelectors = new Set([
-    'nearestEnemy',
-    'lowestHpEnemy',
-    'allEnemies',
-    'self',
-    'nearestAlly',
-    'lowestHpAlly',
-    'criticalAlly',
-    'allAllies',
-  ]);
+  const supportedTargets = new Set(['nearestEnemy', 'lowestHpEnemy', 'partner', 'self']);
+  const supportedTargetSelectors = new Set(['nearestEnemy', 'lowestHpEnemy', 'allEnemies', 'self', 'partner']);
   const supportedTargetModes = new Set(['selected', 'self', 'allEnemies', 'allAllies']);
   const supportedStatusEffects = new Set([
     'incomingDamageScale',
@@ -254,7 +238,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 10) error('INVALID_SCHEMA_VERSION', 'schemaVersion は10以上である必要があります');
+  if (data.schemaVersion < 11) error('INVALID_SCHEMA_VERSION', 'schemaVersion は11以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     !Number.isInteger(data.battle.abilityGaugeMax) ||
@@ -641,11 +625,17 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_DEFAULT_REACTION', `${unit.id} にデフォルトリアクション定義がありません`);
   }
   for (const id of [...data.roster.startingUnitIds, ...data.roster.enemyUnitIds]) requireUnit(id, 'roster');
-  if (data.roster.startingUnitIds.length !== 3 || data.roster.enemyUnitIds.length !== 3)
-    error('INVALID_ROSTER_SIZE', '標準の味方・敵編成はそれぞれ3体にしてください');
+  if (!Number.isInteger(data.battle.teamSize) || data.battle.teamSize < 1)
+    error('INVALID_TEAM_SIZE', 'battle.teamSize は正の整数にしてください');
+  if (
+    data.roster.startingUnitIds.length !== data.battle.teamSize ||
+    data.roster.enemyUnitIds.length !== data.battle.teamSize
+  )
+    error('INVALID_ROSTER_SIZE', `標準の味方・敵編成はそれぞれ${data.battle.teamSize}体にしてください`);
   if (data.encounters.length !== 5) error('INVALID_ENCOUNTERS', 'encounters は5ラウンド定義してください');
   for (const encounter of data.encounters) {
-    if (encounter.enemyUnitIds.length !== 3) error('INVALID_ENCOUNTER', `${encounter.id} の敵編成は3体にしてください`);
+    if (encounter.enemyUnitIds.length !== data.battle.teamSize)
+      error('INVALID_ENCOUNTER', `${encounter.id} の敵編成は${data.battle.teamSize}体にしてください`);
     if (encounter.enemyStatScale <= 0 || encounter.reward < 0)
       error('INVALID_ENCOUNTER', `${encounter.id} の倍率または報酬が不正です`);
     for (const id of encounter.enemyUnitIds) requireUnit(id, `encounter ${encounter.id}`);

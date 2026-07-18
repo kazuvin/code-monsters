@@ -10,6 +10,9 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  Math.random = () => 13.25 / 0x7fffffff;
+});
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 const tauntCard = page.locator('.instruction-shop-item').filter({ hasText: '挑発する' }).first();

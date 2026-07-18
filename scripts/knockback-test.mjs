@@ -10,6 +10,9 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  Math.random = () => 8.25 / 0x7fffffff;
+});
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 try {
@@ -36,7 +39,7 @@ const reactionRowClasses = await page.locator('.reaction-list .sentence-block').
 const legacyReactionEditorCount = await page.locator('.reaction-editor').count();
 const reactionCopy = (await page.locator('.reaction-loop').innerText()).replace(/\s+/g, ' ').trim();
 const startingConditions = await page.locator('.condition-choice-card').allInnerTexts();
-await normalProgram.locator('.sentence-block').first().locator('.word-slot').last().click();
+await normalProgram.locator('.sentence-block').filter({ hasText: '通常攻撃' }).locator('.word-slot').last().click();
 const startingActions = await page.locator('.instruction-choice-card').allInnerTexts();
 const startingShopInstructions = await page.locator('.instruction-shop-item').allInnerTexts();
 
@@ -52,6 +55,7 @@ const knockAwayChoiceText = (await knockAwayChoice.innerText()).replace(/\s+/g, 
 await page.screenshot({ path: '/tmp/code-monsters-action-cards.png', fullPage: true });
 await knockAwayChoice.click();
 const knockAwayRow = normalProgram.locator('.sentence-block').filter({ hasText: 'ちょっと吹き飛ばす' });
+await knockAwayRow.getByRole('button', { name: '上へ移動' }).click();
 await knockAwayRow.getByRole('button', { name: '上へ移動' }).click();
 await knockAwayRow.getByRole('button', { name: '上へ移動' }).click();
 const program = (await normalProgram.innerText()).replace(/\s+/g, ' ').trim();

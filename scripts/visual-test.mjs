@@ -48,6 +48,7 @@ for (const viewport of [
     });
   const statusCards = await page.locator('.unit-status-card').count();
   const actionBubbleCount = await page.locator('.card-action-bubble').count();
+  const actionReadoutCount = await page.locator('.battle-action-readout').count();
   const battleOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
@@ -66,6 +67,7 @@ for (const viewport of [
     battlefield,
     statusCards,
     actionBubbleCount,
+    actionReadoutCount,
     logs,
     logDialogCount,
     errors,
@@ -76,18 +78,21 @@ await browser.close();
 console.log(JSON.stringify(results, null, 2));
 
 for (const result of results) {
-  if (result.spriteCount !== 6 || result.statusCards !== 6)
-    throw new Error(`${result.viewport}: デフォルト戦闘が3対3ではありません`);
+  if (result.spriteCount !== 4 || result.statusCards !== 4)
+    throw new Error(`${result.viewport}: デフォルト戦闘が2対2ではありません`);
   for (const team of ['ally', 'enemy']) {
     const formation = result.formation.filter((fighter) => fighter.team === team).sort((a, b) => a.lane - b.lane);
+    const expectedOffsets = team === 'ally' ? [-62, -24] : [48, 86];
     if (
-      formation.length !== 3 ||
-      formation.some((fighter, index) => fighter.lane !== index || fighter.laneOffset !== index * 22)
+      formation.length !== 2 ||
+      formation.some((fighter, index) => fighter.lane !== index || fighter.laneOffset !== expectedOffsets[index])
     )
-      throw new Error(`${result.viewport}: ${team}が3レーンに配置されていません`);
-    if (!(formation[0].zIndex > formation[1].zIndex && formation[1].zIndex > formation[2].zIndex))
+      throw new Error(`${result.viewport}: ${team}が2体用レーンに配置されていません`);
+    if (!(formation[0].zIndex > formation[1].zIndex))
       throw new Error(`${result.viewport}: 手前の${team}が最前面に描画されていません`);
   }
+  if (result.actionReadoutCount !== 1 || result.actionBubbleCount !== 0)
+    throw new Error(`${result.viewport}: 実行者・技・対象の表示が一意ではありません`);
   if (result.buildOverflow > 0 || result.battleOverflow > 0)
     throw new Error(`${result.viewport}: 画面が横にはみ出しています`);
   if (result.errors.length > 0) throw new Error(`${result.viewport}: ブラウザエラー: ${result.errors.join(', ')}`);

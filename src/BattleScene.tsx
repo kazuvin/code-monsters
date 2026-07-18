@@ -6,14 +6,17 @@ import type { BattleFlash, BattleZoneInstance, Fighter } from './types';
 type Props = { fighters: Fighter[]; zones?: BattleZoneInstance[]; flash: BattleFlash | null; running: boolean };
 const zoneById = new Map(BATTLE_ZONES.map((zone) => [zone.id, zone]));
 
-const FORMATION_LANES = 3;
-const LANE_SPACING_PX = 22;
+const FORMATION_LANES = 2;
+const LANE_SPACING_PX = 38;
+const TEAM_LANE_BASE_PX: Record<Fighter['team'], number> = { ally: -62, enemy: 48 };
 const laneIndex = (fighter: Fighter, fighters: Fighter[]) =>
   fighters
     .filter((other) => other.team === fighter.team)
     .findIndex((other) => other.instanceId === fighter.instanceId) % FORMATION_LANES;
-const depthIndex = (fighter: Fighter, fighters: Fighter[]) => 50 - laneIndex(fighter, fighters) * 10;
-const laneOffset = (fighter: Fighter, fighters: Fighter[]) => laneIndex(fighter, fighters) * LANE_SPACING_PX;
+const depthIndex = (fighter: Fighter, fighters: Fighter[]) =>
+  (fighter.team === 'ally' ? 60 : 30) - laneIndex(fighter, fighters) * 10;
+const laneOffset = (fighter: Fighter, fighters: Fighter[]) =>
+  TEAM_LANE_BASE_PX[fighter.team] + laneIndex(fighter, fighters) * LANE_SPACING_PX;
 
 const colorHex = (value: string) => value;
 const attackKinds = ['attack', 'heavy', 'poison', 'burn', 'follow', 'miss'] as const;
@@ -41,24 +44,25 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
   const aliveEnemies = fighters.filter((f) => f.team === 'enemy' && f.hp > 0);
   const allyFront = aliveAllies.reduce((n, f) => n + f.x, 0) / (aliveAllies.length || 1);
   const enemyFront = aliveEnemies.reduce((n, f) => n + f.x, 0) / (aliveEnemies.length || 1);
-  const flashActor = flash ? fighters.find((fighter) => fighter.instanceId === flash.id) : undefined;
+  const flashSubject = flash ? fighters.find((fighter) => fighter.instanceId === flash.id) : undefined;
+  const flashActor = flash?.actorId ? fighters.find((fighter) => fighter.instanceId === flash.actorId) : flashSubject;
   const flashTarget = flash?.targetId ? fighters.find((fighter) => fighter.instanceId === flash.targetId) : undefined;
   const projectileAttack =
     flash &&
-    flashActor &&
+    flashSubject &&
     flashTarget &&
-    (flash.attackType ?? flashActor.attackType) === 'sniper' &&
+    (flash.attackType ?? flashSubject.attackType) === 'sniper' &&
     attackKinds.some((kind) => kind === flash.kind)
-      ? { actor: flashActor, target: flashTarget }
+      ? { actor: flashSubject, target: flashTarget }
       : null;
   const fieldProjectile =
-    flash?.kind === 'field' && flashActor && flash.zoneX !== undefined
-      ? { actor: flashActor, targetX: flash.zoneX }
+    flash?.kind === 'field' && flashSubject && flash.zoneX !== undefined
+      ? { actor: flashSubject, targetX: flash.zoneX }
       : null;
 
   return (
     <div
-      className={`side-battlefield ${running ? 'is-running' : 'is-paused'}`}
+      className={`side-battlefield ${running ? 'is-running' : 'is-paused'} ${flashActor && flash?.actionLabel ? 'has-action-focus' : ''}`}
       aria-label="2D戦闘フィールド"
       data-event-id={flash?.n ?? ''}
       data-event-kind={flash?.kind ?? ''}
@@ -72,6 +76,24 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
       <div className="base base-enemy">
         <span>ENEMY CORE</span>
       </div>
+      {flashActor && flash?.actionLabel && (
+        <div
+          className={`battle-action-readout ${flashActor.team} ${flash?.reaction ? 'reaction' : ''} ${flash?.kind === 'miss' ? 'miss' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span>{flashActor.name}</span>
+          <i aria-hidden="true">→</i>
+          <b>{flash.actionLabel}</b>
+          {flashTarget && flashTarget.instanceId !== flashActor.instanceId && (
+            <>
+              <i aria-hidden="true">→</i>
+              <span>{flashTarget.name}</span>
+            </>
+          )}
+          {flash.reaction && <em>REACTION</em>}
+        </div>
+      )}
       <div className="battle-road">
         <div className="frontline" style={{ left: `${Math.max(14, Math.min(86, (allyFront + enemyFront) / 2))}%` }} />
         {zones.map((zone) => {
@@ -123,9 +145,14 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
         )}
         {fighters.map((fighter) => {
           const isActor = flash?.id === fighter.instanceId;
+          const isFocusActor = flashActor?.instanceId === fighter.instanceId;
           const hasMissNotice = missNotice?.id === fighter.instanceId;
           const isTarget = flash?.targetId === fighter.instanceId;
           const isProjectileTarget = isTarget && projectileAttack?.target.instanceId === fighter.instanceId;
+          const showsImpact =
+            isTarget &&
+            flash?.kind !== 'miss' &&
+            (attackKinds.some((kind) => kind === flash?.kind) || flash?.kind === 'throw');
           const isAttack = isActor && attackKinds.some((kind) => kind === flash?.kind);
           const attackType = isActor && flash?.attackType ? flash.attackType : fighter.attackType;
           const attackEffect = flash?.kind === 'follow' ? 'follow' : attackType;
@@ -156,7 +183,7 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
           const statusDetails = activeStatusDetails(fighter);
           return (
             <div
-              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${state}`}
+              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${flashActor && flash?.actionLabel ? (isFocusActor ? 'is-focus-actor' : isTarget ? 'is-focus-target' : 'is-focus-muted') : ''} ${state}`}
               data-lane-index={fighterLane}
               key={fighter.instanceId}
               style={{
@@ -182,7 +209,7 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
                 <i className="leg leg-b" />
                 {hasStatus(fighter, 'poison') && <i className="poison-surface" aria-hidden="true" />}
                 {isAttack && <i className={`attack-fx fx-${attackEffect}`} key={`fx-${animationKey}`} />}
-                {isTarget && <i className="hit-spark" key={`hit-${animationKey}`} />}
+                {showsImpact && <i className="hit-spark" key={`hit-${animationKey}`} />}
               </div>
               {hasMissNotice && (
                 <div className="miss-callout" key={`miss-${missNotice.n}`}>

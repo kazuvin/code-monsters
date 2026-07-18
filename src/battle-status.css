@@ -783,3 +783,18 @@
     padding: 2px 5px;
   }
 }
+
+/* Four combatants: two compact rows per side, with no duplicate stat matrix. */
+.unit-status-card {
+  grid-template-columns: 28px 72px minmax(62px, 1fr) minmax(88px, 1.2fr) minmax(42px, auto);
+}
+
+@media (max-width: 800px) {
+  .status-roster {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .unit-status-card {
+    grid-template-columns: 20px minmax(0, 1fr);
+  }
+}

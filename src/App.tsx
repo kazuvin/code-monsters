@@ -435,6 +435,10 @@ export function App() {
   };
 
   const equipBenchUnit = (inventoryId: string) => {
+    if (team.length >= BATTLE_CONFIG.teamSize) {
+      setToast(`出撃枠は${BATTLE_CONFIG.teamSize}体です。先に1体を外してください`);
+      return;
+    }
     const unit = bench.find((candidate) => candidate.inventoryId === inventoryId);
     if (!unit) return;
     setBench((current) => current.filter((candidate) => candidate.inventoryId !== inventoryId));
@@ -506,6 +510,10 @@ export function App() {
   };
 
   const startBattle = () => {
+    if (team.length !== BATTLE_CONFIG.teamSize) {
+      setToast(`${BATTLE_CONFIG.teamSize}体を出撃編成に入れてください`);
+      return;
+    }
     const initialFighters = createBattleFighters(team, currentEncounter);
     battleQueueRef.current = [];
     decisionTraceRef.current = [];
@@ -868,6 +876,13 @@ export function App() {
                 </button>
               ))}
             </div>
+            <div className={`squad-capacity ${team.length === BATTLE_CONFIG.teamSize ? 'is-complete' : 'incomplete'}`}>
+              <span>ACTIVE PAIR</span>
+              <b>
+                {team.length} / {BATTLE_CONFIG.teamSize}
+              </b>
+              <small>2vs2は相棒との2体編成で出撃</small>
+            </div>
             <div className="unit-meta">
               <div>
                 <span>{selectedUnit.code}</span>
@@ -1165,7 +1180,11 @@ export function App() {
                     <span className="empty-inventory">なし</span>
                   ) : (
                     bench.map((unit) => (
-                      <button key={unit.inventoryId} onClick={() => equipBenchUnit(unit.inventoryId)}>
+                      <button
+                        key={unit.inventoryId}
+                        disabled={team.length >= BATTLE_CONFIG.teamSize}
+                        onClick={() => equipBenchUnit(unit.inventoryId)}
+                      >
                         <span className="unit-mini" style={{ background: unit.color }} />
                         {unit.name}
                       </button>
@@ -1308,17 +1327,6 @@ export function App() {
               </div>
             </div>
             <BattleScene fighters={fighters} zones={zones} flash={flash} running={phase === 'battle' && !paused} />
-            <div className="unit-bars">
-              {fighters.map((fighter) => (
-                <div className={fighter.team} key={fighter.instanceId}>
-                  <span>{fighter.name}</span>
-                  <div>
-                    <i style={{ width: `${Math.max(0, (fighter.hp / fighter.maxHp) * 100)}%` }} />
-                  </div>
-                  <b>{Math.ceil(fighter.hp)}</b>
-                </div>
-              ))}
-            </div>
             <div className="battle-controls">
               <button onClick={() => setPaused((current) => !current)}>{paused ? <Play /> : <Pause />}</button>
               <button className={speed === 1 ? 'active' : ''} onClick={() => setSpeed(1)}>
@@ -1404,26 +1412,6 @@ export function App() {
                             </b>
                           </div>
                         </div>
-                        <div className="status-stats">
-                          <span>
-                            A <b>{fighter.attack}</b>
-                          </span>
-                          <span>
-                            R <b>{fighter.range}</b>
-                          </span>
-                          <span>
-                            K <b>{fighter.knockbackPower}</b>
-                          </span>
-                          <span>
-                            W <b>{fighter.weight}</b>
-                          </span>
-                          <span>
-                            D <b>{fighter.defense}</b>
-                          </span>
-                          <span>
-                            S <b>{fighter.speed}</b>
-                          </span>
-                        </div>
                         <div className="status-tags">
                           {statusTags(fighter).map((tag) => (
                             <span
@@ -1442,11 +1430,6 @@ export function App() {
                             </span>
                           ))}
                         </div>
-                        {active && (
-                          <div className={`card-action-bubble ${flash?.kind === 'miss' ? 'miss' : ''}`}>
-                            {flash.actionLabel}
-                          </div>
-                        )}
                       </article>
                     );
                   })}

@@ -10,6 +10,9 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  Math.random = () => 3.25 / 0x7fffffff;
+});
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 const reactionSnapshot = async () => {
@@ -37,21 +40,37 @@ const fixedNormalInstruction = async (actionLabel) => {
   };
 };
 
+const equipShopUnit = async (unitName, refreshCount) => {
+  await page.locator('.unit-tabs button').filter({ hasText: 'メンダー' }).click();
+  await page.getByRole('button', { name: /売却/ }).click();
+  for (let attempt = 0; attempt < refreshCount; attempt += 1) {
+    await page.getByRole('button', { name: /更新/ }).click();
+    await page.waitForTimeout(80);
+  }
+  const card = page.locator('.shop-item').filter({ hasText: unitName }).first();
+  await card.getByRole('button', { name: /購入/ }).click();
+  await page.locator('.inventory button').filter({ hasText: unitName }).click();
+  await page.locator('.unit-tabs button').filter({ hasText: unitName }).click();
+};
+
 const volt = await reactionSnapshot();
 const voltNormal = (await page.locator('.program-list').first().innerText()).replace(/\s+/g, ' ').trim();
-await page.locator('.unit-tabs button').filter({ hasText: 'バスティオン' }).click();
+await page.locator('.unit-tabs button').filter({ hasText: 'メンダー' }).click();
+const mender = await reactionSnapshot();
+
+await page.reload({ waitUntil: 'networkidle' });
+await equipShopUnit('バスティオン', 0);
 const bastion = await reactionSnapshot();
 
-await page.locator('.unit-tabs button').filter({ hasText: 'リレイ' }).click();
+await page.reload({ waitUntil: 'networkidle' });
+await equipShopUnit('リレイ', 2);
 const relayEmpty = await reactionSnapshot();
 const relayNormal = await fixedNormalInstruction('高速接近');
 await page.getByRole('button', { name: /リアクションを追加/ }).click();
 await page.locator('.reaction-code-block .word-slot').first().click();
 const reactionChoices = (await page.locator('.choice-list button').allTextContents()).map((text) => text.trim());
-await page.locator('.choice-list button').filter({ hasText: '味方ヒット時' }).click();
+await page.locator('.choice-list button').filter({ hasText: '相棒ヒット時' }).click();
 const relayConfigured = await reactionSnapshot();
-
-await page.reload({ waitUntil: 'networkidle' });
 
 const actions = new Set();
 const animationClasses = new Set();
@@ -59,7 +78,8 @@ const followDistances = [];
 let relayHoldSeen = false;
 const observeBattle = async (required, maxTicks = 400, extraCheck = () => true) => {
   for (let i = 0; i < maxTicks; i += 1) {
-    for (const label of await page.locator('.card-action-bubble').allTextContents()) actions.add(label.trim());
+    const actionLabel = await page.locator('.side-battlefield').getAttribute('data-action-label');
+    if (actionLabel) actions.add(actionLabel.replace(/^⚡\s*/, '').trim());
     for (const className of await page
       .locator('.sprite')
       .evaluateAll((elements) => elements.map((element) => element.className))) {
@@ -89,34 +109,27 @@ const observeBattle = async (required, maxTicks = 400, extraCheck = () => true) 
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
-await observeBattle(['⚡ 追撃', '⚡ 防御', '高速接近'], 500, () => followDistances.some((distance) => distance > 10));
+await observeBattle(['追撃', '高速接近'], 500, () => followDistances.some((distance) => distance > 10));
 const depthLayers = await page.locator('.sprite').evaluateAll((elements) =>
   elements.map((element) => ({
     laneOffset: Number.parseFloat(getComputedStyle(element).getPropertyValue('--lane-offset')),
     zIndex: Number.parseInt(getComputedStyle(element).zIndex, 10),
   })),
 );
-await page.locator('.battle-controls button').last().click({ force: true });
 
 await page.reload({ waitUntil: 'networkidle' });
-const arrowCard = page.locator('.shop-item').filter({ hasText: 'アロー' }).first();
-for (let attempt = 0; attempt < 6 && (await arrowCard.count()) === 0; attempt += 1) {
-  await page.getByRole('button', { name: /更新/ }).click();
-  await page.waitForTimeout(80);
-}
-await arrowCard.getByRole('button', { name: /購入/ }).click();
-await page.locator('.inventory button').filter({ hasText: 'アロー' }).click();
-await page.locator('.unit-tabs button').filter({ hasText: 'アロー' }).click();
+await equipShopUnit('バスティオン', 0);
+await page.getByRole('button', { name: /戦闘開始/ }).click();
+await page.getByRole('button', { name: 'x2' }).click();
+await observeBattle(['追撃', '防御'], 500);
+
+await page.reload({ waitUntil: 'networkidle' });
+await equipShopUnit('アロー', 6);
 const arrow = await reactionSnapshot();
 const arrowNormal = (await page.locator('.program-list').first().innerText()).replace(/\s+/g, ' ').trim();
-for (const unitName of ['ヴォルト', 'バスティオン']) {
-  await page.locator('.unit-tabs button').filter({ hasText: unitName }).click();
-  await page.getByRole('button', { name: '外す' }).click();
-}
 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
-await observeBattle(['⚡ 緊急離脱'], 500);
 await page.getByRole('button', { name: /^ログ/ }).click();
 const stacking = await page.evaluate(() => ({
   log: Number.parseInt(getComputedStyle(document.querySelector('.log-dialog-overlay')).zIndex, 10),
@@ -124,6 +137,7 @@ const stacking = await page.evaluate(() => ({
     Number.parseInt(getComputedStyle(element).zIndex, 10),
   ),
 }));
+await observeBattle(['緊急離脱'], 500);
 const reactionLogCount = await page.locator('.log-dialog .log.reaction').count();
 await page.waitForSelector('.result-dialog', { timeout: 45_000 });
 const logClosedAtResult = (await page.locator('.log-dialog').count()) === 0;
@@ -131,7 +145,7 @@ const logClosedAtResult = (await page.locator('.log-dialog').count()) === 0;
 await browser.close();
 
 const result = {
-  fixedReactions: { volt, bastion, arrow },
+  fixedReactions: { volt, mender, bastion, arrow },
   voltNormal,
   arrowNormal,
   relay: { empty: relayEmpty, normal: relayNormal, configured: relayConfigured },
@@ -150,6 +164,7 @@ console.log(JSON.stringify(result, null, 2));
 
 const fixedChecks = [
   [volt, '自分の攻撃がヒットしたら', '追撃'],
+  [mender, '相棒の攻撃がヒットしたら', '冷却弾'],
   [bastion, '自分が攻撃を受けたら', 'ガード'],
   [arrow, '自分が攻撃を受けたら', '緊急離脱'],
 ];
@@ -180,16 +195,16 @@ if (
   relayConfigured.triggerDisabled ||
   relayConfigured.actionDisabled ||
   relayConfigured.deleteDisabled ||
-  !relayConfigured.text.includes('味方の攻撃がヒットしたら')
+  !relayConfigured.text.includes('相棒の攻撃がヒットしたら')
 )
   throw new Error('編集可能なリアクションUIが不正です');
-const expectedTriggers = ['攻撃ヒット時', '被弾時', '味方ヒット時', 'HP 30%以下'];
+const expectedTriggers = ['攻撃ヒット時', '被弾時', '相棒ヒット時', 'HP 30%以下'];
 if (
   reactionChoices.length !== expectedTriggers.length ||
   !expectedTriggers.every((trigger) => reactionChoices.some((choice) => choice.includes(trigger)))
 )
   throw new Error('リアクション条件が4種に分離されていません');
-for (const label of ['⚡ 追撃', '⚡ 防御', '高速接近', '⚡ 緊急離脱']) {
+for (const label of ['追撃', '防御', '高速接近', '緊急離脱']) {
   if (!actions.has(label)) throw new Error(`${label}が戦闘中に再生されませんでした`);
 }
 for (const className of ['is-follow', 'is-guard', 'is-dash', 'is-retreat']) {

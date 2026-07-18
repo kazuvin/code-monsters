@@ -11,6 +11,180 @@
   --panel: #17191f;
   --line: #30343d;
 }
+
+/* 2vs2 command and battle readability */
+.squad-capacity {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 7px 0 10px;
+  padding: 6px 9px;
+  border: 1px solid #35404b;
+  background: #12171d;
+  color: #7f8996;
+  font: 700 8px "IBM Plex Mono";
+}
+
+.squad-capacity b {
+  color: var(--cyan);
+  font: 700 13px "Oxanium";
+}
+
+.squad-capacity small {
+  justify-self: end;
+  color: #8e98a5;
+}
+
+.squad-capacity.incomplete {
+  border-color: #8f6631;
+  background: #241d13;
+}
+
+.squad-capacity.incomplete b {
+  color: var(--amber);
+}
+
+.inventory button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.battle-action-readout {
+  position: absolute;
+  z-index: 24;
+  top: 82px;
+  left: 50%;
+  min-width: min(440px, calc(100% - 220px));
+  min-height: 34px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 6px 13px;
+  border: 1px solid #47606b;
+  background: #0b1015e8;
+  box-shadow: 0 8px 28px #0009;
+  pointer-events: none;
+  animation: battle-action-in 0.18s ease-out both;
+}
+
+.battle-action-readout span,
+.battle-action-readout b,
+.battle-action-readout em {
+  white-space: nowrap;
+}
+
+.battle-action-readout span {
+  color: #e8edf2;
+  font: 700 10px "Noto Sans JP";
+}
+
+.battle-action-readout b {
+  color: var(--cyan);
+  font: 800 12px "Noto Sans JP";
+}
+
+.battle-action-readout.enemy b,
+.battle-action-readout.miss b {
+  color: var(--red);
+}
+
+.battle-action-readout i {
+  color: #596572;
+  font: 700 11px "IBM Plex Mono";
+}
+
+.battle-action-readout em {
+  border: 1px solid #8e6eb9;
+  background: #291c39;
+  color: #d4aaff;
+  padding: 2px 5px;
+  font: 700 7px "IBM Plex Mono";
+  font-style: normal;
+}
+
+.side-battlefield.has-action-focus .sprite.is-focus-muted {
+  opacity: 0.7;
+  filter: saturate(0.55) brightness(0.78);
+}
+
+.sprite.is-focus-actor .team-ring,
+.sprite.is-focus-target .team-ring {
+  opacity: 1;
+  border-width: 3px;
+  box-shadow:
+    0 0 7px #080a0d,
+    0 0 24px color-mix(in srgb, var(--team-accent) 88%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--team-accent) 42%, transparent);
+}
+
+.sprite.is-focus-target .team-ring {
+  animation: target-lock-pulse 0.24s ease-out both;
+}
+
+@keyframes battle-action-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 5px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes target-lock-pulse {
+  0% {
+    scale: 0.78;
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+@media (max-width: 800px) {
+  .squad-capacity {
+    margin: 5px 0 7px;
+  }
+
+  .squad-capacity small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .battle-action-readout {
+    top: 72px;
+    min-width: calc(100% - 130px);
+    min-height: 28px;
+    gap: 5px;
+    padding: 4px 7px;
+  }
+
+  .battle-action-readout span {
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 8px;
+  }
+
+  .battle-action-readout b {
+    font-size: 9px;
+  }
+
+  .battle-action-readout em {
+    font-size: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-action-readout,
+  .sprite.is-focus-target .team-ring {
+    animation: none;
+  }
+}
 * {
   box-sizing: border-box;
 }

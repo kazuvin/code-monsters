@@ -19,7 +19,7 @@ export type ActionType =
   | 'wait';
 export type AttackType = 'melee' | 'blunt' | 'sniper';
 export type Rarity = 'common' | 'rare' | 'epic';
-export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'allyAttackHit' | 'selfHpLow';
+export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'partnerAttackHit' | 'selfHpLow';
 export type ConditionId = string;
 export type ConditionKind =
   | 'always'
@@ -29,16 +29,8 @@ export type ConditionKind =
   | 'selfHpBelow'
   | 'targetHasStatus'
   | 'selfHasStatus';
-export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'nearestAlly' | 'lowestHpAlly' | 'criticalAlly' | 'self';
-export type TargetSelectorId =
-  | 'nearestEnemy'
-  | 'lowestHpEnemy'
-  | 'allEnemies'
-  | 'self'
-  | 'nearestAlly'
-  | 'lowestHpAlly'
-  | 'criticalAlly'
-  | 'allAllies';
+export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'partner' | 'self';
+export type TargetSelectorId = 'nearestEnemy' | 'lowestHpEnemy' | 'allEnemies' | 'self' | 'partner';
 export type TargetDomain = 'enemy' | 'ally' | 'self';
 export type TargetCardinality = 'one' | 'many';
 export type ActionTargetMode = 'selected' | 'self' | 'allEnemies' | 'allAllies';
@@ -252,6 +244,7 @@ export type UnitInventoryItem = UnitDefinition & {
 };
 export type BattleFlash = {
   id: string;
+  actorId?: string;
   kind:
     | 'move'
     | 'dash'

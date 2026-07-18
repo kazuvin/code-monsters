@@ -20,14 +20,15 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(10));
+            Assert.That(data.SchemaVersion, Is.EqualTo(11));
+            Assert.That(data.Battle.TeamSize, Is.EqualTo(2));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));
             Assert.That(data.DebugTraining.RecoveryDelaySeconds, Is.EqualTo(3));
             Assert.That(data.DebugTraining.PositionPresets, Has.Count.EqualTo(3));
             Assert.That(data.Statuses.Select(status => status.Id), Does.Contain("poison"));
             Assert.That(data.BattleZones.Select(zone => zone.Id), Does.Contain("toxic-cloud"));
             Assert.That(data.Encounters, Has.Count.EqualTo(5));
-            Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 3), Is.True);
+            Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 2), Is.True);
             Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("mender"));
             Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("toxin"));
         }

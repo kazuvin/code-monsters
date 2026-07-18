@@ -10,13 +10,14 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  Math.random = () => 9.25 / 0x7fffffff;
+});
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 const arrowCard = page.locator('.shop-item').filter({ hasText: 'アロー' }).first();
-for (let attempt = 0; attempt < 6 && (await arrowCard.count()) === 0; attempt += 1) {
-  await page.getByRole('button', { name: /更新/ }).click();
-  await page.waitForTimeout(80);
-}
+await page.locator('.unit-tabs button').filter({ hasText: 'メンダー' }).click();
+await page.getByRole('button', { name: /売却/ }).click();
 await arrowCard.getByRole('button', { name: /購入/ }).click();
 await page.locator('.inventory button').filter({ hasText: 'アロー' }).click();
 await page.locator('.unit-tabs button').filter({ hasText: 'アロー' }).click();
@@ -31,11 +32,6 @@ await page.getByRole('button', { name: '＋ 通常作戦を追加' }).click();
 await page.getByRole('button', { name: '＋ 通常作戦を追加' }).click();
 const program = (await normalProgram.innerText()).replace(/\s+/g, ' ').trim();
 
-for (const unitName of ['ヴォルト', 'バスティオン']) {
-  await page.locator('.unit-tabs button').filter({ hasText: unitName }).click();
-  await page.getByRole('button', { name: '外す' }).click();
-}
-
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
 
@@ -46,13 +42,14 @@ for (let tick = 0; tick < 800 && sniperShots.length < 3; tick += 1) {
   const eventId = await page.locator('.side-battlefield').getAttribute('data-event-id');
   if (eventId && eventId !== lastEventId) {
     lastEventId = eventId;
-    const active = page.locator('.unit-status-card.acting').first();
-    const actor = await active
-      .locator('.status-id strong')
+    const readout = page.locator('.battle-action-readout').first();
+    const actor = await readout
+      .locator('span')
+      .first()
       .textContent()
       .catch(() => '');
-    const label = await active
-      .locator('.card-action-bubble')
+    const label = await readout
+      .locator('b')
       .textContent()
       .catch(() => '');
     const bastion = page

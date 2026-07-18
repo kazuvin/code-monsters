@@ -15,6 +15,7 @@ import type {
 } from './types.ts';
 
 export type BattleConfig = {
+  teamSize: number;
   tickSeconds: number;
   abilityGaugeMax: number;
   abilityGaugeInitial: number;

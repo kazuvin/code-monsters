@@ -9,10 +9,10 @@ The prototype now separates game definitions, deterministic rules, and rendering
 - unit stats, rarity, price, role, attack type, and program capacity
 - target selectors, condition compatibility, instruction target modes, effects, movement, damage, knockback, healing, and buffs
 - fixed reactions and default programs
-- battle timing, walls, cooldowns, ability-gauge capacity/regeneration, damage/knockback formulas, overheat, debug-training recovery, economy, and shop weights
+- team size, battle timing, walls, cooldowns, ability-gauge capacity/regeneration, damage/knockback formulas, overheat, debug-training recovery, economy, and shop weights
 - static-analysis weights and allowed balance spreads
 
-Stable IDs such as `nearestEnemy`, `nearestAlly`, `criticalAlly`, and `targetInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
+Stable IDs such as `nearestEnemy`, `partner`, and `targetInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
 
 For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and generate ScriptableObjects if inspector editing is preferred. Keep JSON as the canonical reviewed asset; generated ScriptableObjects should not become a second source of truth.
 
@@ -75,7 +75,7 @@ Instructions may also define the optional `params.fixedRange` value. Use it as t
 
 ## Schema version 6 migration
 
-Add the ordered `encounters` array. Each entry owns its stable ID, player-facing briefing, enemy unit IDs, enemy stat scale, and victory reward. The current round selects one encounter; defeat retries the same encounter without a reward, while victory advances to the next entry. Importers should keep `roster.enemyUnitIds` only as a legacy/default fallback and use `encounters` for the playable run. The prototype's standard battle contract is three starting allies against three encounter enemies; loaders reject default or encounter rosters with a different count.
+Add the ordered `encounters` array. Each entry owns its stable ID, player-facing briefing, enemy unit IDs, enemy stat scale, and victory reward. The current round selects one encounter; defeat retries the same encounter without a reward, while victory advances to the next entry. Importers should keep `roster.enemyUnitIds` only as a legacy/default fallback and use `encounters` for the playable run. Version 6 introduced a three-versus-three standard contract; schema version 11 replaces that fixed count with `battle.teamSize`.
 
 ## Schema version 7 migration
 
@@ -103,11 +103,17 @@ Add the top-level `battleZones` registry and the finite `placeZone` instruction 
 
 Web, debug playback, and Unity replay contracts now carry zone state separately from fighters. The Debug Room and position-synergy matrix enumerate the same canonical data. Version 10's first content is `toxic-cloud`, but neither the runtime nor movement skills branch on poison: existing advance, retreat, jump, pull, throw, and knockback behaviors interact with any future zone definition automatically.
 
+## Schema version 11 migration
+
+Add `battle.teamSize` and set the standard battle contract to two allies against two encounter enemies. Loaders validate `roster.startingUnitIds`, the fallback enemy roster, and every encounter against that value. Build UI may temporarily hold one active unit while editing, but battle start requires exactly two.
+
+Replace the ally selectors `nearestAlly`, `lowestHpAlly`, `criticalAlly`, and `allAllies` with the single selector `partner`. Version 10 saved programs using any removed ally selector should migrate it to `partner`; healing now combines that selector with `partnerHpBelow50` instead of encoding urgency in the target selector. Rename the reaction trigger `allyAttackHit` to `partnerAttackHit`. Enemy target selectors remain unchanged because choosing between the nearer enemy and the lower-HP enemy is still meaningful in 2vs2.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v10 DTO loading and stable-ID/reference validation, including finite instruction effects, battle zones, and canonical status values
+- schema-v11 DTO loading and stable-ID/reference validation, including the 2vs2 team-size contract, finite instruction effects, battle zones, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

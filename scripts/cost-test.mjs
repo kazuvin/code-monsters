@@ -10,6 +10,9 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  Math.random = () => 8.25 / 0x7fffffff;
+});
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
 const strongCardText = (
@@ -17,7 +20,12 @@ const strongCardText = (
 )
   .replace(/\s+/g, ' ')
   .trim();
-await page.locator('.program-list .sentence-block').first().locator('.word-slot').last().click();
+await page
+  .locator('.program-list .sentence-block')
+  .filter({ hasText: '通常攻撃' })
+  .locator('.word-slot')
+  .last()
+  .click();
 const normalAttackText = (
   await page.locator('.instruction-choice-card').filter({ hasText: '通常攻撃' }).first().innerText()
 )
