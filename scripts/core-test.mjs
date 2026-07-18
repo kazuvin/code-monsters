@@ -535,6 +535,50 @@ const insufficientPoisonTarget = applyInstructionStatusEffects(
 );
 assert.equal(statusStacks(insufficientPoisonTarget, 'poison'), 1, '必要スタック未満の毒を誤って消費しています');
 
+const vulnerabilityProducer = instructionById.get('reveal-weakness');
+const vulnerabilityConsumer = instructionById.get('pierce-vulnerability');
+const normalAttack = instructionById.get('attack-low');
+assert.ok(vulnerabilityProducer && vulnerabilityConsumer && normalAttack);
+const madeVulnerableBySkill = applyInstructionStatusEffects(
+  cleanStatusTarget,
+  vulnerabilityProducer,
+  toxinActor.instanceId,
+  'selected',
+);
+assert.equal(statusRemaining(madeVulnerableBySkill, 'vulnerable'), 6, '脆弱の持続時間が付与技の定義と一致しません');
+assert.equal(
+  matchCondition('enemyVulnerable', toxinActor, [madeVulnerableBySkill]).length,
+  1,
+  '脆弱状態を条件として検出できません',
+);
+assert.ok(
+  resolveActionImpact(toxinActor, madeVulnerableBySkill, normalAttack).damage >
+    resolveActionImpact(toxinActor, cleanStatusTarget, normalAttack).damage,
+  '脆弱状態の被ダメージ増加が通常攻撃へ適用されていません',
+);
+assert.ok(
+  resolveActionImpact(toxinActor, madeVulnerableBySkill, vulnerabilityConsumer).damage >
+    resolveActionImpact(toxinActor, cleanStatusTarget, vulnerabilityConsumer).damage,
+  '脆弱消費技の追加ダメージが適用されていません',
+);
+const consumedVulnerabilityTarget = applyInstructionStatusEffects(
+  madeVulnerableBySkill,
+  vulnerabilityConsumer,
+  toxinActor.instanceId,
+  'selected',
+);
+assert.equal(statusStacks(consumedVulnerabilityTarget, 'vulnerable'), 0, '精密射撃が脆弱状態を消費しません');
+assert.ok(
+  GAME_DATA.defaultPrograms.find((program) => program.unitId === 'arrow')?.actionIds.includes('pierce-vulnerability'),
+  'アローの既定指示に脆弱消費技が含まれていません',
+);
+assert.ok(
+  Array.from({ length: 40 }, (_, seed) => createShop(seed + 1)).some((shop) =>
+    shop.some((item) => item.kind === 'instruction' && item.id === 'reveal-weakness'),
+  ),
+  '脆弱付与技がショップ候補に入りません',
+);
+
 const multiTeam = [createInventoryUnit('arrow', 'multi-arrow')];
 multiTeam[0].program = [{ targetId: 'allEnemies', conditionId: 'targetInRange', actionId: 'saturation-fire' }];
 const multiFighters = createBattleFighters(multiTeam).map((fighter) => ({

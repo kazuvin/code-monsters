@@ -29,6 +29,9 @@ internal static class UnityCoreSmoke
 
         var arrow = data.Units.Single(unit => unit.Id == "arrow");
         var shoulderThrow = data.Instructions.Single(instruction => instruction.Id == "shoulder-throw");
+        var vulnerable = data.Statuses.Single(status => status.Id == "vulnerable");
+        var revealWeakness = data.Instructions.Single(instruction => instruction.Id == "reveal-weakness");
+        var pierceVulnerability = data.Instructions.Single(instruction => instruction.Id == "pierce-vulnerability");
         var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
         var actor = new FighterState { InstanceId = "arrow-1", X = 40, Range = arrow.Range, Hp = 74, MaxHp = 74 };
         var target = new FighterState { InstanceId = "enemy-1", X = 55, Range = 8, Hp = 100, MaxHp = 100 };
@@ -36,6 +39,12 @@ internal static class UnityCoreSmoke
             throw new InvalidDataException("Actor-relative attack range condition did not match");
         if (BattleRules.ActionRange(actor, shoulderThrow) != 9)
             throw new InvalidDataException("Fixed contact-skill range was not preserved");
+        if (Math.Abs(vulnerable.Effects.Single(effect => effect.Kind == "incomingDamageScale").Value.GetValueOrDefault() - 1.15) >= 0.0001)
+            throw new InvalidDataException("Vulnerable status multiplier was not imported");
+        if (!revealWeakness.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "vulnerable"))
+            throw new InvalidDataException("Vulnerable status producer was not imported");
+        if (!pierceVulnerability.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "vulnerable"))
+            throw new InvalidDataException("Vulnerable status consumer was not imported");
 
         Console.WriteLine(
             $"{{\"schemaVersion\":{data.SchemaVersion},\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"

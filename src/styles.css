@@ -3714,6 +3714,45 @@ button:focus-visible {
 .poison-chip b {
   color: #baff75;
 }
+.sprite.vulnerable .team-ring::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42px;
+  height: 42px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #ffca5c;
+  border-radius: 50%;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), #ffca5c calc(50% - 1px) calc(50% + 1px), transparent 0),
+    linear-gradient(transparent calc(50% - 1px), #ffca5c calc(50% - 1px) calc(50% + 1px), transparent 0);
+  box-shadow: 0 0 12px #ff9f4366;
+  pointer-events: none;
+  animation: vulnerable-lock 0.9s steps(2) infinite alternate;
+}
+.vulnerable-chip {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 46px;
+  transform: translateX(-50%);
+  padding: 3px 5px;
+  border: 1px solid #ffca5c;
+  background: #30200ee8;
+  color: #ffe2a1;
+  box-shadow:
+    inset 3px 0 #ff8b43,
+    0 0 11px #ffac4d66;
+  font: 700 7px "IBM Plex Mono";
+  white-space: nowrap;
+}
+@keyframes vulnerable-lock {
+  to {
+    opacity: 0.64;
+    transform: translate(-50%, -50%) scale(1.1) rotate(8deg);
+  }
+}
 @keyframes poison-scan {
   50% {
     opacity: 0.48;
@@ -3867,6 +3906,7 @@ button:focus-visible {
   }
   .taunt-chip,
   .berserk-chip,
+  .vulnerable-chip,
   .poison-chip {
     left: calc(50% + 23px);
     bottom: 14px;
@@ -3874,6 +3914,10 @@ button:focus-visible {
   }
   .poison-chip {
     left: calc(50% - 25px);
+  }
+  .vulnerable-chip {
+    left: 50%;
+    bottom: 36px;
   }
   .fx-taunt {
     width: 68px;
@@ -3888,6 +3932,7 @@ button:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .sprite.taunt-locked .team-ring,
+  .sprite.vulnerable .team-ring::after,
   .poison-surface,
   .poison-haze,
   .sprite.is-taunt .sprite-body,

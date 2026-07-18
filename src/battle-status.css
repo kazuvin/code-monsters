@@ -385,6 +385,22 @@
     0 0 9px #9d5dcc66;
 }
 
+.unit-status-card.vulnerable {
+  border-color: #9d682c;
+  background: linear-gradient(100deg, #55320f66 0 3px, transparent 3px), #272019;
+  box-shadow: inset 0 0 18px #d9822922;
+}
+
+.unit-status-card.vulnerable .status-avatar {
+  border-color: #ffca5c;
+  background:
+    linear-gradient(90deg, transparent 47%, #ffca5c66 48% 52%, transparent 53%),
+    linear-gradient(transparent 47%, #ffca5c66 48% 52%, transparent 53%), #261a0e;
+  box-shadow:
+    inset 0 -3px #05070a,
+    0 0 9px #ffac4d66;
+}
+
 .status-id {
   min-width: 0;
 }

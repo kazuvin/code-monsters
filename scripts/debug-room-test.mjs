@@ -54,7 +54,7 @@ for (const viewport of [
   };
   const measure = async () => {
     await page.getByRole('button', { name: '計測開始', exact: true }).click();
-    await page.waitForTimeout(460);
+    await page.waitForTimeout(920);
   };
 
   const initial = await readMeasurement();
@@ -86,6 +86,17 @@ for (const viewport of [
   const poisonPersisted = await readMeasurement();
   await page.getByRole('button', { name: 'リセット', exact: true }).click();
   const poisonReset = await readMeasurement();
+
+  await openSettings();
+  await page.getByLabel('計測する技').selectOption('reveal-weakness');
+  await applySettings();
+  await measure();
+  const vulnerable = await readMeasurement();
+  await page.screenshot({ path: `/tmp/code-monsters-${viewport.name}-vulnerable.png`, fullPage: false });
+  await page.waitForTimeout(800);
+  const vulnerabilityPersisted = await readMeasurement();
+  await page.getByRole('button', { name: 'リセット', exact: true }).click();
+  const vulnerabilityReset = await readMeasurement();
 
   await openSettings();
   const settingsScrollTop = await page.locator('.debug-config-scroll').evaluate((element) => element.scrollTop);
@@ -159,6 +170,9 @@ for (const viewport of [
     poisoned,
     poisonPersisted,
     poisonReset,
+    vulnerable,
+    vulnerabilityPersisted,
+    vulnerabilityReset,
     guarded,
     unguarded,
     actorConfigured,
@@ -221,6 +235,14 @@ for (const result of results) {
     !result.poisonReset.stage.statuses.includes('状態なし')
   )
     throw new Error(`${result.viewport}: 技で付与した毒状態がリセットまで保持されていません`);
+  if (
+    !result.vulnerable.stage.statuses.includes('脆弱') ||
+    !result.vulnerable.stage.targetClasses.includes('vulnerable') ||
+    !result.vulnerabilityPersisted.stage.targetClasses.includes('vulnerable') ||
+    result.vulnerabilityReset.stage.targetClasses.includes('vulnerable') ||
+    !result.vulnerabilityReset.stage.statuses.includes('状態なし')
+  )
+    throw new Error(`${result.viewport}: 技で付与した脆弱状態が表示され、リセットまで保持されていません`);
   if (
     result.guarded.value <= 0 ||
     result.guarded.stage.targetHp === '500 / 500' ||

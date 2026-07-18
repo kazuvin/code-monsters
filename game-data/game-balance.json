@@ -86,6 +86,32 @@
       "effects": []
     },
     {
+      "id": "vulnerable",
+      "label": "脆弱",
+      "description": "装甲の隙が露わになり、受けるダメージが15%増加",
+      "stacking": "replace",
+      "maxStacks": 1,
+      "clearOnAction": false,
+      "duration": { "mode": "application" },
+      "synergy": {
+        "mode": "combo",
+        "counterplay": {
+          "kind": "expires",
+          "description": "付与から6秒後に解除される"
+        }
+      },
+      "debug": { "control": "toggle" },
+      "visual": {
+        "className": "vulnerable",
+        "cardClass": "vulnerable",
+        "chipClass": "vulnerable-chip",
+        "label": "VULNERABLE",
+        "showStacks": false,
+        "showRemaining": true
+      },
+      "effects": [{ "kind": "incomingDamageScale", "value": 1.15 }]
+    },
+    {
       "id": "guarded",
       "label": "ガード",
       "description": "被ダメージ・ノックバック軽減",
@@ -388,6 +414,15 @@
       "label": "毒が2以上",
       "flavor": "仕込み済みなら、畳みかける。",
       "effect": "対象の毒スタックが2以上",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
+    },
+    {
+      "id": "enemyVulnerable",
+      "kind": "targetHasStatus",
+      "params": { "statusId": "vulnerable", "minimumStacks": 1 },
+      "label": "脆弱状態",
+      "flavor": "味方が暴いた隙を、見逃さず撃ち抜く。",
+      "effect": "対象が脆弱状態",
       "compatibleTargets": ["nearestEnemy", "lowestHpEnemy", "allEnemies"]
     }
   ],
@@ -763,6 +798,49 @@
       ]
     },
     {
+      "id": "reveal-weakness",
+      "title": "弱点を暴く",
+      "short": "脆弱付与",
+      "flavor": "装甲の隙を見つけ、味方にも狙いどころを共有する。",
+      "action": "attack",
+      "abilityCost": 2,
+      "price": 3,
+      "rarity": "common",
+      "condition": "targetInRange",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "amber",
+      "range": { "mode": "unit" },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.55, "minimumDamage": 3, "knockbackPower": 0 },
+        { "kind": "applyStatus", "statusId": "vulnerable", "target": "selected", "stacks": 1, "durationSeconds": 6 }
+      ]
+    },
+    {
+      "id": "pierce-vulnerability",
+      "title": "弱点を撃ち抜く",
+      "short": "精密射撃",
+      "flavor": "味方が暴いた隙へ、遠距離から決定打を通す。",
+      "action": "attack",
+      "abilityCost": 4,
+      "price": 0,
+      "rarity": "rare",
+      "condition": "enemyVulnerable",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy", "lowestHpEnemy"],
+      "tone": "amber",
+      "fixedFor": "arrow",
+      "range": { "mode": "unit" },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 0 },
+        { "kind": "consumeStatus", "statusId": "vulnerable", "target": "selected", "stacks": 1, "bonusDamage": 20 }
+      ]
+    },
+    {
       "id": "saturation-fire",
       "title": "一斉射撃する",
       "short": "一斉射撃",
@@ -883,7 +961,7 @@
     { "unitId": "volt", "actionIds": ["attack-low", "approach"] },
     { "unitId": "bastion", "actionIds": ["attack-low", "approach"] },
     { "unitId": "relay", "actionIds": ["attack-low", "relay-dash", "approach"] },
-    { "unitId": "arrow", "actionIds": ["attack-low", "approach"] },
+    { "unitId": "arrow", "actionIds": ["pierce-vulnerability", "attack-low", "approach"] },
     { "unitId": "wrath", "actionIds": ["attack-low", "approach"] },
     { "unitId": "mender", "actionIds": ["field-repair", "attack-low", "approach"] },
     {
