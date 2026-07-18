@@ -40,6 +40,10 @@ const replayDamage = replay.frames
   .flatMap((frame) => frame.queuedSteps ?? [])
   .map((step) => step.damage)
   .filter(Boolean);
+const replayStatusChanges = replay.frames
+  .flatMap((frame) => frame.queuedSteps ?? [])
+  .map((step) => step.statusChange)
+  .filter(Boolean);
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(100);
@@ -66,6 +70,7 @@ console.log(
         frames: replay.frames?.length,
         decisions: replay.frames?.flatMap((frame) => frame.decisions ?? []).length,
         damageEvents: replayDamage.length,
+        statusChanges: replayStatusChanges.length,
         totalDamage: replayDamage.reduce((total, event) => total + event.amount, 0),
       },
       reportedDamage,
@@ -86,7 +91,7 @@ if (reportRows === 0 || !reportText.includes('COMBAT EXECUTION TRACE') || !repor
 if (reportedDamage <= 0) throw new Error('指示実行レポートに技別ダメージが集計されていません');
 for (const label of ['実行イベント', '戦闘時間', 'ゲージ空', 'ゲージ満タン'])
   if (!summaryText.includes(label)) throw new Error(`戦闘サマリーに${label}がありません`);
-if (replay.schemaVersion !== 12 || replay.encounter?.id !== 'opening-line')
+if (replay.schemaVersion !== 13 || replay.encounter?.id !== 'opening-line')
   throw new Error('リプレイJSONに遭遇とスキーマ情報が保存されていません');
 if (!Array.isArray(replay.frames) || replay.frames.length === 0)
   throw new Error('リプレイJSONに戦闘フレームがありません');
@@ -105,6 +110,17 @@ if (
   )
 )
   throw new Error('リプレイJSONに技別ダメージイベントが保存されていません');
+if (
+  replayStatusChanges.some(
+    (event) =>
+      !event.actorId ||
+      !event.targetId ||
+      event.kind !== 'decay' ||
+      event.stacks <= 0 ||
+      event.stacksAfter >= event.stacksBefore,
+  )
+)
+  throw new Error('リプレイJSONの状態自然減衰イベントが不正です');
 if (desktopOverflow > 0 || mobileOverflow > 0 || !dialogFits)
   throw new Error('戦闘レポートが画面幅からはみ出しています');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

@@ -30,6 +30,11 @@ export function statusDamagePerSecond(statusId: string): number {
   return effect?.value ?? 0;
 }
 
+export function statusStackDecayPerTick(statusId: string): number {
+  const effect = requireStatusDefinition(statusId).effects.find((candidate) => candidate.kind === 'decayStacksPerTick');
+  return effect?.value ?? 0;
+}
+
 export function statusEffectTargetId(
   fighter: Pick<Fighter, 'statuses'>,
   kind: Extract<StatusEffectKind, 'targetLock'>,
@@ -65,11 +70,10 @@ export function applyStatus(
   const definition = requireStatusDefinition(statusId);
   const existing = getStatus(fighter, statusId);
   const requestedStacks = Math.max(1, Math.round(options.stacks ?? 1));
-  const stacks = clamp(
-    definition.stacking === 'stack' ? (existing?.stacks ?? 0) + requestedStacks : requestedStacks,
-    1,
-    definition.maxStacks,
-  );
+  const accumulatedStacks =
+    definition.stacking === 'stack' ? (existing?.stacks ?? 0) + requestedStacks : requestedStacks;
+  const stacks =
+    definition.maxStacks === null ? Math.max(1, accumulatedStacks) : clamp(accumulatedStacks, 1, definition.maxStacks);
   const tickAccumulatorSeconds =
     statusDamagePerSecond(statusId) > 0 ? (existing?.tickAccumulatorSeconds ?? 0) : undefined;
   const instance: StatusInstance = {

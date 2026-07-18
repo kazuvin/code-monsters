@@ -115,11 +115,17 @@ Add `battle.statusDamageTickSeconds` and the finite status effect `damagePerSeco
 
 Version 12 changes poison to a five-stack damage-over-time status. Each stack deals 2 fixed damage per second, while `corrosion-burst` still consumes two stacks for its existing bonus damage. Importers must add `damagePerSecond` to the status-effect allowlist and persist the accumulator in fighter snapshots.
 
+## Schema version 13 migration
+
+Allow stacking statuses to set `maxStacks` to `null`, meaning that applications never stop at an arbitrary gameplay cap. Replace-status definitions must continue to declare a positive integer limit. Add the finite status effect `decayStacksPerTick`; its positive integer value removes that many stacks after each completed status-damage interval.
+
+Version 13 changes poison to an uncapped, naturally decaying status. `battle.statusDamageTickSeconds` is now 2, poison deals 1 damage per second per stack (therefore 2 fixed damage per stack on each tick), and then loses 1 stack. Damage and decay use the same deterministic queued step, while replays additionally serialize a `statusChange` event containing the source, target, status ID, amount, and before/after stack counts. Reports aggregate poison damage and natural decay separately. `corrosion-burst` continues to consume two stacks for 18 bonus damage.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v12 DTO loading and stable-ID/reference validation, including the 2vs2 team-size contract, periodic status damage, finite instruction effects, battle zones, and canonical status values
+- schema-v13 DTO loading and stable-ID/reference validation, including the 2vs2 team-size contract, uncapped decaying status damage, finite instruction effects, battle zones, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

@@ -97,7 +97,8 @@ export type StatusEffectKind =
   | 'attackScale'
   | 'speedScale'
   | 'targetLock'
-  | 'damagePerSecond';
+  | 'damagePerSecond'
+  | 'decayStacksPerTick';
 
 export type StatusEffectDefinition = {
   kind: StatusEffectKind;
@@ -111,7 +112,7 @@ export type StatusDefinition = {
   label: string;
   description: string;
   stacking: 'stack' | 'replace';
-  maxStacks: number;
+  maxStacks: number | null;
   clearOnAction: boolean;
   duration: {
     mode: 'persistent' | 'application';

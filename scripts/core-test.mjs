@@ -33,7 +33,7 @@ import { BATTLE_CONFIG, DEBUG_TRAINING_CONFIG, ENCOUNTERS, GAME_DATA, ROSTER_CON
 
 const team = ROSTER_CONFIG.startingUnitIds.map((id, index) => createInventoryUnit(id, `test-${id}-${index}`));
 const fighters = createBattleFighters(team);
-assert.equal(GAME_DATA.schemaVersion, 12, '継続状態ダメージ対応のスキーマではありません');
+assert.equal(GAME_DATA.schemaVersion, 13, '無制限スタックと自然減衰対応のスキーマではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeMax, 10, 'アビリティゲージの最大値が10ではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeInitial, 8, '技を連続使用できる初期ゲージ量ではありません');
 assert.equal(BATTLE_CONFIG.abilityGaugeRegenPerSecond, 1.5, 'アビリティゲージの回復速度が不正です');
@@ -503,8 +503,8 @@ assert.ok(toxinActor && cleanStatusTarget && poisonAmplify);
 const poisonedStatusTarget = applyStatus(cleanStatusTarget, 'poison', { stacks: 2 });
 assert.equal(
   statusStacks(applyStatus(cleanStatusTarget, 'poison', { stacks: 99 }), 'poison'),
-  5,
-  '毒が5スタックを超えています',
+  99,
+  '毒に意図しない最大スタックが設定されています',
 );
 assert.equal(
   matchCondition('enemyHasStatus', toxinActor, [cleanStatusTarget]).length,
@@ -537,7 +537,7 @@ const periodicPoisonTarget = applyStatus(cleanStatusTarget, 'poison', {
   sourceId: toxinActor.instanceId,
 });
 periodicPoisonTarget.statuses = periodicPoisonTarget.statuses.map((status) =>
-  status.statusId === 'poison' ? { ...status, tickAccumulatorSeconds: 0.9 } : status,
+  status.statusId === 'poison' ? { ...status, tickAccumulatorSeconds: 1.9 } : status,
 );
 const periodicPoisonFighters = toxinFighters.map((fighter) => {
   if (fighter.instanceId === periodicPoisonTarget.instanceId) return { ...periodicPoisonTarget, cooldown: 10 };
@@ -553,18 +553,34 @@ const periodicPoisonPlan = planBattleFrame({
 const poisonDamageStep = periodicPoisonPlan.steps.find((step) => step.damage?.source === 'status');
 assert.equal(poisonDamageStep?.damage?.statusId, 'poison', '毒の継続ダメージに状態IDがありません');
 assert.equal(poisonDamageStep?.damage?.actorId, toxinActor.instanceId, '毒ダメージが付与元へ帰属していません');
-assert.equal(poisonDamageStep?.damage?.amount, 4, '毒2スタックが毎秒4ダメージになっていません');
+assert.equal(poisonDamageStep?.damage?.amount, 4, '毒2スタックが2秒ごとに4ダメージになっていません');
+assert.equal(poisonDamageStep?.statusChange?.kind, 'decay', '毒ダメージ後の自然減衰イベントがありません');
+assert.equal(poisonDamageStep?.statusChange?.stacksBefore, 2, '毒の減衰前スタックが記録されていません');
+assert.equal(poisonDamageStep?.statusChange?.stacksAfter, 1, '毒がダメージ発生後に1スタック減衰しません');
 const poisonDamageApplied = applyBattleStep(periodicPoisonPlan.fighters, poisonDamageStep);
 assert.equal(
   poisonDamageApplied.find((fighter) => fighter.instanceId === periodicPoisonTarget.instanceId)?.hp,
   periodicPoisonTarget.hp - 4,
   '毒の継続ダメージが対象HPへ反映されていません',
 );
+assert.equal(
+  statusStacks(
+    poisonDamageApplied.find((fighter) => fighter.instanceId === periodicPoisonTarget.instanceId),
+    'poison',
+  ),
+  1,
+  '毒の自然減衰が戦闘状態へ反映されていません',
+);
 const poisonDamageReport = summarizeDecisions([], [poisonDamageStep.damage]).find(
   (row) => row.actionId === 'status:poison',
 );
 assert.equal(poisonDamageReport?.executed, 1, '毒ダメージの発生回数がレポートへ集計されていません');
 assert.equal(poisonDamageReport?.totalDamage, 4, '毒ダメージがレポートへ集計されていません');
+const poisonDecayReport = summarizeDecisions([], [], [poisonDamageStep.statusChange]).find(
+  (row) => row.actionId === 'status:poison:decay',
+);
+assert.equal(poisonDecayReport?.executed, 1, '毒の自然減衰回数がレポートへ集計されていません');
+assert.equal(poisonDecayReport?.totalStatusStacksChanged, 1, '毒の自然減衰量がレポートへ集計されていません');
 
 const vulnerabilityProducer = instructionById.get('reveal-weakness');
 const vulnerabilityConsumer = instructionById.get('pierce-vulnerability');

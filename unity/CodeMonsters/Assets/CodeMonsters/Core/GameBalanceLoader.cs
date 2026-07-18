@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 12;
+        public const int SupportedSchemaVersion = 13;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -101,6 +101,7 @@ namespace CodeMonsters.Core
                 "speedScale",
                 "targetLock",
                 "damagePerSecond",
+                "decayStacksPerTick",
             };
             var supportedCounterplay = new HashSet<string>
             {
@@ -113,7 +114,10 @@ namespace CodeMonsters.Core
             {
                 if (status.Stacking != "stack" && status.Stacking != "replace")
                     throw new InvalidDataException($"Status {status.Id} has unsupported stacking behavior");
-                if (status.MaxStacks < 1 || (status.Debug.Control != "toggle" && status.Debug.Control != "stacks"))
+                var hasValidStackLimit = status.MaxStacks.HasValue
+                    ? status.MaxStacks.Value >= 1
+                    : status.Stacking == "stack";
+                if (!hasValidStackLimit || (status.Debug.Control != "toggle" && status.Debug.Control != "stacks"))
                     throw new InvalidDataException($"Status {status.Id} has invalid stack or debug configuration");
                 if (
                     string.IsNullOrEmpty(status.Visual.ClassName)
@@ -140,6 +144,12 @@ namespace CodeMonsters.Core
                         throw new InvalidDataException($"Status {status.Id} targetLock cannot declare a numeric value");
                     if (effect.Kind != "targetLock" && (!effect.Value.HasValue || effect.Value.Value <= 0))
                         throw new InvalidDataException($"Status {status.Id} numeric effect must own a positive value");
+                    if (
+                        effect.Kind == "decayStacksPerTick"
+                        && effect.Value.HasValue
+                        && effect.Value.Value != System.Math.Floor(effect.Value.Value)
+                    )
+                        throw new InvalidDataException($"Status {status.Id} stack decay must be an integer");
                     if (
                         (effect.Kind == "attackScale" || effect.Kind == "speedScale")
                         && status.Stacking != "replace"

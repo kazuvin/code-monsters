@@ -163,7 +163,7 @@ namespace CodeMonsters.Core
         public string Stacking = "";
 
         [JsonProperty("maxStacks")]
-        public int MaxStacks;
+        public int? MaxStacks;
 
         [JsonProperty("clearOnAction")]
         public bool ClearOnAction;

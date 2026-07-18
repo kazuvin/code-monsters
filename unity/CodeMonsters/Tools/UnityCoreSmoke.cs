@@ -82,8 +82,13 @@ internal static class UnityCoreSmoke
             throw new InvalidDataException("Battle zone placement skill was not imported");
         if (!BattleRules.PathEntersZone(20, 80, 50, toxicCloud.Radius))
             throw new InvalidDataException("Battle zone path entry parity failed");
-        if (data.Battle.StatusDamageTickSeconds != 1 || poison.Effects.Single().Kind != "damagePerSecond")
-            throw new InvalidDataException("Periodic poison damage was not imported");
+        if (
+            data.Battle.StatusDamageTickSeconds != 2
+            || poison.MaxStacks.HasValue
+            || !poison.Effects.Any(effect => effect.Kind == "damagePerSecond" && effect.Value == 1)
+            || !poison.Effects.Any(effect => effect.Kind == "decayStacksPerTick" && effect.Value == 1)
+        )
+            throw new InvalidDataException("Unbounded decaying poison was not imported");
 
         Console.WriteLine(
             $"{{\"schemaVersion\":{data.SchemaVersion},\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"

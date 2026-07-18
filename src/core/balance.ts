@@ -213,6 +213,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'speedScale',
     'targetLock',
     'damagePerSecond',
+    'decayStacksPerTick',
   ]);
   const supportedEffectKinds = new Set([
     'damage',
@@ -239,7 +240,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 12) error('INVALID_SCHEMA_VERSION', 'schemaVersion は12以上である必要があります');
+  if (data.schemaVersion < 13) error('INVALID_SCHEMA_VERSION', 'schemaVersion は13以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -273,7 +274,11 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   for (const status of data.statuses) {
     if (!status.id || !status.label || !status.description)
       error('INVALID_STATUS', '状態定義には id・label・description が必要です');
-    if (!['stack', 'replace'].includes(status.stacking) || !Number.isInteger(status.maxStacks) || status.maxStacks < 1)
+    const hasValidStackLimit =
+      status.maxStacks === null
+        ? status.stacking === 'stack'
+        : Number.isInteger(status.maxStacks) && status.maxStacks >= 1;
+    if (!['stack', 'replace'].includes(status.stacking) || !hasValidStackLimit)
       error('INVALID_STATUS', `状態 ${status.id} の stacking または maxStacks が不正です`);
     if (!['persistent', 'application'].includes(status.duration.mode))
       error('UNSUPPORTED_STATUS_DURATION', `状態 ${status.id} の duration.mode はエンジン未対応です`);
@@ -301,6 +306,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         error('INVALID_STATUS_EFFECT', `状態 ${status.id} の targetLock に value は指定できません`);
       if (effect.kind !== 'targetLock' && (typeof effect.value !== 'number' || effect.value <= 0))
         error('INVALID_STATUS_EFFECT', `状態 ${status.id} の数値効果は正の value を状態定義に持つ必要があります`);
+      if (effect.kind === 'decayStacksPerTick' && !Number.isInteger(effect.value))
+        error('INVALID_STATUS_EFFECT', `状態 ${status.id} の自然減衰スタック数は整数である必要があります`);
       if (['attackScale', 'speedScale'].includes(effect.kind) && status.stacking !== 'replace')
         error('UNSUPPORTED_STATUS_EFFECT_LIFECYCLE', `状態 ${status.id} の能力倍率は置換型の場合のみ対応しています`);
     }

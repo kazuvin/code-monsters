@@ -28,7 +28,15 @@ import {
   type BattleZoneChange,
   type ZoneTrigger,
 } from './battle-zones.ts';
-import { clearActionStatuses, hasStatus, statusById, statusDamagePerSecond } from './statuses.ts';
+import {
+  clearActionStatuses,
+  consumeStatus,
+  getStatus,
+  hasStatus,
+  statusById,
+  statusDamagePerSecond,
+  statusStackDecayPerTick,
+} from './statuses.ts';
 
 type MutableFighterFields = Pick<
   Fighter,
@@ -45,10 +53,24 @@ export type BattleDamagePayload = {
   source: 'normal' | 'reaction' | 'status';
   statusId?: string;
 };
+export type BattleStatusChangePayload = {
+  actorId: string;
+  actorName: string;
+  team: Fighter['team'];
+  targetId: string;
+  targetName: string;
+  actionId: string;
+  statusId: string;
+  kind: 'decay';
+  stacks: number;
+  stacksBefore: number;
+  stacksAfter: number;
+};
 export type BattleStep = {
   flash: BattleFlash;
   log?: BattleLogPayload;
   damage?: BattleDamagePayload;
+  statusChange?: BattleStatusChangePayload;
   updates: FighterUpdate[];
   zoneChanges?: BattleZoneChange[];
   zoneTriggers?: ZoneTrigger[];
@@ -481,30 +503,52 @@ export function planBattleFrame({
       const tickCount = Math.floor((accumulatedSeconds + Number.EPSILON) / BATTLE_CONFIG.statusDamageTickSeconds);
       if (!definition || damagePerSecond <= 0 || tickCount <= 0) continue;
 
-      const currentTarget = next.find((fighter) => fighter.instanceId === target.instanceId);
-      if (!currentTarget) continue;
-      const statuses = currentTarget.statuses.map((candidate) =>
-        candidate.statusId === status.statusId
-          ? {
-              ...candidate,
-              tickAccumulatorSeconds: Math.max(
-                0,
-                accumulatedSeconds - tickCount * BATTLE_CONFIG.statusDamageTickSeconds,
-              ),
-            }
-          : candidate,
-      );
-      setNext(currentTarget.instanceId, { statuses });
-      displayNext = applyFighterUpdates(displayNext, [{ id: currentTarget.instanceId, values: { statuses } }]);
-
       const source = next.find((fighter) => fighter.instanceId === status.sourceId);
-      const damagePerTick = Number((damagePerSecond * status.stacks).toFixed(4));
+      const decayStacksPerTick = statusStackDecayPerTick(status.statusId);
       for (let tick = 0; tick < tickCount; tick += 1) {
         const liveTarget = next.find((fighter) => fighter.instanceId === target.instanceId);
         if (!liveTarget || liveTarget.hp <= 0) break;
+        const liveStatus = getStatus(liveTarget, status.statusId);
+        if (!liveStatus) break;
+        const stacksBefore = liveStatus.stacks;
+        const damagePerTick = Number(
+          (damagePerSecond * BATTLE_CONFIG.statusDamageTickSeconds * stacksBefore).toFixed(4),
+        );
         const amount = Math.min(liveTarget.hp, damagePerTick);
         const hp = Math.max(0, liveTarget.hp - amount);
-        setNext(liveTarget.instanceId, { hp });
+        const tickedStatuses = liveTarget.statuses.map((candidate) =>
+          candidate.statusId === status.statusId
+            ? {
+                ...candidate,
+                tickAccumulatorSeconds: Math.max(
+                  0,
+                  (candidate.tickAccumulatorSeconds ?? 0) - BATTLE_CONFIG.statusDamageTickSeconds,
+                ),
+              }
+            : candidate,
+        );
+        const tickedTarget = { ...liveTarget, hp, statuses: tickedStatuses };
+        const decayStacks = Math.min(stacksBefore, decayStacksPerTick);
+        const decayedTarget =
+          decayStacks > 0 ? consumeStatus(tickedTarget, status.statusId, decayStacks).fighter : tickedTarget;
+        const stacksAfter = getStatus(decayedTarget, status.statusId)?.stacks ?? 0;
+        const values = {
+          hp,
+          statuses: decayedTarget.statuses,
+          attack: decayedTarget.attack,
+          speed: decayedTarget.speed,
+        };
+        setNext(liveTarget.instanceId, values);
+        displayNext = applyFighterUpdates(displayNext, [
+          {
+            id: liveTarget.instanceId,
+            values: {
+              statuses: decayedTarget.statuses,
+              attack: decayedTarget.attack,
+              speed: decayedTarget.speed,
+            },
+          },
+        ]);
         queueStep({
           flash: {
             id: liveTarget.instanceId,
@@ -516,7 +560,7 @@ export function planBattleFrame({
           },
           log: {
             actor: liveTarget.name,
-            text: `${definition.label} ×${status.stacks}｜${Math.round(amount)} 継続ダメージ`,
+            text: `${definition.label} ×${stacksBefore}→×${stacksAfter}｜${Math.round(amount)} 継続ダメージ｜${decayStacks} 自然減衰`,
             type: 'hit',
           },
           damage: {
@@ -528,7 +572,24 @@ export function planBattleFrame({
             source: 'status',
             statusId: status.statusId,
           },
-          updates: [{ id: liveTarget.instanceId, values: { hp } }],
+          ...(decayStacks > 0
+            ? {
+                statusChange: {
+                  actorId: source?.instanceId ?? `status:${status.statusId}`,
+                  actorName: source?.name ?? definition.label,
+                  team: source?.team ?? liveTarget.team,
+                  targetId: liveTarget.instanceId,
+                  targetName: liveTarget.name,
+                  actionId: `status:${status.statusId}:decay`,
+                  statusId: status.statusId,
+                  kind: 'decay' as const,
+                  stacks: decayStacks,
+                  stacksBefore,
+                  stacksAfter,
+                },
+              }
+            : {}),
+          updates: [{ id: liveTarget.instanceId, values }],
         });
         if (hp <= 0)
           queueStep({ flash: { id: liveTarget.instanceId, kind: 'death', actionLabel: 'DOWN', n: 0 }, updates: [] });
