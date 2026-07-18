@@ -1515,7 +1515,7 @@ button:focus-visible {
   position: absolute;
   z-index: 50;
   left: var(--projectile-start-x);
-  bottom: calc(34% + var(--projectile-start-lane) + var(--projectile-height));
+  bottom: calc(34% + var(--projectile-start-depth) + var(--projectile-height));
   width: 1px;
   height: 1px;
   pointer-events: none;
@@ -1593,7 +1593,7 @@ button:focus-visible {
 @keyframes projectile-flight {
   0% {
     left: var(--projectile-start-x);
-    bottom: calc(34% + var(--projectile-start-lane) + var(--projectile-height));
+    bottom: calc(34% + var(--projectile-start-depth) + var(--projectile-height));
     opacity: 0;
   }
   10% {
@@ -1604,7 +1604,7 @@ button:focus-visible {
   }
   100% {
     left: var(--projectile-end-x);
-    bottom: calc(34% + var(--projectile-end-lane) + var(--projectile-height));
+    bottom: calc(34% + var(--projectile-end-depth) + var(--projectile-height));
     opacity: 0;
   }
 }
@@ -1908,7 +1908,7 @@ button:focus-visible {
   }
   .battle-projectile {
     left: var(--projectile-end-x);
-    bottom: calc(34% + var(--projectile-end-lane) + var(--projectile-height));
+    bottom: calc(34% + var(--projectile-end-depth) + var(--projectile-height));
     opacity: 1;
     animation: none !important;
   }
@@ -1993,9 +1993,12 @@ button:focus-visible {
   bottom: 0;
 }
 .sprite {
-  bottom: calc(34% + var(--lane-offset, 0px));
+  bottom: calc(34% + var(--depth-offset, 0px));
   height: 58px;
   transform-origin: 50% 100%;
+}
+.sprite[data-depth-slot="1"] {
+  --depth-label-lift: 10px;
 }
 .sprite.enemy {
   transform-origin: 50% 100%;
@@ -2017,7 +2020,7 @@ button:focus-visible {
   margin: 0;
 }
 .sprite-label {
-  bottom: 66px;
+  bottom: calc(66px + var(--depth-label-lift, 0px));
 }
 .sprite.enemy .sprite-label {
   transform: translateX(-50%);
@@ -2099,7 +2102,7 @@ button:focus-visible {
     height: 43px;
   }
   .sprite-label {
-    bottom: 49px;
+    bottom: calc(49px + var(--depth-label-lift, 0px));
   }
   .sprite-hp {
     bottom: -13px;

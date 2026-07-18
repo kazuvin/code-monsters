@@ -6,17 +6,17 @@ import type { BattleFlash, BattleZoneInstance, Fighter } from './types';
 type Props = { fighters: Fighter[]; zones?: BattleZoneInstance[]; flash: BattleFlash | null; running: boolean };
 const zoneById = new Map(BATTLE_ZONES.map((zone) => [zone.id, zone]));
 
-const FORMATION_LANES = 2;
-const LANE_SPACING_PX = 38;
-const TEAM_LANE_BASE_PX: Record<Fighter['team'], number> = { ally: -62, enemy: 48 };
-const laneIndex = (fighter: Fighter, fighters: Fighter[]) =>
+const DEPTH_SLOTS = 2;
+const DEPTH_SLOT_OFFSETS_PX = [-7, 7] as const;
+const TEAM_DEPTH_NUDGE_PX: Record<Fighter['team'], number> = { ally: -2, enemy: 2 };
+const depthSlot = (fighter: Fighter, fighters: Fighter[]) =>
   fighters
     .filter((other) => other.team === fighter.team)
-    .findIndex((other) => other.instanceId === fighter.instanceId) % FORMATION_LANES;
+    .findIndex((other) => other.instanceId === fighter.instanceId) % DEPTH_SLOTS;
 const depthIndex = (fighter: Fighter, fighters: Fighter[]) =>
-  (fighter.team === 'ally' ? 60 : 30) - laneIndex(fighter, fighters) * 10;
-const laneOffset = (fighter: Fighter, fighters: Fighter[]) =>
-  TEAM_LANE_BASE_PX[fighter.team] + laneIndex(fighter, fighters) * LANE_SPACING_PX;
+  50 - depthSlot(fighter, fighters) * 10 + (fighter.team === 'ally' ? 1 : 0);
+const depthOffset = (fighter: Fighter, fighters: Fighter[]) =>
+  DEPTH_SLOT_OFFSETS_PX[depthSlot(fighter, fighters)] + TEAM_DEPTH_NUDGE_PX[fighter.team];
 
 const colorHex = (value: string) => value;
 const attackKinds = ['attack', 'heavy', 'poison', 'burn', 'follow', 'miss'] as const;
@@ -125,8 +125,8 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
             style={{
               ['--projectile-start-x' as string]: `${projectileAttack.actor.x}%`,
               ['--projectile-end-x' as string]: `${projectileAttack.target.x}%`,
-              ['--projectile-start-lane' as string]: `${laneOffset(projectileAttack.actor, fighters)}px`,
-              ['--projectile-end-lane' as string]: `${laneOffset(projectileAttack.target, fighters)}px`,
+              ['--projectile-start-depth' as string]: `${depthOffset(projectileAttack.actor, fighters)}px`,
+              ['--projectile-end-depth' as string]: `${depthOffset(projectileAttack.target, fighters)}px`,
             }}
           />
         )}
@@ -138,8 +138,8 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
             style={{
               ['--projectile-start-x' as string]: `${fieldProjectile.actor.x}%`,
               ['--projectile-end-x' as string]: `${fieldProjectile.targetX}%`,
-              ['--projectile-start-lane' as string]: `${laneOffset(fieldProjectile.actor, fighters)}px`,
-              ['--projectile-end-lane' as string]: '0px',
+              ['--projectile-start-depth' as string]: `${depthOffset(fieldProjectile.actor, fighters)}px`,
+              ['--projectile-end-depth' as string]: '0px',
             }}
           />
         )}
@@ -179,18 +179,18 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
               ? 'face-left'
               : 'face-right';
           const animationKey = (isActor || isTarget) && flash ? flash.n : 'idle';
-          const fighterLane = laneIndex(fighter, fighters);
+          const fighterDepthSlot = depthSlot(fighter, fighters);
           const statusDetails = activeStatusDetails(fighter);
           return (
             <div
               className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${flashActor && flash?.actionLabel ? (isFocusActor ? 'is-focus-actor' : isTarget ? 'is-focus-target' : 'is-focus-muted') : ''} ${state}`}
-              data-lane-index={fighterLane}
+              data-depth-slot={fighterDepthSlot}
               key={fighter.instanceId}
               style={{
                 left: `${fighter.x}%`,
                 zIndex: depthIndex(fighter, fighters),
                 ['--unit-color' as string]: colorHex(fighter.color),
-                ['--lane-offset' as string]: `${laneOffset(fighter, fighters)}px`,
+                ['--depth-offset' as string]: `${depthOffset(fighter, fighters)}px`,
               }}
             >
               <i className="team-ring" aria-hidden="true" />

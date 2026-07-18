@@ -28,8 +28,8 @@ for (const viewport of [
   const formation = await page.locator('.sprite').evaluateAll((elements) =>
     elements.map((element) => ({
       team: element.classList.contains('ally') ? 'ally' : 'enemy',
-      lane: Number.parseInt(element.getAttribute('data-lane-index') ?? '-1', 10),
-      laneOffset: Number.parseFloat(getComputedStyle(element).getPropertyValue('--lane-offset')),
+      depthSlot: Number.parseInt(element.getAttribute('data-depth-slot') ?? '-1', 10),
+      depthOffset: Number.parseFloat(getComputedStyle(element).getPropertyValue('--depth-offset')),
       zIndex: Number.parseInt(getComputedStyle(element).zIndex, 10),
     })),
   );
@@ -81,16 +81,22 @@ for (const result of results) {
   if (result.spriteCount !== 4 || result.statusCards !== 4)
     throw new Error(`${result.viewport}: デフォルト戦闘が2対2ではありません`);
   for (const team of ['ally', 'enemy']) {
-    const formation = result.formation.filter((fighter) => fighter.team === team).sort((a, b) => a.lane - b.lane);
-    const expectedOffsets = team === 'ally' ? [-62, -24] : [48, 86];
+    const formation = result.formation
+      .filter((fighter) => fighter.team === team)
+      .sort((a, b) => a.depthSlot - b.depthSlot);
+    const expectedOffsets = team === 'ally' ? [-9, 5] : [-5, 9];
     if (
       formation.length !== 2 ||
-      formation.some((fighter, index) => fighter.lane !== index || fighter.laneOffset !== expectedOffsets[index])
+      formation.some((fighter, index) => fighter.depthSlot !== index || fighter.depthOffset !== expectedOffsets[index])
     )
-      throw new Error(`${result.viewport}: ${team}が2体用レーンに配置されていません`);
+      throw new Error(`${result.viewport}: ${team}が1本の戦線内で小さく前後配置されていません`);
     if (!(formation[0].zIndex > formation[1].zIndex))
       throw new Error(`${result.viewport}: 手前の${team}が最前面に描画されていません`);
   }
+  const depthRange =
+    Math.max(...result.formation.map((fighter) => fighter.depthOffset)) -
+    Math.min(...result.formation.map((fighter) => fighter.depthOffset));
+  if (depthRange > 18) throw new Error(`${result.viewport}: 奥行き差が広がり、複数レーンに見えています`);
   if (result.actionReadoutCount !== 1 || result.actionBubbleCount !== 0)
     throw new Error(`${result.viewport}: 実行者・技・対象の表示が一意ではありません`);
   if (result.buildOverflow > 0 || result.battleOverflow > 0)

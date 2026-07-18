@@ -112,7 +112,7 @@ await page.getByRole('button', { name: 'x2' }).click();
 await observeBattle(['追撃', '高速接近'], 500, () => followDistances.some((distance) => distance > 10));
 const depthLayers = await page.locator('.sprite').evaluateAll((elements) =>
   elements.map((element) => ({
-    laneOffset: Number.parseFloat(getComputedStyle(element).getPropertyValue('--lane-offset')),
+    depthOffset: Number.parseFloat(getComputedStyle(element).getPropertyValue('--depth-offset')),
     zIndex: Number.parseInt(getComputedStyle(element).zIndex, 10),
   })),
 );
@@ -215,10 +215,10 @@ if (!followDistances.some((distance) => distance > 10))
 if (relayHoldSeen) throw new Error('リレイにHOLD表示が出ています');
 if (reactionLogCount === 0) throw new Error('リアクションが戦闘ログに記録されていません');
 const frontLayer = depthLayers.find(
-  (layer) => layer.laneOffset === Math.min(...depthLayers.map((item) => item.laneOffset)),
+  (layer) => layer.depthOffset === Math.min(...depthLayers.map((item) => item.depthOffset)),
 );
 const rearLayer = depthLayers.find(
-  (layer) => layer.laneOffset === Math.max(...depthLayers.map((item) => item.laneOffset)),
+  (layer) => layer.depthOffset === Math.max(...depthLayers.map((item) => item.depthOffset)),
 );
 if (!frontLayer || !rearLayer || frontLayer.zIndex <= rearLayer.zIndex)
   throw new Error('手前のユニットが上に描画されていません');
