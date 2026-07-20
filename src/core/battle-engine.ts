@@ -51,6 +51,8 @@ type MutableFighterFields = Pick<
   | 'y'
   | 'vx'
   | 'vy'
+  | 'horizontalBrakePerSecond'
+  | 'horizontalBrakeRemaining'
   | 'gravityScale'
   | 'gravityScaleRemaining'
   | 'actionLock'
@@ -111,6 +113,8 @@ const fighterEffectValues = (fighter: Fighter) => ({
   y: fighter.y,
   vx: fighter.vx,
   vy: fighter.vy,
+  horizontalBrakePerSecond: fighter.horizontalBrakePerSecond,
+  horizontalBrakeRemaining: fighter.horizontalBrakeRemaining,
   gravityScale: fighter.gravityScale,
   gravityScaleRemaining: fighter.gravityScaleRemaining,
 });

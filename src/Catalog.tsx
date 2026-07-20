@@ -56,7 +56,7 @@ const effectSummary = (effect: InstructionEffect): { label: string; value: strin
     case 'motion':
       return {
         label: `速度・${effect.mode}`,
-        value: `X ${effect.x} / Y ${effect.y} / ${effect.relativeTo === 'target' ? '対象基準' : 'ワールド基準'}`,
+        value: `X ${effect.x} / Y ${effect.y} (${effect.verticalMode ?? effect.mode}) / ${effect.relativeTo === 'target' ? '対象基準' : 'ワールド基準'}${effect.horizontalBrakePerSecond ? ` / 制動${effect.horizontalBrakePerSecond}・${effect.horizontalBrakeDurationSeconds}秒` : ''}`,
       };
     case 'gravity':
       return { label: '重力倍率', value: `×${effect.scale} / ${effect.durationSeconds}秒 / ${effect.target}` };

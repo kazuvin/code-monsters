@@ -76,10 +76,19 @@ export function applyInstructionFighterEffects(
     const direction = effect.relativeTo === 'target' ? (context.direction ?? 1) : 1;
     const vx = effect.x * direction;
     const applyVertical = effect.verticalMaxY === undefined || next.y <= effect.verticalMaxY;
+    const verticalMode = effect.verticalMode ?? effect.mode;
+    const appliesHorizontalBrake =
+      effect.horizontalBrakePerSecond !== undefined && effect.horizontalBrakeDurationSeconds !== undefined;
     next = {
       ...next,
       vx: effect.mode === 'addVelocity' ? next.vx + vx : vx,
-      vy: applyVertical ? (effect.mode === 'addVelocity' ? next.vy + effect.y : effect.y) : next.vy,
+      vy: applyVertical ? (verticalMode === 'addVelocity' ? next.vy + effect.y : effect.y) : next.vy,
+      horizontalBrakePerSecond: appliesHorizontalBrake
+        ? effect.horizontalBrakePerSecond!
+        : next.horizontalBrakePerSecond,
+      horizontalBrakeRemaining: appliesHorizontalBrake
+        ? effect.horizontalBrakeDurationSeconds!
+        : next.horizontalBrakeRemaining,
     };
   }
   for (const effect of effectsByKind(instruction, 'gravity')) {

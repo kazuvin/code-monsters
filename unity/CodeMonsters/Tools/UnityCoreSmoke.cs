@@ -50,10 +50,35 @@ internal static class UnityCoreSmoke
         var corrosionFieldSkill = data.Instructions.Single(instruction => instruction.Id == "corrosion-field");
         var poison = data.Statuses.Single(status => status.Id == "poison");
         var targetNear = data.Conditions.Single(condition => condition.Id == "targetNear12");
+        var vectorThrust = data.Instructions.Single(instruction => instruction.Id == "vector-thrust");
         var actor = new FighterState { InstanceId = "volt-1", Team = "ally", X = 40, Y = 0, Hp = 74, MaxHp = 74 };
         var target = new FighterState { InstanceId = "enemy-1", Team = "enemy", X = 46, Y = 8, Hp = 100, MaxHp = 100 };
         if (!BattleRules.MatchesCondition(targetNear, actor, target))
             throw new InvalidDataException("Two-dimensional distance condition did not match");
+        var vectorMotion = vectorThrust.Effects.Single(effect => effect.Kind == "motion");
+        if (
+            vectorMotion.Mode != "setVelocity"
+            || vectorMotion.VerticalMode != "addVelocity"
+            || vectorMotion.HorizontalBrakePerSecond != 80
+            || vectorMotion.HorizontalBrakeDurationSeconds != 0.5
+            || data.Battle.VerticalDisplayRangePercent != 62
+        )
+            throw new InvalidDataException("Controlled movement and vertical presentation data were not imported");
+        var braking = new FighterState
+        {
+            InstanceId = "motion-1",
+            Team = "ally",
+            X = 40,
+            Y = 0,
+            VX = 40,
+            VY = 12,
+            HorizontalBrakePerSecond = 80,
+            HorizontalBrakeRemaining = 0.5,
+        };
+        for (var index = 0; index < 5; index++)
+            braking = BattleRules.TickMotion(braking, data.Battle, 0.1);
+        if (Math.Abs(braking.X - 50) > 0.0001 || braking.VX != 0)
+            throw new InvalidDataException("Controlled movement did not brake at the authored distance");
         if (Math.Abs(vulnerable.Effects.Single(effect => effect.Kind == "incomingDamageScale").Value.GetValueOrDefault() - 1.15) >= 0.0001)
             throw new InvalidDataException("Vulnerable status multiplier was not imported");
         if (!pulseBolt.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "vulnerable"))

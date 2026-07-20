@@ -107,6 +107,9 @@ namespace CodeMonsters.Core
         [JsonProperty("ceilingY")]
         public double CeilingY;
 
+        [JsonProperty("verticalDisplayRangePercent")]
+        public double VerticalDisplayRangePercent;
+
         [JsonProperty("fighterRadius")]
         public double FighterRadius;
 
@@ -227,7 +230,6 @@ namespace CodeMonsters.Core
     {
         [JsonProperty("mode")]
         public string Mode = "";
-
     }
 
     public sealed class StatusSynergyDefinition
@@ -526,6 +528,9 @@ namespace CodeMonsters.Core
         [JsonProperty("mode")]
         public string Mode = "";
 
+        [JsonProperty("verticalMode")]
+        public string VerticalMode = "";
+
         [JsonProperty("target")]
         public string Target = "";
 
@@ -561,6 +566,12 @@ namespace CodeMonsters.Core
 
         [JsonProperty("verticalMaxY")]
         public double? VerticalMaxY;
+
+        [JsonProperty("horizontalBrakePerSecond")]
+        public double? HorizontalBrakePerSecond;
+
+        [JsonProperty("horizontalBrakeDurationSeconds")]
+        public double? HorizontalBrakeDurationSeconds;
 
         [JsonProperty("scale")]
         public double? Scale;

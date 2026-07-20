@@ -26,6 +26,9 @@ for (const viewport of [
   await page.waitForSelector('.side-battlefield');
   await page.waitForTimeout(2400);
   const battlefieldCount = await page.locator('.side-battlefield').count();
+  const verticalDisplayRange = Number.parseFloat(
+    (await page.locator('.side-battlefield').getAttribute('data-vertical-display-range')) ?? '0',
+  );
   const spriteCount = await page.locator('.sprite').count();
   const formation = await page.locator('.sprite').evaluateAll((elements) =>
     elements.map((element) => ({
@@ -66,6 +69,7 @@ for (const viewport of [
     hasRedundantTargetCopy: buildCopy.includes('対象スロット') || buildCopy.includes('このユニットから見て'),
     battleOverflow,
     battlefieldCount,
+    verticalDisplayRange,
     spriteCount,
     formation,
     battlefield,
@@ -84,6 +88,8 @@ console.log(JSON.stringify(results, null, 2));
 for (const result of results) {
   if (result.spriteCount !== 2 || result.statusCards !== 2)
     throw new Error(`${result.viewport}: デフォルト戦闘が1対1ではありません`);
+  if (result.verticalDisplayRange !== 62)
+    throw new Error(`${result.viewport}: 論理Y座標が戦場高へ正規化されていません`);
   for (const team of ['ally', 'enemy']) {
     const formation = result.formation.filter((fighter) => fighter.team === team);
     if (formation.length !== 1 || formation[0].depthSlot !== 0 || formation[0].depthOffset !== 0)

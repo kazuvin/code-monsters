@@ -13,6 +13,8 @@ namespace CodeMonsters.Core
         public double Y;
         public double VX;
         public double VY;
+        public double HorizontalBrakePerSecond;
+        public double HorizontalBrakeRemaining;
         public double GravityScale = 1;
         public double GravityScaleRemaining;
         public double Hp;
@@ -272,18 +274,32 @@ namespace CodeMonsters.Core
             var y = Math.Max(battle.FloorY, Math.Min(battle.CeilingY, unclampedY));
             var hitFloor = y <= battle.FloorY && acceleratedVY < 0;
             var hitCeiling = y >= battle.CeilingY && acceleratedVY > 0;
-            var drag = hitFloor ? battle.GroundFrictionPerSecond : battle.HorizontalDragPerSecond;
-            var vx = MoveTowardZero(fighter.VX, Math.Max(0, drag) * dt);
+            var controlledDuration = Math.Min(dt, Math.Max(0, fighter.HorizontalBrakeRemaining));
+            var vx = fighter.VX;
+            var horizontalDistance = IntegrateHorizontalDrag(
+                ref vx,
+                Math.Max(0, fighter.HorizontalBrakePerSecond),
+                controlledDuration
+            );
+            var passiveDrag = hitFloor ? battle.GroundFrictionPerSecond : battle.HorizontalDragPerSecond;
+            horizontalDistance += IntegrateHorizontalDrag(
+                ref vx,
+                Math.Max(0, passiveDrag),
+                Math.Max(0, dt - controlledDuration)
+            );
+            var horizontalBrakeRemaining = Math.Max(0, fighter.HorizontalBrakeRemaining - dt);
             return new FighterState
             {
                 InstanceId = fighter.InstanceId,
                 Team = fighter.Team,
                 Role = fighter.Role,
                 AttackType = fighter.AttackType,
-                X = fighter.X + fighter.VX * dt,
+                X = fighter.X + horizontalDistance,
                 Y = y,
                 VX = vx,
                 VY = hitFloor || hitCeiling ? 0 : acceleratedVY,
+                HorizontalBrakePerSecond = horizontalBrakeRemaining > 0 ? fighter.HorizontalBrakePerSecond : 0,
+                HorizontalBrakeRemaining = horizontalBrakeRemaining,
                 GravityScale = gravityScale,
                 GravityScaleRemaining = gravityRemaining,
                 Hp = fighter.Hp,
@@ -318,11 +334,24 @@ namespace CodeMonsters.Core
             return Math.Atan2(Math.Sin(angle), Math.Cos(angle));
         }
 
-        private static double MoveTowardZero(double value, double amount)
+        private static double IntegrateHorizontalDrag(
+            ref double velocity,
+            double dragPerSecond,
+            double duration
+        )
         {
-            if (Math.Abs(value) <= amount)
+            if (duration <= 0 || velocity == 0)
                 return 0;
-            return value - Math.Sign(value) * amount;
+            if (dragPerSecond <= 0)
+                return velocity * duration;
+            var direction = Math.Sign(velocity);
+            var activeDuration = Math.Min(duration, Math.Abs(velocity) / dragPerSecond);
+            var distance = velocity * activeDuration
+                - direction * 0.5 * dragPerSecond * activeDuration * activeDuration;
+            velocity -= direction * dragPerSecond * activeDuration;
+            if (Math.Abs(velocity) < 0.000000001)
+                velocity = 0;
+            return distance;
         }
 
         private static double PointSegmentDistance(

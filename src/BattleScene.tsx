@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BATTLE_ZONES } from './data';
+import { BATTLE_CONFIG, BATTLE_ZONES } from './data';
 import { activeStatusDetails, hasStatus, statusEffectTargetId, statusVisualClasses } from './core/statuses';
 import type { BattleFlash, BattleZoneInstance, Fighter, SpatialProjectile } from './types';
 
@@ -12,6 +12,11 @@ type Props = {
   running: boolean;
 };
 const zoneById = new Map(BATTLE_ZONES.map((zone) => [zone.id, zone]));
+const verticalWorldRange = BATTLE_CONFIG.ceilingY - BATTLE_CONFIG.floorY;
+const stageYPercent = (y: number) =>
+  ((y - BATTLE_CONFIG.floorY) / verticalWorldRange) * BATTLE_CONFIG.verticalDisplayRangePercent;
+const stageHeightPercent = (height: number) =>
+  (height / verticalWorldRange) * BATTLE_CONFIG.verticalDisplayRangePercent;
 
 const DEPTH_SLOTS = 2;
 const DEPTH_SLOT_OFFSETS_PX = [-7, 7] as const;
@@ -70,6 +75,7 @@ export function BattleScene({ fighters, zones = [], projectiles = [], flash, fla
       aria-label="2D戦闘フィールド"
       data-event-id={flash?.n ?? ''}
       data-event-kind={activeFlashes.map((candidate) => candidate.kind).join(',')}
+      data-vertical-display-range={BATTLE_CONFIG.verticalDisplayRangePercent}
       data-action-label={activeFlashes
         .map((candidate) => candidate.actionLabel)
         .filter(Boolean)
@@ -110,12 +116,13 @@ export function BattleScene({ fighters, zones = [], projectiles = [], flash, fla
             <div
               className={`battle-zone ${definition.visual.className}`}
               data-zone-id={zone.zoneId}
+              data-y={zone.y}
               key={zone.instanceId}
               aria-label={`${definition.label} 残り${zone.remainingSeconds.toFixed(1)}秒`}
               style={{
                 left: `${zone.x - definition.radius}%`,
                 width: `${definition.radius * 2}%`,
-                ['--zone-y' as string]: `${zone.y}px`,
+                ['--zone-y' as string]: `${stageYPercent(zone.y)}%`,
                 ['--zone-color' as string]: definition.visual.color,
               }}
             >
@@ -133,9 +140,11 @@ export function BattleScene({ fighters, zones = [], projectiles = [], flash, fla
             key={`shape-${shape.flash.id}-${shape.flash.n}`}
             style={{
               left: `${shape.x}%`,
-              ['--shape-y' as string]: `${shape.y}px`,
+              ['--shape-y' as string]: `${stageYPercent(shape.y)}%`,
               ['--shape-width' as string]: `${shape.kind === 'circle' ? shape.radius * 2 : shape.width}%`,
-              ['--shape-height' as string]: `${shape.kind === 'circle' ? shape.radius * 2 : (shape.height ?? 64)}px`,
+              ['--shape-height' as string]: `${stageHeightPercent(
+                shape.kind === 'circle' ? shape.radius * 2 : (shape.height ?? verticalWorldRange),
+              )}%`,
             }}
           />
         ))}
@@ -147,10 +156,11 @@ export function BattleScene({ fighters, zones = [], projectiles = [], flash, fla
             data-projectile-kind={
               projectile.trajectory === 'ballistic' ? 'lob' : projectile.homing ? 'homing' : 'direct'
             }
+            data-y={projectile.y}
             key={projectile.instanceId}
             style={{
               left: `${projectile.x}%`,
-              ['--projectile-y' as string]: `${projectile.y}px`,
+              ['--projectile-y' as string]: `${stageYPercent(projectile.y)}%`,
               ['--projectile-angle' as string]: `${Math.atan2(projectile.vy, projectile.vx)}rad`,
               ['--projectile-size' as string]: `${Math.max(7, projectile.radius * 3)}px`,
             }}
@@ -217,7 +227,7 @@ export function BattleScene({ fighters, zones = [], projectiles = [], flash, fla
                 zIndex: depthIndex(fighter, fighters),
                 ['--unit-color' as string]: colorHex(fighter.color),
                 ['--depth-offset' as string]: `${depthOffset(fighter, fighters)}px`,
-                ['--unit-y' as string]: `${fighter.y}px`,
+                ['--unit-y' as string]: `${stageYPercent(fighter.y)}%`,
               }}
             >
               <i className="team-ring" aria-hidden="true" />

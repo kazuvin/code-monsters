@@ -116,9 +116,16 @@ export function instructionCooldown(instruction: Instruction, speed: number): nu
   return Math.max(BATTLE_CONFIG.minimumInstructionCooldownSeconds, instruction.cooldownSeconds / speed);
 }
 
-const moveTowardZero = (value: number, amount: number) => {
-  if (Math.abs(value) <= amount) return 0;
-  return value - Math.sign(value) * amount;
+const integrateHorizontalDrag = (velocity: number, dragPerSecond: number, duration: number) => {
+  if (duration <= 0 || velocity === 0) return { distance: 0, velocity };
+  if (dragPerSecond <= 0) return { distance: velocity * duration, velocity };
+  const direction = Math.sign(velocity);
+  const activeDuration = Math.min(duration, Math.abs(velocity) / dragPerSecond);
+  const nextVelocity = velocity - direction * dragPerSecond * activeDuration;
+  return {
+    distance: velocity * activeDuration - direction * 0.5 * dragPerSecond * activeDuration ** 2,
+    velocity: Math.abs(nextVelocity) < 1e-9 ? 0 : nextVelocity,
+  };
 };
 
 export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
@@ -131,14 +138,27 @@ export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
       -BATTLE_CONFIG.maxFallSpeed,
       fighter.vy - BATTLE_CONFIG.gravityPerSecond * activeGravityScale * dt,
     );
-    const unclampedX = fighter.x + fighter.vx * dt;
     const unclampedY = fighter.y + acceleratedVy * dt;
-    const x = clampStage(unclampedX);
     const y = clampHeight(unclampedY);
     const hitFloor = y <= BATTLE_CONFIG.floorY && acceleratedVy < 0;
     const hitCeiling = y >= BATTLE_CONFIG.ceilingY && acceleratedVy > 0;
-    const drag = hitFloor ? BATTLE_CONFIG.groundFrictionPerSecond : BATTLE_CONFIG.horizontalDragPerSecond;
-    const vx = x !== unclampedX ? 0 : moveTowardZero(fighter.vx, Math.max(0, drag) * dt);
+    const controlledDuration = Math.min(dt, Math.max(0, fighter.horizontalBrakeRemaining));
+    const controlledMotion = integrateHorizontalDrag(
+      fighter.vx,
+      Math.max(0, fighter.horizontalBrakePerSecond),
+      controlledDuration,
+    );
+    const passiveDrag = hitFloor ? BATTLE_CONFIG.groundFrictionPerSecond : BATTLE_CONFIG.horizontalDragPerSecond;
+    const passiveMotion = integrateHorizontalDrag(
+      controlledMotion.velocity,
+      Math.max(0, passiveDrag),
+      dt - controlledDuration,
+    );
+    const unclampedX = fighter.x + controlledMotion.distance + passiveMotion.distance;
+    const x = clampStage(unclampedX);
+    const hitWall = x !== unclampedX;
+    const nextHorizontalBrakeRemaining = hitWall ? 0 : Math.max(0, fighter.horizontalBrakeRemaining - dt);
+    const vx = hitWall ? 0 : passiveMotion.velocity;
     const vy = hitFloor || hitCeiling ? 0 : acceleratedVy;
     return {
       ...statusTicked,
@@ -146,6 +166,8 @@ export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
       y,
       vx,
       vy,
+      horizontalBrakePerSecond: nextHorizontalBrakeRemaining > 0 ? fighter.horizontalBrakePerSecond : 0,
+      horizontalBrakeRemaining: nextHorizontalBrakeRemaining,
       gravityScale: nextGravityScale,
       gravityScaleRemaining: nextGravityRemaining,
       actionLock: Math.max(0, fighter.actionLock - dt),
@@ -265,8 +287,14 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
     ]);
   if (motion)
     return withCost([
-      { label: '水平速度', value: `${motion.x >= 0 ? '+' : ''}${metricNumber(motion.x)} m/s` },
-      { label: '垂直速度', value: `${motion.y >= 0 ? '+' : ''}${metricNumber(motion.y)} m/s` },
+      {
+        label: motion.mode === 'setVelocity' ? '水平速度設定' : '水平速度加算',
+        value: `${motion.mode === 'addVelocity' && motion.x >= 0 ? '+' : ''}${metricNumber(motion.x)} m/s`,
+      },
+      {
+        label: (motion.verticalMode ?? motion.mode) === 'setVelocity' ? '垂直速度設定' : '垂直速度加算',
+        value: `${(motion.verticalMode ?? motion.mode) === 'addVelocity' && motion.y >= 0 ? '+' : ''}${metricNumber(motion.y)} m/s`,
+      },
       ...(gravity
         ? [
             { label: '重力倍率', value: `${metricNumber(gravity.scale)}×` },

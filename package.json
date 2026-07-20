@@ -22,6 +22,7 @@
     "test:mobile": "node scripts/mobile-ux-test.mjs",
     "test:loadout": "node scripts/loadout-test.mjs",
     "test:jump": "node scripts/jump-test.mjs",
+    "test:movement": "node scripts/movement-test.mjs",
     "test:projectile": "node scripts/projectile-test.mjs",
     "test:field": "node scripts/field-test.mjs",
     "test:catalog": "node scripts/catalog-test.mjs",

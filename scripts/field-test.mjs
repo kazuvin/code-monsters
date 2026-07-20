@@ -49,7 +49,7 @@ for (let tick = 0; tick < 1200 && !(zoneSeen && landingLabel); tick += 1) {
   if (lobCount > 0) {
     const style = (await lob.getAttribute('style')) ?? '';
     const x = Number.parseFloat(style.match(/left:\s*([\d.-]+)%/)?.[1] ?? '0');
-    const y = Number.parseFloat(style.match(/--projectile-y:\s*([\d.-]+)px/)?.[1] ?? '0');
+    const y = Number.parseFloat((await lob.getAttribute('data-y')) ?? '0');
     if (!lobSeen) {
       lobSeen = true;
       firstX = x;
@@ -65,9 +65,7 @@ for (let tick = 0; tick < 1200 && !(zoneSeen && landingLabel); tick += 1) {
   }
   if (zoneCount > 0) {
     zoneSeen = true;
-    zoneY = Number.parseFloat(
-      await zone.evaluate((element) => getComputedStyle(element).getPropertyValue('--zone-y') || 'NaN'),
-    );
+    zoneY = Number.parseFloat((await zone.getAttribute('data-y')) ?? 'NaN');
   }
   await page.waitForTimeout(25);
 }

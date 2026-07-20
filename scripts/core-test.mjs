@@ -93,9 +93,10 @@ const makeDuel = ({ actionId, actorX = 40, targetX = 50, actorY = 0, targetY = 0
   return { team, fighters };
 };
 
-assert.equal(GAME_DATA.schemaVersion, 20, '放物投擲を含む戦闘スキーマがv20ではありません');
+assert.equal(GAME_DATA.schemaVersion, 21, '制動付き移動を含む戦闘スキーマがv21ではありません');
 assert.equal(BATTLE_CONFIG.teamSize, 1, '標準戦闘が1vs1ではありません');
 assert.ok(BATTLE_CONFIG.gravityPerSecond > 0 && BATTLE_CONFIG.ceilingY > BATTLE_CONFIG.floorY, '物理定数が不正です');
+assert.equal(BATTLE_CONFIG.verticalDisplayRangePercent, 62, '論理Y座標の表示範囲が戦場高へ正規化されていません');
 assert.equal(UNITS.length, 3, '手作業アニメーション対象が3体に絞られていません');
 assert.deepEqual(UNITS.map((unit) => unit.id).sort(), ['bastion', 'relay', 'volt']);
 assert.deepEqual(ROSTER_CONFIG.startingUnitIds, ['volt']);
@@ -164,21 +165,46 @@ const jumpJet = instructionById.get('jump-jet');
 const hoverDrive = instructionById.get('hover-drive');
 const airDash = instructionById.get('air-dash');
 const vectorThrust = instructionById.get('vector-thrust');
-assert.ok(jumpJet && hoverDrive && airDash && vectorThrust, '座標ベースの移動スキルが不足しています');
+const backstep = instructionById.get('backstep');
+assert.ok(jumpJet && hoverDrive && airDash && vectorThrust && backstep, '座標ベースの移動スキルが不足しています');
+for (const instruction of [vectorThrust, backstep, jumpJet, airDash]) {
+  const motion = instruction.effects.find((effect) => effect.kind === 'motion');
+  assert.ok(
+    motion?.horizontalBrakePerSecond && motion.horizontalBrakeDurationSeconds,
+    `${instruction.id} にスキル固有の水平制動がありません`,
+  );
+}
 const launched = applyInstructionFighterEffects(actor, jumpJet, actor.instanceId, 'actor', { direction: 1 });
-assert.deepEqual([launched.vx, launched.vy], [12, 68], 'ジャンプが現在速度へ大跳躍の推進を加えません');
+assert.deepEqual([launched.vx, launched.vy], [18, 70], 'ジャンプが大跳躍用の速度を設定しません');
+assert.deepEqual(
+  [launched.horizontalBrakePerSecond, launched.horizontalBrakeRemaining],
+  [9, 2],
+  'ジャンプの水平速度が弧の途中で収束しません',
+);
 assert.equal(BATTLE_CONFIG.ceilingY, 96, '高高度ジャンプを途中で止めない天井が設定されていません');
 const groundThrust = applyInstructionFighterEffects(actor, vectorThrust, actor.instanceId, 'actor', {
   direction: 1,
 });
-assert.equal(groundThrust.vy, actor.vy + 20, '地上付近の接近推力が小さな上向き弧を作りません');
+assert.deepEqual([groundThrust.vx, groundThrust.vy], [40, 12], '接近推力が短い前上方バーストを作りません');
+let brakedThrust = groundThrust;
+for (let index = 0; index < 5; index += 1) [brakedThrust] = tickCooldowns([brakedThrust], 0.1);
+assert.equal(brakedThrust.vx, 0, '接近推力が半秒で停止しません');
+assert.ok(Math.abs(brakedThrust.x - actor.x - 10) < 0.001, '接近推力の制動距離が不正です');
+const settledThrust = tickCooldowns([brakedThrust], 0.5)[0];
+assert.equal(settledThrust.x, brakedThrust.x, '接近推力の終了後も氷上のように滑り続けます');
+const retreatOrigin = { ...actor, x: 50 };
+const retreating = applyInstructionFighterEffects(retreatOrigin, backstep, actor.instanceId, 'actor', { direction: 1 });
+let brakedRetreat = retreating;
+for (let index = 0; index < 5; index += 1) [brakedRetreat] = tickCooldowns([brakedRetreat], 0.1);
+assert.equal(brakedRetreat.vx, 0, '後退推力が半秒で停止しません');
+assert.ok(Math.abs(brakedRetreat.x - retreatOrigin.x + 8.5) < 0.001, '後退推力の制動距離が不正です');
 const rising = tickCooldowns([launched], 0.5)[0];
 assert.ok(rising.x > actor.x && rising.y > actor.y && rising.vy < launched.vy, '重力軌道で前進・上昇しません');
 const thrustWhileRising = applyInstructionFighterEffects(rising, vectorThrust, actor.instanceId, 'actor', {
   direction: 1,
 });
 assert.equal(thrustWhileRising.vy, rising.vy, '高所の接近推力が現在の上下軌道を不自然に変えます');
-assert.ok(thrustWhileRising.vx > rising.vx, '接近推力が現在の水平軌道へ加速を合成しません');
+assert.equal(thrustWhileRising.vx, 40, '高所の接近推力が水平速度を即座に制御しません');
 let landed = launched;
 let peakHeight = launched.y;
 for (let index = 0; index < 100; index += 1) {
@@ -186,7 +212,7 @@ for (let index = 0; index < 100; index += 1) {
   peakHeight = Math.max(peakHeight, landed.y);
   if (index > 0 && landed.y <= BATTLE_CONFIG.floorY && landed.vy === 0) break;
 }
-assert.ok(peakHeight >= 63, 'ジャンプが地上弾を越える十分な高さへ到達しません');
+assert.ok(peakHeight >= 67, 'ジャンプが地上弾を越える十分な高さへ到達しません');
 assert.equal(landed.y, BATTLE_CONFIG.floorY, '重力で床へ戻りません');
 assert.equal(landed.vy, 0, '床との衝突で垂直速度が止まりません');
 const hovering = applyInstructionFighterEffects(actor, hoverDrive, actor.instanceId, 'actor');
@@ -197,7 +223,7 @@ const airborneDash = applyInstructionFighterEffects({ ...rising, y: 12 }, airDas
   direction: 1,
 });
 assert.equal(airborneDash.y, 12, '空中ダッシュが現在Y座標を上書きします');
-assert.ok(airborneDash.vx > 0, '空中ダッシュが水平速度を作りません');
+assert.equal(airborneDash.vx, 42, '空中ダッシュが短い水平バーストを作りません');
 assert.equal(airborneDash.vy, rising.vy + 4, '空中ダッシュが現在の上下軌道へ推進を合成しません');
 
 assert.equal(matchCondition('selfHeightAbove8', { ...actor, y: 9 }, [enemy]).length, 1);

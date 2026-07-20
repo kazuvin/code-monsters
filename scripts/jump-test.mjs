@@ -35,6 +35,8 @@ let descentSeen = false;
 const xs = [];
 const ys = [];
 const vys = [];
+const screenSamples = [];
+const battlefieldBox = await page.locator('.side-battlefield').boundingBox();
 for (let tick = 0; tick < 900; tick += 1) {
   const volt = page.locator('.sprite.ally.unit-volt').first();
   const className = (await volt.getAttribute('class')) ?? '';
@@ -44,6 +46,8 @@ for (let tick = 0; tick < 900; tick += 1) {
   xs.push(x);
   ys.push(y);
   vys.push(vy);
+  const bounds = await volt.boundingBox();
+  if (bounds) screenSamples.push({ y, top: bounds.y });
   if (className.includes('is-flight')) {
     flightEventSeen = true;
     const animation = await volt.locator('.sprite-body').evaluate((element) => getComputedStyle(element).animationName);
@@ -63,6 +67,9 @@ await browser.close();
 
 const horizontalTravel = Math.max(...xs) - Math.min(...xs);
 const peakHeight = Math.max(...ys);
+const groundScreenTop = Math.max(...screenSamples.filter((sample) => sample.y <= 0.1).map((sample) => sample.top));
+const peakScreenTop = Math.min(...screenSamples.map((sample) => sample.top));
+const screenRiseRatio = battlefieldBox ? (groundScreenTop - peakScreenTop) / (groundScreenTop - battlefieldBox.y) : 0;
 const result = {
   shopText,
   configuredProgram,
@@ -72,18 +79,21 @@ const result = {
   returnedToFloor,
   horizontalTravel,
   peakHeight,
+  screenRiseRatio,
   cannedJumpAnimation,
   staleAltitudeAttribute,
   errors,
 };
 console.log(JSON.stringify(result, null, 2));
 
-if (!shopText.includes('RARE / JUMP') || !shopText.includes('水平速度 +12') || !shopText.includes('垂直速度 +68'))
+if (!shopText.includes('RARE / JUMP') || !shopText.includes('水平速度設定 18') || !shopText.includes('垂直速度設定 70'))
   throw new Error('ジャンプジェットの速度ベース表示が不正です');
 if (!configuredProgram.includes('上昇推力をかける')) throw new Error('ジャンプジェットを通常作戦へ設定できません');
 if (!flightEventSeen || !ascentSeen || !descentSeen || !returnedToFloor)
   throw new Error('Y座標と重力による上昇・下降・接地を確認できません');
 if (horizontalTravel < 4 || peakHeight < 55) throw new Error('ジャンプジェットの大跳躍量が不足しています');
+if (screenRiseRatio < 0.58 || screenRiseRatio > 0.72)
+  throw new Error(`ジャンプの画面上の最高点が戦場高の6〜7割ではありません: ${screenRiseRatio}`);
 if (cannedJumpAnimation) throw new Error('廃止したジャンプ専用アニメーションが再生されています');
 if (staleAltitudeAttribute !== null) throw new Error('地上・空中のカテゴリ属性が戦闘表示に残っています');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

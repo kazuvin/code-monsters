@@ -252,7 +252,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 20) error('INVALID_SCHEMA_VERSION', 'schemaVersion は20以上である必要があります');
+  if (data.schemaVersion < 21) error('INVALID_SCHEMA_VERSION', 'schemaVersion は21以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -271,6 +271,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.battle.groundFrictionPerSecond < 0 ||
     data.battle.maxFallSpeed <= 0 ||
     data.battle.floorY >= data.battle.ceilingY ||
+    data.battle.verticalDisplayRangePercent <= 0 ||
+    data.battle.verticalDisplayRangePercent > 100 ||
     data.battle.fighterRadius <= 0 ||
     data.battle.knockbackVelocityScale <= 0
   )
@@ -592,16 +594,35 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       } else if (effect.kind === 'motion') {
         rejectUnknownKeys(
           effect,
-          ['kind', 'target', 'mode', 'x', 'y', 'relativeTo', 'verticalMaxY'],
+          [
+            'kind',
+            'target',
+            'mode',
+            'verticalMode',
+            'x',
+            'y',
+            'relativeTo',
+            'verticalMaxY',
+            'horizontalBrakePerSecond',
+            'horizontalBrakeDurationSeconds',
+          ],
           `スキル ${instruction.id}.motion`,
         );
+        const hasBrake =
+          effect.horizontalBrakePerSecond !== undefined || effect.horizontalBrakeDurationSeconds !== undefined;
         if (
           !['actor', 'selected'].includes(effect.target) ||
           !['addVelocity', 'setVelocity'].includes(effect.mode) ||
+          (effect.verticalMode !== undefined && !['addVelocity', 'setVelocity'].includes(effect.verticalMode)) ||
           !['target', 'world'].includes(effect.relativeTo) ||
           !Number.isFinite(effect.x) ||
           !Number.isFinite(effect.y) ||
           (effect.verticalMaxY !== undefined && (!Number.isFinite(effect.verticalMaxY) || effect.verticalMaxY < 0)) ||
+          (hasBrake &&
+            (effect.horizontalBrakePerSecond === undefined ||
+              effect.horizontalBrakeDurationSeconds === undefined ||
+              effect.horizontalBrakePerSecond <= 0 ||
+              effect.horizontalBrakeDurationSeconds <= 0)) ||
           (effect.x === 0 && effect.y === 0)
         )
           error('INVALID_EFFECT', `${instruction.id} の motion 定義が不正です`);

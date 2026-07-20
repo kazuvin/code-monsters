@@ -93,7 +93,7 @@ if (resultTitle !== '勝利') throw new Error('初期ロードアウトで最初
 for (const label of ['実行イベント', '戦闘時間', 'ゲージ空', 'ゲージ満タン'])
   if (!summaryText.includes(label)) throw new Error(`戦闘サマリーに${label}がありません`);
 if (
-  replay.schemaVersion !== 20 ||
+  replay.schemaVersion !== 21 ||
   replay.encounter?.id !== 'rush-protocol' ||
   replay.initialFighters?.filter((fighter) => fighter.team === 'ally').length !== 1 ||
   replay.initialFighters?.filter((fighter) => fighter.team === 'enemy').length !== 1

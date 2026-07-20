@@ -54,10 +54,13 @@ export type MotionEffect = {
   kind: 'motion';
   target: Extract<EffectTarget, 'actor' | 'selected'>;
   mode: 'addVelocity' | 'setVelocity';
+  verticalMode?: 'addVelocity' | 'setVelocity';
   x: number;
   y: number;
   relativeTo: 'target' | 'world';
   verticalMaxY?: number;
+  horizontalBrakePerSecond?: number;
+  horizontalBrakeDurationSeconds?: number;
 };
 export type GravityEffect = {
   kind: 'gravity';
@@ -346,6 +349,8 @@ export type Fighter = UnitDefinition & {
   y: number;
   vx: number;
   vy: number;
+  horizontalBrakePerSecond: number;
+  horizontalBrakeRemaining: number;
   gravityScale: number;
   gravityScaleRemaining: number;
   actionLock: number;

@@ -35,6 +35,7 @@ export type BattleConfig = {
   maxFallSpeed: number;
   floorY: number;
   ceilingY: number;
+  verticalDisplayRangePercent: number;
   fighterRadius: number;
   knockbackVelocityScale: number;
   initialPositionInset: number;

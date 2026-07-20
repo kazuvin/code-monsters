@@ -8,7 +8,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 20;
+        public const int SupportedSchemaVersion = 21;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -54,6 +54,8 @@ namespace CodeMonsters.Core
                 || data.Battle.GravityPerSecond <= 0
                 || data.Battle.MaxFallSpeed <= 0
                 || data.Battle.CeilingY <= data.Battle.FloorY
+                || data.Battle.VerticalDisplayRangePercent <= 0
+                || data.Battle.VerticalDisplayRangePercent > 100
                 || data.Battle.FighterRadius <= 0
                 || data.Battle.KnockbackVelocityScale <= 0
                 || data.Battle.HorizontalDragPerSecond < 0
@@ -343,9 +345,23 @@ namespace CodeMonsters.Core
                             !effect.X.HasValue
                             || !effect.Y.HasValue
                             || (effect.Mode != "addVelocity" && effect.Mode != "setVelocity")
+                            || (
+                                effect.VerticalMode != ""
+                                && effect.VerticalMode != "addVelocity"
+                                && effect.VerticalMode != "setVelocity"
+                            )
                             || (effect.Target != "actor" && effect.Target != "selected")
                             || (effect.RelativeTo != "target" && effect.RelativeTo != "world")
                             || (effect.VerticalMaxY.HasValue && effect.VerticalMaxY.Value < 0)
+                            || effect.HorizontalBrakePerSecond.HasValue
+                                != effect.HorizontalBrakeDurationSeconds.HasValue
+                            || (
+                                effect.HorizontalBrakePerSecond.HasValue
+                                && (
+                                    effect.HorizontalBrakePerSecond.Value <= 0
+                                    || effect.HorizontalBrakeDurationSeconds.Value <= 0
+                                )
+                            )
                         )
                     )
                         throw new InvalidDataException($"Instruction {instruction.Id} motion effect is incomplete");

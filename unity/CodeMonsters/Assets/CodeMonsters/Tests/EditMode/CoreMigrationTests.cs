@@ -20,10 +20,11 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalSpatialDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(20));
+            Assert.That(data.SchemaVersion, Is.EqualTo(21));
             Assert.That(data.Battle.TeamSize, Is.EqualTo(1));
             Assert.That(data.Battle.GravityPerSecond, Is.GreaterThan(0));
             Assert.That(data.Battle.CeilingY, Is.GreaterThan(data.Battle.FloorY));
+            Assert.That(data.Battle.VerticalDisplayRangePercent, Is.EqualTo(62));
             Assert.That(data.Battle.FighterRadius, Is.GreaterThan(0));
             Assert.That(data.DebugTraining.PositionPresets.All(preset => preset.Distance > 0), Is.True);
             Assert.That(data.Statuses.Select(status => status.Id), Does.Contain("poison"));
@@ -119,6 +120,39 @@ namespace CodeMonsters.Core.Tests
                 current = BattleRules.TickMotion(current, data.Battle, 0.1);
             Assert.That(current.Y, Is.EqualTo(data.Battle.FloorY));
             Assert.That(current.VY, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ControlledHorizontalMotionStopsWithoutResidualSliding()
+        {
+            var instruction = data.Instructions.Single(value => value.Id == "vector-thrust");
+            var motion = instruction.Effects.Single(value => value.Kind == "motion");
+            Assert.That(motion.Mode, Is.EqualTo("setVelocity"));
+            Assert.That(motion.VerticalMode, Is.EqualTo("addVelocity"));
+            Assert.That(motion.HorizontalBrakePerSecond, Is.EqualTo(80));
+            Assert.That(motion.HorizontalBrakeDurationSeconds, Is.EqualTo(0.5));
+
+            var fighter = new FighterState
+            {
+                InstanceId = "volt-1",
+                Team = "ally",
+                X = 40,
+                Y = data.Battle.FloorY,
+                VX = 40,
+                VY = 12,
+                HorizontalBrakePerSecond = 80,
+                HorizontalBrakeRemaining = 0.5,
+                GravityScale = 1,
+            };
+            var current = fighter;
+            for (var index = 0; index < 5; index++)
+                current = BattleRules.TickMotion(current, data.Battle, 0.1);
+            Assert.That(current.X, Is.EqualTo(50).Within(0.0001));
+            Assert.That(current.VX, Is.EqualTo(0));
+            Assert.That(current.HorizontalBrakeRemaining, Is.EqualTo(0));
+
+            var settled = BattleRules.TickMotion(current, data.Battle, 0.5);
+            Assert.That(settled.X, Is.EqualTo(current.X).Within(0.0001));
         }
 
         [Test]

@@ -180,11 +180,19 @@ Schema-v19 battle snapshots do not contain those projectile fields and should st
 
 Movement impulses now compose with current `vx` and `vy` instead of replacing the whole velocity vector. Advance, retreat, jump, hover, and air dash therefore preserve momentum; gravity and horizontal drag curve and settle their paths between instructions. An optional `verticalMaxY` applies an effect's Y impulse only at or below a coordinate threshold, allowing ground thrust to create a small hop without injecting more lift into an existing jump. The higher ceiling is a physical bound for composed impulses, not an airborne-state category.
 
+## Schema version 21 migration
+
+Add `battle.verticalDisplayRangePercent` as the shared presentation mapping from continuous world Y coordinates to the usable vertical span of the battlefield. Render fighters, projectiles, zones, and finite attack-shape heights with the same normalized conversion. This field does not change collision coordinates: Web and Unity continue resolving combat against `floorY..ceilingY`, while each presenter maps that range into its stage layout.
+
+Motion effects may now override their vertical composition through `verticalMode` while retaining `mode` for horizontal velocity. They may also declare the paired `horizontalBrakePerSecond` and `horizontalBrakeDurationSeconds` values. Runtime fighter snapshots add `horizontalBrakePerSecond` and `horizontalBrakeRemaining`; while the timer is active, integrate authored braking before returning to the normal air-drag or ground-friction value. Integrate distance over the deceleration segment rather than moving for the entire tick at the old velocity, so results remain stable and do not leave residual sliding.
+
+Version 21 locomotion uses set horizontal velocity plus short authored braking for advance, retreat, jump, and air dash. Vertical velocity remains independently additive where the existing arc should be preserved. Schema-v20 fighter snapshots lack the braking timer and should start a new battle/run when imported by a v21 runtime.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v20 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, continuous position/velocity, physics constants, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, landing-triggered battle zones, finite instruction effects/deliveries, and canonical status values
+- schema-v21 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, continuous position/velocity, authored horizontal braking, normalized vertical presentation range, physics constants, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, landing-triggered battle zones, finite instruction effects/deliveries, and canonical status values
 - Euclidean distance, height/descent conditions, circle/box intersection, direct/homing and ballistic projectile advancement, swept/floor collision, and deterministic gravity motion
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

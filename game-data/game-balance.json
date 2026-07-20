@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 20,
+  "schemaVersion": 21,
   "battle": {
     "teamSize": 1,
     "tickSeconds": 0.1,
@@ -20,6 +20,7 @@
     "maxFallSpeed": 42,
     "floorY": 0,
     "ceilingY": 96,
+    "verticalDisplayRangePercent": 62,
     "fighterRadius": 2.4,
     "knockbackVelocityScale": 1.8,
     "initialPositionInset": 2,
@@ -941,7 +942,7 @@
       "id": "vector-thrust",
       "title": "推力で接近する",
       "short": "ベクトルスラスト",
-      "flavor": "現在の運動量へ前上方の推進を加える。重力と抗力で滑らかな接近弧を描く。",
+      "flavor": "短い前上方バーストで接近し、推進終了後は強く制動して間合いを固定する。",
       "action": "move",
       "abilityCost": 0,
       "cooldownSeconds": 1.1,
@@ -958,11 +959,14 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "addVelocity",
-          "x": 16,
-          "y": 20,
+          "mode": "setVelocity",
+          "verticalMode": "addVelocity",
+          "x": 40,
+          "y": 12,
           "relativeTo": "target",
-          "verticalMaxY": 3
+          "verticalMaxY": 3,
+          "horizontalBrakePerSecond": 80,
+          "horizontalBrakeDurationSeconds": 0.5
         }
       ]
     },
@@ -970,7 +974,7 @@
       "id": "backstep",
       "title": "反動で離脱する",
       "short": "バックインパルス",
-      "flavor": "現在の運動量へ後ろ上方の反動を加え、放物線で攻撃円から離脱する。",
+      "flavor": "短い後方バーストで攻撃円から離れ、半秒で制動して次の行動へつなぐ。",
       "action": "retreat",
       "abilityCost": 1,
       "cooldownSeconds": 2.6,
@@ -987,10 +991,13 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "addVelocity",
-          "x": -14,
-          "y": 24,
-          "relativeTo": "target"
+          "mode": "setVelocity",
+          "verticalMode": "addVelocity",
+          "x": -34,
+          "y": 16,
+          "relativeTo": "target",
+          "horizontalBrakePerSecond": 68,
+          "horizontalBrakeDurationSeconds": 0.5
         }
       ]
     },
@@ -1347,7 +1354,7 @@
       "id": "jump-jet",
       "title": "上昇推力をかける",
       "short": "ジャンプジェット",
-      "flavor": "現在の運動量へ大きな上向き推進を加え、地上を走る直進弾を放物線で飛び越える。",
+      "flavor": "大きな上向き推進で戦場上空へ跳び、水平速度は弧の途中で収束する。",
       "action": "jump",
       "abilityCost": 2,
       "cooldownSeconds": 4,
@@ -1364,10 +1371,12 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "addVelocity",
-          "x": 12,
-          "y": 68,
-          "relativeTo": "target"
+          "mode": "setVelocity",
+          "x": 18,
+          "y": 70,
+          "relativeTo": "target",
+          "horizontalBrakePerSecond": 9,
+          "horizontalBrakeDurationSeconds": 2
         }
       ]
     },
@@ -1409,7 +1418,7 @@
       "id": "air-dash",
       "title": "高所で水平加速する",
       "short": "エアダッシュ",
-      "flavor": "y座標が8m以上なら現在の弧へ前方推進を加え、軌道を空中で曲げる。",
+      "flavor": "y座標が8m以上なら短い水平バーストを行い、上下の弧を保ったまま素早く制動する。",
       "action": "jump",
       "abilityCost": 2,
       "cooldownSeconds": 3,
@@ -1426,10 +1435,13 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "addVelocity",
-          "x": 20,
+          "mode": "setVelocity",
+          "verticalMode": "addVelocity",
+          "x": 42,
           "y": 4,
-          "relativeTo": "target"
+          "relativeTo": "target",
+          "horizontalBrakePerSecond": 84,
+          "horizontalBrakeDurationSeconds": 0.5
         }
       ]
     },
