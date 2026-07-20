@@ -68,17 +68,23 @@ export function applyInstructionFighterEffects(
   instruction: Instruction,
   sourceId: string,
   actualTarget: EffectTarget,
+  airbornePath?: { startX: number; endX: number },
 ): Fighter {
   let next = applyInstructionStatusEffects(fighter, instruction, sourceId, actualTarget);
   for (const effect of effectsByKind(instruction, 'airborne')) {
     if (!targetsEffect(effect.target, actualTarget)) continue;
+    const startZ = next.z;
     next = {
       ...next,
-      z: 0,
+      z: startZ,
       airborne: {
         remainingSeconds: effect.durationSeconds,
         durationSeconds: effect.durationSeconds,
         maxHeight: effect.height,
+        startX: airbornePath?.startX ?? next.x,
+        endX: airbornePath?.endX ?? next.x,
+        startZ,
+        endZ: 0,
       },
     };
   }

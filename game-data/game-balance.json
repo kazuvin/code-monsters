@@ -831,8 +831,8 @@
       "visualKind": "jump",
       "range": { "mode": "fixed", "value": 9 },
       "effects": [
-        { "kind": "move", "mode": "jump", "distance": 14 },
-        { "kind": "airborne", "target": "actor", "height": 12, "durationSeconds": 1.4 }
+        { "kind": "move", "mode": "jump", "distance": 28 },
+        { "kind": "airborne", "target": "actor", "height": 24, "durationSeconds": 2 }
       ]
     },
     {
@@ -1232,8 +1232,8 @@
       "visualKind": "jump",
       "range": { "mode": "fixed", "value": 80 },
       "effects": [
-        { "kind": "move", "mode": "jump", "distance": 18 },
-        { "kind": "airborne", "target": "actor", "height": 18, "durationSeconds": 2.8 }
+        { "kind": "move", "mode": "jump", "distance": 34 },
+        { "kind": "airborne", "target": "actor", "height": 32, "durationSeconds": 3.2 }
       ]
     },
     {
@@ -1277,8 +1277,8 @@
       "visualKind": "dash",
       "range": { "mode": "fixed", "value": 80 },
       "effects": [
-        { "kind": "move", "mode": "jump", "distance": 12 },
-        { "kind": "airborne", "target": "actor", "height": 16, "durationSeconds": 1.8 }
+        { "kind": "move", "mode": "jump", "distance": 22 },
+        { "kind": "airborne", "target": "actor", "height": 10, "durationSeconds": 1.8 }
       ]
     },
     {

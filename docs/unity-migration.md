@@ -151,11 +151,13 @@ Resolve pending actions by impact time. Actions with the same impact time must r
 
 ## Schema version 18 migration
 
-Add serializable airborne state to fighters: current `z` plus remaining duration, total duration, and maximum height. Web advances this state deterministically from the battle tick and derives a parabolic height; Unity ports should preserve the same values rather than infer airborne state from presentation transforms. Landing clears the state and resets `z` to zero.
+Add serializable airborne state to fighters: current `z` plus remaining duration, total duration, maximum height, launch position, landing position, launch height, and landing height. Web advances horizontal travel with smoothstep easing and derives vertical travel from the same progress using a parabolic arc; Unity ports should preserve the same values rather than infer airborne state from presentation transforms. Landing snaps to the authored landing position and resets `z` to zero.
 
 Instructions may declare `altitude.actor` and `altitude.target` as `grounded`, `airborne`, or `any`. An omitted declaration retains the version-17 ground-to-ground behavior. Check these requirements both when committing an action and again at impact, so an opponent that takes off during windup causes a height-condition miss. Add the finite `airborne` and `land` effects plus the `selfAirborne`, `selfGrounded`, `targetAirborne`, `targetGrounded`, and `targetAirborneRemainingBelow` conditions.
 
 Version 18 adds boost jump, hover, air dash, dive strike, aerial barrage, anti-air shot, launch uppercut, and landing punish. These remain plain instruction data; neither runtime should branch on their stable IDs.
+
+Airborne movement itself is the presentation path. Do not layer a separate jump animation or jump effect on top of it: doing so creates a short hop followed by apparent hovering. A `flight` battle flash may label the takeoff without transforming the unit body.
 
 ## Executable migration spike
 

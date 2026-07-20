@@ -287,6 +287,10 @@ export type AirborneState = {
   remainingSeconds: number;
   durationSeconds: number;
   maxHeight: number;
+  startX?: number;
+  endX?: number;
+  startZ?: number;
+  endZ?: number;
 };
 
 export type Fighter = UnitDefinition & {
@@ -319,6 +323,7 @@ export type BattleFlash = {
     | 'move'
     | 'dash'
     | 'jump'
+    | 'flight'
     | 'throw'
     | 'thrown'
     | 'taunt'

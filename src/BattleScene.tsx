@@ -194,7 +194,6 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
           const abilityEffect =
             isActor &&
             (fighterFlash?.kind === 'dash' ||
-              fighterFlash?.kind === 'jump' ||
               fighterFlash?.kind === 'throw' ||
               fighterFlash?.kind === 'taunt' ||
               fighterFlash?.kind === 'pull' ||

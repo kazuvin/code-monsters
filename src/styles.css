@@ -2135,7 +2135,6 @@ button:focus-visible {
     transition: none !important;
   }
   .sprite.is-move .sprite-body,
-  .sprite.is-jump .sprite-body,
   .sprite.is-throw .sprite-body,
   .sprite.is-thrown .sprite-body,
   .sprite.is-attack .sprite-body,
@@ -3065,12 +3064,6 @@ button:focus-visible {
 .sprite.face-left.is-dash .sprite-body {
   animation: ability-dash-left 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.sprite.face-right.is-jump .sprite-body {
-  animation: ability-jump-right 0.46s cubic-bezier(0.22, 0.74, 0.28, 1);
-}
-.sprite.face-left.is-jump .sprite-body {
-  animation: ability-jump-left 0.46s cubic-bezier(0.22, 0.74, 0.28, 1);
-}
 .sprite.face-right.is-throw .sprite-body {
   animation: ability-throw-right 0.48s cubic-bezier(0.2, 0.78, 0.24, 1);
 }
@@ -3138,16 +3131,6 @@ button:focus-visible {
   transform: translateX(-84px);
   animation-name: ability-trail-right;
 }
-.fx-jump {
-  bottom: -2px;
-  width: 72px;
-  height: 18px;
-  border: 2px solid #ffc247;
-  border-radius: 50%;
-  transform: translateX(-50%) scale(0.3);
-  box-shadow: 0 0 14px #ffc247aa;
-  animation: ability-jump-landing 0.46s ease-out forwards;
-}
 .fx-throw {
   bottom: 4px;
   width: 68px;
@@ -3192,28 +3175,6 @@ button:focus-visible {
   }
   100% {
     transform: translateX(-50%) scaleX(-1);
-  }
-}
-@keyframes ability-jump-right {
-  0% {
-    transform: translateX(-50%) translateY(0) rotate(0);
-  }
-  48% {
-    transform: translateX(-50%) translateY(-54px) rotate(9deg);
-  }
-  100% {
-    transform: translateX(-50%) translateY(0) rotate(0);
-  }
-}
-@keyframes ability-jump-left {
-  0% {
-    transform: translateX(-50%) scaleX(-1) translateY(0) rotate(0);
-  }
-  48% {
-    transform: translateX(-50%) scaleX(-1) translateY(-54px) rotate(9deg);
-  }
-  100% {
-    transform: translateX(-50%) scaleX(-1) translateY(0) rotate(0);
   }
 }
 @keyframes ability-throw-right {
@@ -3392,10 +3353,6 @@ button:focus-visible {
   .fx-dash,
   .fx-retreat {
     width: 58px;
-  }
-  .fx-jump {
-    bottom: -1px;
-    width: 56px;
   }
   .fx-throw {
     bottom: 2px;

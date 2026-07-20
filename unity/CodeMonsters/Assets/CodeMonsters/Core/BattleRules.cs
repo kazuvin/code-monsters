@@ -13,7 +13,8 @@ namespace CodeMonsters.Core
         public double Hp;
         public double MaxHp;
         public double Range;
-        public double? AirborneRemainingSeconds;
+        public double Z;
+        public AirborneState Airborne;
         public List<StatusInstance> Statuses = new List<StatusInstance>();
 
         public bool HasStatus(string statusId)
@@ -29,7 +30,7 @@ namespace CodeMonsters.Core
 
         public bool IsAirborne()
         {
-            return AirborneRemainingSeconds.HasValue && AirborneRemainingSeconds.Value > 0;
+            return Airborne != null && Airborne.RemainingSeconds > 0;
         }
     }
 
@@ -94,7 +95,7 @@ namespace CodeMonsters.Core
                 "targetGrounded" => !target.IsAirborne(),
                 "targetAirborneRemainingBelow" => target.IsAirborne()
                     && condition.Params.ThresholdSeconds.HasValue
-                    && target.AirborneRemainingSeconds.Value <= condition.Params.ThresholdSeconds.Value,
+                    && target.Airborne.RemainingSeconds <= condition.Params.ThresholdSeconds.Value,
                 _ => throw new ArgumentOutOfRangeException(nameof(condition.Kind), condition.Kind, "Unknown condition"),
             };
         }
@@ -114,5 +115,16 @@ namespace CodeMonsters.Core
         {
             return requirement == "any" || (requirement == "airborne" ? fighter.IsAirborne() : !fighter.IsAirborne());
         }
+    }
+
+    public sealed class AirborneState
+    {
+        public double RemainingSeconds;
+        public double DurationSeconds;
+        public double MaxHeight;
+        public double StartX;
+        public double EndX;
+        public double StartZ;
+        public double EndZ;
     }
 }

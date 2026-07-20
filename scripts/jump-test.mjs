@@ -27,18 +27,29 @@ const configuredProgram = (await firstProgramBlock.innerText()).replace(/\s+/g, 
 await page.getByRole('button', { name: /戦闘開始/ }).click();
 await page.getByRole('button', { name: 'x2' }).click();
 
-let jumpSeen = false;
+let flightEventSeen = false;
 let crossedEnemy = false;
 let airborneSeen = false;
-let jumpAnimation = '';
+let cannedJumpSeen = false;
+let flightAnimation = '';
+const airborneXs = [];
+const airborneZs = [];
 for (let tick = 0; tick < 900; tick += 1) {
   const volt = page.locator('.sprite.ally.unit-volt').first();
   const className = (await volt.getAttribute('class')) ?? '';
-  if ((await volt.getAttribute('data-altitude')) === 'airborne') airborneSeen = true;
-  if (className.includes('is-jump')) {
-    jumpSeen = true;
-    jumpAnimation = await volt.locator('.sprite-body').evaluate((element) => getComputedStyle(element).animationName);
-    const voltX = Number.parseFloat((await volt.getAttribute('style'))?.match(/left:\s*([\d.]+)%/)?.[1] ?? '0');
+  const isAirborne = (await volt.getAttribute('data-altitude')) === 'airborne';
+  const voltX = Number.parseFloat((await volt.getAttribute('style'))?.match(/left:\s*([\d.]+)%/)?.[1] ?? '0');
+  if (className.includes('is-jump')) cannedJumpSeen = true;
+  if (className.includes('is-flight')) {
+    flightEventSeen = true;
+    flightAnimation = await volt.locator('.sprite-body').evaluate((element) => getComputedStyle(element).animationName);
+  }
+  if (isAirborne) {
+    airborneSeen = true;
+    airborneXs.push(voltX);
+    airborneZs.push(
+      Number.parseFloat((await volt.getAttribute('style'))?.match(/--air-height:\s*([\d.]+)px/)?.[1] ?? '0'),
+    );
     const enemyPositions = await page
       .locator('.sprite.enemy')
       .evaluateAll((elements) =>
@@ -48,20 +59,33 @@ for (let tick = 0; tick < 900; tick += 1) {
       );
     if (enemyPositions.some((enemyX) => voltX > enemyX)) crossedEnemy = true;
   }
-  if (jumpSeen && crossedEnemy) break;
+  if (flightEventSeen && airborneSeen && crossedEnemy && !isAirborne) break;
   await page.waitForTimeout(35);
 }
 
 await browser.close();
 
-const result = { shopText, configuredProgram, jumpSeen, airborneSeen, crossedEnemy, jumpAnimation, errors };
+const horizontalTravel = airborneXs.length > 0 ? Math.max(...airborneXs) - Math.min(...airborneXs) : 0;
+const peakHeight = airborneZs.length > 0 ? Math.max(...airborneZs) : 0;
+const result = {
+  shopText,
+  configuredProgram,
+  flightEventSeen,
+  airborneSeen,
+  cannedJumpSeen,
+  crossedEnemy,
+  horizontalTravel,
+  peakHeight,
+  flightAnimation,
+  errors,
+};
 console.log(JSON.stringify(result, null, 2));
 
 if (
   !shopText.includes('RARE / JUMP') ||
-  !shopText.includes('跳躍 14 m') ||
-  !shopText.includes('高度 12 m') ||
-  !shopText.includes('滞空 1.4 s')
+  !shopText.includes('跳躍 28 m') ||
+  !shopText.includes('高度 24 m') ||
+  !shopText.includes('滞空 2 s')
 )
   throw new Error('ジャンプ指示のショップ表示が不正です');
 if (
@@ -69,8 +93,10 @@ if (
   !configuredProgram.includes('跳び越える')
 )
   throw new Error('ジャンプ指示を通常作戦へ設定できません');
-if (!jumpSeen || !jumpAnimation.startsWith('ability-jump-'))
-  throw new Error('ジャンプの戦闘アニメーションを確認できません');
+if (!flightEventSeen) throw new Error('空中軌道の開始イベントを確認できません');
+if (cannedJumpSeen || flightAnimation.startsWith('ability-jump-'))
+  throw new Error('廃止したジャンプ専用アニメーションが再生されています');
 if (!airborneSeen) throw new Error('ジャンプ後の滞空状態を戦闘表示で確認できません');
+if (horizontalTravel < 18 || peakHeight < 20) throw new Error('ジャンプ軌道の距離または高さが不足しています');
 if (!crossedEnemy) throw new Error('固定距離ジャンプで敵の背後へ移動できません');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

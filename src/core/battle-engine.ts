@@ -356,23 +356,34 @@ export function planBattleFrame({
       if (!target || target.hp <= 0) return;
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
-      const x = jumpToward(reactor, target, requireEffect(instruction, 'move').distance);
-      const movement = moveThroughZones(reactor, x);
+      const destinationX = jumpToward(reactor, target, requireEffect(instruction, 'move').distance);
+      const movement = moveThroughZones(reactor, destinationX);
       const affected = applyInstructionFighterEffects(
-        { ...reactor, ...movement.values },
+        {
+          ...reactor,
+          statuses: movement.values.statuses,
+          attack: movement.values.attack,
+          speed: movement.values.speed,
+        },
         instruction,
         reactor.instanceId,
         'actor',
+        { startX: reactor.x, endX: destinationX },
       );
       const values = {
         ...movement.values,
+        x: reactor.x,
         ...fighterEffectValues(affected),
         reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds,
       };
       setNext(reactor.instanceId, values);
       queueStep({
-        flash: { id: reactor.instanceId, kind: instruction.visualKind ?? 'jump', actionLabel, reaction: true, n: 0 },
-        log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜戦線 ${Math.round(x)}`, type: 'reaction' },
+        flash: { id: reactor.instanceId, kind: 'flight', actionLabel, reaction: true, n: 0 },
+        log: {
+          actor: reactor.name,
+          text: `REACTION｜${instruction.short}｜着地点 ${Math.round(destinationX)}`,
+          type: 'reaction',
+        },
         updates: [{ id: reactor.instanceId, values }],
         zoneTriggers: movement.triggers,
       });
@@ -385,7 +396,7 @@ export function planBattleFrame({
       const values = { ...fighterEffectValues(affected), reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
       setNext(reactor.instanceId, values);
       queueStep({
-        flash: { id: reactor.instanceId, kind: 'jump', actionLabel, reaction: true, n: 0 },
+        flash: { id: reactor.instanceId, kind: 'flight', actionLabel, reaction: true, n: 0 },
         log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜滞空開始`, type: 'reaction' },
         updates: [{ id: reactor.instanceId, values }],
       });
@@ -671,27 +682,33 @@ export function planBattleFrame({
         });
       }
     } else if (instruction.action === 'jump') {
-      const x = jumpToward(current, target, requireEffect(instruction, 'move').distance);
-      const movement = moveThroughZones(current, x);
+      const destinationX = jumpToward(current, target, requireEffect(instruction, 'move').distance);
+      const movement = moveThroughZones(current, destinationX);
       const affected = applyInstructionFighterEffects(
-        { ...current, ...movement.values },
+        {
+          ...current,
+          statuses: movement.values.statuses,
+          attack: movement.values.attack,
+          speed: movement.values.speed,
+        },
         instruction,
         current.instanceId,
         'actor',
+        { startX: current.x, endX: destinationX },
       );
-      const values = { ...movement.values, ...fighterEffectValues(affected) };
+      const values = { ...movement.values, x: current.x, ...fighterEffectValues(affected) };
       setNext(current.instanceId, values);
       queueStep({
         flash: {
           id: current.instanceId,
-          kind: instruction.visualKind ?? 'jump',
+          kind: 'flight',
           targetId: target.instanceId,
           actionLabel: instruction.short,
           n: 0,
         },
         log: {
           actor: current.name,
-          text: `${target.name}へ${instruction.short}｜戦線 ${Math.round(x)}`,
+          text: `${target.name}へ${instruction.short}｜着地点 ${Math.round(destinationX)}`,
           type: 'info',
         },
         updates: [{ id: current.instanceId, values }],
@@ -702,7 +719,7 @@ export function planBattleFrame({
       const values = fighterEffectValues(affected);
       setNext(current.instanceId, values);
       queueStep({
-        flash: { id: current.instanceId, kind: 'jump', actionLabel: instruction.short, n: 0 },
+        flash: { id: current.instanceId, kind: 'flight', actionLabel: instruction.short, n: 0 },
         log: { actor: current.name, text: `${instruction.short}｜滞空開始`, type: 'info' },
         updates: [{ id: current.instanceId, values }],
       });

@@ -100,7 +100,14 @@ namespace CodeMonsters.Core.Tests
                 InstanceId = "volt-1",
                 Hp = 100,
                 MaxHp = 100,
-                AirborneRemainingSeconds = 1.2,
+                Airborne = new AirborneState
+                {
+                    RemainingSeconds = 1.2,
+                    DurationSeconds = 2,
+                    MaxHeight = 24,
+                    StartX = 40,
+                    EndX = 68,
+                },
             };
             var enemy = new FighterState { InstanceId = "enemy-1", Hp = 100, MaxHp = 100 };
             var selfAirborne = data.Conditions.Single(candidate => candidate.Id == "selfAirborne");

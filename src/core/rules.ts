@@ -167,13 +167,27 @@ export function instructionCooldown(instruction: Instruction, speed: number): nu
 export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
   return fighters.map((fighter) => {
     const statusTicked = tickStatusDurations(fighter, dt);
-    const remainingSeconds = Math.max(0, (fighter.airborne?.remainingSeconds ?? 0) - dt);
-    const airborne = fighter.airborne && remainingSeconds > 0 ? { ...fighter.airborne, remainingSeconds } : null;
-    const progress = airborne ? 1 - airborne.remainingSeconds / airborne.durationSeconds : 0;
-    const z = airborne ? 4 * airborne.maxHeight * progress * (1 - progress) : 0;
+    const currentFlight = fighter.airborne;
+    const rawRemainingSeconds = Math.max(0, (currentFlight?.remainingSeconds ?? 0) - dt);
+    const remainingSeconds =
+      rawRemainingSeconds <= Number.EPSILON * Math.max(1, currentFlight?.durationSeconds ?? 1) * 16
+        ? 0
+        : rawRemainingSeconds;
+    const airborne = currentFlight && remainingSeconds > 0 ? { ...currentFlight, remainingSeconds } : null;
+    const progress = currentFlight ? 1 - remainingSeconds / currentFlight.durationSeconds : 0;
+    const easedProgress = progress * progress * (3 - 2 * progress);
+    const startX = currentFlight?.startX ?? fighter.x;
+    const endX = currentFlight?.endX ?? fighter.x;
+    const startZ = currentFlight?.startZ ?? 0;
+    const endZ = currentFlight?.endZ ?? 0;
+    const x = currentFlight ? clampStage(startX + (endX - startX) * easedProgress) : fighter.x;
+    const z = currentFlight
+      ? startZ + (endZ - startZ) * easedProgress + 4 * currentFlight.maxHeight * progress * (1 - progress)
+      : 0;
     return {
       ...statusTicked,
       airborne,
+      x,
       z,
       actionLock: Math.max(0, fighter.actionLock - dt),
       instructionCooldowns: Object.fromEntries(
