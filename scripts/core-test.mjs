@@ -84,7 +84,7 @@ const makeDuel = ({ actionId, actorX = 40, targetX = 50, actorY = 0, targetY = 0
   return { team, fighters };
 };
 
-assert.equal(GAME_DATA.schemaVersion, 22, '近接対射撃の戦闘スキーマがv22ではありません');
+assert.equal(GAME_DATA.schemaVersion, 23, '扇形近接と高速着地攻撃の戦闘スキーマがv23ではありません');
 assert.equal(BATTLE_CONFIG.teamSize, 1, '標準戦闘が1vs1ではありません');
 assert.ok(BATTLE_CONFIG.gravityPerSecond > 0 && BATTLE_CONFIG.ceilingY > BATTLE_CONFIG.floorY, '物理定数が不正です');
 assert.equal(BATTLE_CONFIG.verticalDisplayRangePercent, 62, '論理Y座標の表示範囲が戦場高へ正規化されていません');
@@ -198,7 +198,8 @@ assert.equal(matchCondition('targetNear10', actor, [{ ...enemy, x: actor.x + 10,
 
 const verticalLance = instructionById.get('vertical-lance');
 const impactRing = instructionById.get('impact-ring');
-assert.ok(verticalLance && impactRing);
+const pulseSwipe = instructionById.get('pulse-swipe');
+assert.ok(verticalLance && impactRing && pulseSwipe);
 const lance = resolveAttackShape(verticalLance, { ...actor, x: 40 }, { ...enemy, x: 70 });
 assert.deepEqual(lance, { kind: 'box', x: 50, y: actor.y, width: 20, height: null });
 assert.equal(shapeIntersectsFighter(lance, { ...enemy, x: 55, y: 42 }), true, '無限高の矩形が高所へ届きません');
@@ -207,6 +208,31 @@ const ring = resolveAttackShape(impactRing, { ...actor, x: 40, y: 0 }, { ...enem
 assert.ok(ring?.kind === 'circle');
 assert.equal(shapeIntersectsFighter(ring, { ...enemy, x: 46, y: 4 }), true);
 assert.equal(shapeIntersectsFighter(ring, { ...enemy, x: 60, y: 20 }), false);
+const aerialSwipe = resolveAttackShape(pulseSwipe, { ...actor, x: 40, y: 24 }, { ...enemy, x: 46, y: 27 });
+assert.deepEqual(aerialSwipe, {
+  kind: 'sector',
+  x: 41,
+  y: 27,
+  radius: 10,
+  angleDegrees: 100,
+  direction: 1,
+});
+assert.equal(
+  shapeIntersectsFighter(aerialSwipe, { ...enemy, x: 46, y: 27 }),
+  true,
+  '空中の相手が前方扇形エフェクトへ重なっても近接攻撃が命中しません',
+);
+assert.equal(
+  shapeIntersectsFighter(aerialSwipe, { ...enemy, x: 41, y: 39 }),
+  false,
+  '前方扇形エフェクトの外にいる相手へ近接攻撃が命中します',
+);
+const aerialSwipeDuel = makeDuel({ actionId: 'pulse-swipe', actorX: 40, targetX: 46, actorY: 24, targetY: 27 });
+const aerialSwipeImpact = resolvePending(plan(aerialSwipeDuel.fighters, aerialSwipeDuel.team), aerialSwipeDuel.team);
+const aerialSwipeStep = aerialSwipeImpact.steps.find((step) => step.damage?.actionId === 'pulse-swipe');
+assert.ok(aerialSwipeStep, '空中座標で通常近接攻撃が発動しません');
+assert.equal(aerialSwipeStep.flash.shape?.kind, 'sector');
+assert.equal(aerialSwipeStep.flash.effectKind, 'meleeFan');
 assert.equal(pathEntersZone({ x: 20, y: 0 }, { x: 80, y: 20 }, { x: 50, y: 10 }, 4), true);
 assert.equal(pathEntersZone({ x: 20, y: 0 }, { x: 80, y: 0 }, { x: 50, y: 10 }, 4), false);
 
@@ -359,9 +385,12 @@ assert.ok(
 
 const diveDuel = makeDuel({ actionId: 'dive-strike', actorX: 40, targetX: 50, actorY: 20 });
 const diveLaunch = resolvePending(plan(diveDuel.fighters, diveDuel.team), diveDuel.team);
-assert.ok(
-  diveLaunch.fighters.find((fighter) => fighter.team === 'ally')?.pendingLandingAttack,
-  '降下強襲が着地待ち状態になりません',
+const divingActor = diveLaunch.fighters.find((fighter) => fighter.team === 'ally');
+assert.ok(divingActor?.pendingLandingAttack, '降下強襲が着地待ち状態になりません');
+assert.deepEqual(
+  [divingActor?.vy, divingActor?.fallSpeedLimit, divingActor?.fallSpeedLimitRemaining],
+  [-72, 72, 1.5],
+  '降下強襲が通常落下を超える高速落下を設定しません',
 );
 assert.ok(!diveLaunch.steps.some((step) => step.damage), '降下強襲が着地前にダメージを与えます');
 let divePlan = {
@@ -369,7 +398,9 @@ let divePlan = {
   fighters: diveLaunch.fighters.map((fighter) => ({ ...fighter, actionLock: 99 })),
 };
 let diveElapsed = Math.max(...diveLaunch.fighters.map((fighter) => fighter.pendingAction?.resolvesAt ?? 1));
+const diveStartedAt = diveElapsed;
 let diveLanded = false;
+let landingImpactEffect = false;
 for (let index = 0; index < 60 && !diveLanded; index += 1) {
   const previousElapsed = diveElapsed;
   diveElapsed += BATTLE_CONFIG.tickSeconds;
@@ -385,8 +416,13 @@ for (let index = 0; index < 60 && !diveLanded; index += 1) {
   diveLanded = divePlan.steps.some(
     (step) => step.damage?.actionId === 'dive-strike' && step.flash.actionLabel?.includes('着地'),
   );
+  landingImpactEffect ||= divePlan.steps.some(
+    (step) => step.damage?.actionId === 'dive-strike' && step.flash.effectKind === 'landingImpact',
+  );
 }
 assert.equal(diveLanded, true, '降下強襲が着地点で近接ダメージを発生させません');
+assert.ok(diveElapsed - diveStartedAt <= 0.4, '降下強襲が床へ急速に到達しません');
+assert.equal(landingImpactEffect, true, '床接触と同じイベントに着地衝撃エフェクトがありません');
 assert.equal(
   divePlan.fighters.find((fighter) => fighter.team === 'ally')?.pendingLandingAttack,
   null,

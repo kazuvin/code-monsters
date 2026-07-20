@@ -134,8 +134,11 @@ export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
     const activeGravityScale = fighter.gravityScaleRemaining > 0 ? fighter.gravityScale : 1;
     const nextGravityRemaining = Math.max(0, fighter.gravityScaleRemaining - dt);
     const nextGravityScale = nextGravityRemaining > 0 ? fighter.gravityScale : 1;
+    const activeFallSpeedLimit =
+      fighter.fallSpeedLimitRemaining > 0 ? fighter.fallSpeedLimit : BATTLE_CONFIG.maxFallSpeed;
+    const nextFallSpeedLimitRemaining = Math.max(0, fighter.fallSpeedLimitRemaining - dt);
     const acceleratedVy = Math.max(
-      -BATTLE_CONFIG.maxFallSpeed,
+      -activeFallSpeedLimit,
       fighter.vy - BATTLE_CONFIG.gravityPerSecond * activeGravityScale * dt,
     );
     const unclampedY = fighter.y + acceleratedVy * dt;
@@ -168,6 +171,8 @@ export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
       vy,
       horizontalBrakePerSecond: nextHorizontalBrakeRemaining > 0 ? fighter.horizontalBrakePerSecond : 0,
       horizontalBrakeRemaining: nextHorizontalBrakeRemaining,
+      fallSpeedLimit: nextFallSpeedLimitRemaining > 0 ? fighter.fallSpeedLimit : BATTLE_CONFIG.maxFallSpeed,
+      fallSpeedLimitRemaining: nextFallSpeedLimitRemaining,
       gravityScale: nextGravityScale,
       gravityScaleRemaining: nextGravityRemaining,
       actionLock: Math.max(0, fighter.actionLock - dt),
@@ -244,6 +249,7 @@ export function instructionReach(instruction: Instruction): number {
   if (delivery.kind === 'lob') return BATTLE_CONFIG.wallRight - BATTLE_CONFIG.wallLeft;
   if (delivery.kind === 'landing') return delivery.shape.radius;
   if (delivery.shape.kind === 'circle') return delivery.shape.offsetX + delivery.shape.radius;
+  if (delivery.shape.kind === 'sector') return delivery.shape.offsetX + delivery.shape.radius;
   return delivery.shape.offsetX + delivery.shape.width / 2;
 }
 
@@ -264,7 +270,9 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
     const geometry =
       shape.kind === 'circle'
         ? `円 半径${metricNumber(shape.radius)}m`
-        : `矩形 ${metricNumber(shape.width)}×${shape.height === null ? '∞' : metricNumber(shape.height)}m`;
+        : shape.kind === 'sector'
+          ? `前方扇 半径${metricNumber(shape.radius)}m / ${metricNumber(shape.angleDegrees)}°`
+          : `矩形 ${metricNumber(shape.width)}×${shape.height === null ? '∞' : metricNumber(shape.height)}m`;
     return withCost([
       { label: '判定', value: geometry },
       ...(damage

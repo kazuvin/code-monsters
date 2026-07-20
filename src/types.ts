@@ -60,6 +60,8 @@ export type MotionEffect = {
   verticalMaxY?: number;
   horizontalBrakePerSecond?: number;
   horizontalBrakeDurationSeconds?: number;
+  fallSpeedLimit?: number;
+  fallSpeedLimitDurationSeconds?: number;
 };
 export type GravityEffect = {
   kind: 'gravity';
@@ -214,7 +216,15 @@ export type BoxAttackShape = {
   height: number | null;
 };
 
-export type AttackShape = CircleAttackShape | BoxAttackShape;
+export type SectorAttackShape = {
+  kind: 'sector';
+  offsetX: number;
+  offsetY: number;
+  radius: number;
+  angleDegrees: number;
+};
+
+export type AttackShape = CircleAttackShape | BoxAttackShape | SectorAttackShape;
 
 export type ShapeDelivery = {
   kind: 'shape';
@@ -248,7 +258,8 @@ export type SpatialDelivery = ShapeDelivery | ProjectileDelivery | LobDelivery |
 
 export type ResolvedAttackShape =
   | { kind: 'circle'; x: number; y: number; radius: number }
-  | { kind: 'box'; x: number; y: number; width: number; height: number | null };
+  | { kind: 'box'; x: number; y: number; width: number; height: number | null }
+  | { kind: 'sector'; x: number; y: number; radius: number; angleDegrees: number; direction: 1 | -1 };
 
 export type SpatialProjectile = {
   instanceId: string;
@@ -346,6 +357,8 @@ export type Fighter = UnitDefinition & {
   vy: number;
   horizontalBrakePerSecond: number;
   horizontalBrakeRemaining: number;
+  fallSpeedLimit: number;
+  fallSpeedLimitRemaining: number;
   gravityScale: number;
   gravityScaleRemaining: number;
   actionLock: number;
@@ -396,6 +409,7 @@ export type BattleFlash = {
   zoneX?: number;
   zoneY?: number;
   shape?: ResolvedAttackShape;
+  effectKind?: 'meleeFan' | 'landingImpact';
   projectileId?: string;
   attackType?: AttackType;
   actionLabel?: string;

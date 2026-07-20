@@ -23,6 +23,7 @@
     "test:skills": "node scripts/skill-shop-test.mjs",
     "test:jump": "node scripts/jump-test.mjs",
     "test:movement": "node scripts/movement-test.mjs",
+    "test:melee": "node scripts/melee-test.mjs",
     "test:projectile": "node scripts/projectile-test.mjs",
     "test:field": "node scripts/field-test.mjs",
     "test:catalog": "node scripts/catalog-test.mjs",

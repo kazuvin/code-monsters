@@ -116,6 +116,8 @@ const fighterEffectValues = (fighter: Fighter) => ({
   vy: fighter.vy,
   horizontalBrakePerSecond: fighter.horizontalBrakePerSecond,
   horizontalBrakeRemaining: fighter.horizontalBrakeRemaining,
+  fallSpeedLimit: fighter.fallSpeedLimit,
+  fallSpeedLimitRemaining: fighter.fallSpeedLimitRemaining,
   gravityScale: fighter.gravityScale,
   gravityScaleRemaining: fighter.gravityScaleRemaining,
 });
@@ -393,6 +395,7 @@ export function planBattleFrame({
             kind: 'miss',
             targetId: target.instanceId,
             shape: resolvedShape ?? undefined,
+            effectKind: resolvedShape?.kind === 'sector' ? 'meleeFan' : undefined,
             actionLabel: `${instruction.short}｜MISS`,
             reaction,
             n: 0,
@@ -409,7 +412,10 @@ export function planBattleFrame({
       const firstStepIndex = steps.length;
       for (const hitTarget of hitTargets) applyHit({ actor, target: hitTarget, instruction, reaction });
       if (steps[firstStepIndex]) steps[firstStepIndex].updates.push({ id: actor.instanceId, values: actorValues });
-      for (const step of steps.slice(firstStepIndex)) step.flash.shape = resolvedShape ?? undefined;
+      for (const step of steps.slice(firstStepIndex)) {
+        step.flash.shape = resolvedShape ?? undefined;
+        step.flash.effectKind = resolvedShape?.kind === 'sector' ? 'meleeFan' : undefined;
+      }
       return;
     }
 
@@ -558,6 +564,7 @@ export function planBattleFrame({
             kind: 'miss',
             targetId: pending.targetId ?? undefined,
             shape,
+            effectKind: 'landingImpact',
             actionLabel: `${instruction.short}｜着地MISS`,
             n: 0,
           },
@@ -572,6 +579,7 @@ export function planBattleFrame({
         steps[firstStepIndex].updates.push({ id: actor.instanceId, values: { pendingLandingAttack: null } });
       for (const step of steps.slice(firstStepIndex)) {
         step.flash.shape = shape;
+        step.flash.effectKind = 'landingImpact';
         step.flash.actionLabel = `${instruction.short}｜着地`;
       }
     }

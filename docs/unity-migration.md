@@ -196,12 +196,14 @@ Projectile deliveries add `minimumTravelDistance`. Collision starts only after t
 
 Add the `landing` delivery with `minimumStartY` and a circle shape. The runtime records a pending landing attack when the instruction resolves, advances ordinary velocity and gravity, then resolves the shape from the actual floor-contact coordinate. Fighter and projectile snapshots therefore add pending-landing and projectile-distance state. Schema-v21 battle snapshots should start a new battle/run.
 
+Schema v23 adds a forward-facing `sector` attack shape (`radius` plus `angleDegrees`) and a finite motion override for `fallSpeedLimit`. Sector hits use fighter-circle overlap against the actual X/Y coordinates, including while both units are airborne. Landing skills may temporarily raise their fall-speed limit, but damage and the landing-impact effect still resolve only on the frame that crosses the floor coordinate. Older battle snapshots should start a new battle/run.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v22 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, continuous position/velocity, authored horizontal braking, normalized vertical presentation range, projectile arming/threat distance, landing attacks, physics constants, instruction cooldowns and action-lock limits, encounter programs, uncapped non-decaying status damage, landing-triggered battle zones, finite instruction effects/deliveries, and canonical status values
-- Euclidean distance, height/descent conditions, circle/box intersection, direct/homing and ballistic projectile advancement, swept/floor collision, and deterministic gravity motion
+- schema-v23 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, continuous position/velocity, authored horizontal braking and fall-speed overrides, normalized vertical presentation range, projectile arming/threat distance, landing attacks, physics constants, instruction cooldowns and action-lock limits, encounter programs, uncapped non-decaying status damage, landing-triggered battle zones, finite instruction effects/deliveries, and canonical status values
+- Euclidean distance, height/descent conditions, circle/box/sector intersection, direct/homing and ballistic projectile advancement, swept/floor collision, and deterministic gravity motion
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames
 

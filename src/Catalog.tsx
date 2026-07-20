@@ -404,7 +404,9 @@ export function Catalog() {
                                 ? `着地攻撃 / 必要高度 ${instruction.delivery.minimumStartY}m / 円半径${instruction.delivery.shape.radius}`
                                 : instruction.delivery.shape.kind === 'circle'
                                   ? `円 / 半径${instruction.delivery.shape.radius}`
-                                  : `矩形 / 幅${instruction.delivery.shape.width} / 高さ${instruction.delivery.shape.height ?? '無限'}`}
+                                  : instruction.delivery.shape.kind === 'sector'
+                                    ? `前方扇 / 半径${instruction.delivery.shape.radius} / 角度${instruction.delivery.shape.angleDegrees}°`
+                                    : `矩形 / 幅${instruction.delivery.shape.width} / 高さ${instruction.delivery.shape.height ?? '無限'}`}
                         </dd>
                       </div>
                     )}

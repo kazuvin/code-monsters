@@ -73,6 +73,23 @@ namespace CodeMonsters.Core.Tests
         }
 
         [Test]
+        public void AirborneMeleeUsesForwardSectorOverlap()
+        {
+            var instruction = data.Instructions.Single(value => value.Id == "pulse-swipe");
+            var actor = new FighterState { InstanceId = "volt-1", Team = "ally", X = 40, Y = 24 };
+            var target = new FighterState { InstanceId = "enemy-1", Team = "enemy", X = 46, Y = 27 };
+            var shape = BattleRules.ResolveAttackShape(instruction, actor, target);
+
+            Assert.That(shape.Kind, Is.EqualTo("sector"));
+            Assert.That(shape.Direction, Is.EqualTo(1));
+            Assert.That(shape.AngleDegrees, Is.EqualTo(100));
+            Assert.That(BattleRules.ShapeIntersectsFighter(shape, target, data.Battle.FighterRadius), Is.True);
+            target.X = 41;
+            target.Y = 39;
+            Assert.That(BattleRules.ShapeIntersectsFighter(shape, target, data.Battle.FighterRadius), Is.False);
+        }
+
+        [Test]
         public void DirectAndHomingProjectilesAdvanceOnTheirOwnClock()
         {
             var directInstruction = data.Instructions.Single(value => value.Id == "pulse-bolt");

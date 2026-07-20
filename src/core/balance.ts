@@ -244,7 +244,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 22) error('INVALID_SCHEMA_VERSION', 'schemaVersion は22以上である必要があります');
+  if (data.schemaVersion < 23) error('INVALID_SCHEMA_VERSION', 'schemaVersion は23以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -500,6 +500,14 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         if (shape.kind === 'circle') {
           rejectUnknownKeys(shape, ['kind', 'offsetX', 'offsetY', 'radius'], `スキル ${instruction.id}.shape`);
           if (shape.radius <= 0) error('INVALID_DELIVERY', `${instruction.id} の円形半径が不正です`);
+        } else if (shape.kind === 'sector') {
+          rejectUnknownKeys(
+            shape,
+            ['kind', 'offsetX', 'offsetY', 'radius', 'angleDegrees'],
+            `スキル ${instruction.id}.shape`,
+          );
+          if (shape.radius <= 0 || shape.angleDegrees <= 0 || shape.angleDegrees > 180)
+            error('INVALID_DELIVERY', `${instruction.id} の扇形サイズが不正です`);
         } else if (shape.kind === 'box') {
           rejectUnknownKeys(shape, ['kind', 'offsetX', 'offsetY', 'width', 'height'], `スキル ${instruction.id}.shape`);
           if (shape.width <= 0 || (shape.height !== null && shape.height <= 0))
@@ -582,11 +590,15 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
             'verticalMaxY',
             'horizontalBrakePerSecond',
             'horizontalBrakeDurationSeconds',
+            'fallSpeedLimit',
+            'fallSpeedLimitDurationSeconds',
           ],
           `スキル ${instruction.id}.motion`,
         );
         const hasBrake =
           effect.horizontalBrakePerSecond !== undefined || effect.horizontalBrakeDurationSeconds !== undefined;
+        const hasFallSpeedLimit =
+          effect.fallSpeedLimit !== undefined || effect.fallSpeedLimitDurationSeconds !== undefined;
         if (
           !['actor', 'selected'].includes(effect.target) ||
           !['addVelocity', 'setVelocity'].includes(effect.mode) ||
@@ -600,6 +612,11 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
               effect.horizontalBrakeDurationSeconds === undefined ||
               effect.horizontalBrakePerSecond <= 0 ||
               effect.horizontalBrakeDurationSeconds <= 0)) ||
+          (hasFallSpeedLimit &&
+            (effect.fallSpeedLimit === undefined ||
+              effect.fallSpeedLimitDurationSeconds === undefined ||
+              effect.fallSpeedLimit <= 0 ||
+              effect.fallSpeedLimitDurationSeconds <= 0)) ||
           (effect.x === 0 && effect.y === 0)
         )
           error('INVALID_EFFECT', `${instruction.id} の motion 定義が不正です`);

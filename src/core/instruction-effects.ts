@@ -79,6 +79,8 @@ export function applyInstructionFighterEffects(
     const verticalMode = effect.verticalMode ?? effect.mode;
     const appliesHorizontalBrake =
       effect.horizontalBrakePerSecond !== undefined && effect.horizontalBrakeDurationSeconds !== undefined;
+    const appliesFallSpeedLimit =
+      effect.fallSpeedLimit !== undefined && effect.fallSpeedLimitDurationSeconds !== undefined;
     next = {
       ...next,
       vx: effect.mode === 'addVelocity' ? next.vx + vx : vx,
@@ -89,6 +91,10 @@ export function applyInstructionFighterEffects(
       horizontalBrakeRemaining: appliesHorizontalBrake
         ? effect.horizontalBrakeDurationSeconds!
         : next.horizontalBrakeRemaining,
+      fallSpeedLimit: appliesFallSpeedLimit ? effect.fallSpeedLimit! : next.fallSpeedLimit,
+      fallSpeedLimitRemaining: appliesFallSpeedLimit
+        ? effect.fallSpeedLimitDurationSeconds!
+        : next.fallSpeedLimitRemaining,
     };
   }
   for (const effect of effectsByKind(instruction, 'gravity')) {

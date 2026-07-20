@@ -455,6 +455,9 @@ namespace CodeMonsters.Core
 
         [JsonProperty("height")]
         public double? Height;
+
+        [JsonProperty("angleDegrees")]
+        public double? AngleDegrees;
     }
 
     public sealed class ReactionDefinition
@@ -518,6 +521,12 @@ namespace CodeMonsters.Core
 
         [JsonProperty("horizontalBrakeDurationSeconds")]
         public double? HorizontalBrakeDurationSeconds;
+
+        [JsonProperty("fallSpeedLimit")]
+        public double? FallSpeedLimit;
+
+        [JsonProperty("fallSpeedLimitDurationSeconds")]
+        public double? FallSpeedLimitDurationSeconds;
 
         [JsonProperty("scale")]
         public double? Scale;

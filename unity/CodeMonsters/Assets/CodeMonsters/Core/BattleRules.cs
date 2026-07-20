@@ -15,6 +15,8 @@ namespace CodeMonsters.Core
         public double VY;
         public double HorizontalBrakePerSecond;
         public double HorizontalBrakeRemaining;
+        public double FallSpeedLimit;
+        public double FallSpeedLimitRemaining;
         public double GravityScale = 1;
         public double GravityScaleRemaining;
         public double Hp;
@@ -51,6 +53,8 @@ namespace CodeMonsters.Core
         public double Radius;
         public double Width;
         public double? Height;
+        public double AngleDegrees;
+        public int Direction;
     }
 
     public sealed class ProjectileState
@@ -128,6 +132,8 @@ namespace CodeMonsters.Core
                 Radius = shape.Radius ?? 0,
                 Width = shape.Width ?? 0,
                 Height = shape.Height,
+                AngleDegrees = shape.AngleDegrees ?? 0,
+                Direction = direction,
             };
         }
 
@@ -161,6 +167,20 @@ namespace CodeMonsters.Core
             if (shape.Kind == "circle")
                 return Math.Sqrt(Math.Pow(fighter.X - shape.X, 2) + Math.Pow(fighter.Y - shape.Y, 2))
                     <= shape.Radius + fighterRadius;
+            if (shape.Kind == "sector")
+            {
+                var dx = fighter.X - shape.X;
+                var dy = fighter.Y - shape.Y;
+                var distance = Math.Sqrt(dx * dx + dy * dy);
+                if (distance <= fighterRadius)
+                    return true;
+                if (distance > shape.Radius + fighterRadius)
+                    return false;
+                var forwardRatio = Math.Max(-1, Math.Min(1, dx * shape.Direction / distance));
+                var angle = Math.Acos(forwardRatio);
+                var angularPadding = Math.Asin(Math.Min(1, fighterRadius / distance));
+                return angle <= shape.AngleDegrees * Math.PI / 360 + angularPadding;
+            }
             var horizontal = Math.Abs(fighter.X - shape.X) <= shape.Width / 2 + fighterRadius;
             if (!horizontal || !shape.Height.HasValue)
                 return horizontal;
@@ -310,7 +330,11 @@ namespace CodeMonsters.Core
             var activeGravityScale = fighter.GravityScaleRemaining > 0 ? fighter.GravityScale : 1;
             var gravityRemaining = Math.Max(0, fighter.GravityScaleRemaining - dt);
             var gravityScale = gravityRemaining > 0 ? fighter.GravityScale : 1;
-            var acceleratedVY = Math.Max(-battle.MaxFallSpeed, fighter.VY - battle.GravityPerSecond * activeGravityScale * dt);
+            var activeFallSpeedLimit = fighter.FallSpeedLimitRemaining > 0
+                ? fighter.FallSpeedLimit
+                : battle.MaxFallSpeed;
+            var fallSpeedLimitRemaining = Math.Max(0, fighter.FallSpeedLimitRemaining - dt);
+            var acceleratedVY = Math.Max(-activeFallSpeedLimit, fighter.VY - battle.GravityPerSecond * activeGravityScale * dt);
             var unclampedY = fighter.Y + acceleratedVY * dt;
             var y = Math.Max(battle.FloorY, Math.Min(battle.CeilingY, unclampedY));
             var hitFloor = y <= battle.FloorY && acceleratedVY < 0;
@@ -341,6 +365,8 @@ namespace CodeMonsters.Core
                 VY = hitFloor || hitCeiling ? 0 : acceleratedVY,
                 HorizontalBrakePerSecond = horizontalBrakeRemaining > 0 ? fighter.HorizontalBrakePerSecond : 0,
                 HorizontalBrakeRemaining = horizontalBrakeRemaining,
+                FallSpeedLimit = fallSpeedLimitRemaining > 0 ? fighter.FallSpeedLimit : battle.MaxFallSpeed,
+                FallSpeedLimitRemaining = fallSpeedLimitRemaining,
                 GravityScale = gravityScale,
                 GravityScaleRemaining = gravityRemaining,
                 Hp = fighter.Hp,

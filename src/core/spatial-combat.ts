@@ -14,8 +14,8 @@ const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(a
 export const spatialDistance = (left: Pick<Fighter, 'x' | 'y'>, right: Pick<Fighter, 'x' | 'y'>) =>
   Math.hypot(right.x - left.x, right.y - left.y);
 
-export const directionToward = (actor: Pick<Fighter, 'x' | 'team'>, target: Pick<Fighter, 'x'>) =>
-  Math.sign(target.x - actor.x) || (actor.team === 'ally' ? 1 : -1);
+export const directionToward = (actor: Pick<Fighter, 'x' | 'team'>, target: Pick<Fighter, 'x'>): 1 | -1 =>
+  target.x === actor.x ? (actor.team === 'ally' ? 1 : -1) : target.x > actor.x ? 1 : -1;
 
 export function resolveAttackShape(
   instruction: Instruction,
@@ -33,6 +33,16 @@ export function resolveAttackShape(
       radius: shape.radius,
     };
   }
+  if (shape.kind === 'sector') {
+    return {
+      kind: 'sector',
+      x: actor.x + direction * shape.offsetX,
+      y: actor.y + shape.offsetY,
+      radius: shape.radius,
+      angleDegrees: shape.angleDegrees,
+      direction,
+    };
+  }
   return {
     kind: 'box',
     x: actor.x + direction * shape.offsetX,
@@ -45,6 +55,17 @@ export function resolveAttackShape(
 export function shapeIntersectsFighter(shape: ResolvedAttackShape, fighter: Fighter): boolean {
   const radius = BATTLE_CONFIG.fighterRadius;
   if (shape.kind === 'circle') return Math.hypot(fighter.x - shape.x, fighter.y - shape.y) <= shape.radius + radius;
+  if (shape.kind === 'sector') {
+    const dx = fighter.x - shape.x;
+    const dy = fighter.y - shape.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance <= radius) return true;
+    if (distance > shape.radius + radius) return false;
+    const forwardRatio = Math.max(-1, Math.min(1, (dx * shape.direction) / distance));
+    const angle = Math.acos(forwardRatio);
+    const angularPadding = Math.asin(Math.min(1, radius / distance));
+    return angle <= degreesToRadians(shape.angleDegrees / 2) + angularPadding;
+  }
   const horizontal = Math.abs(fighter.x - shape.x) <= shape.width / 2 + radius;
   if (!horizontal || shape.height === null) return horizontal;
   return Math.abs(fighter.y - shape.y) <= shape.height / 2 + radius;

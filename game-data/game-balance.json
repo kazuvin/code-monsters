@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 22,
+  "schemaVersion": 23,
   "battle": {
     "teamSize": 1,
     "tickSeconds": 0.1,
@@ -692,7 +692,7 @@
       "id": "pulse-swipe",
       "title": "パルスを薙ぐ",
       "short": "パルススワイプ",
-      "flavor": "自機中心の円形判定を一瞬だけ発生させる。上下にずれれば自然に外れる。",
+      "flavor": "地上・空中を問わず、向いている側へ扇形のパルスを薙ぎ、エフェクトに重なった相手を斬る。",
       "action": "attack",
       "abilityCost": 0,
       "cooldownSeconds": 1.4,
@@ -707,10 +707,11 @@
       "delivery": {
         "kind": "shape",
         "shape": {
-          "kind": "circle",
-          "offsetX": 0,
+          "kind": "sector",
+          "offsetX": 1,
           "offsetY": 3,
-          "radius": 8
+          "radius": 10,
+          "angleDegrees": 100
         }
       },
       "effects": [
@@ -1206,7 +1207,7 @@
       "id": "dive-strike",
       "title": "降下強襲する",
       "short": "ダイブストライク",
-      "flavor": "8m以上から下降中に相手方向へ急降下し、着地した座標を中心に衝撃円を発生させる。",
+      "flavor": "8m以上から相手方向へ高速落下し、床へ接触した瞬間に着地点を中心とする衝撃波を放つ。",
       "action": "heavy",
       "abilityCost": 3,
       "cooldownSeconds": 4.5,
@@ -1235,10 +1236,12 @@
           "target": "actor",
           "mode": "setVelocity",
           "x": 30,
-          "y": -48,
+          "y": -72,
           "relativeTo": "target",
           "horizontalBrakePerSecond": 30,
-          "horizontalBrakeDurationSeconds": 1
+          "horizontalBrakeDurationSeconds": 1,
+          "fallSpeedLimit": 72,
+          "fallSpeedLimitDurationSeconds": 1.5
         },
         {
           "kind": "damage",

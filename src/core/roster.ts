@@ -51,6 +51,8 @@ export function createBattleFighters(
     vy: 0,
     horizontalBrakePerSecond: 0,
     horizontalBrakeRemaining: 0,
+    fallSpeedLimit: BATTLE_CONFIG.maxFallSpeed,
+    fallSpeedLimitRemaining: 0,
     gravityScale: 1,
     gravityScaleRemaining: 0,
     abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,

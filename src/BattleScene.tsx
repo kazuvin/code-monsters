@@ -17,6 +17,18 @@ const stageYPercent = (y: number) =>
   ((y - BATTLE_CONFIG.floorY) / verticalWorldRange) * BATTLE_CONFIG.verticalDisplayRangePercent;
 const stageHeightPercent = (height: number) =>
   (height / verticalWorldRange) * BATTLE_CONFIG.verticalDisplayRangePercent;
+const sectorPolygonPoints = (direction: 1 | -1, angleDegrees: number) => {
+  const centerDegrees = direction === 1 ? 0 : 180;
+  const startDegrees = centerDegrees - angleDegrees / 2;
+  const samples = Array.from({ length: 17 }, (_, index) => startDegrees + (angleDegrees * index) / 16);
+  return [
+    '50,50',
+    ...samples.map((degrees) => {
+      const radians = (degrees * Math.PI) / 180;
+      return `${50 + Math.cos(radians) * 50},${50 - Math.sin(radians) * 50}`;
+    }),
+  ].join(' ');
+};
 
 const DEPTH_SLOTS = 2;
 const DEPTH_SLOT_OFFSETS_PX = [-7, 7] as const;
@@ -132,22 +144,40 @@ export function BattleScene({ fighters, zones = [], projectiles = [], flash, fla
             </div>
           );
         })}
-        {attackShapes.map((shape) => (
-          <i
-            aria-hidden="true"
-            className={`spatial-attack-shape shape-${shape.kind} ${shape.kind === 'box' && shape.height === null ? 'is-infinite-height' : ''}`}
-            data-attack-shape={shape.kind}
-            key={`shape-${shape.flash.id}-${shape.flash.n}`}
-            style={{
-              left: `${shape.x}%`,
-              ['--shape-y' as string]: `${stageYPercent(shape.y)}%`,
-              ['--shape-width' as string]: `${shape.kind === 'circle' ? shape.radius * 2 : shape.width}%`,
-              ['--shape-height' as string]: `${stageHeightPercent(
-                shape.kind === 'circle' ? shape.radius * 2 : (shape.height ?? verticalWorldRange),
-              )}%`,
-            }}
-          />
-        ))}
+        {attackShapes.map((shape) => {
+          const width = shape.kind === 'box' ? shape.width : shape.radius * 2;
+          const height = shape.kind === 'box' ? (shape.height ?? verticalWorldRange) : shape.radius * 2;
+          const className = `spatial-attack-shape shape-${shape.kind} ${shape.kind === 'box' && shape.height === null ? 'is-infinite-height' : ''} ${shape.flash.effectKind === 'landingImpact' ? 'is-landing-impact' : ''}`;
+          const style = {
+            left: `${shape.x}%`,
+            ['--shape-y' as string]: `${stageYPercent(shape.y)}%`,
+            ['--shape-width' as string]: `${width}%`,
+            ['--shape-height' as string]: `${stageHeightPercent(height)}%`,
+          };
+          return shape.kind === 'sector' ? (
+            <svg
+              aria-hidden="true"
+              className={className}
+              data-attack-shape={shape.kind}
+              data-attack-direction={shape.direction === 1 ? 'right' : 'left'}
+              data-effect-kind={shape.flash.effectKind}
+              key={`shape-${shape.flash.id}-${shape.flash.n}`}
+              style={style}
+              viewBox="0 0 100 100"
+            >
+              <polygon points={sectorPolygonPoints(shape.direction, shape.angleDegrees)} />
+            </svg>
+          ) : (
+            <i
+              aria-hidden="true"
+              className={className}
+              data-attack-shape={shape.kind}
+              data-effect-kind={shape.flash.effectKind}
+              key={`shape-${shape.flash.id}-${shape.flash.n}`}
+              style={style}
+            />
+          );
+        })}
         {projectiles.map((projectile) => (
           <i
             aria-hidden="true"

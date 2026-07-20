@@ -123,6 +123,8 @@ const baseFighterState = {
   vy: 0,
   horizontalBrakePerSecond: 0,
   horizontalBrakeRemaining: 0,
+  fallSpeedLimit: BATTLE_CONFIG.maxFallSpeed,
+  fallSpeedLimitRemaining: 0,
   gravityScale: 1,
   gravityScaleRemaining: 0,
   abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
@@ -232,6 +234,14 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
   const actorStartsHigh = condition.kind === 'selfHeightAbove';
   const actorStartsDescending = condition.kind === 'selfDescending';
   const targetStartsHigh = condition.kind === 'targetHeightAbove';
+  const descendingStartY = Math.min(
+    BATTLE_CONFIG.ceilingY,
+    Math.max(
+      12,
+      (instruction.delivery?.kind === 'landing' ? instruction.delivery.minimumStartY : BATTLE_CONFIG.floorY) +
+        BATTLE_CONFIG.maxFallSpeed * BATTLE_CONFIG.baseActionWindupSeconds,
+    ),
+  );
 
   const actorInventory: UnitInventoryItem = {
     ...actorDefinition,
@@ -248,7 +258,7 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
       hp: Math.max(1, Math.round(actorDefinition.maxHp * clamp(input.actorHpRatio, 0.01, 1))),
       abilityGauge: clamp(input.initialGauge, 0, BATTLE_CONFIG.abilityGaugeMax),
       x: actorX,
-      y: actorStartsHigh || actorStartsDescending ? 12 : BATTLE_CONFIG.floorY,
+      y: actorStartsDescending ? descendingStartY : actorStartsHigh ? 12 : BATTLE_CONFIG.floorY,
       vy: actorStartsDescending ? -5 : 0,
       gravityScale: actorStartsHigh ? 0 : 1,
       gravityScaleRemaining: actorStartsHigh ? inertCooldown : 0,

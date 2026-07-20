@@ -8,7 +8,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 22;
+        public const int SupportedSchemaVersion = 23;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -326,6 +326,14 @@ namespace CodeMonsters.Core
                                     || effect.HorizontalBrakeDurationSeconds.Value <= 0
                                 )
                             )
+                            || effect.FallSpeedLimit.HasValue != effect.FallSpeedLimitDurationSeconds.HasValue
+                            || (
+                                effect.FallSpeedLimit.HasValue
+                                && (
+                                    effect.FallSpeedLimit.Value <= 0
+                                    || effect.FallSpeedLimitDurationSeconds.Value <= 0
+                                )
+                            )
                         )
                     )
                         throw new InvalidDataException($"Instruction {instruction.Id} motion effect is incomplete");
@@ -385,6 +393,18 @@ namespace CodeMonsters.Core
                         || (delivery.Shape.Height.HasValue && delivery.Shape.Height.Value <= 0)
                     )
                         throw new InvalidDataException($"Instruction {instruction.Id} box dimensions are invalid");
+                    return;
+                }
+                if (delivery.Shape.Kind == "sector")
+                {
+                    if (
+                        !delivery.Shape.Radius.HasValue
+                        || delivery.Shape.Radius.Value <= 0
+                        || !delivery.Shape.AngleDegrees.HasValue
+                        || delivery.Shape.AngleDegrees.Value <= 0
+                        || delivery.Shape.AngleDegrees.Value > 180
+                    )
+                        throw new InvalidDataException($"Instruction {instruction.Id} sector dimensions are invalid");
                     return;
                 }
                 throw new InvalidDataException($"Instruction {instruction.Id} has unknown attack shape");
