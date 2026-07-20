@@ -58,6 +58,7 @@ type MutableFighterFields = Pick<
   | 'actionLock'
   | 'instructionCooldowns'
   | 'pendingAction'
+  | 'pendingLandingAttack'
   | 'abilityGauge'
   | 'reactionCooldown'
   | 'statuses'
@@ -220,6 +221,7 @@ export function planBattleFrame({
     setNext(fighterId, { abilityGauge: Math.max(0, fighter.abilityGauge - cost) });
   };
   const pendingHitReactions: { attackerId: string; targetId: string; allowAttackReaction: boolean }[] = [];
+  const pendingProjectileThreats: { projectileId: string; reactorId: string; opponentId: string }[] = [];
 
   const applyHit = ({
     actor,
@@ -297,9 +299,53 @@ export function planBattleFrame({
     const fallbackTarget = instruction.targetMode === 'self' ? actor : priorityEnemy(actor, enemies);
     const target = snapshot.find((fighter) => fighter.instanceId === targetIds[0]) ?? fallbackTarget;
     if (!target) return;
+    const delivery = instruction.delivery;
+    if (delivery?.kind === 'landing' && actor.y < delivery.minimumStartY) {
+      queueStep({
+        flash: {
+          id: actor.instanceId,
+          kind: 'miss',
+          targetId: target.instanceId,
+          actionLabel: `${instruction.short}｜高度不足`,
+          reaction,
+          n: 0,
+        },
+        log: {
+          actor: actor.name,
+          text: `${instruction.short}｜発動高度 ${delivery.minimumStartY}m に未到達`,
+          type: 'miss',
+        },
+        updates: [],
+      });
+      return;
+    }
     const actorValues = applyActorEffects(actor, target, instruction);
 
-    const delivery = instruction.delivery;
+    if (delivery?.kind === 'landing') {
+      const pendingLandingAttack = {
+        actionId: instruction.id,
+        targetId: target.instanceId,
+        startedAt: elapsed,
+      };
+      setNext(actor.instanceId, { pendingLandingAttack });
+      queueStep({
+        flash: {
+          id: actor.instanceId,
+          kind: visualKind(instruction),
+          targetId: target.instanceId,
+          actionLabel: `${instruction.short}｜急降下`,
+          reaction,
+          n: 0,
+        },
+        log: {
+          actor: actor.name,
+          text: `${instruction.short}｜着地座標へ急降下`,
+          type: reaction ? 'reaction' : 'info',
+        },
+        updates: [{ id: actor.instanceId, values: { ...actorValues, pendingLandingAttack } }],
+      });
+      return;
+    }
     if (delivery?.kind === 'projectile' || delivery?.kind === 'lob') {
       const isLob = delivery.kind === 'lob';
       const projectile = createProjectile(
@@ -441,16 +487,16 @@ export function planBattleFrame({
     });
   };
 
-  const queueReaction = (reactorId: string, trigger: ReactionTrigger, opponentId: string) => {
+  const queueReaction = (reactorId: string, trigger: ReactionTrigger, opponentId: string): boolean => {
     const reactor = next.find((fighter) => fighter.instanceId === reactorId);
-    if (!reactor || reactor.hp <= 0 || reactor.reactionCooldown > 0) return;
+    if (!reactor || reactor.hp <= 0 || reactor.reactionCooldown > 0) return false;
     const reaction = reactor.reaction ?? DEFAULT_REACTIONS[reactor.id];
-    if (!reaction || reaction.trigger !== trigger) return;
+    if (!reaction || reaction.trigger !== trigger) return false;
     const instruction = instructionById.get(reaction.actionId);
-    if (!instruction || !canAffordAbility(reactor, instruction.abilityCost)) return;
+    if (!instruction || !canAffordAbility(reactor, instruction.abilityCost)) return false;
     const opponent = next.find((fighter) => fighter.instanceId === opponentId && fighter.hp > 0);
     const targetId = instruction.targetMode === 'self' ? reactor.instanceId : opponent?.instanceId;
-    if (!targetId) return;
+    if (!targetId) return false;
     spendAbility(reactor.instanceId, instruction.abilityCost);
     setNext(reactor.instanceId, { reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds });
     const refreshed = next.find((fighter) => fighter.instanceId === reactor.instanceId) ?? reactor;
@@ -461,6 +507,7 @@ export function planBattleFrame({
       next.map((fighter) => ({ ...fighter })),
       true,
     );
+    return true;
   };
 
   const flushHitReactions = () => {
@@ -477,6 +524,62 @@ export function planBattleFrame({
     }
   };
 
+  const landingSnapshot = next.map((fighter) => ({ ...fighter }));
+  const landedAttackers = landingSnapshot.filter((fighter) => {
+    if (fighter.hp <= 0 || !fighter.pendingLandingAttack || fighter.y > BATTLE_CONFIG.floorY) return false;
+    const previous = fighters.find((candidate) => candidate.instanceId === fighter.instanceId);
+    return Boolean(previous && previous.y > BATTLE_CONFIG.floorY);
+  });
+  if (landedAttackers.length > 0) {
+    const groupStart = steps.length;
+    activeSimultaneousGroup = `landing:${elapsed.toFixed(6)}`;
+    for (const actor of landedAttackers) {
+      const pending = actor.pendingLandingAttack;
+      const instruction = pending ? instructionById.get(pending.actionId) : undefined;
+      const delivery = instruction?.delivery;
+      if (!pending || !instruction || delivery?.kind !== 'landing') continue;
+      const target = pending.targetId
+        ? landingSnapshot.find((fighter) => fighter.instanceId === pending.targetId)
+        : undefined;
+      const direction = target ? directionToward(actor, target) : actor.team === 'ally' ? 1 : -1;
+      const shape = {
+        kind: 'circle' as const,
+        x: actor.x + direction * delivery.shape.offsetX,
+        y: BATTLE_CONFIG.floorY + delivery.shape.offsetY,
+        radius: delivery.shape.radius,
+      };
+      const hitTargets = landingSnapshot.filter(
+        (fighter) => fighter.team !== actor.team && fighter.hp > 0 && shapeIntersectsFighter(shape, fighter),
+      );
+      if (hitTargets.length === 0) {
+        queueStep({
+          flash: {
+            id: actor.instanceId,
+            kind: 'miss',
+            targetId: pending.targetId ?? undefined,
+            shape,
+            actionLabel: `${instruction.short}｜着地MISS`,
+            n: 0,
+          },
+          log: { actor: actor.name, text: `${instruction.short}｜着地点に相手なし`, type: 'miss' },
+          updates: [{ id: actor.instanceId, values: { pendingLandingAttack: null } }],
+        });
+        continue;
+      }
+      const firstStepIndex = steps.length;
+      for (const hitTarget of hitTargets) applyHit({ actor, target: hitTarget, instruction, reaction: false });
+      if (steps[firstStepIndex])
+        steps[firstStepIndex].updates.push({ id: actor.instanceId, values: { pendingLandingAttack: null } });
+      for (const step of steps.slice(firstStepIndex)) {
+        step.flash.shape = shape;
+        step.flash.actionLabel = `${instruction.short}｜着地`;
+      }
+    }
+    activeSimultaneousGroup = null;
+    next = applyBattleSteps(landingSnapshot, steps.slice(groupStart)).map((fighter) => ({ ...fighter }));
+    flushHitReactions();
+  }
+
   if (projectiles.length > 0) {
     const projectileSnapshot = next.map((fighter) => ({ ...fighter }));
     const groupStart = steps.length;
@@ -486,6 +589,18 @@ export function planBattleFrame({
         ? projectileSnapshot.find((fighter) => fighter.instanceId === projectile.targetId)
         : undefined;
       const advanced = advanceProjectile(projectile, target, dt);
+      for (const fighter of projectileSnapshot.filter(
+        (candidate) =>
+          candidate.team !== projectile.sourceTeam &&
+          candidate.hp > 0 &&
+          !projectile.threatenedFighterIds.includes(candidate.instanceId) &&
+          Math.hypot(candidate.x - advanced.x, candidate.y - advanced.y) <= BATTLE_CONFIG.projectileThreatRadius,
+      ))
+        pendingProjectileThreats.push({
+          projectileId: projectile.instanceId,
+          reactorId: fighter.instanceId,
+          opponentId: projectile.sourceId,
+        });
       const floorImpact = projectileHitsFloor(projectile, advanced);
       const hit =
         projectile.impact === 'fighter'
@@ -551,6 +666,15 @@ export function planBattleFrame({
     if (steps.length > groupStart)
       next = applyBattleSteps(projectileSnapshot, steps.slice(groupStart)).map((fighter) => ({ ...fighter }));
     flushHitReactions();
+    for (const threat of pendingProjectileThreats) {
+      if (!nextProjectiles.some((projectile) => projectile.instanceId === threat.projectileId)) continue;
+      if (!queueReaction(threat.reactorId, 'enemyProjectileNear', threat.opponentId)) continue;
+      nextProjectiles = nextProjectiles.map((projectile) =>
+        projectile.instanceId === threat.projectileId
+          ? { ...projectile, threatenedFighterIds: [...projectile.threatenedFighterIds, threat.reactorId] }
+          : projectile,
+      );
+    }
   }
 
   if (elapsed >= BATTLE_CONFIG.overheatStartSeconds) {
@@ -688,6 +812,7 @@ export function planBattleFrame({
         fighter.hp > 0 &&
         fighter.actionLock <= 0 &&
         fighter.pendingAction === null &&
+        fighter.pendingLandingAttack === null &&
         !resolvedActorIds.has(fighter.instanceId),
     )
     .sort(compareReadyFighters)) {

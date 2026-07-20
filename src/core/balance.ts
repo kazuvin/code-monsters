@@ -140,10 +140,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.instructions.map((instruction) => instruction.id),
   );
   unique(
-    'equipment',
-    data.equipment.map((equipment) => equipment.id),
-  );
-  unique(
     'condition',
     data.conditions.map((condition) => condition.id),
   );
@@ -174,7 +170,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
 
   const units = new Set(data.units.map((unit) => unit.id));
   const instructions = new Set(data.instructions.map((instruction) => instruction.id));
-  const equipmentIds = new Set(data.equipment.map((equipment) => equipment.id));
   const conditions = new Set(data.conditions.map((condition) => condition.id));
   const targetSelectors = new Set<string>(data.targetSelectors.map((target) => target.id));
   const statuses = new Set(data.statuses.map((status) => status.id));
@@ -242,9 +237,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const requireInstruction = (id: string, context: string) => {
     if (!instructions.has(id)) error('UNKNOWN_INSTRUCTION', `${context} が未定義スキル "${id}" を参照しています`);
   };
-  const requireEquipment = (id: string, context: string) => {
-    if (!equipmentIds.has(id)) error('UNKNOWN_EQUIPMENT', `${context} が未定義装備 "${id}" を参照しています`);
-  };
   const requireTargetSelector = (id: string, context: string) => {
     if (!targetSelectors.has(id)) error('UNKNOWN_TARGET', `${context} が未定義対象 "${id}" を参照しています`);
   };
@@ -252,7 +244,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 21) error('INVALID_SCHEMA_VERSION', 'schemaVersion は21以上である必要があります');
+  if (data.schemaVersion < 22) error('INVALID_SCHEMA_VERSION', 'schemaVersion は22以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -274,6 +266,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.battle.verticalDisplayRangePercent <= 0 ||
     data.battle.verticalDisplayRangePercent > 100 ||
     data.battle.fighterRadius <= 0 ||
+    data.battle.projectileThreatRadius <= data.battle.fighterRadius ||
     data.battle.knockbackVelocityScale <= 0
   )
     error('INVALID_BATTLE_CONFIG', '戦闘のtick/cooldown/abilityGauge設定が不正です');
@@ -384,42 +377,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   for (const unit of data.units)
     if (unit.maxHp <= 0 || unit.attack < 0 || unit.defense < 0 || unit.speed <= 0 || unit.weight <= 0)
       error('INVALID_UNIT_STAT', `${unit.id} に0以下または不正な戦闘パラメータがあります`);
-  const supportedEquipmentSlots = new Set(['frame', 'weapon', 'chip']);
-  const supportedEquipmentModifiers = new Set([
-    'maxHp',
-    'attack',
-    'defense',
-    'speed',
-    'knockbackPower',
-    'weight',
-    'programLimit',
-    'attackType',
-  ]);
-  for (const equipment of data.equipment) {
-    if (!equipment.id || !equipment.name || !equipment.code || !equipment.description || !equipment.tradeoff)
-      error('INVALID_EQUIPMENT', '装備には id・name・code・description・tradeoff が必要です');
-    if (!supportedEquipmentSlots.has(equipment.slot))
-      error('INVALID_EQUIPMENT_SLOT', `${equipment.id} の装備枠 ${equipment.slot} は未対応です`);
-    if (equipment.price < 0) error('INVALID_EQUIPMENT_PRICE', `${equipment.id} の価格が負です`);
-    for (const [key, value] of Object.entries(equipment.modifiers)) {
-      if (!supportedEquipmentModifiers.has(key))
-        error('UNSUPPORTED_EQUIPMENT_MODIFIER', `${equipment.id} の補正 ${key} は未対応です`);
-      if (key === 'attackType') {
-        if (!['melee', 'blunt', 'sniper'].includes(String(value)))
-          error('INVALID_EQUIPMENT_MODIFIER', `${equipment.id}.attackType が不正です`);
-      } else if (typeof value !== 'number' || !Number.isFinite(value)) {
-        error('INVALID_EQUIPMENT_MODIFIER', `${equipment.id}.${key} は有限数で指定してください`);
-      }
-    }
-    for (const actionId of equipment.grantsActionIds) requireInstruction(actionId, `equipment.${equipment.id}`);
-    if (equipment.defaultReaction) {
-      requireInstruction(equipment.defaultReaction.actionId, `equipment.${equipment.id}.defaultReaction`);
-      if (!data.reactionTriggers.some((trigger) => trigger.id === equipment.defaultReaction?.trigger))
-        error('UNKNOWN_REACTION_TRIGGER', `${equipment.id} のリアクショントリガーが未定義です`);
-      if (!equipment.grantsActionIds.includes(equipment.defaultReaction.actionId))
-        error('INVALID_EQUIPMENT_REACTION', `${equipment.id} の既定リアクションは同じ装備が解放する必要があります`);
-    }
-  }
   for (const target of data.targetSelectors) {
     if (!supportedTargetSelectors.has(target.id))
       error('UNSUPPORTED_TARGET', `対象セレクタ "${target.id}" はエンジン未対応です`);
@@ -535,7 +492,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (instruction.fixedFor) requireUnit(instruction.fixedFor, `スキル ${instruction.id}`);
     const delivery = instruction.delivery;
     if (delivery) {
-      if (!['shape', 'projectile', 'lob'].includes(delivery.kind))
+      if (!['shape', 'projectile', 'lob', 'landing'].includes(delivery.kind))
         error('INVALID_DELIVERY', `${instruction.id} の delivery.kind が不正です`);
       if (delivery.kind === 'shape') {
         rejectUnknownKeys(delivery, ['kind', 'shape'], `スキル ${instruction.id}.delivery`);
@@ -551,14 +508,19 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       } else if (delivery.kind === 'projectile') {
         rejectUnknownKeys(
           delivery,
-          ['kind', 'speed', 'radius', 'lifetimeSeconds', 'homing', 'turnRateDegrees'],
+          ['kind', 'speed', 'radius', 'lifetimeSeconds', 'minimumTravelDistance', 'homing', 'turnRateDegrees'],
           `スキル ${instruction.id}.delivery`,
         );
-        if (delivery.speed <= 0 || delivery.radius <= 0 || delivery.lifetimeSeconds <= 0)
+        if (
+          delivery.speed <= 0 ||
+          delivery.radius <= 0 ||
+          delivery.lifetimeSeconds <= 0 ||
+          delivery.minimumTravelDistance < 0
+        )
           error('INVALID_DELIVERY', `${instruction.id} の飛び道具パラメータが不正です`);
         if (delivery.homing && (delivery.turnRateDegrees ?? 0) <= 0)
           error('INVALID_DELIVERY', `${instruction.id} の追尾弾には正の旋回速度が必要です`);
-      } else {
+      } else if (delivery.kind === 'lob') {
         rejectUnknownKeys(
           delivery,
           ['kind', 'flightSeconds', 'radius', 'gravityScale'],
@@ -568,6 +530,21 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
           error('INVALID_DELIVERY', `${instruction.id} の放物投擲パラメータが不正です`);
         if (instruction.action !== 'field' || !instruction.effects.some((effect) => effect.kind === 'placeZone'))
           error('INVALID_DELIVERY', `${instruction.id} の放物投擲には設置空間が必要です`);
+      } else {
+        rejectUnknownKeys(delivery, ['kind', 'minimumStartY', 'shape'], `スキル ${instruction.id}.delivery`);
+        rejectUnknownKeys(
+          delivery.shape,
+          ['kind', 'offsetX', 'offsetY', 'radius'],
+          `スキル ${instruction.id}.landing.shape`,
+        );
+        if (
+          delivery.minimumStartY <= data.battle.floorY ||
+          delivery.shape.kind !== 'circle' ||
+          delivery.shape.radius <= 0
+        )
+          error('INVALID_DELIVERY', `${instruction.id} の着地攻撃パラメータが不正です`);
+        if (!instruction.effects.some((effect) => effect.kind === 'damage'))
+          error('INVALID_DELIVERY', `${instruction.id} の着地攻撃にはダメージ効果が必要です`);
       }
     }
     if (!Array.isArray(instruction.effects) || instruction.effects.length === 0)
@@ -781,9 +758,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (encounter.enemyStatScale <= 0 || encounter.reward < 0)
       error('INVALID_ENCOUNTER', `${encounter.id} の倍率または報酬が不正です`);
     for (const id of encounter.enemyUnitIds) requireUnit(id, `encounter ${encounter.id}`);
-    if (encounter.enemyEquipmentIds.length !== 3)
-      error('INVALID_ENCOUNTER_EQUIPMENT', `${encounter.id} の敵装備は3枠にしてください`);
-    for (const id of encounter.enemyEquipmentIds) requireEquipment(id, `encounter ${encounter.id}`);
     for (const actionId of encounter.enemyProgramActionIds)
       requireInstruction(actionId, `encounter ${encounter.id}.enemyProgramActionIds`);
     if (encounter.enemyReaction) {
@@ -795,45 +769,13 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   for (const id of data.roster.startingActionIds) requireInstruction(id, 'roster.startingActionIds');
   for (const id of data.roster.startingConditionIds)
     if (!conditions.has(id)) error('UNKNOWN_CONDITION', `roster が未定義条件 "${id}" を参照しています`);
-  if (data.roster.startingEquipmentIds.length !== 3)
-    error('INVALID_STARTING_EQUIPMENT', '初期装備は frame・weapon・chip の3枠にしてください');
-  for (const id of data.roster.startingEquipmentIds) requireEquipment(id, 'roster.startingEquipmentIds');
-  const startingSlots = data.roster.startingEquipmentIds
-    .map((id) => data.equipment.find((equipment) => equipment.id === id)?.slot)
-    .filter((slot) => slot !== undefined);
-  if (new Set(startingSlots).size !== 3)
-    error('INVALID_STARTING_EQUIPMENT', '初期装備の frame・weapon・chip が重複または不足しています');
   if (data.shop.size !== 4) error('INVALID_SHOP_SIZE', 'ショップの排出数は4枠にしてください');
-  if (
-    data.shop.equipmentSlots.length !== 2 ||
-    new Set(data.shop.equipmentSlots).size !== data.shop.equipmentSlots.length ||
-    data.shop.equipmentSlots.some((slot) => !Number.isInteger(slot) || slot < 0 || slot >= data.shop.size)
-  )
-    error('INVALID_SHOP_LAYOUT', 'ショップは重複しない2装備・2スキル構成にしてください');
   const shopInstructionCount = data.instructions.filter(
     (instruction) =>
-      !instruction.fixedFor &&
-      !instruction.reactionOnly &&
-      instruction.price > 0 &&
-      !data.roster.startingActionIds.includes(instruction.id) &&
-      !data.equipment.some((equipment) => equipment.grantsActionIds.includes(instruction.id)),
+      !instruction.fixedFor && instruction.price > 0 && !data.roster.startingActionIds.includes(instruction.id),
   ).length;
-  const shopEquipmentCount = data.equipment.filter(
-    (equipment) => equipment.price > 0 && !data.roster.startingEquipmentIds.includes(equipment.id),
-  ).length;
-  if (
-    shopEquipmentCount < data.shop.equipmentSlots.length ||
-    shopInstructionCount < data.shop.size - data.shop.equipmentSlots.length
-  )
-    error('INSUFFICIENT_SHOP_POOL', '重複なしで4枠を生成できるショップ候補がありません');
-  if (data.shop.initialPicks.length > 0)
-    error('NON_RANDOM_INITIAL_SHOP', 'ランダムショップでは initialPicks を空にしてください');
-  for (const pick of data.shop.initialPicks) {
-    if (pick.slot < 0 || pick.slot >= data.shop.size)
-      error('INVALID_SHOP_SLOT', `shop.initialPicks の slot ${pick.slot} はショップ範囲外です`);
-    if (pick.kind === 'equipment') requireEquipment(pick.id, 'shop.initialPicks');
-    else requireInstruction(pick.id, 'shop.initialPicks');
-  }
+  if (shopInstructionCount < data.shop.size)
+    error('INSUFFICIENT_SHOP_POOL', '重複なしで4枠を生成できるスキル候補がありません');
   const canAnalyzeSynergies =
     data.statuses.every((status) => status.synergy?.counterplay) &&
     data.instructions.every((instruction) => Array.isArray(instruction.effects)) &&

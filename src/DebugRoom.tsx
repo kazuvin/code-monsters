@@ -616,7 +616,7 @@ export function DebugRoom() {
       <aside className={`debug-config ${setupOpen ? 'is-open' : ''}`} aria-label="デバッグ設定">
         <header>
           <div>
-            <small>DUEL LOADOUT</small>
+            <small>DUEL SIMULATION</small>
             <b>計測設定</b>
           </div>
           <button aria-label="設定を閉じる" onClick={() => setSetupOpen(false)}>

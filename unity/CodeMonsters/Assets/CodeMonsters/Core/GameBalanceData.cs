@@ -23,9 +23,6 @@ namespace CodeMonsters.Core
         [JsonProperty("units")]
         public List<UnitDefinition> Units = new List<UnitDefinition>();
 
-        [JsonProperty("equipment")]
-        public List<EquipmentDefinition> Equipment = new List<EquipmentDefinition>();
-
         [JsonProperty("instructions")]
         public List<InstructionDefinition> Instructions = new List<InstructionDefinition>();
 
@@ -112,6 +109,9 @@ namespace CodeMonsters.Core
 
         [JsonProperty("fighterRadius")]
         public double FighterRadius;
+
+        [JsonProperty("projectileThreatRadius")]
+        public double ProjectileThreatRadius;
 
         [JsonProperty("knockbackVelocityScale")]
         public double KnockbackVelocityScale;
@@ -417,6 +417,9 @@ namespace CodeMonsters.Core
         [JsonProperty("lifetimeSeconds")]
         public double? LifetimeSeconds;
 
+        [JsonProperty("minimumTravelDistance")]
+        public double? MinimumTravelDistance;
+
         [JsonProperty("homing")]
         public bool Homing;
 
@@ -428,6 +431,9 @@ namespace CodeMonsters.Core
 
         [JsonProperty("gravityScale")]
         public double? GravityScale;
+
+        [JsonProperty("minimumStartY")]
+        public double? MinimumStartY;
     }
 
     public sealed class AttackShapeDefinition
@@ -449,66 +455,6 @@ namespace CodeMonsters.Core
 
         [JsonProperty("height")]
         public double? Height;
-    }
-
-    public sealed class EquipmentDefinition
-    {
-        [JsonProperty("id")]
-        public string Id = "";
-
-        [JsonProperty("name")]
-        public string Name = "";
-
-        [JsonProperty("code")]
-        public string Code = "";
-
-        [JsonProperty("slot")]
-        public string Slot = "";
-
-        [JsonProperty("description")]
-        public string Description = "";
-
-        [JsonProperty("tradeoff")]
-        public string Tradeoff = "";
-
-        [JsonProperty("price")]
-        public int Price;
-
-        [JsonProperty("modifiers")]
-        public EquipmentModifiers Modifiers = new EquipmentModifiers();
-
-        [JsonProperty("grantsActionIds")]
-        public List<string> GrantsActionIds = new List<string>();
-
-        [JsonProperty("defaultReaction")]
-        public ReactionDefinition DefaultReaction;
-    }
-
-    public sealed class EquipmentModifiers
-    {
-        [JsonProperty("maxHp")]
-        public double? MaxHp;
-
-        [JsonProperty("attack")]
-        public double? Attack;
-
-        [JsonProperty("defense")]
-        public double? Defense;
-
-        [JsonProperty("speed")]
-        public double? Speed;
-
-        [JsonProperty("knockbackPower")]
-        public double? KnockbackPower;
-
-        [JsonProperty("weight")]
-        public double? Weight;
-
-        [JsonProperty("programLimit")]
-        public double? ProgramLimit;
-
-        [JsonProperty("attackType")]
-        public string AttackType = "";
     }
 
     public sealed class ReactionDefinition
@@ -614,9 +560,6 @@ namespace CodeMonsters.Core
 
         [JsonProperty("enemyUnitIds")]
         public List<string> EnemyUnitIds = new List<string>();
-
-        [JsonProperty("enemyEquipmentIds")]
-        public List<string> EnemyEquipmentIds = new List<string>();
 
         [JsonProperty("enemyProgramActionIds")]
         public List<string> EnemyProgramActionIds = new List<string>();

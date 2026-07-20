@@ -15,8 +15,10 @@ await page.addInitScript(() => {
 });
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
-const longshotCore = page.locator('.shop-item:not(.instruction-shop-item)').filter({ hasText: 'ロングショットコア' });
-await longshotCore.getByRole('button', { name: /購入/ }).click();
+const pulseBoltCard = page
+  .locator('.instruction-shop-item')
+  .filter({ has: page.locator('strong').filter({ hasText: /^直進弾を撃つ$/ }) });
+await pulseBoltCard.getByRole('button', { name: /購入/ }).click();
 
 const firstProgramBlock = page.locator('.workbench > .program-list').first().locator('.sentence-block').first();
 await firstProgramBlock.locator('.word-slot').first().click();
@@ -38,6 +40,8 @@ let damageAfterFlight = false;
 let launchLabel = '';
 let projectileAppearedBeforeLaunchReadout = false;
 let firstProjectileX = null;
+let armingSeen = false;
+let armedSeen = false;
 let enemyHpWhenProjectileAppeared = null;
 let finalEnemyHp = initialEnemyHp;
 for (let tick = 0; tick < 900 && !(damageAfterFlight && launchLabel); tick += 1) {
@@ -45,6 +49,9 @@ for (let tick = 0; tick < 900 && !(damageAfterFlight && launchLabel); tick += 1)
   if (actionLabel.includes('パルスボルト｜発射')) launchLabel = actionLabel;
   const projectile = page.locator('.spatial-projectile[data-projectile-kind="direct"]').first();
   if ((await projectile.count()) > 0) {
+    const className = (await projectile.getAttribute('class')) ?? '';
+    armingSeen ||= className.includes('is-arming');
+    armedSeen ||= className.includes('is-armed');
     const x = Number.parseFloat((await projectile.getAttribute('style'))?.match(/left:\s*([\d.]+)%/)?.[1] ?? '0');
     if (!projectileSeen) {
       projectileSeen = true;
@@ -76,6 +83,8 @@ const result = {
   initialEnemyHp,
   enemyHpWhenProjectileAppeared,
   finalEnemyHp,
+  armingSeen,
+  armedSeen,
   errors,
 };
 console.log(JSON.stringify(result, null, 2));
@@ -83,6 +92,7 @@ console.log(JSON.stringify(result, null, 2));
 if (!configuredProgram.includes('いつでも') || !configuredProgram.includes('直進弾を撃つ'))
   throw new Error('直進弾を通常作戦へ設定できません');
 if (!projectileSeen || !projectileMoved) throw new Error('直進弾が独立した座標オブジェクトとして移動していません');
+if (!armingSeen || !armedSeen) throw new Error('直進弾の安全距離から有効化への遷移が表示されていません');
 if ((enemyHpWhenProjectileAppeared ?? 0) < initialEnemyHp)
   throw new Error('投射物の発射時点で即時ダメージが発生しています');
 if (!damageAfterFlight) throw new Error('投射物が時間経過後の接触でダメージを与えていません');

@@ -1,8 +1,8 @@
 # Code Monsters
 
-Code Monsters is a one-on-one programmable auto-battle prototype. A single duelist is configured with a frame, weapon, logic chip, and ordered combat program before facing five authored rival protocols. The repository includes a React/Vite web client, canonical JSON game data, a deterministic TypeScript battle core, a Unity 6 migration project, and an authoring-time sprite asset pipeline.
+Code Monsters is a one-on-one programmable auto-battle prototype. A single duelist is configured with an ordered normal program and one interrupt reaction before facing five authored rival protocols. The repository includes a React/Vite web client, canonical JSON game data, a deterministic TypeScript battle core, a Unity 6 migration project, and an authoring-time sprite asset pipeline.
 
-The playable animation scope is deliberately limited to three reusable unit bodies: `volt`, `bastion`, and `relay`. Matchup variety comes from equipment tradeoffs, granted actions, reactions, and enemy programs rather than a large recruitable roster.
+The playable animation scope is deliberately limited to three reusable unit bodies: `volt`, `bastion`, and `relay`. Matchup variety comes from purchasable skills, spatial interactions, reactions, and enemy programs rather than equipment layers or a large recruitable roster.
 
 ## Repository layout
 

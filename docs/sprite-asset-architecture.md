@@ -29,7 +29,7 @@ game-balance.json + UnitArtSpec + MotionSpec
 
 ## Sources of truth
 
-- `game-data/game-balance.json`: units, stable IDs, role, attack type, canonical accent color, equipment, encounter programs, and reactions
+- `game-data/game-balance.json`: units, stable IDs, role, attack type, canonical accent color, encounter programs, and reactions
 - `game-assets/config/motions.json`: presentation motion timing and fallback rules
 - `game-assets/config/pipeline.json`: canvas, palette, processing settings, QA thresholds
 - `game-assets/specs/units/*.json`: art-only identity constraints keyed by an existing unit ID
@@ -75,7 +75,7 @@ generated
 
 ## Determinism and provenance
 
-Each run records source hashes, game schema version, pipeline version, provider, background color, motion IDs, and status. The manifest records the sheet hash, palette hash, per-frame hashes, content hash, source run, QA summary, and reviewer. The animated roster is intentionally capped at `volt`, `bastion`, and `relay`; new matchup variety should first come from equipment and programs.
+Each run records source hashes, game schema version, pipeline version, provider, background color, motion IDs, and status. The manifest records the sheet hash, palette hash, per-frame hashes, content hash, source run, QA summary, and reviewer. The animated roster is intentionally capped at `volt`, `bastion`, and `relay`; new matchup variety should first come from skills and programs.
 
 The Python producer and TypeScript approval boundary independently validate the manifest. Approval recomputes its canonical content hash and rejects invalid rectangles, frame order, fallback references, palette hashes, QA summaries, or provenance fields.
 

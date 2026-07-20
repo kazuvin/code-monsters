@@ -20,18 +20,18 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalSpatialDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(21));
+            Assert.That(data.SchemaVersion, Is.EqualTo(22));
             Assert.That(data.Battle.TeamSize, Is.EqualTo(1));
             Assert.That(data.Battle.GravityPerSecond, Is.GreaterThan(0));
             Assert.That(data.Battle.CeilingY, Is.GreaterThan(data.Battle.FloorY));
             Assert.That(data.Battle.VerticalDisplayRangePercent, Is.EqualTo(62));
             Assert.That(data.Battle.FighterRadius, Is.GreaterThan(0));
+            Assert.That(data.Battle.ProjectileThreatRadius, Is.GreaterThan(data.Battle.FighterRadius));
             Assert.That(data.DebugTraining.PositionPresets.All(preset => preset.Distance > 0), Is.True);
             Assert.That(data.Statuses.Select(status => status.Id), Does.Contain("poison"));
             Assert.That(data.BattleZones.Select(zone => zone.Id), Does.Contain("corrosion-field"));
             Assert.That(data.Encounters, Has.Count.EqualTo(5));
             Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 1), Is.True);
-            Assert.That(data.Encounters.All(encounter => encounter.EnemyEquipmentIds.Count == 3), Is.True);
             Assert.That(data.Units.Select(unit => unit.Id), Is.EquivalentTo(new[] { "volt", "bastion", "relay" }));
             Assert.That(data.Instructions.All(instruction => instruction.CooldownSeconds > 0), Is.True);
             Assert.That(data.Instructions.All(instruction => instruction.Delivery == null || instruction.Delivery.Kind != ""), Is.True);
@@ -46,8 +46,8 @@ namespace CodeMonsters.Core.Tests
             actor.Statuses.Add(new StatusInstance { StatusId = "inspired", Stacks = 1 });
 
             Assert.That(BattleRules.DistanceTo(actor, enemy), Is.EqualTo(10).Within(0.0001));
-            Assert.That(BattleRules.MatchesCondition(data.Conditions.Single(value => value.Id == "targetNear12"), actor, enemy), Is.True);
-            Assert.That(BattleRules.MatchesCondition(data.Conditions.Single(value => value.Id == "targetFar12"), actor, enemy), Is.False);
+            Assert.That(BattleRules.MatchesCondition(data.Conditions.Single(value => value.Id == "targetNear10"), actor, enemy), Is.True);
+            Assert.That(BattleRules.MatchesCondition(data.Conditions.Single(value => value.Id == "targetFar10"), actor, enemy), Is.False);
             Assert.That(BattleRules.MatchesCondition(data.Conditions.Single(value => value.Id == "selfHeightAbove8"), actor, enemy), Is.True);
             Assert.That(BattleRules.MatchesCondition(data.Conditions.Single(value => value.Id == "targetHeightAbove8"), actor, enemy), Is.True);
             Assert.That(BattleRules.MatchesCondition(data.Conditions.Single(value => value.Id == "selfDescending"), actor, enemy), Is.True);
@@ -83,6 +83,11 @@ namespace CodeMonsters.Core.Tests
             var directAdvanced = BattleRules.AdvanceProjectile(direct, target, data.Battle, 0.5);
             Assert.That(directAdvanced.X, Is.GreaterThan(direct.X));
             Assert.That(directAdvanced.VY, Is.EqualTo(direct.VY).Within(0.0001));
+            Assert.That(directAdvanced.DistanceTraveled, Is.GreaterThan(direct.MinimumTravelDistance));
+
+            var nearbyTarget = new FighterState { InstanceId = "near-1", Team = "enemy", X = 23, Y = 0, Hp = 100 };
+            var unarmed = BattleRules.AdvanceProjectile(direct, nearbyTarget, data.Battle, 0.1);
+            Assert.That(BattleRules.ProjectileIntersects(direct, unarmed, nearbyTarget, data.Battle.FighterRadius), Is.False);
 
             var homing = BattleRules.CreateProjectile(homingInstruction.Delivery, actor, target, data.Battle);
             target.X = 35;
@@ -129,8 +134,8 @@ namespace CodeMonsters.Core.Tests
             var motion = instruction.Effects.Single(value => value.Kind == "motion");
             Assert.That(motion.Mode, Is.EqualTo("setVelocity"));
             Assert.That(motion.VerticalMode, Is.EqualTo("addVelocity"));
-            Assert.That(motion.HorizontalBrakePerSecond, Is.EqualTo(80));
-            Assert.That(motion.HorizontalBrakeDurationSeconds, Is.EqualTo(0.5));
+            Assert.That(motion.HorizontalBrakePerSecond, Is.EqualTo(64));
+            Assert.That(motion.HorizontalBrakeDurationSeconds, Is.EqualTo(0.75));
 
             var fighter = new FighterState
             {
@@ -138,16 +143,16 @@ namespace CodeMonsters.Core.Tests
                 Team = "ally",
                 X = 40,
                 Y = data.Battle.FloorY,
-                VX = 40,
-                VY = 12,
-                HorizontalBrakePerSecond = 80,
-                HorizontalBrakeRemaining = 0.5,
+                VX = 48,
+                VY = 26,
+                HorizontalBrakePerSecond = 64,
+                HorizontalBrakeRemaining = 0.75,
                 GravityScale = 1,
             };
             var current = fighter;
-            for (var index = 0; index < 5; index++)
+            for (var index = 0; index < 8; index++)
                 current = BattleRules.TickMotion(current, data.Battle, 0.1);
-            Assert.That(current.X, Is.EqualTo(50).Within(0.0001));
+            Assert.That(current.X, Is.EqualTo(58).Within(0.0001));
             Assert.That(current.VX, Is.EqualTo(0));
             Assert.That(current.HorizontalBrakeRemaining, Is.EqualTo(0));
 
@@ -190,16 +195,18 @@ namespace CodeMonsters.Core.Tests
         }
 
         [Test]
-        public void EquipmentImportsNewSpatialSkillSet()
+        public void LandingStrikeImportsGroundResolvedShape()
         {
-            var corrosion = data.Equipment.Single(item => item.Id == "corrosion-core");
-            Assert.That(corrosion.Modifiers.Attack, Is.LessThan(0));
-            Assert.That(corrosion.GrantsActionIds, Does.Contain("toxin-orb"));
-            Assert.That(corrosion.GrantsActionIds, Does.Contain("corrosion-column"));
-            Assert.That(corrosion.GrantsActionIds, Does.Contain("corrosion-field"));
-            var reactive = data.Equipment.Single(item => item.Id == "reactive-servo");
-            Assert.That(reactive.DefaultReaction.Trigger, Is.EqualTo("selfAttackHit"));
-            Assert.That(reactive.DefaultReaction.ActionId, Is.EqualTo("counter-orb"));
+            var skill = data.Instructions.Single(item => item.Id == "dive-strike");
+            var actor = new FighterState { InstanceId = "volt-1", Team = "ally", X = 50, Y = 0 };
+            var target = new FighterState { InstanceId = "enemy-1", Team = "enemy", X = 55, Y = 0 };
+            var shape = BattleRules.ResolveLandingShape(skill.Delivery, actor, target, data.Battle);
+
+            Assert.That(skill.Delivery.MinimumStartY, Is.EqualTo(8));
+            Assert.That(shape.Kind, Is.EqualTo("circle"));
+            Assert.That(shape.Y, Is.EqualTo(data.Battle.FloorY + 3));
+            Assert.That(shape.Radius, Is.EqualTo(9));
+            Assert.That(BattleRules.ShapeIntersectsFighter(shape, target, data.Battle.FighterRadius), Is.True);
         }
 
         [Test]

@@ -11,12 +11,12 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 await page.addInitScript(() => {
-  Math.random = () => 1.25 / 0x7fffffff;
+  Math.random = () => 6.25 / 0x7fffffff;
 });
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
-const corrosionCore = page.locator('.shop-item:not(.instruction-shop-item)').filter({ hasText: 'コロージョンコア' });
-await corrosionCore.getByRole('button', { name: /購入/ }).click();
+const corrosionFieldCard = page.locator('.instruction-shop-item').filter({ hasText: '腐食弾を投げ込む' });
+await corrosionFieldCard.getByRole('button', { name: /購入/ }).click();
 
 const firstProgramBlock = page.locator('.workbench > .program-list').first().locator('.sentence-block').first();
 await firstProgramBlock.locator('.word-slot').first().click();

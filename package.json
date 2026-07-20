@@ -20,7 +20,7 @@
     "test:combat": "node scripts/combat-test.mjs",
     "test:miss": "node scripts/miss-test.mjs",
     "test:mobile": "node scripts/mobile-ux-test.mjs",
-    "test:loadout": "node scripts/loadout-test.mjs",
+    "test:skills": "node scripts/skill-shop-test.mjs",
     "test:jump": "node scripts/jump-test.mjs",
     "test:movement": "node scripts/movement-test.mjs",
     "test:projectile": "node scripts/projectile-test.mjs",

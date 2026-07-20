@@ -76,16 +76,6 @@ const shopItems = {
 };
 await page.screenshot({ path: '/tmp/code-monsters-mobile-command-shop.png' });
 
-await page.locator('.mobile-build-dock button').filter({ hasText: '装備' }).click();
-const loadout = await viewportSnapshot();
-const loadoutDetails = {
-  rack: await page.locator('.mobile-panel-loadout .loadout-rack').isVisible(),
-  bays: await page.locator('.mobile-panel-loadout .loadout-bay').count(),
-  options: await page.locator('.mobile-panel-loadout .loadout-options button').count(),
-  labels: await page.locator('.mobile-panel-loadout .loadout-bay-head small').allInnerTexts(),
-};
-await page.screenshot({ path: '/tmp/code-monsters-mobile-command-loadout.png' });
-
 await page.getByRole('button', { name: 'パネルを閉じる' }).click();
 const closed = await viewportSnapshot();
 await browser.close();
@@ -96,7 +86,6 @@ const result = {
   program: { ...program, rows: programRows, title: programPanelTitle },
   reaction: { ...reaction, visible: reactionVisible },
   shop: { ...shop, flow: shopFlow, items: shopItems },
-  loadout: { ...loadout, details: loadoutDetails },
   closed,
   errors,
 };
@@ -114,7 +103,7 @@ if (
   main.dock.bottom !== main.viewport.height
 )
   throw new Error('モバイルの指揮画面が1画面内に収まっていません');
-for (const label of ['通常', '反応', '装備', '購入', '戦闘開始'])
+for (const label of ['通常', '反応', '購入', '戦闘開始'])
   if (!dockLabels.includes(label)) throw new Error(`固定コマンドドックに${label}がありません`);
 if (
   !programPanelTitle.includes('通常作戦') ||
@@ -134,11 +123,4 @@ if (
   shopFlow.scrollHeight > shopFlow.clientHeight + 1
 )
   throw new Error('ショップの重複なし4商品が1画面内に収まっていません');
-if (
-  !loadoutDetails.rack ||
-  loadoutDetails.bays !== 3 ||
-  loadoutDetails.options < 3 ||
-  !['フレーム', 'ウェポン', 'ロジックチップ'].every((label) => loadoutDetails.labels.includes(label))
-)
-  throw new Error('装備シートで3つのハードウェアベイを操作できません');
 if (closed.documentOverflow.y > 0 || errors.length > 0) throw new Error(`モバイルUIエラー: ${errors.join(', ')}`);

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { loadGameData, loadMotionConfig } from '../src/config.ts';
 import { deriveMotionRequirements } from '../src/requirements.ts';
 
-test('volt requirements include its starting chip and mirror encounter motions', async () => {
+test('volt requirements include its authored program and mirror encounter motions', async () => {
   const requirements = deriveMotionRequirements(await loadGameData(), await loadMotionConfig(), 'volt');
 
   assert.deepEqual(requirements.requiredMotionIds, [

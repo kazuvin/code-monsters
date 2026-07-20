@@ -3,7 +3,6 @@ import type {
   ConditionId,
   ConditionKind,
   BattleZoneDefinition,
-  EquipmentDefinition,
   Instruction,
   Rarity,
   ReactionBlock,
@@ -37,6 +36,7 @@ export type BattleConfig = {
   ceilingY: number;
   verticalDisplayRangePercent: number;
   fighterRadius: number;
+  projectileThreatRadius: number;
   knockbackVelocityScale: number;
   initialPositionInset: number;
   teamPositionSpacing: number;
@@ -80,9 +80,7 @@ export type DebugPositionPresetDefinition = {
 
 export type ShopConfig = {
   size: number;
-  equipmentSlots: number[];
   rarityWeights: Record<Rarity, number>;
-  initialPicks: { slot: number; kind: 'equipment' | 'instruction'; id: string }[];
 };
 
 export type EncounterDefinition = {
@@ -90,7 +88,6 @@ export type EncounterDefinition = {
   name: string;
   briefing: string;
   enemyUnitIds: string[];
-  enemyEquipmentIds: string[];
   enemyProgramActionIds: string[];
   enemyReaction: ReactionBlock | null;
   enemyStatScale: number;
@@ -152,7 +149,6 @@ export type GameBalanceData = {
     enemyUnitIds: string[];
     startingActionIds: string[];
     startingConditionIds: ConditionId[];
-    startingEquipmentIds: string[];
   };
   encounters: EncounterDefinition[];
   balanceAnalysis: BalanceAnalysisConfig;
@@ -160,7 +156,6 @@ export type GameBalanceData = {
   conditions: ConditionDefinition[];
   reactionTriggers: ReactionTriggerDefinition[];
   units: UnitDefinition[];
-  equipment: EquipmentDefinition[];
   instructions: Instruction[];
   defaultPrograms: { unitId: string; actionIds: string[] }[];
   defaultReactions: {
@@ -186,7 +181,6 @@ export const TARGET_SELECTORS = GAME_DATA.targetSelectors;
 export const CONDITIONS = GAME_DATA.conditions;
 export const REACTION_TRIGGERS = GAME_DATA.reactionTriggers;
 export const UNITS = GAME_DATA.units;
-export const EQUIPMENT = GAME_DATA.equipment;
 export const INSTRUCTIONS = GAME_DATA.instructions;
 
 export const DEFAULT_PROGRAMS: Record<string, string[]> = Object.fromEntries(

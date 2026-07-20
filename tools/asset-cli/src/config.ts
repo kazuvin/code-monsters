@@ -10,10 +10,8 @@ export async function loadGameData(): Promise<GameData> {
     !Number.isInteger(data.schemaVersion) ||
     !Array.isArray(data.units) ||
     !Array.isArray(data.instructions) ||
-    !Array.isArray(data.equipment) ||
     !Array.isArray(data.encounters) ||
-    !Array.isArray(data.roster?.startingUnitIds) ||
-    !Array.isArray(data.roster?.startingEquipmentIds)
+    !Array.isArray(data.roster?.startingUnitIds)
   ) {
     throw new Error('game-data/game-balance.json does not match the asset CLI contract');
   }

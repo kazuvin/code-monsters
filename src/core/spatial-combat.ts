@@ -89,6 +89,9 @@ export function createProjectile(
     speed: ballistic ? Math.hypot(vx, vy) : delivery.speed,
     radius: delivery.radius,
     remainingSeconds: ballistic ? delivery.flightSeconds + BATTLE_CONFIG.tickSeconds * 3 : delivery.lifetimeSeconds,
+    minimumTravelDistance: ballistic ? 0 : delivery.minimumTravelDistance,
+    distanceTraveled: 0,
+    threatenedFighterIds: [],
     homing: ballistic ? false : delivery.homing,
     turnRateDegrees: ballistic ? 0 : (delivery.turnRateDegrees ?? 0),
     trajectory: ballistic ? 'ballistic' : 'linear',
@@ -114,13 +117,16 @@ export function advanceProjectile(
     vy = Math.sin(nextAngle) * projectile.speed;
   }
   const gravity = BATTLE_CONFIG.gravityPerSecond * projectile.gravityScale;
+  const nextX = projectile.x + vx * dt;
+  const nextY = projectile.y + vy * dt - 0.5 * gravity * dt * dt;
   return {
     ...projectile,
-    x: projectile.x + vx * dt,
-    y: projectile.y + vy * dt - 0.5 * gravity * dt * dt,
+    x: nextX,
+    y: nextY,
     vx,
     vy: vy - gravity * dt,
     remainingSeconds: Math.max(0, projectile.remainingSeconds - dt),
+    distanceTraveled: projectile.distanceTraveled + Math.hypot(nextX - projectile.x, nextY - projectile.y),
   };
 }
 
@@ -162,8 +168,14 @@ export function projectileIntersectsFighter(
   current: SpatialProjectile,
   fighter: Fighter,
 ): boolean {
+  if (current.distanceTraveled < current.minimumTravelDistance) return false;
+  const segmentDistance = Math.hypot(current.x - previous.x, current.y - previous.y);
+  const distanceUntilArmed = Math.max(0, current.minimumTravelDistance - previous.distanceTraveled);
+  const armedProgress = segmentDistance <= Number.EPSILON ? 0 : Math.min(1, distanceUntilArmed / segmentDistance);
+  const armedX = previous.x + (current.x - previous.x) * armedProgress;
+  const armedY = previous.y + (current.y - previous.y) * armedProgress;
   return (
-    pointSegmentDistance(fighter.x, fighter.y, previous.x, previous.y, current.x, current.y) <=
+    pointSegmentDistance(fighter.x, fighter.y, armedX, armedY, current.x, current.y) <=
     previous.radius + BATTLE_CONFIG.fighterRadius
   );
 }

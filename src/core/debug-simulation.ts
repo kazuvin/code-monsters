@@ -128,6 +128,7 @@ const baseFighterState = {
   abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
   instructionCooldowns: {},
   pendingAction: null,
+  pendingLandingAttack: null,
   reactionCooldown: 0,
   statuses: [],
 };
@@ -235,7 +236,6 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
   const actorInventory: UnitInventoryItem = {
     ...actorDefinition,
     inventoryId: actorId,
-    equipmentIds: [...ROSTER_CONFIG.startingEquipmentIds],
     program: [{ actionId: instruction.id, conditionId: input.conditionId, targetId: targetSelectorId }],
     reaction: null,
   };

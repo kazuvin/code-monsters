@@ -68,6 +68,8 @@ namespace CodeMonsters.Core
         public string Trajectory = "linear";
         public string Impact = "fighter";
         public double GravityScale;
+        public double MinimumTravelDistance;
+        public double DistanceTraveled;
     }
 
     public static class BattleRules
@@ -129,6 +131,27 @@ namespace CodeMonsters.Core
             };
         }
 
+        public static ResolvedAttackShape ResolveLandingShape(
+            SpatialDeliveryDefinition delivery,
+            FighterState actor,
+            FighterState target,
+            BattleConfig battle
+        )
+        {
+            if (delivery == null || delivery.Kind != "landing" || delivery.Shape == null)
+                return null;
+            var direction = DirectionToward(actor, target);
+            return new ResolvedAttackShape
+            {
+                Kind = delivery.Shape.Kind,
+                X = actor.X + direction * delivery.Shape.OffsetX,
+                Y = battle.FloorY + delivery.Shape.OffsetY,
+                Radius = delivery.Shape.Radius ?? 0,
+                Width = delivery.Shape.Width ?? 0,
+                Height = delivery.Shape.Height,
+            };
+        }
+
         public static bool ShapeIntersectsFighter(
             ResolvedAttackShape shape,
             FighterState fighter,
@@ -186,6 +209,8 @@ namespace CodeMonsters.Core
                 Trajectory = ballistic ? "ballistic" : "linear",
                 Impact = ballistic ? "floor" : "fighter",
                 GravityScale = gravityScale,
+                MinimumTravelDistance = ballistic ? 0 : delivery.MinimumTravelDistance ?? 0,
+                DistanceTraveled = 0,
             };
         }
 
@@ -209,10 +234,12 @@ namespace CodeMonsters.Core
                 vy = Math.Sin(nextAngle) * projectile.Speed;
             }
             var gravity = battle.GravityPerSecond * projectile.GravityScale;
+            var x = projectile.X + vx * dt;
+            var y = projectile.Y + vy * dt - 0.5 * gravity * dt * dt;
             return new ProjectileState
             {
-                X = projectile.X + vx * dt,
-                Y = projectile.Y + vy * dt - 0.5 * gravity * dt * dt,
+                X = x,
+                Y = y,
                 VX = vx,
                 VY = vy - gravity * dt,
                 Speed = projectile.Speed,
@@ -224,6 +251,9 @@ namespace CodeMonsters.Core
                 Trajectory = projectile.Trajectory,
                 Impact = projectile.Impact,
                 GravityScale = projectile.GravityScale,
+                MinimumTravelDistance = projectile.MinimumTravelDistance,
+                DistanceTraveled = projectile.DistanceTraveled
+                    + Math.Sqrt(Math.Pow(x - projectile.X, 2) + Math.Pow(y - projectile.Y, 2)),
             };
         }
 
@@ -260,7 +290,18 @@ namespace CodeMonsters.Core
             double fighterRadius
         )
         {
-            return PointSegmentDistance(fighter.X, fighter.Y, previous.X, previous.Y, next.X, next.Y)
+            if (next.DistanceTraveled < next.MinimumTravelDistance)
+                return false;
+            var fromX = previous.X;
+            var fromY = previous.Y;
+            var segmentDistance = next.DistanceTraveled - previous.DistanceTraveled;
+            if (previous.DistanceTraveled < next.MinimumTravelDistance && segmentDistance > double.Epsilon)
+            {
+                var progress = (next.MinimumTravelDistance - previous.DistanceTraveled) / segmentDistance;
+                fromX = previous.X + (next.X - previous.X) * progress;
+                fromY = previous.Y + (next.Y - previous.Y) * progress;
+            }
+            return PointSegmentDistance(fighter.X, fighter.Y, fromX, fromY, next.X, next.Y)
                 <= next.Radius + fighterRadius;
         }
 

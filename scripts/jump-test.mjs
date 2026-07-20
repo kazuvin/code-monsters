@@ -11,7 +11,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 await page.addInitScript(() => {
-  Math.random = () => 8.25 / 0x7fffffff;
+  Math.random = () => 9.25 / 0x7fffffff;
 });
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 

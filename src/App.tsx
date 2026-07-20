@@ -4,7 +4,6 @@ import {
   ArrowUp,
   BookOpen,
   Coins,
-  Cpu,
   Download,
   FlaskConical,
   Lock,
@@ -16,7 +15,6 @@ import {
   ShoppingCart,
   Sparkles,
   Swords,
-  Shield,
   X,
   Zap,
 } from 'lucide-react';
@@ -25,14 +23,7 @@ import { Catalog } from './Catalog';
 import { DebugRoom } from './DebugRoom';
 import { planBattleFrame, type BattleDamagePayload, type BattleStep, type DecisionTrace } from './core/battle-engine';
 import { summarizeDecisions, type BattleReplay } from './core/replay';
-import {
-  createBattleFighters,
-  createInventoryUnit,
-  equipmentActionIds,
-  equipmentById,
-  equipInventoryUnit,
-  unitById,
-} from './core/roster';
+import { createBattleFighters, createInventoryUnit, unitById } from './core/roster';
 import { activeStatusDetails, statusById, statusCardClasses, statusDamagePerSecond } from './core/statuses';
 import {
   conditionById,
@@ -44,7 +35,6 @@ import {
 import { createShop, type ShopItem } from './core/shop';
 import {
   BATTLE_CONFIG,
-  EQUIPMENT,
   ECONOMY_CONFIG,
   ENCOUNTERS,
   GAME_SCHEMA_VERSION,
@@ -55,8 +45,6 @@ import type {
   BattleFlash,
   BattleZoneInstance,
   ConditionId,
-  EquipmentDefinition,
-  EquipmentSlot,
   Fighter,
   Instruction,
   LogItem,
@@ -71,7 +59,7 @@ import type {
 
 type Phase = 'build' | 'battle' | 'result';
 type AppView = 'game' | 'catalog' | 'debug';
-type MobileBuildPanel = 'program' | 'reaction' | 'loadout' | 'shop' | null;
+type MobileBuildPanel = 'program' | 'reaction' | 'shop' | null;
 type EditingSlot = { scope: 'program' | 'reaction'; index: number; field: 'condition' | 'action' } | null;
 type GaugeTelemetry = { totalSeconds: number; emptySeconds: number; fullSeconds: number };
 
@@ -82,12 +70,6 @@ const attackTypeLabels: Record<UnitDefinition['attackType'], string> = {
   blunt: '打撃',
   sniper: '狙撃',
 };
-const equipmentSlotLabels: Record<EquipmentSlot, string> = {
-  frame: 'フレーム',
-  weapon: 'ウェポン',
-  chip: 'ロジックチップ',
-};
-const equipmentSlots: EquipmentSlot[] = ['frame', 'weapon', 'chip'];
 const actionLabel = (id: string) => {
   if (id.startsWith('status:')) {
     const [, statusId] = id.split(':');
@@ -205,12 +187,11 @@ export function App() {
   const [team, setTeam] = useState<UnitInventoryItem[]>(initialUnits);
   const [selected, setSelected] = useState(0);
   const [ownedActions, setOwnedActions] = useState<string[]>([...ROSTER_CONFIG.startingActionIds]);
-  const [ownedEquipment, setOwnedEquipment] = useState<string[]>([...ROSTER_CONFIG.startingEquipmentIds]);
   const [lastPurchasedAction, setLastPurchasedAction] = useState<string | null>(null);
   const [ownedConditions, setOwnedConditions] = useState<ConditionId[]>([...ROSTER_CONFIG.startingConditionIds]);
   const [editingSlot, setEditingSlot] = useState<EditingSlot>({ scope: 'program', index: 0, field: 'condition' });
   const [, setShopSeed] = useState(initialShopSeed);
-  const [shop, setShop] = useState(() => createShop(initialShopSeed, [], ROSTER_CONFIG.startingEquipmentIds));
+  const [shop, setShop] = useState(() => createShop(initialShopSeed));
   const [fighters, setFighters] = useState(() => createBattleFighters(initialUnits, ENCOUNTERS[0]));
   const [zones, setZones] = useState<BattleZoneInstance[]>([]);
   const zonesRef = useRef<BattleZoneInstance[]>([]);
@@ -238,8 +219,7 @@ export function App() {
   const selectedUnit = team[Math.min(selected, team.length - 1)];
   const currentProgram = selectedUnit?.program ?? [];
   const currentReaction = selectedUnit?.reaction ?? null;
-  const equippedActionIds = selectedUnit ? equipmentActionIds(selectedUnit.equipmentIds) : [];
-  const availableActions = [...new Set([...ownedActions, ...equippedActionIds])];
+  const availableActions = ownedActions;
   const availableConditions = [
     ...new Set([
       ...ownedConditions,
@@ -314,7 +294,7 @@ export function App() {
     setCoins((current) => current - ECONOMY_CONFIG.refreshCost);
     setShopSeed((currentSeed) => {
       const nextSeed = currentSeed + 1;
-      setShop((current) => createShop(nextSeed, current, ownedEquipment));
+      setShop((current) => createShop(nextSeed, current));
       return nextSeed;
     });
   };
@@ -322,52 +302,20 @@ export function App() {
   const toggleLock = (key: string) =>
     setShop((current) => current.map((item) => (item.key === key ? { ...item, locked: !item.locked } : item)));
 
-  const equipWithAvailableActions = (unit: UnitInventoryItem, equipmentId: string) => {
-    const equipped = equipInventoryUnit(unit, equipmentId);
-    const allowedActions = new Set([...ownedActions, ...equipmentActionIds(equipped.equipmentIds)]);
-    const program = equipped.program.filter((block) => allowedActions.has(block.actionId));
-    return {
-      ...equipped,
-      program:
-        program.length > 0
-          ? program
-          : [{ actionId: 'pulse-swipe', conditionId: 'targetNear12', targetId: 'nearestEnemy' }],
-      reaction: equipped.reaction && allowedActions.has(equipped.reaction.actionId) ? equipped.reaction : null,
-    } satisfies UnitInventoryItem;
-  };
-
   const buy = (item: ShopItem) => {
-    if (item.kind === 'equipment') {
-      const equipment = equipmentById.get(item.id)!;
-      if (ownedEquipment.includes(equipment.id)) {
-        setToast(`${equipment.name}は取得済みです`);
-        return;
-      }
-      if (coins < equipment.price) {
-        setToast('コインが足りません');
-        return;
-      }
-      setCoins((current) => current - equipment.price);
-      setOwnedEquipment((current) => [...current, equipment.id]);
-      setTeam((units) =>
-        units.map((unit, index) => (index === selected ? equipWithAvailableActions(unit, equipment.id) : unit)),
-      );
-      setToast(`${equipment.name}を取得して装備しました`);
-    } else {
-      const instruction = instructionById.get(item.id)!;
-      if (coins < instruction.price) {
-        setToast('コインが足りません');
-        return;
-      }
-      setCoins((current) => current - instruction.price);
-      setOwnedActions((current) => (current.includes(instruction.id) ? current : [...current, instruction.id]));
-      setLastPurchasedAction(instruction.id);
-      if (!instruction.reactionOnly)
-        setOwnedConditions((current) =>
-          current.includes(instruction.condition) ? current : [...current, instruction.condition],
-        );
-      setToast(`${instruction.title}を取得しました`);
+    const instruction = instructionById.get(item.id)!;
+    if (coins < instruction.price) {
+      setToast('コインが足りません');
+      return;
     }
+    setCoins((current) => current - instruction.price);
+    setOwnedActions((current) => (current.includes(instruction.id) ? current : [...current, instruction.id]));
+    setLastPurchasedAction(instruction.id);
+    if (!instruction.reactionOnly)
+      setOwnedConditions((current) =>
+        current.includes(instruction.condition) ? current : [...current, instruction.condition],
+      );
+    setToast(`${instruction.title}を取得しました`);
     setShop((current) => current.filter((candidate) => candidate.key !== item.key));
   };
 
@@ -388,7 +336,13 @@ export function App() {
       setToast(`指示容量は${selectedUnit.programLimit}です`);
       return;
     }
-    const action = instructionById.get(actionId);
+    const requested = instructionById.get(actionId);
+    const action =
+      requested && !requested.reactionOnly
+        ? requested
+        : availableActions
+            .map((id) => instructionById.get(id))
+            .find((candidate) => candidate && !candidate.reactionOnly);
     if (!action) {
       setToast('追加できる指示がありません');
       return;
@@ -409,18 +363,6 @@ export function App() {
     if (currentReaction?.fixedReaction) return;
     updateSelectedReaction(() => null);
     setEditingSlot({ scope: 'program', index: 0, field: 'condition' });
-  };
-
-  const equipOwnedItem = (equipmentId: string) => {
-    if (!ownedEquipment.includes(equipmentId)) return;
-    setTeam((units) =>
-      units.map((unit, index) => {
-        if (index !== selected) return unit;
-        return equipWithAvailableActions(unit, equipmentId);
-      }),
-    );
-    setEditingSlot({ scope: 'program', index: 0, field: 'condition' });
-    setToast(`${equipmentById.get(equipmentId)?.name ?? equipmentId}を装備しました`);
   };
 
   const replaceFocusedSlot = (id: string) => {
@@ -518,7 +460,7 @@ export function App() {
     setShopSeed((currentSeed) => {
       const nextSeed = currentSeed + 1;
       setShop((current) => {
-        return createShop(nextSeed, current, ownedEquipment);
+        return createShop(nextSeed, current);
       });
       return nextSeed;
     });
@@ -535,12 +477,11 @@ export function App() {
       setTeam(freshTeam);
       setSelected(0);
       setOwnedActions([...ROSTER_CONFIG.startingActionIds]);
-      setOwnedEquipment([...ROSTER_CONFIG.startingEquipmentIds]);
       setOwnedConditions([...ROSTER_CONFIG.startingConditionIds]);
       setLastPurchasedAction(null);
       const freshShopSeed = randomShopSeed();
       setShopSeed(freshShopSeed);
-      setShop(createShop(freshShopSeed, [], ROSTER_CONFIG.startingEquipmentIds));
+      setShop(createShop(freshShopSeed));
       prepareBuild(ENCOUNTERS[0], freshTeam);
       return;
     }
@@ -791,9 +732,7 @@ export function App() {
                     ? '通常作戦'
                     : mobileBuildPanel === 'reaction'
                       ? 'リアクション'
-                      : mobileBuildPanel === 'loadout'
-                        ? '装備構成'
-                        : 'ショップ'}
+                      : 'ショップ'}
                 </b>
               </div>
               <button aria-label="パネルを閉じる" onClick={() => setMobileBuildPanel(null)}>
@@ -846,7 +785,7 @@ export function App() {
             <div className="squad-capacity duel-capacity is-complete">
               <span>ACTIVE DUELIST</span>
               <b>1 / 1</b>
-              <small>1vs1専用。勝敗は装備とプログラムで変える</small>
+              <small>1vs1専用。勝敗はスキルとプログラムで変える</small>
             </div>
             <div className="unit-meta">
               <div>
@@ -875,48 +814,6 @@ export function App() {
                 </span>
               </div>
             </div>
-            <section className="loadout-rack" aria-label="装備構成">
-              <header>
-                <div>
-                  <span className="step-no">02</span>
-                  <h2>装備</h2>
-                </div>
-                <small>3 BAYS / ONE EACH</small>
-              </header>
-              <div className="loadout-grid">
-                {equipmentSlots.map((slot) => {
-                  const equippedId = selectedUnit.equipmentIds.find((id) => equipmentById.get(id)?.slot === slot);
-                  const equipped = equippedId ? equipmentById.get(equippedId) : undefined;
-                  const choices = EQUIPMENT.filter(
-                    (equipment) => equipment.slot === slot && ownedEquipment.includes(equipment.id),
-                  );
-                  return (
-                    <article className={`loadout-bay slot-${slot}`} key={slot}>
-                      <div className="loadout-bay-head">
-                        {slot === 'chip' ? <Cpu size={15} /> : <Shield size={15} />}
-                        <small>{equipmentSlotLabels[slot]}</small>
-                        <b>{equipped?.code}</b>
-                      </div>
-                      <strong>{equipped?.name ?? '未装備'}</strong>
-                      <p>{equipped?.description}</p>
-                      <em>{equipped?.tradeoff}</em>
-                      <div className="loadout-options">
-                        {choices.map((equipment) => (
-                          <button
-                            className={equipment.id === equippedId ? 'active' : ''}
-                            aria-pressed={equipment.id === equippedId}
-                            key={equipment.id}
-                            onClick={() => equipOwnedItem(equipment.id)}
-                          >
-                            {equipment.name}
-                          </button>
-                        ))}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
             <section className="mobile-build-summary" aria-label="現在の作戦概要">
               <header>
                 <div>
@@ -1141,58 +1038,31 @@ export function App() {
             </div>
             <div className="shop-grid">
               {shop.map((item) => {
-                const data: EquipmentDefinition | Instruction =
-                  item.kind === 'equipment' ? equipmentById.get(item.id)! : instructionById.get(item.id)!;
-                const equipment = item.kind === 'equipment' ? (data as EquipmentDefinition) : null;
-                const instruction = item.kind === 'instruction' ? (data as Instruction) : null;
-                const label = equipment ? equipment.name : instruction!.title;
+                const instruction = instructionById.get(item.id)!;
                 return (
-                  <article
-                    className={`shop-item rarity-${data.rarity} ${instruction ? 'instruction-shop-item' : ''}`}
-                    key={item.key}
-                  >
+                  <article className={`shop-item rarity-${instruction.rarity} instruction-shop-item`} key={item.key}>
                     <button className="lock" aria-label="ロック" onClick={() => toggleLock(item.key)}>
                       {item.locked ? <Lock /> : <LockOpen />}
                     </button>
                     <small>
-                      {rarityLabels[data.rarity]} /{' '}
-                      {equipment ? equipmentSlotLabels[equipment.slot] : actionKindLabels[instruction!.action]}
+                      {rarityLabels[instruction.rarity]} / {actionKindLabels[instruction.action]}
                     </small>
-                    <strong>{label}</strong>
-                    {instruction ? (
-                      <>
-                        <p className="shop-flavor">{instruction.flavor}</p>
-                        <div className="shop-metrics">
-                          {instructionMetrics(instruction, selectedUnit).map((metric) => (
-                            <span key={metric.label}>
-                              <small>{metric.label}</small>
-                              <b>{metric.value}</b>
-                            </span>
-                          ))}
-                        </div>
-                      </>
-                    ) : equipment ? (
-                      <>
-                        <p className="shop-flavor">{equipment.description}</p>
-                        <div className="equipment-tradeoff">
-                          <small>TRADE-OFF</small>
-                          <b>{equipment.tradeoff}</b>
-                        </div>
-                        {equipment.grantsActionIds.length > 0 && (
-                          <div className="equipment-unlocks">
-                            {equipment.grantsActionIds.map((id) => (
-                              <span key={id}>{actionLabel(id)}</span>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    ) : null}
+                    <strong>{instruction.title}</strong>
+                    <p className="shop-flavor">{instruction.flavor}</p>
+                    <div className="shop-metrics">
+                      {instructionMetrics(instruction, selectedUnit).map((metric) => (
+                        <span key={metric.label}>
+                          <small>{metric.label}</small>
+                          <b>{metric.value}</b>
+                        </span>
+                      ))}
+                    </div>
                     <button className="buy" onClick={() => buy(item)}>
                       <ShoppingCart size={15} />
                       <span>購入</span>
                       <b>
                         <Coins size={13} />
-                        {data.price}
+                        {instruction.price}
                       </b>
                     </button>
                   </article>
@@ -1220,14 +1090,6 @@ export function App() {
             >
               <Zap size={16} />
               <span>反応</span>
-            </button>
-            <button
-              className={mobileBuildPanel === 'loadout' ? 'active' : ''}
-              aria-expanded={mobileBuildPanel === 'loadout'}
-              onClick={() => toggleMobileBuildPanel('loadout')}
-            >
-              <Shield size={16} />
-              <span>装備</span>
             </button>
             <button
               className={mobileBuildPanel === 'shop' ? 'active' : ''}
@@ -1432,7 +1294,7 @@ export function App() {
                     ? '5つの1vs1プロトコルをすべて突破しました'
                     : winner === '勝利'
                       ? `${currentEncounter.name}を突破。報酬 ${currentEncounter.reward} コインを獲得します`
-                      : 'このラウンドのまま、装備とプログラムを調整できます'}
+                      : 'このラウンドのまま、スキルとプログラムを調整できます'}
                 </p>
                 <div className="result-summary">
                   <span>
@@ -1489,7 +1351,7 @@ export function App() {
                     <Download size={15} /> リプレイJSON
                   </button>
                   <button onClick={advanceRun}>
-                    {runComplete ? '新しいランへ' : winner === '勝利' ? '次のデュエルへ' : '装備と作戦を見直す'}
+                    {runComplete ? '新しいランへ' : winner === '勝利' ? '次のデュエルへ' : 'スキルと作戦を見直す'}
                   </button>
                 </div>
               </div>

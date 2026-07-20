@@ -31,7 +31,7 @@
       "fps": 12,
       "loop": false,
       "fallbackMotionId": "idle",
-      "generationHints": "Short recoil without changing identity or losing equipment."
+      "generationHints": "Short recoil without changing identity or losing integrated body parts."
     },
     {
       "motionId": "death",
@@ -103,7 +103,7 @@
       "fps": 10,
       "loop": false,
       "fallbackMotionId": "idle",
-      "generationHints": "Operate repair equipment; runtime adds healing effects."
+      "generationHints": "Operate an integrated repair system; runtime adds healing effects."
     },
     {
       "motionId": "buff",

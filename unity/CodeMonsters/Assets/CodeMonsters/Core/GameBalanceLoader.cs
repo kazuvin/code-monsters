@@ -8,7 +8,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 21;
+        public const int SupportedSchemaVersion = 22;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -57,6 +57,7 @@ namespace CodeMonsters.Core
                 || data.Battle.VerticalDisplayRangePercent <= 0
                 || data.Battle.VerticalDisplayRangePercent > 100
                 || data.Battle.FighterRadius <= 0
+                || data.Battle.ProjectileThreatRadius <= data.Battle.FighterRadius
                 || data.Battle.KnockbackVelocityScale <= 0
                 || data.Battle.HorizontalDragPerSecond < 0
                 || data.Battle.GroundFrictionPerSecond < 0
@@ -66,7 +67,6 @@ namespace CodeMonsters.Core
 
             var unitIds = UniqueIds(data.Units, unit => unit.Id, "unit");
             var instructionIds = UniqueIds(data.Instructions, instruction => instruction.Id, "instruction");
-            var equipmentIds = UniqueIds(data.Equipment, equipment => equipment.Id, "equipment");
             var conditionIds = UniqueIds(data.Conditions, condition => condition.Id, "condition");
             var statusIds = UniqueIds(data.Statuses, status => status.Id, "status");
             var battleZoneIds = UniqueIds(data.BattleZones, zone => zone.Id, "battle zone");
@@ -77,7 +77,6 @@ namespace CodeMonsters.Core
             ValidateBattleZones(data.BattleZones, statusIds);
             ValidateConditions(data.Conditions, statusIds);
             ValidateInstructions(data.Instructions, instructionIds, conditionIds, statusIds, battleZoneIds);
-            ValidateEquipment(data.Equipment, instructionIds);
             ValidateSynergies(data, unitIds);
 
             foreach (var encounter in data.Encounters)
@@ -89,13 +88,6 @@ namespace CodeMonsters.Core
                 foreach (var unitId in encounter.EnemyUnitIds)
                     if (!unitIds.Contains(unitId))
                         throw new InvalidDataException($"Encounter {encounter.Id} references unknown unit {unitId}");
-                if (encounter.EnemyEquipmentIds.Count != 3)
-                    throw new InvalidDataException($"Encounter {encounter.Id} must define three equipment bays");
-                foreach (var equipmentId in encounter.EnemyEquipmentIds)
-                    if (!equipmentIds.Contains(equipmentId))
-                        throw new InvalidDataException(
-                            $"Encounter {encounter.Id} references unknown equipment {equipmentId}"
-                        );
                 if (encounter.EnemyProgramActionIds.Count == 0)
                     throw new InvalidDataException($"Encounter {encounter.Id} must expose an enemy program");
                 foreach (var actionId in encounter.EnemyProgramActionIds)
@@ -105,34 +97,6 @@ namespace CodeMonsters.Core
                         );
                 if (encounter.EnemyReaction != null && !instructionIds.Contains(encounter.EnemyReaction.ActionId))
                     throw new InvalidDataException($"Encounter {encounter.Id} references unknown reaction action");
-            }
-        }
-
-        private static void ValidateEquipment(
-            IEnumerable<EquipmentDefinition> equipment,
-            HashSet<string> instructionIds
-        )
-        {
-            var supportedSlots = new HashSet<string> { "frame", "weapon", "chip" };
-            foreach (var item in equipment)
-            {
-                if (
-                    !supportedSlots.Contains(item.Slot)
-                    || string.IsNullOrEmpty(item.Name)
-                    || string.IsNullOrEmpty(item.Tradeoff)
-                    || item.Price < 0
-                )
-                    throw new InvalidDataException($"Equipment {item.Id} has an invalid slot or authoring data");
-                foreach (var actionId in item.GrantsActionIds)
-                    if (!instructionIds.Contains(actionId))
-                        throw new InvalidDataException($"Equipment {item.Id} references unknown action {actionId}");
-                if (
-                    item.DefaultReaction != null
-                    && !item.GrantsActionIds.Contains(item.DefaultReaction.ActionId)
-                )
-                    throw new InvalidDataException(
-                        $"Equipment {item.Id} default reaction must be granted by the same item"
-                    );
             }
         }
 
@@ -434,9 +398,24 @@ namespace CodeMonsters.Core
                     || delivery.Radius.Value <= 0
                     || !delivery.LifetimeSeconds.HasValue
                     || delivery.LifetimeSeconds.Value <= 0
+                    || !delivery.MinimumTravelDistance.HasValue
+                    || delivery.MinimumTravelDistance.Value < 0
                     || (delivery.Homing && (!delivery.TurnRateDegrees.HasValue || delivery.TurnRateDegrees.Value <= 0))
                 )
                     throw new InvalidDataException($"Instruction {instruction.Id} projectile delivery is incomplete");
+                return;
+            }
+            if (delivery.Kind == "landing")
+            {
+                if (
+                    !delivery.MinimumStartY.HasValue
+                    || delivery.MinimumStartY.Value <= 0
+                    || delivery.Shape == null
+                    || delivery.Shape.Kind != "circle"
+                    || !delivery.Shape.Radius.HasValue
+                    || delivery.Shape.Radius.Value <= 0
+                )
+                    throw new InvalidDataException($"Instruction {instruction.Id} landing delivery is incomplete");
                 return;
             }
             if (delivery.Kind == "lob")

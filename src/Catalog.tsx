@@ -1,24 +1,14 @@
 import { Search } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { analyzeBalance } from './core/balance';
-import {
-  BATTLE_CONFIG,
-  CONDITIONS,
-  EQUIPMENT,
-  GAME_DATA,
-  INSTRUCTIONS,
-  STATUSES,
-  TARGET_SELECTORS,
-  UNITS,
-} from './data';
-import type { EquipmentDefinition, Instruction, InstructionEffect, UnitDefinition } from './types';
+import { BATTLE_CONFIG, CONDITIONS, GAME_DATA, INSTRUCTIONS, STATUSES, TARGET_SELECTORS, UNITS } from './data';
+import type { Instruction, InstructionEffect, UnitDefinition } from './types';
 
-type CatalogKind = 'all' | 'unit' | 'equipment' | 'condition' | 'target' | 'instruction';
+type CatalogKind = 'all' | 'unit' | 'condition' | 'target' | 'instruction';
 
 const kindLabels: Record<CatalogKind, string> = {
   all: 'すべて',
   unit: 'ユニット',
-  equipment: '装備',
   condition: '条件',
   target: '対象',
   instruction: 'スキル',
@@ -120,9 +110,8 @@ export function Catalog() {
   const query = search.trim().toLocaleLowerCase('ja');
   const visible = (candidate: Exclude<CatalogKind, 'all'>) => kind === 'all' || kind === candidate;
   const counts = {
-    all: UNITS.length + EQUIPMENT.length + CONDITIONS.length + TARGET_SELECTORS.length + INSTRUCTIONS.length,
+    all: UNITS.length + CONDITIONS.length + TARGET_SELECTORS.length + INSTRUCTIONS.length,
     unit: UNITS.length,
-    equipment: EQUIPMENT.length,
     condition: CONDITIONS.length,
     target: TARGET_SELECTORS.length,
     instruction: INSTRUCTIONS.length,
@@ -132,17 +121,6 @@ export function Catalog() {
     () => ({
       units: UNITS.filter((unit) =>
         searchable(query, [unit.id, unit.name, unit.code, unit.role, unit.rarity, unit.attackType]),
-      ),
-      equipment: EQUIPMENT.filter((equipment) =>
-        searchable(query, [
-          equipment.id,
-          equipment.name,
-          equipment.code,
-          equipment.slot,
-          equipment.description,
-          equipment.tradeoff,
-          equipment.rarity,
-        ]),
       ),
       conditions: CONDITIONS.filter((condition) =>
         searchable(query, [condition.id, condition.label, condition.flavor, condition.effect]),
@@ -169,7 +147,6 @@ export function Catalog() {
   );
   const visibleCount =
     (visible('unit') ? filtered.units.length : 0) +
-    (visible('equipment') ? filtered.equipment.length : 0) +
     (visible('condition') ? filtered.conditions.length : 0) +
     (visible('target') ? filtered.targets.length : 0) +
     (visible('instruction') ? filtered.instructions.length : 0);
@@ -182,7 +159,7 @@ export function Catalog() {
           <h1>
             戦力を、<em>同じ物差し</em>で見る。
           </h1>
-          <p>3体の機体・装備・条件・スキルを、実際の1vs1ゲームデータから一覧化した調整用カタログです。</p>
+          <p>3体の機体・条件・スキルを、実際の1vs1ゲームデータから一覧化した調整用カタログです。</p>
         </div>
         <div className="catalog-economy" aria-label="コストゲージ設定">
           <div>
@@ -303,59 +280,12 @@ export function Catalog() {
                     <span>{unit.id === 'volt' ? 'PLAYER' : 'RIVAL'}</span>
                   </div>
                   <div className="catalog-trait">
-                    <small>LOADOUT POLICY</small>
-                    <b>固有能力なし / 装備とプログラムで構成</b>
+                    <small>BUILD POLICY</small>
+                    <b>基礎能力固定 / スキルとプログラムで構成</b>
                   </div>
                 </article>
               );
             })}
-          </CatalogSection>
-        )}
-
-        {visible('equipment') && filtered.equipment.length > 0 && (
-          <CatalogSection id="equipment" label="装備" count={filtered.equipment.length} wide>
-            {filtered.equipment.map((equipment: EquipmentDefinition) => (
-              <article
-                className={`catalog-card catalog-skill-card equipment-catalog-card slot-${equipment.slot}`}
-                data-catalog-id={equipment.id}
-                key={equipment.id}
-              >
-                <header>
-                  <span>
-                    {equipment.slot.toUpperCase()} / {rarityLabels[equipment.rarity]}
-                  </span>
-                  <code>{equipment.code}</code>
-                </header>
-                <div className="catalog-skill-title">
-                  <div>
-                    <h3>{equipment.name}</h3>
-                    <p>{equipment.description}</p>
-                  </div>
-                  <strong>
-                    <small>PRICE</small>
-                    {equipment.price}
-                  </strong>
-                </div>
-                <div className="equipment-tradeoff">
-                  <small>TRADE-OFF</small>
-                  <b>{equipment.tradeoff}</b>
-                </div>
-                {equipment.grantsActionIds.length > 0 && (
-                  <div className="catalog-compatible">
-                    <small>解放する行動</small>
-                    <div>
-                      {equipment.grantsActionIds.map((id) => (
-                        <span key={id}>{instructionById.get(id)?.title ?? id}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <footer>
-                  <span>{equipment.id}</span>
-                  {equipment.defaultReaction && <span>リアクション自動設定</span>}
-                </footer>
-              </article>
-            ))}
           </CatalogSection>
         )}
 
@@ -467,12 +397,14 @@ export function Catalog() {
                         <dt>空間判定</dt>
                         <dd>
                           {instruction.delivery.kind === 'projectile'
-                            ? `${instruction.delivery.homing ? '追尾弾' : '直進弾'} / 速度${instruction.delivery.speed} / 半径${instruction.delivery.radius}`
+                            ? `${instruction.delivery.homing ? '追尾弾' : '直進弾'} / 速度${instruction.delivery.speed} / 半径${instruction.delivery.radius} / 有効化距離 ${instruction.delivery.minimumTravelDistance}m`
                             : instruction.delivery.kind === 'lob'
                               ? `放物投擲 / 滞空${instruction.delivery.flightSeconds}秒 / 地面着弾`
-                              : instruction.delivery.shape.kind === 'circle'
-                                ? `円 / 半径${instruction.delivery.shape.radius}`
-                                : `矩形 / 幅${instruction.delivery.shape.width} / 高さ${instruction.delivery.shape.height ?? '無限'}`}
+                              : instruction.delivery.kind === 'landing'
+                                ? `着地攻撃 / 必要高度 ${instruction.delivery.minimumStartY}m / 円半径${instruction.delivery.shape.radius}`
+                                : instruction.delivery.shape.kind === 'circle'
+                                  ? `円 / 半径${instruction.delivery.shape.radius}`
+                                  : `矩形 / 幅${instruction.delivery.shape.width} / 高さ${instruction.delivery.shape.height ?? '無限'}`}
                         </dd>
                       </div>
                     )}

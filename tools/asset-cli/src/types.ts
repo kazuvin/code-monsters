@@ -14,11 +14,6 @@ export type InstructionDefinition = {
 };
 
 export type ReactionDefinition = { actionId: string | null };
-export type EquipmentDefinition = {
-  id: string;
-  grantsActionIds: string[];
-  defaultReaction: ReactionDefinition | null;
-};
 export type EncounterDefinition = {
   enemyUnitIds: string[];
   enemyProgramActionIds: string[];
@@ -29,8 +24,7 @@ export type GameData = {
   schemaVersion: number;
   units: UnitDefinition[];
   instructions: InstructionDefinition[];
-  equipment: EquipmentDefinition[];
-  roster: { startingUnitIds: string[]; startingEquipmentIds: string[] };
+  roster: { startingUnitIds: string[] };
   encounters: EncounterDefinition[];
   defaultPrograms: { unitId: string; actionIds: string[] }[];
   defaultReactions: ({ unitId: string } & ReactionDefinition)[];

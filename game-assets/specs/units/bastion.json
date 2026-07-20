@@ -9,7 +9,7 @@
     "layered frontal chest plate",
     "compact rear stabilizer"
   ],
-  "weapon": "Integrated impact ram on the leading forearm; equipment effects remain runtime overlays.",
+  "weapon": "Integrated impact ram on the leading forearm; skill effects remain runtime overlays.",
   "surfaceMaterials": ["dark graphite armor", "worn gunmetal joints", "unit accent armor seams"],
   "identityConstraints": [
     "always keep exactly two arms and two legs",

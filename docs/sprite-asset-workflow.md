@@ -2,7 +2,7 @@
 
 This runbook covers the implemented authoring flow from reviewed PNG frames to Web assets and Unity `.anim` files for the three animated combat bodies: `volt`, `bastion`, and `relay`.
 
-The provider is `manual`: a pixel artist authors the final character motion frames, then the repository pipeline performs deterministic normalization, QA, sheet construction, approval, and export. AI-generated character motion is not an approval path because frame-to-frame anatomy and pixel clusters are not reliable enough for the target quality. AI generation is reserved for static backgrounds, equipment icons, portraits, effects, and non-animated props.
+The provider is `manual`: a pixel artist authors the final character motion frames, then the repository pipeline performs deterministic normalization, QA, sheet construction, approval, and export. AI-generated character motion is not an approval path because frame-to-frame anatomy and pixel clusters are not reliable enough for the target quality. AI generation is reserved for static backgrounds, skill icons, portraits, effects, and non-animated props.
 
 ## Responsibility boundary
 
@@ -46,7 +46,7 @@ pnpm assets:requirements --unit relay
 
 The command reads `game-data/game-balance.json` and reports:
 
-- required motions for the unit's base presentation, default program, authored rival encounters, and starting equipment reaction
+- required motions for the unit's base presentation, default program, and authored rival encounters
 - optional motions reachable through general instructions
 - fallback mappings for motions without dedicated frames
 - the recommended single-color source background, selected by perceptual distance from the unit palette

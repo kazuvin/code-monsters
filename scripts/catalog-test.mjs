@@ -23,15 +23,12 @@ for (const viewport of [
 
   const counts = {
     units: await page.locator('.catalog-unit-card').count(),
-    equipment: await page.locator('.equipment-catalog-card').count(),
     conditions: await page.locator('.catalog-rule-card').count(),
     targets: await page.locator('.catalog-target-card').count(),
-    instructions: await page.locator('.catalog-skill-card:not(.equipment-catalog-card)').count(),
+    instructions: await page.locator('.catalog-skill-card').count(),
   };
   const economyText = (await page.locator('.catalog-economy').innerText()).replace(/\s+/g, ' ').trim();
-  const skillRulerCells = await page
-    .locator('.catalog-skill-card:not(.equipment-catalog-card) .catalog-cost-ruler i')
-    .count();
+  const skillRulerCells = await page.locator('.catalog-skill-card .catalog-cost-ruler i').count();
   const impactRingFilled = await page
     .locator('.catalog-skill-card[data-catalog-id="impact-ring"] .catalog-cost-ruler i.filled')
     .count();
@@ -42,6 +39,9 @@ for (const viewport of [
   const toxinRules = (await page.locator('[data-catalog-id="toxin-orb"]').innerText()).replace(/\s+/g, ' ').trim();
   const seekerRules = (await page.locator('[data-catalog-id="seeker-orb"]').innerText()).replace(/\s+/g, ' ').trim();
   const counterRules = (await page.locator('[data-catalog-id="counter-orb"]').innerText()).replace(/\s+/g, ' ').trim();
+  const pulseRules = (await page.locator('[data-catalog-id="pulse-bolt"]').innerText()).replace(/\s+/g, ' ').trim();
+  const diveRules = (await page.locator('[data-catalog-id="dive-strike"]').innerText()).replace(/\s+/g, ' ').trim();
+  const hasEquipmentCopy = (await page.locator('.catalog-page').innerText()).includes('装備');
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
@@ -57,7 +57,7 @@ for (const viewport of [
   await page.getByRole('button', { name: new RegExp(`スキル ${data.instructions.length}`) }).click();
   await page.getByRole('searchbox', { name: 'カタログを検索' }).fill('自己修復');
   const searchResult = {
-    instructions: await page.locator('.catalog-skill-card:not(.equipment-catalog-card)').count(),
+    instructions: await page.locator('.catalog-skill-card').count(),
     text: (await page.locator('.catalog-content').innerText()).replace(/\s+/g, ' ').trim(),
     visibleCount: await page.locator('.catalog-controls output').textContent(),
   };
@@ -73,6 +73,9 @@ for (const viewport of [
     toxinRules,
     seekerRules,
     counterRules,
+    pulseRules,
+    diveRules,
+    hasEquipmentCopy,
     overflow,
     searchResult,
     errors,
@@ -86,7 +89,6 @@ console.log(JSON.stringify(results, null, 2));
 for (const result of results) {
   if (
     result.counts.units !== data.units.length ||
-    result.counts.equipment !== data.equipment.length ||
     result.counts.conditions !== data.conditions.length ||
     result.counts.targets !== data.targetSelectors.length ||
     result.counts.instructions !== data.instructions.length
@@ -105,6 +107,11 @@ for (const result of results) {
     throw new Error(`${result.viewport}: シーカーオーブの弱体化がカタログへ反映されていません`);
   if (!result.counterRules.includes('追尾弾') || !result.counterRules.includes('ATK×0.28'))
     throw new Error(`${result.viewport}: カウンターオーブの弱体化がカタログへ反映されていません`);
+  if (!result.pulseRules.includes('有効化距離 8m'))
+    throw new Error(`${result.viewport}: 遠距離弾の近接安全距離がカタログへ反映されていません`);
+  if (!result.diveRules.includes('着地攻撃') || !result.diveRules.includes('必要高度 8m'))
+    throw new Error(`${result.viewport}: 降下強襲の着地条件がカタログへ反映されていません`);
+  if (result.hasEquipmentCopy) throw new Error(`${result.viewport}: 廃止した装備表記がカタログへ残っています`);
   if (
     result.searchResult.instructions !== 1 ||
     !result.searchResult.text.includes('自己修復する') ||

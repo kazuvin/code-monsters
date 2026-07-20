@@ -66,9 +66,9 @@ console.log(JSON.stringify(result, null, 2));
 if (!configuredProgram.includes('いつでも') || !configuredProgram.includes('推力で接近する'))
   throw new Error('接近推力だけを通常作戦へ設定できません');
 if (peakVx < 35) throw new Error(`接近推力の初速が不足しています: ${peakVx}`);
-if (settleSeconds === null || settleSeconds > 0.75)
+if (settleSeconds === null || settleSeconds > 1)
   throw new Error(`接近推力が短時間で制動していません: ${settleSeconds}`);
-if (controlledTravel === null || controlledTravel < 8 || controlledTravel > 12)
+if (controlledTravel === null || controlledTravel < 16 || controlledTravel > 20)
   throw new Error(`接近推力の制御距離が不正です: ${controlledTravel}`);
 if (residualDrift === null || residualDrift > 0.5) throw new Error(`接近推力の終了後も滑っています: ${residualDrift}`);
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

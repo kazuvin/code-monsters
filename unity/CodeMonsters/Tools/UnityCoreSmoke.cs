@@ -31,8 +31,6 @@ internal static class UnityCoreSmoke
             throw new InvalidDataException("The canonical duel and animation-scope contract was not imported");
         if (data.Encounters.Any(encounter => encounter.EnemyUnitIds.Count != 1))
             throw new InvalidDataException("An encounter is not one-on-one");
-        if (data.Encounters.Any(encounter => encounter.EnemyEquipmentIds.Count != 3))
-            throw new InvalidDataException("An encounter does not define three equipment bays");
         if (data.Encounters.Any(encounter => encounter.EnemyProgramActionIds.Count == 0))
             throw new InvalidDataException("An encounter does not expose its enemy program");
 
@@ -49,7 +47,7 @@ internal static class UnityCoreSmoke
         var corrosionField = data.BattleZones.Single(zone => zone.Id == "corrosion-field");
         var corrosionFieldSkill = data.Instructions.Single(instruction => instruction.Id == "corrosion-field");
         var poison = data.Statuses.Single(status => status.Id == "poison");
-        var targetNear = data.Conditions.Single(condition => condition.Id == "targetNear12");
+        var targetNear = data.Conditions.Single(condition => condition.Id == "targetNear10");
         var vectorThrust = data.Instructions.Single(instruction => instruction.Id == "vector-thrust");
         var actor = new FighterState { InstanceId = "volt-1", Team = "ally", X = 40, Y = 0, Hp = 74, MaxHp = 74 };
         var target = new FighterState { InstanceId = "enemy-1", Team = "enemy", X = 46, Y = 8, Hp = 100, MaxHp = 100 };
@@ -59,8 +57,8 @@ internal static class UnityCoreSmoke
         if (
             vectorMotion.Mode != "setVelocity"
             || vectorMotion.VerticalMode != "addVelocity"
-            || vectorMotion.HorizontalBrakePerSecond != 80
-            || vectorMotion.HorizontalBrakeDurationSeconds != 0.5
+            || vectorMotion.HorizontalBrakePerSecond != 64
+            || vectorMotion.HorizontalBrakeDurationSeconds != 0.75
             || data.Battle.VerticalDisplayRangePercent != 62
         )
             throw new InvalidDataException("Controlled movement and vertical presentation data were not imported");
@@ -70,14 +68,14 @@ internal static class UnityCoreSmoke
             Team = "ally",
             X = 40,
             Y = 0,
-            VX = 40,
-            VY = 12,
-            HorizontalBrakePerSecond = 80,
-            HorizontalBrakeRemaining = 0.5,
+            VX = 48,
+            VY = 26,
+            HorizontalBrakePerSecond = 64,
+            HorizontalBrakeRemaining = 0.75,
         };
-        for (var index = 0; index < 5; index++)
+        for (var index = 0; index < 8; index++)
             braking = BattleRules.TickMotion(braking, data.Battle, 0.1);
-        if (Math.Abs(braking.X - 50) > 0.0001 || braking.VX != 0)
+        if (Math.Abs(braking.X - 58) > 0.0001 || braking.VX != 0)
             throw new InvalidDataException("Controlled movement did not brake at the authored distance");
         if (Math.Abs(vulnerable.Effects.Single(effect => effect.Kind == "incomingDamageScale").Value.GetValueOrDefault() - 1.15) >= 0.0001)
             throw new InvalidDataException("Vulnerable status multiplier was not imported");
@@ -118,6 +116,12 @@ internal static class UnityCoreSmoke
         var advanced = BattleRules.AdvanceProjectile(projectile, target, data.Battle, 0.1);
         if (advanced.X == projectile.X && advanced.Y == projectile.Y)
             throw new InvalidDataException("Projectile time did not advance");
+        if (pulseBolt.Delivery.MinimumTravelDistance != 8 || data.Battle.ProjectileThreatRadius != 10)
+            throw new InvalidDataException("Projectile arming and threat distances were not imported");
+        var diveStrike = data.Instructions.Single(instruction => instruction.Id == "dive-strike");
+        var landingShape = BattleRules.ResolveLandingShape(diveStrike.Delivery, actor, target, data.Battle);
+        if (diveStrike.Delivery.MinimumStartY != 8 || landingShape == null || landingShape.Radius != 9)
+            throw new InvalidDataException("Landing-resolved dive strike was not imported");
         var corrosionFieldInstruction = data.Instructions.Single(item => item.Id == "corrosion-field");
         var lob = BattleRules.CreateProjectile(corrosionFieldInstruction.Delivery, actor, target, data.Battle);
         var previousLob = lob;
@@ -140,19 +144,8 @@ internal static class UnityCoreSmoke
             || poison.Effects.Any(effect => effect.Kind == "decayStacksPerTick")
         )
             throw new InvalidDataException("Unbounded non-decaying poison was not imported");
-        var equipmentSlots = data.Equipment.Select(item => item.Slot).Distinct().OrderBy(slot => slot).ToArray();
-        if (!equipmentSlots.SequenceEqual(new[] { "chip", "frame", "weapon" }))
-            throw new InvalidDataException("The three equipment slot types were not imported");
-        var corrosion = data.Equipment.Single(item => item.Id == "corrosion-core");
-        if (
-            corrosion.Modifiers.Attack.GetValueOrDefault() >= 0
-            || !corrosion.GrantsActionIds.Contains("corrosion-column")
-            || !corrosion.GrantsActionIds.Contains("corrosion-field")
-        )
-            throw new InvalidDataException("Equipment trade-off or granted actions were not imported");
-
         Console.WriteLine(
-            $"{{\"schemaVersion\":{data.SchemaVersion},\"mode\":\"1vs1\",\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"equipment\":{data.Equipment.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"
+            $"{{\"schemaVersion\":{data.SchemaVersion},\"mode\":\"1vs1\",\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"
         );
         return 0;
     }

@@ -20,8 +20,7 @@ export type ActionType =
   | 'wait';
 export type AttackType = 'melee' | 'blunt' | 'sniper';
 export type Rarity = 'common' | 'rare' | 'epic';
-export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'selfHpLow';
-export type EquipmentSlot = 'frame' | 'weapon' | 'chip';
+export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'selfHpLow' | 'enemyProjectileNear';
 export type ConditionId = string;
 export type ConditionKind =
   | 'always'
@@ -227,6 +226,7 @@ export type ProjectileDelivery = {
   speed: number;
   radius: number;
   lifetimeSeconds: number;
+  minimumTravelDistance: number;
   homing: boolean;
   turnRateDegrees?: number;
 };
@@ -238,7 +238,13 @@ export type LobDelivery = {
   gravityScale: number;
 };
 
-export type SpatialDelivery = ShapeDelivery | ProjectileDelivery | LobDelivery;
+export type LandingDelivery = {
+  kind: 'landing';
+  minimumStartY: number;
+  shape: CircleAttackShape;
+};
+
+export type SpatialDelivery = ShapeDelivery | ProjectileDelivery | LobDelivery | LandingDelivery;
 
 export type ResolvedAttackShape =
   | { kind: 'circle'; x: number; y: number; radius: number }
@@ -258,6 +264,9 @@ export type SpatialProjectile = {
   speed: number;
   radius: number;
   remainingSeconds: number;
+  minimumTravelDistance: number;
+  distanceTraveled: number;
+  threatenedFighterIds: string[];
   homing: boolean;
   turnRateDegrees: number;
   trajectory: 'linear' | 'ballistic';
@@ -280,26 +289,6 @@ export type UnitDefinition = {
   attackType: AttackType;
   rarity: Rarity;
   programLimit: number;
-};
-
-export type EquipmentModifiers = Partial<
-  Pick<UnitDefinition, 'maxHp' | 'attack' | 'defense' | 'speed' | 'knockbackPower' | 'weight' | 'programLimit'>
-> & {
-  attackType?: AttackType;
-};
-
-export type EquipmentDefinition = {
-  id: string;
-  name: string;
-  code: string;
-  slot: EquipmentSlot;
-  description: string;
-  tradeoff: string;
-  rarity: Rarity;
-  price: number;
-  modifiers: EquipmentModifiers;
-  grantsActionIds: string[];
-  defaultReaction: ReactionBlock | null;
 };
 
 export type Instruction = {
@@ -341,6 +330,12 @@ export type PendingAction = {
   resolvesAt: number;
 };
 
+export type PendingLandingAttack = {
+  actionId: string;
+  targetId: string | null;
+  startedAt: number;
+};
+
 export type Fighter = UnitDefinition & {
   instanceId: string;
   team: 'ally' | 'enemy';
@@ -356,16 +351,15 @@ export type Fighter = UnitDefinition & {
   actionLock: number;
   instructionCooldowns: Record<string, number>;
   pendingAction: PendingAction | null;
+  pendingLandingAttack: PendingLandingAttack | null;
   abilityGauge: number;
   reactionCooldown: number;
   statuses: StatusInstance[];
-  equipmentIds?: string[];
   program?: ProgramBlock[];
   reaction?: ReactionBlock | null;
 };
 export type UnitInventoryItem = UnitDefinition & {
   inventoryId: string;
-  equipmentIds: string[];
   program: ProgramBlock[];
   reaction: ReactionBlock | null;
 };
