@@ -128,8 +128,12 @@ export function isInstructionCompatibleWithTarget(instruction: Instruction, targ
     : instruction.defaultTarget === target;
 }
 
-export function actionCooldown(speed: number): number {
-  return Math.max(BATTLE_CONFIG.minimumActionCooldownSeconds, BATTLE_CONFIG.baseActionCooldownSeconds / speed);
+export function actionLockDuration(speed: number): number {
+  return Math.max(BATTLE_CONFIG.minimumActionLockSeconds, BATTLE_CONFIG.baseActionLockSeconds / speed);
+}
+
+export function instructionCooldown(instruction: Instruction, speed: number): number {
+  return Math.max(BATTLE_CONFIG.minimumInstructionCooldownSeconds, instruction.cooldownSeconds / speed);
 }
 
 export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
@@ -137,7 +141,13 @@ export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
     const statusTicked = tickStatusDurations(fighter, dt);
     return {
       ...statusTicked,
-      cooldown: fighter.cooldown - dt,
+      actionLock: Math.max(0, fighter.actionLock - dt),
+      instructionCooldowns: Object.fromEntries(
+        Object.entries(fighter.instructionCooldowns).map(([actionId, remaining]) => [
+          actionId,
+          Math.max(0, remaining - dt),
+        ]),
+      ),
       abilityGauge: Math.min(
         BATTLE_CONFIG.abilityGaugeMax,
         fighter.abilityGauge + BATTLE_CONFIG.abilityGaugeRegenPerSecond * dt,
@@ -209,6 +219,7 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
     ...(instruction.range.mode === 'fixed' && instruction.range.value !== undefined
       ? [{ label: '固定射程', value: `${metricNumber(instruction.range.value)} m` }]
       : []),
+    { label: '基準CD', value: `${metricNumber(instruction.cooldownSeconds)} s` },
     { label: 'COST', value: instruction.abilityCost === 0 ? 'FREE' : String(instruction.abilityCost) },
   ];
   const move = effectByKind(instruction, 'move');

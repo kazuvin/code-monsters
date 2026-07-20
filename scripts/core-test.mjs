@@ -51,7 +51,7 @@ const plan = (fighters, team, overrides = {}) =>
     ...overrides,
   });
 
-assert.equal(GAME_DATA.schemaVersion, 15, '1vs1装備スキーマがv15ではありません');
+assert.equal(GAME_DATA.schemaVersion, 16, '非同期指示スキーマがv16ではありません');
 assert.equal(BATTLE_CONFIG.teamSize, 1, '標準戦闘が1vs1ではありません');
 assert.equal(UNITS.length, 3, '手作業アニメーション対象が3体に絞られていません');
 assert.deepEqual(UNITS.map((unit) => unit.id).sort(), ['bastion', 'relay', 'volt'], '1vs1で使用する3機体が不正です');
@@ -135,7 +135,7 @@ assert.deepEqual(
 assert.deepEqual(enemy?.reaction, ENCOUNTERS[0].enemyReaction, '遭遇ごとの敵リアクションが戦闘状態へ渡りません');
 
 const openingPlan = plan(
-  fighters.map((fighter) => ({ ...fighter, cooldown: 0 })),
+  fighters.map((fighter) => ({ ...fighter, actionLock: 0 })),
   [volt],
 );
 assert.deepEqual(
@@ -144,6 +144,38 @@ assert.deepEqual(
     .map((decision) => decision.actionId),
   ['approach'],
   '同一ターンに複数の通常作戦を実行しています',
+);
+const asynchronousTeam = [createInventoryUnit('volt', 'async-volt')];
+asynchronousTeam[0].program = [
+  { targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' },
+  { targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'retreat' },
+];
+const asynchronousFighters = createBattleFighters(asynchronousTeam, ENCOUNTERS[0]).map((fighter) => ({
+  ...fighter,
+  x: fighter.team === 'ally' ? 45 : 50,
+  actionLock: fighter.team === 'ally' ? 0 : 99,
+}));
+const firstAsynchronousPlan = plan(asynchronousFighters, asynchronousTeam);
+const firstAsynchronousActor = firstAsynchronousPlan.fighters.find((fighter) => fighter.team === 'ally');
+assert.ok((firstAsynchronousActor?.instructionCooldowns['attack-low'] ?? 0) > 0, '実行した通常攻撃のCDが始まりません');
+assert.equal(firstAsynchronousActor?.instructionCooldowns.retreat ?? 0, 0, '未実行の後退CDまで始まっています');
+const asynchronousDt = BATTLE_CONFIG.baseActionLockSeconds + BATTLE_CONFIG.tickSeconds;
+const secondAsynchronousPlan = plan(firstAsynchronousPlan.fighters, asynchronousTeam, {
+  dt: asynchronousDt,
+  elapsed: 2,
+  previousElapsed: 2 - asynchronousDt,
+});
+assert.deepEqual(
+  secondAsynchronousPlan.decisions
+    .filter((decision) => decision.actorId === asynchronousTeam[0].inventoryId && decision.outcome === 'executed')
+    .map((decision) => decision.actionId),
+  ['retreat'],
+  '先行指示のCD中に別の準備済み指示を実行できません',
+);
+assert.ok(
+  (secondAsynchronousPlan.fighters.find((fighter) => fighter.team === 'ally')?.instructionCooldowns['attack-low'] ??
+    0) > 0,
+  '別指示の実行中に通常攻撃CDが並行して進みません',
 );
 
 const actor = fighters.find((fighter) => fighter.team === 'ally');
@@ -164,7 +196,7 @@ repairTeam[0].program = [{ targetId: 'self', conditionId: 'selfHpBelow50', actio
 const repairFighters = createBattleFighters(repairTeam, ENCOUNTERS[0]).map((fighter) => ({
   ...fighter,
   hp: fighter.team === 'ally' ? fighter.maxHp * 0.4 : fighter.hp,
-  cooldown: fighter.team === 'ally' ? 0 : 99,
+  actionLock: fighter.team === 'ally' ? 0 : 99,
 }));
 const repairActor = repairFighters.find((fighter) => fighter.team === 'ally');
 const repairPlan = plan(repairFighters, repairTeam);
@@ -218,7 +250,7 @@ const zoneTeam = [equipInventoryUnit(createInventoryUnit('volt', 'zone-volt'), '
 zoneTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'always', actionId: 'throw-toxic-flask' }];
 const zoneFighters = createBattleFighters(zoneTeam, ENCOUNTERS[0]).map((fighter) => ({
   ...fighter,
-  cooldown: fighter.team === 'ally' ? 0 : 99,
+  actionLock: fighter.team === 'ally' ? 0 : 99,
 }));
 const zonePlan = plan(zoneFighters, zoneTeam);
 assert.ok(
@@ -233,7 +265,7 @@ followTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetInRange
 const followFighters = createBattleFighters(followTeam, ENCOUNTERS[0]).map((fighter) => ({
   ...fighter,
   x: fighter.team === 'ally' ? 45 : 50,
-  cooldown: fighter.team === 'ally' ? 0 : 99,
+  actionLock: fighter.team === 'ally' ? 0 : 99,
   abilityGauge: BATTLE_CONFIG.abilityGaugeMax,
 }));
 const followPlan = plan(followFighters, followTeam);

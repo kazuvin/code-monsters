@@ -447,8 +447,8 @@ export function Catalog() {
                   </div>
                   <div className="catalog-economy-row">
                     <span>
-                      <small>回復時間</small>
-                      <b>{metric?.recoverySeconds ?? 0}秒</b>
+                      <small>指示CD</small>
+                      <b>{metric?.cooldownSeconds ?? instruction.cooldownSeconds}秒</b>
                     </span>
                     <span>
                       <small>持続使用</small>

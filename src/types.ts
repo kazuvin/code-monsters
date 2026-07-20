@@ -228,6 +228,7 @@ export type Instruction = {
   flavor: string;
   action: ActionType;
   abilityCost: number;
+  cooldownSeconds: number;
   price: number;
   rarity: Rarity;
   condition: ConditionId;
@@ -258,7 +259,8 @@ export type Fighter = UnitDefinition & {
   hp: number;
   x: number;
   z: number;
-  cooldown: number;
+  actionLock: number;
+  instructionCooldowns: Record<string, number>;
   abilityGauge: number;
   reactionCooldown: number;
   statuses: StatusInstance[];

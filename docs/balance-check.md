@@ -23,14 +23,14 @@ This prints the same producer, condition, consumer, ownership-path, and counterp
 It then estimates every unit against the reference defense in `game-data/game-balance.json`:
 
 ```text
-base DPS = expected normal-attack damage / action cooldown
+base DPS = expected normal-attack damage / normal-instruction cooldown
 effective HP = max HP + defense * defense weight
 power = DPS, effective HP, range, knockback/second, and program capacity (weighted sum)
 ability recovery = ability cost / gauge regeneration per second
-sustainable ability interval = max(reference action cooldown, ability recovery)
+sustainable ability interval = max(instruction cooldown at reference speed, ability recovery)
 ```
 
-The ability-economy table reports each instruction's gauge cost, recovery time, sustainable interval, and uses per minute. Strong actions must have a positive integer cost no greater than the configured gauge maximum; a free strong action is a structural error. The base unit report intentionally excludes equipment so body balance and loadout balance remain distinguishable. Equipment-granted reactions and tradeoffs are covered by structural checks, core tests, and matchup playtests. The unit report shows absolute power and median-relative index; units are not sold during a run.
+The ability-economy table reports each instruction's own cooldown, gauge cost, gauge recovery time, sustainable interval, and uses per minute. Instruction cooldowns advance independently; the short actor action lock only prevents simultaneous normal actions. Strong actions must have a positive integer cost no greater than the configured gauge maximum; a free strong action is a structural error. The base unit report intentionally excludes equipment so body balance and loadout balance remain distinguishable. Equipment-granted reactions and tradeoffs are covered by structural checks, core tests, and matchup playtests. The unit report shows absolute power and median-relative index; units are not sold during a run.
 
 The in-app catalog reads the same source data and exposes all three bodies, equipment, conditions, target selectors, and instructions as comparison cards. Its ten-cell cost rulers, recovery time, and sustainable uses-per-minute values are presentation of the analyzer inputs and output; they are not separately maintained balance data.
 

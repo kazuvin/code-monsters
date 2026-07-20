@@ -24,13 +24,14 @@ export type BattleConfig = {
   abilityGaugeRegenPerSecond: number;
   actionStepMs: number;
   reactionCooldownSeconds: number;
-  baseActionCooldownSeconds: number;
-  minimumActionCooldownSeconds: number;
+  baseActionLockSeconds: number;
+  minimumActionLockSeconds: number;
+  minimumInstructionCooldownSeconds: number;
   rangeStopRatio: number;
   initialPositionInset: number;
   teamPositionSpacing: number;
-  initialCooldownStaggerSeconds: number;
-  enemyCooldownOffsetSeconds: number;
+  initialActionLockStaggerSeconds: number;
+  enemyActionLockOffsetSeconds: number;
   wallLeft: number;
   wallRight: number;
   lowHpThreshold: number;

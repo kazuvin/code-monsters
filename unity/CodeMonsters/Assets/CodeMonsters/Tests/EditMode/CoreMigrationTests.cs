@@ -20,8 +20,10 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(15));
+            Assert.That(data.SchemaVersion, Is.EqualTo(16));
             Assert.That(data.Battle.TeamSize, Is.EqualTo(1));
+            Assert.That(data.Battle.BaseActionLockSeconds, Is.GreaterThan(0));
+            Assert.That(data.Battle.MinimumInstructionCooldownSeconds, Is.GreaterThan(0));
             Assert.That(data.Battle.StatusDamageTickSeconds, Is.EqualTo(2));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));
             Assert.That(data.DebugTraining.RecoveryDelaySeconds, Is.EqualTo(3));
@@ -38,6 +40,7 @@ namespace CodeMonsters.Core.Tests
             Assert.That(data.Encounters.All(encounter => encounter.EnemyProgramActionIds.Count > 0), Is.True);
             Assert.That(data.Units, Has.Count.EqualTo(3));
             Assert.That(data.Units.Select(unit => unit.Id), Is.EquivalentTo(new[] { "volt", "bastion", "relay" }));
+            Assert.That(data.Instructions.All(instruction => instruction.CooldownSeconds > 0), Is.True);
         }
 
         [Test]

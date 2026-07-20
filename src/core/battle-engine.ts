@@ -1,12 +1,13 @@
 import { BATTLE_CONFIG, DEFAULT_PROGRAMS, DEFAULT_REACTIONS } from '../data.ts';
 import type { BattleFlash, Fighter, LogItem, ReactionBlock, ReactionTrigger, UnitInventoryItem } from '../types.ts';
 import {
-  actionCooldown,
+  actionLockDuration,
   actionRange,
   activateBerserker,
   advanceToward,
   distanceTo,
   instructionById,
+  instructionCooldown,
   jumpToward,
   matchCondition,
   knockbackPosition,
@@ -33,7 +34,15 @@ import { clearActionStatuses, getStatus, hasStatus, statusById, statusDamagePerS
 
 type MutableFighterFields = Pick<
   Fighter,
-  'hp' | 'x' | 'cooldown' | 'abilityGauge' | 'reactionCooldown' | 'statuses' | 'attack' | 'speed'
+  | 'hp'
+  | 'x'
+  | 'actionLock'
+  | 'instructionCooldowns'
+  | 'abilityGauge'
+  | 'reactionCooldown'
+  | 'statuses'
+  | 'attack'
+  | 'speed'
 >;
 export type FighterUpdate = { id: string; values: Partial<MutableFighterFields> };
 export type BattleLogPayload = { actor: string; text: string; type: LogItem['type'] };
@@ -98,7 +107,7 @@ const compareStableId = (left: string, right: string) => (left < right ? -1 : le
 export function compareReadyFighters(left: Fighter, right: Fighter): number {
   return (
     right.speed - left.speed ||
-    left.cooldown - right.cooldown ||
+    left.actionLock - right.actionLock ||
     compareStableId(left.id, right.id) ||
     compareStableId(left.instanceId, right.instanceId)
   );
@@ -599,7 +608,7 @@ export function planBattleFrame({
   }
 
   for (const ready of [...next]
-    .filter((fighter) => fighter.hp > 0 && fighter.cooldown <= 0)
+    .filter((fighter) => fighter.hp > 0 && fighter.actionLock <= 0)
     .sort(compareReadyFighters)) {
     const actorIndex = next.findIndex((fighter) => fighter.instanceId === ready.instanceId && fighter.hp > 0);
     if (actorIndex < 0) continue;
@@ -617,16 +626,8 @@ export function planBattleFrame({
       (actor.team === 'ally'
         ? (team.find((unit) => unit.inventoryId === actor.instanceId)?.program ?? [])
         : enemyProgram);
-    const cooldown = actionCooldown(actor.speed);
-    const actionReady = clearActionStatuses(actor);
-    const readyValues = {
-      cooldown,
-      statuses: actionReady.statuses,
-      attack: actionReady.attack,
-      speed: actionReady.speed,
-    };
-    setNext(actor.instanceId, readyValues);
-    displayNext = applyFighterUpdates(displayNext, [{ id: actor.instanceId, values: readyValues }]);
+    if (!program.slice(0, actor.programLimit).some((block) => (actor.instructionCooldowns[block.actionId] ?? 0) <= 0))
+      continue;
     let acted = false;
     let blockedByCost = false;
 
@@ -639,6 +640,7 @@ export function planBattleFrame({
       if (currentEnemies.length === 0 || currentAllies.length === 0) break;
       const instruction = instructionById.get(block.actionId);
       if (!instruction) continue;
+      if ((current.instructionCooldowns[instruction.id] ?? 0) > 0) continue;
       const traceDecision = (outcome: DecisionTrace['outcome'], reason?: DecisionReason) =>
         decisions.push({
           actorId: current.instanceId,
@@ -694,6 +696,20 @@ export function planBattleFrame({
         continue;
       }
       traceDecision('executed');
+      const actionReady = clearActionStatuses(current);
+      const readyValues = {
+        actionLock: actionLockDuration(actionReady.speed),
+        instructionCooldowns: {
+          ...actionReady.instructionCooldowns,
+          [instruction.id]: instructionCooldown(instruction, actionReady.speed),
+        },
+        statuses: actionReady.statuses,
+        attack: actionReady.attack,
+        speed: actionReady.speed,
+      };
+      setNext(current.instanceId, readyValues);
+      displayNext = applyFighterUpdates(displayNext, [{ id: current.instanceId, values: readyValues }]);
+      current = next.find((fighter) => fighter.instanceId === current.instanceId) ?? actionReady;
       current = beginAction(current.instanceId, instruction.abilityCost) ?? current;
       acted = true;
 
@@ -905,12 +921,15 @@ export function planBattleFrame({
           });
         }
       } else if (instruction.action === 'wait') {
-        const waitCooldown = requireEffect(instruction, 'wait').durationSeconds;
-        setNext(current.instanceId, { cooldown: waitCooldown });
+        const waitDuration = requireEffect(instruction, 'wait').durationSeconds;
+        setNext(current.instanceId, { actionLock: waitDuration });
+        displayNext = applyFighterUpdates(displayNext, [
+          { id: current.instanceId, values: { actionLock: waitDuration } },
+        ]);
         queueStep({
           flash: { id: current.instanceId, kind: 'wait', actionLabel: '待機', n: 0 },
           log: { actor: current.name, text: '同期タイミングを待機', type: 'info' },
-          updates: [{ id: current.instanceId, values: { cooldown: waitCooldown } }],
+          updates: [],
         });
       } else if (isMultiTargetAttack) {
         let actorStatusUpdatePending = true;

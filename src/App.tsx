@@ -43,7 +43,6 @@ import {
 } from './core/roster';
 import { activeStatusDetails, statusById, statusCardClasses, statusDamagePerSecond } from './core/statuses';
 import {
-  actionCooldown,
   conditionById,
   instructionById,
   instructionMetrics,
@@ -743,11 +742,16 @@ export function App() {
           return definition.label;
         })
       : ['正常'];
-    if (fighter.cooldown > 0.55) tags.push('準備中');
+    if (fighter.actionLock > 0) tags.push('行動硬直');
     return tags;
   };
-  const cooldownProgress = (fighter: Fighter) =>
-    Math.max(0, Math.min(1, 1 - fighter.cooldown / actionCooldown(fighter.speed)));
+  const instructionReadiness = (fighter: Fighter) => {
+    const actionIds = [
+      ...new Set((fighter.program ?? []).slice(0, fighter.programLimit).map((block) => block.actionId)),
+    ];
+    const ready = actionIds.filter((actionId) => (fighter.instructionCooldowns[actionId] ?? 0) <= 0).length;
+    return { ready, total: actionIds.length, ratio: actionIds.length > 0 ? ready / actionIds.length : 0 };
+  };
 
   return (
     <main className={`app-shell view-${view} phase-${phase}`}>
@@ -1394,7 +1398,7 @@ export function App() {
                   <h3>{group.label}</h3>
                   {group.units.map((fighter) => {
                     const hpRatio = Math.max(0, (fighter.hp / fighter.maxHp) * 100);
-                    const cooldownRatio = cooldownProgress(fighter);
+                    const readiness = instructionReadiness(fighter);
                     const active = flash?.id === fighter.instanceId && flash.actionLabel;
                     return (
                       <article
@@ -1420,12 +1424,14 @@ export function App() {
                         <div className="status-resources">
                           <div
                             className="status-cooldown"
-                            aria-label={cooldownRatio >= 1 ? '行動準備完了' : '行動準備中'}
+                            aria-label={`指示準備完了 ${readiness.ready} / ${readiness.total}`}
                           >
                             <div>
-                              <i style={{ width: `${cooldownRatio * 100}%` }} />
+                              <i style={{ width: `${readiness.ratio * 100}%` }} />
                             </div>
-                            <b>{cooldownRatio >= 1 ? 'READY' : 'WAIT'}</b>
+                            <b>
+                              {readiness.ready}/{readiness.total} READY
+                            </b>
                           </div>
                           <div
                             className="status-ability"

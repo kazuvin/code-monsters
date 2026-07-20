@@ -53,6 +53,15 @@ namespace CodeMonsters.Core
         [JsonProperty("abilityGaugeRegenPerSecond")]
         public double AbilityGaugeRegenPerSecond;
 
+        [JsonProperty("baseActionLockSeconds")]
+        public double BaseActionLockSeconds;
+
+        [JsonProperty("minimumActionLockSeconds")]
+        public double MinimumActionLockSeconds;
+
+        [JsonProperty("minimumInstructionCooldownSeconds")]
+        public double MinimumInstructionCooldownSeconds;
+
         [JsonProperty("lowHpThreshold")]
         public double LowHpThreshold;
 
@@ -339,6 +348,9 @@ namespace CodeMonsters.Core
 
         [JsonProperty("abilityCost")]
         public double AbilityCost;
+
+        [JsonProperty("cooldownSeconds")]
+        public double CooldownSeconds;
 
         [JsonProperty("defaultTarget")]
         public string DefaultTarget = "";

@@ -137,11 +137,17 @@ Add the top-level `equipment` registry and the `roster.startingEquipmentIds` loa
 
 Encounters now serialize one enemy unit plus `enemyEquipmentIds`, `enemyProgramActionIds`, and `enemyReaction`. This allows the same three animated bodies to provide distinct authored matchups. The four-slot shop reserves two deterministic positions for unowned equipment and fills the other two with instructions; unit recruitment, bench management, and unit resale are removed from the run loop.
 
+## Schema version 16 migration
+
+Replace the fighter-wide normal-action cooldown with a short action lock plus per-instruction cooldowns. Each instruction now requires `cooldownSeconds`; `battle.baseActionLockSeconds`, `battle.minimumActionLockSeconds`, and `battle.minimumInstructionCooldownSeconds` control the speed-scaled runtime floors. Runtime fighters serialize `actionLock` and an `instructionCooldowns` map keyed by stable instruction ID. Both timers advance in parallel with status and gauge time.
+
+When the action lock is open, scan the ordered program and execute the first block whose instruction cooldown is ready, condition matches, range/state constraints pass, and cost is affordable. Committing an action starts only that instruction's cooldown plus the short actor action lock; skipped blocks consume neither. Reactions retain their independent interrupt cooldown. Version 15 fighter snapshots containing a single `cooldown` value are not timing-compatible and should start a new battle.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v15 DTO loading and stable-ID/reference validation, including the one-on-one contract, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
+- schema-v16 DTO loading and stable-ID/reference validation, including the one-on-one contract, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

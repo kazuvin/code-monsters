@@ -122,6 +122,7 @@ export function createBattleFighters(
   const baseState = {
     z: 0,
     abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
+    instructionCooldowns: {},
     reactionCooldown: 0,
     statuses: [],
   };
@@ -133,7 +134,7 @@ export function createBattleFighters(
       team: 'ally' as const,
       hp: unit.maxHp,
       x: BATTLE_CONFIG.wallLeft + BATTLE_CONFIG.initialPositionInset + index * BATTLE_CONFIG.teamPositionSpacing,
-      cooldown: index * BATTLE_CONFIG.initialCooldownStaggerSeconds,
+      actionLock: index * BATTLE_CONFIG.initialActionLockStaggerSeconds,
     })),
     ...enemies.map((unit, index) => ({
       ...unit,
@@ -145,7 +146,7 @@ export function createBattleFighters(
       team: 'enemy' as const,
       hp: Math.round(unit.maxHp * enemyStatScale),
       x: BATTLE_CONFIG.wallRight - BATTLE_CONFIG.initialPositionInset - index * BATTLE_CONFIG.teamPositionSpacing,
-      cooldown: index * BATTLE_CONFIG.initialCooldownStaggerSeconds + BATTLE_CONFIG.enemyCooldownOffsetSeconds,
+      actionLock: index * BATTLE_CONFIG.initialActionLockStaggerSeconds + BATTLE_CONFIG.enemyActionLockOffsetSeconds,
     })),
   ];
 }

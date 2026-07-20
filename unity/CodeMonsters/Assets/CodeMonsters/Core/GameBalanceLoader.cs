@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 15;
+        public const int SupportedSchemaVersion = 16;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -40,6 +40,12 @@ namespace CodeMonsters.Core
                 throw new InvalidDataException("The hand-authored animation scope requires exactly three units");
             if (data.Battle.StatusDamageTickSeconds <= 0)
                 throw new InvalidDataException("Status damage tick interval must be positive");
+            if (
+                data.Battle.BaseActionLockSeconds <= 0
+                || data.Battle.MinimumActionLockSeconds <= 0
+                || data.Battle.MinimumInstructionCooldownSeconds <= 0
+            )
+                throw new InvalidDataException("Action lock and instruction cooldown limits must be positive");
             ValidateDebugTraining(data.DebugTraining);
 
             var unitIds = UniqueIds(data.Units, unit => unit.Id, "unit");
@@ -280,6 +286,8 @@ namespace CodeMonsters.Core
                     throw new InvalidDataException($"Unknown instruction {instruction.Id}");
                 if (!conditionIds.Contains(instruction.Condition))
                     throw new InvalidDataException($"Instruction {instruction.Id} references unknown condition");
+                if (instruction.CooldownSeconds <= 0)
+                    throw new InvalidDataException($"Instruction {instruction.Id} must define a positive cooldown");
                 if (!supportedRanges.Contains(instruction.Range.Mode))
                     throw new InvalidDataException($"Instruction {instruction.Id} has unsupported range mode");
                 if (

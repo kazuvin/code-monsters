@@ -127,6 +127,7 @@ const clamp = (value: number, minimum: number, maximum: number) => Math.min(maxi
 const baseFighterState = {
   z: 0,
   abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
+  instructionCooldowns: {},
   reactionCooldown: 0,
   statuses: [],
 };
@@ -252,7 +253,7 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
       hp: Math.max(1, Math.round(actorDefinition.maxHp * clamp(input.actorHpRatio, 0.01, 1))),
       abilityGauge: clamp(input.initialGauge, 0, BATTLE_CONFIG.abilityGaugeMax),
       x: actorX,
-      cooldown: 0,
+      actionLock: 0,
     },
     input.actorStatuses,
     dummyId,
@@ -272,7 +273,7 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
       weight: Math.max(0, input.targetWeight),
       attack: 0,
       x: targetX,
-      cooldown: inertCooldown,
+      actionLock: inertCooldown,
     },
     input.targetStatuses,
     actorId,
