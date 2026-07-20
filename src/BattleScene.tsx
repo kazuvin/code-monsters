@@ -142,9 +142,11 @@ export function BattleScene({ fighters, zones = [], projectiles = [], flash, fla
         {projectiles.map((projectile) => (
           <i
             aria-hidden="true"
-            className={`spatial-projectile ${projectile.sourceTeam} ${projectile.homing ? 'is-homing' : 'is-direct'}`}
+            className={`spatial-projectile ${projectile.sourceTeam} ${projectile.trajectory === 'ballistic' ? 'is-lob' : projectile.homing ? 'is-homing' : 'is-direct'}`}
             data-projectile-id={projectile.instanceId}
-            data-projectile-kind={projectile.homing ? 'homing' : 'direct'}
+            data-projectile-kind={
+              projectile.trajectory === 'ballistic' ? 'lob' : projectile.homing ? 'homing' : 'direct'
+            }
             key={projectile.instanceId}
             style={{
               left: `${projectile.x}%`,

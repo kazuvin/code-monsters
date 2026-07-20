@@ -75,10 +75,11 @@ export function applyInstructionFighterEffects(
     if (!targetsEffect(effect.target, actualTarget)) continue;
     const direction = effect.relativeTo === 'target' ? (context.direction ?? 1) : 1;
     const vx = effect.x * direction;
+    const applyVertical = effect.verticalMaxY === undefined || next.y <= effect.verticalMaxY;
     next = {
       ...next,
       vx: effect.mode === 'addVelocity' ? next.vx + vx : vx,
-      vy: effect.mode === 'addVelocity' ? next.vy + effect.y : effect.y,
+      vy: applyVertical ? (effect.mode === 'addVelocity' ? next.vy + effect.y : effect.y) : next.vy,
     };
   }
   for (const effect of effectsByKind(instruction, 'gravity')) {

@@ -1825,6 +1825,19 @@ button:focus-visible {
   outline-offset: 3px;
   animation: homing-projectile-pulse 0.42s ease-in-out infinite alternate;
 }
+.spatial-projectile.is-lob {
+  background: #d9ff78;
+  border: 1px solid #f4ffc9;
+  box-shadow:
+    0 0 5px #fff,
+    0 0 14px #a7ff4f,
+    0 0 26px #63d832aa;
+}
+.spatial-projectile.is-lob:after {
+  width: 13px;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #baff65cc);
+}
 @keyframes spatial-shape-impact {
   from {
     opacity: 0.9;

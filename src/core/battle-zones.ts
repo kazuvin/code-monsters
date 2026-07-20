@@ -33,17 +33,29 @@ export const createBattleZone = (
   target: Fighter,
   elapsed: number,
 ): BattleZoneInstance => {
-  const definition = battleZoneById.get(effect.zoneId);
-  if (!definition) throw new Error(`Unknown battle zone: ${effect.zoneId}`);
   const anchor = effect.anchor === 'target' ? target : actor;
   const direction = target.x >= actor.x ? 1 : -1;
   const x = Math.max(BATTLE_CONFIG.wallLeft, Math.min(BATTLE_CONFIG.wallRight, anchor.x + direction * effect.offsetX));
   const y = Math.max(BATTLE_CONFIG.floorY, Math.min(BATTLE_CONFIG.ceilingY, anchor.y + effect.offsetY));
+  return createBattleZoneAt(effect, actor, x, y, elapsed);
+};
+
+export const createBattleZoneAt = (
+  effect: PlaceZoneEffect,
+  actor: Fighter,
+  x: number,
+  y: number,
+  elapsed: number,
+): BattleZoneInstance => {
+  const definition = battleZoneById.get(effect.zoneId);
+  if (!definition) throw new Error(`Unknown battle zone: ${effect.zoneId}`);
+  const clampedX = Math.max(BATTLE_CONFIG.wallLeft, Math.min(BATTLE_CONFIG.wallRight, x));
+  const clampedY = Math.max(BATTLE_CONFIG.floorY, Math.min(BATTLE_CONFIG.ceilingY, y));
   return {
-    instanceId: `${effect.zoneId}:${actor.instanceId}:${Math.round(elapsed * 1000)}`,
+    instanceId: `${effect.zoneId}:${actor.instanceId}:${Math.round(elapsed * 1000)}:${Math.round(clampedX * 100)}`,
     zoneId: effect.zoneId,
-    x,
-    y,
+    x: clampedX,
+    y: clampedY,
     remainingSeconds: definition.durationSeconds,
     sourceId: actor.instanceId,
     sourceTeam: actor.team,

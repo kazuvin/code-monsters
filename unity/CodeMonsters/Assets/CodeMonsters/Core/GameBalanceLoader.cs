@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -7,7 +8,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 19;
+        public const int SupportedSchemaVersion = 20;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -49,7 +50,8 @@ namespace CodeMonsters.Core
             )
                 throw new InvalidDataException("Action windup, lock, and instruction cooldown limits must be positive");
             if (
-                data.Battle.GravityPerSecond <= 0
+                data.Battle.TickSeconds <= 0
+                || data.Battle.GravityPerSecond <= 0
                 || data.Battle.MaxFallSpeed <= 0
                 || data.Battle.CeilingY <= data.Battle.FloorY
                 || data.Battle.FighterRadius <= 0
@@ -343,6 +345,7 @@ namespace CodeMonsters.Core
                             || (effect.Mode != "addVelocity" && effect.Mode != "setVelocity")
                             || (effect.Target != "actor" && effect.Target != "selected")
                             || (effect.RelativeTo != "target" && effect.RelativeTo != "world")
+                            || (effect.VerticalMaxY.HasValue && effect.VerticalMaxY.Value < 0)
                         )
                     )
                         throw new InvalidDataException($"Instruction {instruction.Id} motion effect is incomplete");
@@ -418,6 +421,20 @@ namespace CodeMonsters.Core
                     || (delivery.Homing && (!delivery.TurnRateDegrees.HasValue || delivery.TurnRateDegrees.Value <= 0))
                 )
                     throw new InvalidDataException($"Instruction {instruction.Id} projectile delivery is incomplete");
+                return;
+            }
+            if (delivery.Kind == "lob")
+            {
+                if (
+                    !delivery.FlightSeconds.HasValue
+                    || delivery.FlightSeconds.Value <= 0
+                    || !delivery.Radius.HasValue
+                    || delivery.Radius.Value <= 0
+                    || !delivery.GravityScale.HasValue
+                    || delivery.GravityScale.Value <= 0
+                    || !instruction.Effects.Any(effect => effect.Kind == "placeZone")
+                )
+                    throw new InvalidDataException($"Instruction {instruction.Id} lob delivery is incomplete");
                 return;
             }
             throw new InvalidDataException($"Instruction {instruction.Id} has unknown delivery kind");

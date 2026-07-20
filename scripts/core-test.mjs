@@ -93,7 +93,7 @@ const makeDuel = ({ actionId, actorX = 40, targetX = 50, actorY = 0, targetY = 0
   return { team, fighters };
 };
 
-assert.equal(GAME_DATA.schemaVersion, 19, '空間・時間戦闘スキーマがv19ではありません');
+assert.equal(GAME_DATA.schemaVersion, 20, '放物投擲を含む戦闘スキーマがv20ではありません');
 assert.equal(BATTLE_CONFIG.teamSize, 1, '標準戦闘が1vs1ではありません');
 assert.ok(BATTLE_CONFIG.gravityPerSecond > 0 && BATTLE_CONFIG.ceilingY > BATTLE_CONFIG.floorY, '物理定数が不正です');
 assert.equal(UNITS.length, 3, '手作業アニメーション対象が3体に絞られていません');
@@ -166,14 +166,18 @@ const airDash = instructionById.get('air-dash');
 const vectorThrust = instructionById.get('vector-thrust');
 assert.ok(jumpJet && hoverDrive && airDash && vectorThrust, '座標ベースの移動スキルが不足しています');
 const launched = applyInstructionFighterEffects(actor, jumpJet, actor.instanceId, 'actor', { direction: 1 });
-assert.deepEqual([launched.vx, launched.vy], [14, 54], 'ジャンプが大跳躍用の初速度を設定しません');
-const thrustWhileRising = applyInstructionFighterEffects(launched, vectorThrust, actor.instanceId, 'actor', {
+assert.deepEqual([launched.vx, launched.vy], [12, 54], 'ジャンプが現在速度へ大跳躍の推進を加えません');
+const groundThrust = applyInstructionFighterEffects(actor, vectorThrust, actor.instanceId, 'actor', {
   direction: 1,
 });
-assert.equal(thrustWhileRising.vy, launched.vy, '水平推力がジャンプの上昇速度を打ち消します');
-assert.ok(thrustWhileRising.vx > launched.vx, '水平推力が現在の軌道へ加速を合成しません');
+assert.equal(groundThrust.vy, actor.vy + 20, '地上付近の接近推力が小さな上向き弧を作りません');
 const rising = tickCooldowns([launched], 0.5)[0];
 assert.ok(rising.x > actor.x && rising.y > actor.y && rising.vy < launched.vy, '重力軌道で前進・上昇しません');
+const thrustWhileRising = applyInstructionFighterEffects(rising, vectorThrust, actor.instanceId, 'actor', {
+  direction: 1,
+});
+assert.equal(thrustWhileRising.vy, rising.vy, '高所の接近推力が現在の上下軌道を不自然に変えます');
+assert.ok(thrustWhileRising.vx > rising.vx, '接近推力が現在の水平軌道へ加速を合成しません');
 let landed = launched;
 let peakHeight = launched.y;
 for (let index = 0; index < 100; index += 1) {
@@ -185,14 +189,15 @@ assert.ok(peakHeight >= 39, 'ジャンプが地上弾を越える十分な高さ
 assert.equal(landed.y, BATTLE_CONFIG.floorY, '重力で床へ戻りません');
 assert.equal(landed.vy, 0, '床との衝突で垂直速度が止まりません');
 const hovering = applyInstructionFighterEffects(actor, hoverDrive, actor.instanceId, 'actor');
-assert.equal(hovering.gravityScale, 0.08);
-assert.equal(hovering.gravityScaleRemaining, 2.8);
+assert.equal(hovering.vy, actor.vy + 18);
+assert.equal(hovering.gravityScale, 0.28);
+assert.equal(hovering.gravityScaleRemaining, 2.2);
 const airborneDash = applyInstructionFighterEffects({ ...rising, y: 12 }, airDash, actor.instanceId, 'actor', {
   direction: 1,
 });
 assert.equal(airborneDash.y, 12, '空中ダッシュが現在Y座標を上書きします');
 assert.ok(airborneDash.vx > 0, '空中ダッシュが水平速度を作りません');
-assert.equal(airborneDash.vy, rising.vy, '空中ダッシュが現在の上下軌道を打ち消します');
+assert.equal(airborneDash.vy, rising.vy + 4, '空中ダッシュが現在の上下軌道へ推進を合成しません');
 
 assert.equal(matchCondition('selfHeightAbove8', { ...actor, y: 9 }, [enemy]).length, 1);
 assert.equal(matchCondition('selfHeightBelow3', { ...actor, y: 2 }, [enemy]).length, 1);
@@ -291,6 +296,41 @@ for (let index = 0; index < 60 && !projectileHit; index += 1) {
 }
 assert.equal(projectileMoved, true, '演出ステップを適用しなくても弾の時間が進みません');
 assert.equal(projectileHit, true, '直進弾が時間経過後に接触しません');
+
+const fieldDuel = makeDuel({ actionId: 'corrosion-field', actorX: 25, targetX: 70, targetY: 30 });
+const fieldLaunch = resolvePending(plan(fieldDuel.fighters, fieldDuel.team), fieldDuel.team);
+assert.equal(fieldLaunch.zones.length, 0, '腐食弾の投擲時点で空中に毒床が生成されます');
+assert.equal(fieldLaunch.projectiles.length, 1, '腐食弾が独立した投擲物として生成されません');
+assert.equal(fieldLaunch.projectiles[0].trajectory, 'ballistic');
+assert.equal(fieldLaunch.projectiles[0].impact, 'floor');
+let fieldPlan = {
+  ...fieldLaunch,
+  fighters: fieldLaunch.fighters.map((fighter) => ({ ...fighter, actionLock: 99 })),
+};
+let fieldElapsed = Math.max(...fieldLaunch.fighters.map((fighter) => fighter.pendingAction?.resolvesAt ?? 1));
+let lobPeak = fieldLaunch.projectiles[0].y;
+let landingStepSeen = false;
+for (let index = 0; index < 40 && fieldPlan.zones.length === 0; index += 1) {
+  const previousElapsed = fieldElapsed;
+  fieldElapsed += BATTLE_CONFIG.tickSeconds;
+  fieldPlan = planBattleFrame({
+    fighters: fieldPlan.fighters,
+    zones: fieldPlan.zones,
+    projectiles: fieldPlan.projectiles,
+    team: fieldDuel.team,
+    dt: BATTLE_CONFIG.tickSeconds,
+    elapsed: fieldElapsed,
+    previousElapsed,
+  });
+  lobPeak = Math.max(lobPeak, ...fieldPlan.projectiles.map((projectile) => projectile.y));
+  landingStepSeen ||= fieldPlan.steps.some((step) => step.flash.actionLabel?.includes('着地'));
+}
+assert.ok(lobPeak > 8, '腐食弾が放物線の高さを作りません');
+assert.equal(fieldPlan.projectiles.length, 0, '着地した腐食弾が投擲物として残っています');
+assert.equal(fieldPlan.zones.length, 1, '腐食弾の着地時に毒床が生成されません');
+assert.equal(fieldPlan.zones[0].y, BATTLE_CONFIG.floorY, '毒床が地面以外のY座標へ生成されます');
+assert.ok(Math.abs(fieldPlan.zones[0].x - 70) <= 2, '毒床が投擲時に狙ったX座標へ着地しません');
+assert.equal(landingStepSeen, true, '腐食弾の着地イベントが演出ストリームへ出力されません');
 
 const simultaneousTeam = [createInventoryUnit('volt', 'simultaneous-volt')];
 simultaneousTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'always', actionId: 'pulse-swipe' }];

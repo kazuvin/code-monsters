@@ -27,6 +27,7 @@ import {
   applyZoneActionTriggers,
   battleZoneById,
   createBattleZone,
+  createBattleZoneAt,
   tickBattleZones,
   type BattleZoneChange,
   type ZoneTrigger,
@@ -34,6 +35,8 @@ import {
 import {
   advanceProjectile,
   createProjectile,
+  projectileFloorImpactX,
+  projectileHitsFloor,
   projectileInBounds,
   projectileIntersectsFighter,
   resolveAttackShape,
@@ -292,10 +295,12 @@ export function planBattleFrame({
     if (!target) return;
     const actorValues = applyActorEffects(actor, target, instruction);
 
-    if (instruction.delivery?.kind === 'projectile') {
+    const delivery = instruction.delivery;
+    if (delivery?.kind === 'projectile' || delivery?.kind === 'lob') {
+      const isLob = delivery.kind === 'lob';
       const projectile = createProjectile(
         instruction,
-        instruction.delivery,
+        delivery,
         actor,
         target,
         elapsed,
@@ -309,13 +314,16 @@ export function planBattleFrame({
           kind: visualKind(instruction),
           targetId: target.instanceId,
           projectileId: projectile.instanceId,
-          actionLabel: `${instruction.short}｜発射`,
+          actionLabel: `${instruction.short}｜${isLob ? '投擲' : '発射'}`,
           reaction,
           n: 0,
         },
         log: {
           actor: actor.name,
-          text: `${instruction.short}を発射｜弾速 ${instruction.delivery.speed}m/s`,
+          text:
+            delivery.kind === 'lob'
+              ? `${instruction.short}を投擲｜着地予定 ${delivery.flightSeconds}秒後`
+              : `${instruction.short}を発射｜弾速 ${delivery.speed}m/s`,
           type: reaction ? 'reaction' : 'info',
         },
         updates: [{ id: actor.instanceId, values: actorValues }],
@@ -474,13 +482,43 @@ export function planBattleFrame({
         ? projectileSnapshot.find((fighter) => fighter.instanceId === projectile.targetId)
         : undefined;
       const advanced = advanceProjectile(projectile, target, dt);
-      const hit = projectileSnapshot
-        .filter((fighter) => fighter.team !== projectile.sourceTeam && fighter.hp > 0)
-        .sort(compareReadyFighters)
-        .find((fighter) => projectileIntersectsFighter(projectile, advanced, fighter));
+      const floorImpact = projectileHitsFloor(projectile, advanced);
+      const hit =
+        projectile.impact === 'fighter'
+          ? projectileSnapshot
+              .filter((fighter) => fighter.team !== projectile.sourceTeam && fighter.hp > 0)
+              .sort(compareReadyFighters)
+              .find((fighter) => projectileIntersectsFighter(projectile, advanced, fighter))
+          : undefined;
       const actor = projectileSnapshot.find((fighter) => fighter.instanceId === projectile.sourceId);
       const instruction = instructionById.get(projectile.actionId);
-      if (hit && actor && instruction) {
+      const zoneEffect = instruction ? effectByKind(instruction, 'placeZone') : undefined;
+      if (floorImpact && actor && instruction && zoneEffect) {
+        const impactX = projectileFloorImpactX(projectile, advanced);
+        const zone = createBattleZoneAt(zoneEffect, actor, impactX, BATTLE_CONFIG.floorY, elapsed);
+        const definition = battleZoneById.get(zone.zoneId);
+        nextZones = [...nextZones, zone];
+        queueStep({
+          flash: {
+            id: actor.instanceId,
+            kind: 'field',
+            targetId: projectile.targetId ?? undefined,
+            projectileId: projectile.instanceId,
+            zoneX: zone.x,
+            zoneY: zone.y,
+            actionLabel: `${instruction.short}｜着地`,
+            reaction: projectile.reaction,
+            n: 0,
+          },
+          log: {
+            actor: actor.name,
+            text: `${definition?.label ?? zone.zoneId}が地面 (${zone.x.toFixed(1)}, ${zone.y.toFixed(1)}) に展開`,
+            type: projectile.reaction ? 'reaction' : 'info',
+          },
+          updates: [],
+          zoneChanges: [{ kind: 'add', zone }],
+        });
+      } else if (hit && actor && instruction) {
         applyHit({
           actor,
           target: hit,

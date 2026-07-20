@@ -481,9 +481,11 @@ export function Catalog() {
                         <dd>
                           {instruction.delivery.kind === 'projectile'
                             ? `${instruction.delivery.homing ? '追尾弾' : '直進弾'} / 速度${instruction.delivery.speed} / 半径${instruction.delivery.radius}`
-                            : instruction.delivery.shape.kind === 'circle'
-                              ? `円 / 半径${instruction.delivery.shape.radius}`
-                              : `矩形 / 幅${instruction.delivery.shape.width} / 高さ${instruction.delivery.shape.height ?? '無限'}`}
+                            : instruction.delivery.kind === 'lob'
+                              ? `放物投擲 / 滞空${instruction.delivery.flightSeconds}秒 / 地面着弾`
+                              : instruction.delivery.shape.kind === 'circle'
+                                ? `円 / 半径${instruction.delivery.shape.radius}`
+                                : `矩形 / 幅${instruction.delivery.shape.width} / 高さ${instruction.delivery.shape.height ?? '無限'}`}
                         </dd>
                       </div>
                     )}

@@ -63,6 +63,9 @@ namespace CodeMonsters.Core
         public bool Homing;
         public bool Reaction;
         public double TurnRateDegrees;
+        public string Trajectory = "linear";
+        public string Impact = "fighter";
+        public double GravityScale;
     }
 
     public static class BattleRules
@@ -143,33 +146,53 @@ namespace CodeMonsters.Core
             SpatialDeliveryDefinition delivery,
             FighterState actor,
             FighterState target,
-            double fighterRadius,
+            BattleConfig battle,
             bool reaction = false
         )
         {
-            var startY = actor.Y + fighterRadius * 0.6;
+            var ballistic = delivery.Kind == "lob";
+            var radius = delivery.Radius ?? 0;
+            var startY = ballistic ? actor.Y + battle.FighterRadius + radius : actor.Y + battle.FighterRadius * 0.6;
             var dx = target.X - actor.X;
             var dy = target.Y - startY;
             var magnitude = Math.Sqrt(dx * dx + dy * dy);
             if (magnitude <= double.Epsilon)
                 magnitude = 1;
             var speed = delivery.Speed ?? 0;
+            var gravityScale = ballistic ? delivery.GravityScale ?? 0 : 0;
+            var flightSeconds = ballistic ? delivery.FlightSeconds ?? 0 : 0;
+            var gravity = battle.GravityPerSecond * gravityScale;
+            var destinationY = battle.FloorY + radius;
+            var vx = ballistic ? dx / flightSeconds : dx / magnitude * speed;
+            var vy = ballistic
+                ? (destinationY - startY + 0.5 * gravity * flightSeconds * flightSeconds) / flightSeconds
+                : dy / magnitude * speed;
             return new ProjectileState
             {
                 X = actor.X,
                 Y = startY,
-                VX = dx / magnitude * speed,
-                VY = dy / magnitude * speed,
-                Speed = speed,
-                Radius = delivery.Radius ?? 0,
-                RemainingSeconds = delivery.LifetimeSeconds ?? 0,
-                Homing = delivery.Homing,
+                VX = vx,
+                VY = vy,
+                Speed = ballistic ? Math.Sqrt(vx * vx + vy * vy) : speed,
+                Radius = radius,
+                RemainingSeconds = ballistic
+                    ? flightSeconds + battle.TickSeconds * 3
+                    : delivery.LifetimeSeconds ?? 0,
+                Homing = ballistic ? false : delivery.Homing,
                 Reaction = reaction,
-                TurnRateDegrees = delivery.TurnRateDegrees ?? 0,
+                TurnRateDegrees = ballistic ? 0 : delivery.TurnRateDegrees ?? 0,
+                Trajectory = ballistic ? "ballistic" : "linear",
+                Impact = ballistic ? "floor" : "fighter",
+                GravityScale = gravityScale,
             };
         }
 
-        public static ProjectileState AdvanceProjectile(ProjectileState projectile, FighterState target, double dt)
+        public static ProjectileState AdvanceProjectile(
+            ProjectileState projectile,
+            FighterState target,
+            BattleConfig battle,
+            double dt
+        )
         {
             var vx = projectile.VX;
             var vy = projectile.VY;
@@ -183,19 +206,49 @@ namespace CodeMonsters.Core
                 vx = Math.Cos(nextAngle) * projectile.Speed;
                 vy = Math.Sin(nextAngle) * projectile.Speed;
             }
+            var gravity = battle.GravityPerSecond * projectile.GravityScale;
             return new ProjectileState
             {
                 X = projectile.X + vx * dt,
-                Y = projectile.Y + vy * dt,
+                Y = projectile.Y + vy * dt - 0.5 * gravity * dt * dt,
                 VX = vx,
-                VY = vy,
+                VY = vy - gravity * dt,
                 Speed = projectile.Speed,
                 Radius = projectile.Radius,
                 RemainingSeconds = Math.Max(0, projectile.RemainingSeconds - dt),
                 Homing = projectile.Homing,
                 Reaction = projectile.Reaction,
                 TurnRateDegrees = projectile.TurnRateDegrees,
+                Trajectory = projectile.Trajectory,
+                Impact = projectile.Impact,
+                GravityScale = projectile.GravityScale,
             };
+        }
+
+        public static bool ProjectileHitsFloor(
+            ProjectileState previous,
+            ProjectileState next,
+            double floorY
+        )
+        {
+            return next.Impact == "floor"
+                && next.VY <= 0
+                && previous.Y > floorY + previous.Radius
+                && next.Y <= floorY + next.Radius;
+        }
+
+        public static double ProjectileFloorImpactX(
+            ProjectileState previous,
+            ProjectileState next,
+            double floorY
+        )
+        {
+            var floorLevel = floorY + next.Radius;
+            var verticalTravel = previous.Y - next.Y;
+            if (verticalTravel <= double.Epsilon)
+                return next.X;
+            var progress = Math.Max(0, Math.Min(1, (previous.Y - floorLevel) / verticalTravel));
+            return previous.X + (next.X - previous.X) * progress;
         }
 
         public static bool ProjectileIntersects(

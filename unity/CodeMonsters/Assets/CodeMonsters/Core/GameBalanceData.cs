@@ -38,6 +38,9 @@ namespace CodeMonsters.Core
 
     public sealed class BattleConfig
     {
+        [JsonProperty("tickSeconds")]
+        public double TickSeconds;
+
         [JsonProperty("teamSize")]
         public int TeamSize;
 
@@ -417,6 +420,12 @@ namespace CodeMonsters.Core
 
         [JsonProperty("turnRateDegrees")]
         public double? TurnRateDegrees;
+
+        [JsonProperty("flightSeconds")]
+        public double? FlightSeconds;
+
+        [JsonProperty("gravityScale")]
+        public double? GravityScale;
     }
 
     public sealed class AttackShapeDefinition
@@ -549,6 +558,9 @@ namespace CodeMonsters.Core
 
         [JsonProperty("relativeTo")]
         public string RelativeTo = "";
+
+        [JsonProperty("verticalMaxY")]
+        public double? VerticalMaxY;
 
         [JsonProperty("scale")]
         public double? Scale;

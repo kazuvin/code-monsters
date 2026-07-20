@@ -252,7 +252,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 19) error('INVALID_SCHEMA_VERSION', 'schemaVersion は19以上である必要があります');
+  if (data.schemaVersion < 20) error('INVALID_SCHEMA_VERSION', 'schemaVersion は20以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -533,7 +533,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (instruction.fixedFor) requireUnit(instruction.fixedFor, `スキル ${instruction.id}`);
     const delivery = instruction.delivery;
     if (delivery) {
-      if (!['shape', 'projectile'].includes(delivery.kind))
+      if (!['shape', 'projectile', 'lob'].includes(delivery.kind))
         error('INVALID_DELIVERY', `${instruction.id} の delivery.kind が不正です`);
       if (delivery.kind === 'shape') {
         rejectUnknownKeys(delivery, ['kind', 'shape'], `スキル ${instruction.id}.delivery`);
@@ -546,7 +546,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
           if (shape.width <= 0 || (shape.height !== null && shape.height <= 0))
             error('INVALID_DELIVERY', `${instruction.id} の矩形サイズが不正です`);
         } else error('INVALID_DELIVERY', `${instruction.id} の攻撃形状が不正です`);
-      } else {
+      } else if (delivery.kind === 'projectile') {
         rejectUnknownKeys(
           delivery,
           ['kind', 'speed', 'radius', 'lifetimeSeconds', 'homing', 'turnRateDegrees'],
@@ -556,6 +556,16 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
           error('INVALID_DELIVERY', `${instruction.id} の飛び道具パラメータが不正です`);
         if (delivery.homing && (delivery.turnRateDegrees ?? 0) <= 0)
           error('INVALID_DELIVERY', `${instruction.id} の追尾弾には正の旋回速度が必要です`);
+      } else {
+        rejectUnknownKeys(
+          delivery,
+          ['kind', 'flightSeconds', 'radius', 'gravityScale'],
+          `スキル ${instruction.id}.delivery`,
+        );
+        if (delivery.flightSeconds <= 0 || delivery.radius <= 0 || delivery.gravityScale <= 0)
+          error('INVALID_DELIVERY', `${instruction.id} の放物投擲パラメータが不正です`);
+        if (instruction.action !== 'field' || !instruction.effects.some((effect) => effect.kind === 'placeZone'))
+          error('INVALID_DELIVERY', `${instruction.id} の放物投擲には設置空間が必要です`);
       }
     }
     if (!Array.isArray(instruction.effects) || instruction.effects.length === 0)
@@ -582,7 +592,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       } else if (effect.kind === 'motion') {
         rejectUnknownKeys(
           effect,
-          ['kind', 'target', 'mode', 'x', 'y', 'relativeTo'],
+          ['kind', 'target', 'mode', 'x', 'y', 'relativeTo', 'verticalMaxY'],
           `スキル ${instruction.id}.motion`,
         );
         if (
@@ -591,6 +601,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
           !['target', 'world'].includes(effect.relativeTo) ||
           !Number.isFinite(effect.x) ||
           !Number.isFinite(effect.y) ||
+          (effect.verticalMaxY !== undefined && (!Number.isFinite(effect.verticalMaxY) || effect.verticalMaxY < 0)) ||
           (effect.x === 0 && effect.y === 0)
         )
           error('INVALID_EFFECT', `${instruction.id} の motion 定義が不正です`);

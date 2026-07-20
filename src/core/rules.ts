@@ -219,6 +219,7 @@ export function instructionReach(instruction: Instruction): number {
   const delivery = instruction.delivery;
   if (!delivery) return 0;
   if (delivery.kind === 'projectile') return delivery.speed * delivery.lifetimeSeconds;
+  if (delivery.kind === 'lob') return BATTLE_CONFIG.wallRight - BATTLE_CONFIG.wallLeft;
   if (delivery.shape.kind === 'circle') return delivery.shape.offsetX + delivery.shape.radius;
   return delivery.shape.offsetX + delivery.shape.width / 2;
 }
@@ -255,6 +256,12 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
       ...(damage
         ? [{ label: '基礎DMG', value: metricNumber(unit.attack * damage.attackScale + (damage.flatDamage ?? 0)) }]
         : []),
+    ]);
+  if (delivery?.kind === 'lob')
+    return withCost([
+      { label: '弾道', value: '放物線→地面' },
+      { label: '滞空', value: `${metricNumber(delivery.flightSeconds)} s` },
+      { label: '重力倍率', value: `${metricNumber(delivery.gravityScale)}×` },
     ]);
   if (motion)
     return withCost([

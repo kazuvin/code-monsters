@@ -170,12 +170,22 @@ Damage instructions require a spatial `delivery`. A `shape` resolves a circle or
 
 Simulation and presentation are now explicitly decoupled. `planBattleFrame` advances fighters, zones, pending impacts, cooldowns, and projectiles even when earlier visual steps have not been displayed. Actions sharing an impact timestamp still read a shared snapshot and may mutually knock out, but unrelated actors and projectiles do not wait for the UI queue. Schema-v18 battle snapshots and saved programs reference removed IDs and should start a new battle/run.
 
+## Schema version 20 migration
+
+Add the finite `lob` delivery for effects that resolve only after a gravity-driven floor impact. A lob declares its flight time, radius, and gravity scale. Both runtimes solve the initial X/Y velocity toward the target's launch-time X coordinate, advance the projectile on its own clock, and emit the effect only when the descending projectile crosses `floorY + radius`. `corrosion-field` now follows this path: it cannot create a zone at an airborne target coordinate, and its resulting zone always owns `floorY`.
+
+Projectile snapshots now include `trajectory`, `impact`, and `gravityScale` so Web, Unity, debug playback, and replay consumers can distinguish straight/homing fighter impacts from ballistic floor impacts without branching on action IDs. The Web presentation renders ballistic projectiles separately and creates the zone only from the landing event.
+
+Schema-v19 battle snapshots do not contain those projectile fields and should start a new battle/run when imported by a v20 runtime.
+
+Movement impulses now compose with current `vx` and `vy` instead of replacing the whole velocity vector. Advance, retreat, jump, hover, and air dash therefore preserve momentum; gravity and horizontal drag curve and settle their paths between instructions. An optional `verticalMaxY` applies an effect's Y impulse only at or below a coordinate threshold, allowing ground thrust to create a small hop without injecting more lift into an existing jump. The higher ceiling is a physical bound for composed impulses, not an airborne-state category.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v19 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, continuous position/velocity, physics constants, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects/deliveries, and canonical status values
-- Euclidean distance, height/descent conditions, circle/box intersection, direct/homing projectile advancement, swept collision, and deterministic gravity motion
+- schema-v20 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, continuous position/velocity, physics constants, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, landing-triggered battle zones, finite instruction effects/deliveries, and canonical status values
+- Euclidean distance, height/descent conditions, circle/box intersection, direct/homing and ballistic projectile advancement, swept/floor collision, and deterministic gravity motion
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames
 

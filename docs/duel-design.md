@@ -20,7 +20,7 @@ There is no unit recruitment, bench, formation order, partner targeting, or unit
 | Slot | Primary decision | Examples |
 | --- | --- | --- |
 | Frame | durability versus mobility | heavy armor adds HP and defense but loses speed; a light frame does the opposite |
-| Weapon | attack geometry, projectile behavior, and action package | impact, long-shot, corrosion, and cryo cores each replace the tactical toolkit |
+| Weapon | attack geometry, projectile behavior, and action package | impact, long-shot, corrosion, and cryo cores each replace the tactical toolkit; corrosion includes a ballistic floor-control throw |
 | Logic chip | reaction and program identity | follow-up, repair, guard, overclock, and redline packages |
 
 Equipment uses authored stat tradeoffs rather than random affixes. A part may grant actions or a default reaction, but the equipment registry does not duplicate unit stats. Replacing a part removes instructions that are no longer owned so saved programs cannot execute unavailable actions.
@@ -34,3 +34,5 @@ The five initial protocols cover rushdown, defense and knockback, slow control, 
 ## Art production boundary
 
 Character animation is hand-authored and processed by the existing deterministic sprite pipeline for QA, approval, Web export, and Unity clip generation. AI generation is used for mostly static assets such as backgrounds, equipment icons, portraits, effects, and props. This division protects frame-to-frame anatomy and pixel-cluster quality while preserving automation where temporal consistency is not required.
+
+Movement skills apply impulses to the current velocity instead of teleporting or replacing the whole vector. Forward thrust, retreat, jump, hover, and air dash can therefore combine into paths that bend under gravity and settle through drag; build order changes the resulting trajectory.

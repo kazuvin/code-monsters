@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 19,
+  "schemaVersion": 20,
   "battle": {
     "teamSize": 1,
     "tickSeconds": 0.1,
@@ -19,7 +19,7 @@
     "groundFrictionPerSecond": 18,
     "maxFallSpeed": 42,
     "floorY": 0,
-    "ceilingY": 48,
+    "ceilingY": 72,
     "fighterRadius": 2.4,
     "knockbackVelocityScale": 1.8,
     "initialPositionInset": 2,
@@ -70,7 +70,7 @@
     {
       "id": "corrosion-field",
       "label": "腐食フィールド",
-      "description": "中心座標から半径6m内で行動したユニットへ、行動時刻ごとに毒を1スタック付与する空間",
+      "description": "着弾した地面を中心に半径6m内で行動したユニットへ、行動時刻ごとに毒を1スタック付与する空間",
       "radius": 6,
       "durationSeconds": 7,
       "targetFilter": "any",
@@ -393,7 +393,7 @@
     {
       "id": "corrosion-shell",
       "name": "コロージョン・シェル",
-      "briefing": "追尾する毒弾を撒き、毒が重なると無限高の腐食柱を起動する。",
+      "briefing": "毒弾と放物線で投げ込む毒床を撒き、毒が重なると無限高の腐食柱を起動する。",
       "enemyUnitIds": ["bastion"],
       "enemyEquipmentIds": ["bulwark-frame", "corrosion-core", "guard-matrix"],
       "enemyProgramActionIds": ["corrosion-column", "toxin-orb", "corrosion-field", "pulse-swipe", "vector-thrust"],
@@ -790,7 +790,7 @@
       "name": "コロージョンコア",
       "code": "WP-23",
       "slot": "weapon",
-      "description": "追尾する毒弾から無限高の腐食柱へ接続する射撃コア。",
+      "description": "追尾する毒弾、着地して広がる毒床、無限高の腐食柱を接続する射撃コア。",
       "tradeoff": "ATK -4 / KB -8",
       "rarity": "rare",
       "price": 5,
@@ -941,7 +941,7 @@
       "id": "vector-thrust",
       "title": "推力で接近する",
       "short": "ベクトルスラスト",
-      "flavor": "相手方向へ水平速度を与える。移動距離は経過時間と摩擦で決まる。",
+      "flavor": "現在の運動量へ前上方の推進を加える。重力と抗力で滑らかな接近弧を描く。",
       "action": "move",
       "abilityCost": 0,
       "cooldownSeconds": 1.1,
@@ -959,9 +959,10 @@
           "kind": "motion",
           "target": "actor",
           "mode": "addVelocity",
-          "x": 20,
-          "y": 0,
-          "relativeTo": "target"
+          "x": 16,
+          "y": 20,
+          "relativeTo": "target",
+          "verticalMaxY": 3
         }
       ]
     },
@@ -969,7 +970,7 @@
       "id": "backstep",
       "title": "反動で離脱する",
       "short": "バックインパルス",
-      "flavor": "相手と逆方向へ速度を作り、同時に少し浮いて攻撃円をずらす。",
+      "flavor": "現在の運動量へ後ろ上方の反動を加え、放物線で攻撃円から離脱する。",
       "action": "retreat",
       "abilityCost": 1,
       "cooldownSeconds": 2.6,
@@ -986,9 +987,9 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "setVelocity",
-          "x": -17,
-          "y": 6,
+          "mode": "addVelocity",
+          "x": -14,
+          "y": 24,
           "relativeTo": "target"
         }
       ]
@@ -1232,9 +1233,9 @@
     },
     {
       "id": "corrosion-field",
-      "title": "腐食空間を固定する",
-      "short": "コロージョンフィールド",
-      "flavor": "相手の現在座標へ時限空間を置く。範囲内で行動した時刻ごとに毒が蓄積する。",
+      "title": "腐食弾を投げ込む",
+      "short": "コロージョンロブ",
+      "flavor": "相手の現在X座標へ腐食弾を放物線で投げ、地面への着弾時だけ毒床を生成する。",
       "action": "field",
       "abilityCost": 3,
       "cooldownSeconds": 5.5,
@@ -1246,6 +1247,12 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
       "tone": "lime",
+      "delivery": {
+        "kind": "lob",
+        "flightSeconds": 1.6,
+        "radius": 2,
+        "gravityScale": 1
+      },
       "effects": [
         {
           "kind": "placeZone",
@@ -1341,7 +1348,7 @@
       "id": "jump-jet",
       "title": "上昇推力をかける",
       "short": "ジャンプジェット",
-      "flavor": "前方へ踏み込みながら大きな上向き初速度を与え、地上を走る直進弾を飛び越える。",
+      "flavor": "現在の運動量へ大きな上向き推進を加え、地上を走る直進弾を放物線で飛び越える。",
       "action": "jump",
       "abilityCost": 2,
       "cooldownSeconds": 4,
@@ -1358,8 +1365,8 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "setVelocity",
-          "x": 14,
+          "mode": "addVelocity",
+          "x": 12,
           "y": 54,
           "relativeTo": "target"
         }
@@ -1369,7 +1376,7 @@
       "id": "hover-drive",
       "title": "低重力推進する",
       "short": "ホバードライブ",
-      "flavor": "上向き速度と一時的な低重力を与える。空中という状態は生成しない。",
+      "flavor": "現在速度へ上向き推進を加え、一時的に重力を弱めて緩やかな弧を伸ばす。",
       "action": "hover",
       "abilityCost": 3,
       "cooldownSeconds": 6.5,
@@ -1386,16 +1393,16 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "setVelocity",
+          "mode": "addVelocity",
           "x": 0,
-          "y": 15,
+          "y": 18,
           "relativeTo": "world"
         },
         {
           "kind": "gravity",
           "target": "actor",
-          "scale": 0.08,
-          "durationSeconds": 2.8
+          "scale": 0.28,
+          "durationSeconds": 2.2
         }
       ]
     },
@@ -1403,7 +1410,7 @@
       "id": "air-dash",
       "title": "高所で水平加速する",
       "short": "エアダッシュ",
-      "flavor": "y座標が8m以上なら水平方向へ速度を上書きする。高度分類は参照しない。",
+      "flavor": "y座標が8m以上なら現在の弧へ前方推進を加え、軌道を空中で曲げる。",
       "action": "jump",
       "abilityCost": 2,
       "cooldownSeconds": 3,
@@ -1421,8 +1428,8 @@
           "kind": "motion",
           "target": "actor",
           "mode": "addVelocity",
-          "x": 28,
-          "y": 0,
+          "x": 20,
+          "y": 4,
           "relativeTo": "target"
         }
       ]

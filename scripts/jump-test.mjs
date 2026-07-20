@@ -78,7 +78,7 @@ const result = {
 };
 console.log(JSON.stringify(result, null, 2));
 
-if (!shopText.includes('RARE / JUMP') || !shopText.includes('水平速度 +14') || !shopText.includes('垂直速度 +54'))
+if (!shopText.includes('RARE / JUMP') || !shopText.includes('水平速度 +12') || !shopText.includes('垂直速度 +54'))
   throw new Error('ジャンプジェットの速度ベース表示が不正です');
 if (!configuredProgram.includes('上昇推力をかける')) throw new Error('ジャンプジェットを通常作戦へ設定できません');
 if (!flightEventSeen || !ascentSeen || !descentSeen || !returnedToFloor)

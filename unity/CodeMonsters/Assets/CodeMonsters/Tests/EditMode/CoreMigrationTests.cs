@@ -20,7 +20,7 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalSpatialDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(19));
+            Assert.That(data.SchemaVersion, Is.EqualTo(20));
             Assert.That(data.Battle.TeamSize, Is.EqualTo(1));
             Assert.That(data.Battle.GravityPerSecond, Is.GreaterThan(0));
             Assert.That(data.Battle.CeilingY, Is.GreaterThan(data.Battle.FloorY));
@@ -78,15 +78,15 @@ namespace CodeMonsters.Core.Tests
             var homingInstruction = data.Instructions.Single(value => value.Id == "seeker-orb");
             var actor = new FighterState { InstanceId = "volt-1", Team = "ally", X = 20, Y = 0, Hp = 100 };
             var target = new FighterState { InstanceId = "enemy-1", Team = "enemy", X = 60, Y = 0, Hp = 100 };
-            var direct = BattleRules.CreateProjectile(directInstruction.Delivery, actor, target, data.Battle.FighterRadius);
-            var directAdvanced = BattleRules.AdvanceProjectile(direct, target, 0.5);
+            var direct = BattleRules.CreateProjectile(directInstruction.Delivery, actor, target, data.Battle);
+            var directAdvanced = BattleRules.AdvanceProjectile(direct, target, data.Battle, 0.5);
             Assert.That(directAdvanced.X, Is.GreaterThan(direct.X));
             Assert.That(directAdvanced.VY, Is.EqualTo(direct.VY).Within(0.0001));
 
-            var homing = BattleRules.CreateProjectile(homingInstruction.Delivery, actor, target, data.Battle.FighterRadius);
+            var homing = BattleRules.CreateProjectile(homingInstruction.Delivery, actor, target, data.Battle);
             target.X = 35;
             target.Y = 30;
-            var curved = BattleRules.AdvanceProjectile(homing, target, 0.25);
+            var curved = BattleRules.AdvanceProjectile(homing, target, data.Battle, 0.25);
             Assert.That(curved.VY, Is.GreaterThan(homing.VY));
 
             var sweptStart = new ProjectileState { X = 40, Y = 0, Radius = 2 };
@@ -133,6 +133,24 @@ namespace CodeMonsters.Core.Tests
             Assert.That(effect.ZoneId, Is.EqualTo(zone.Id));
             Assert.That(effect.OffsetX, Is.EqualTo(0));
             Assert.That(effect.OffsetY, Is.EqualTo(0));
+            Assert.That(skill.Delivery.Kind, Is.EqualTo("lob"));
+            var actor = new FighterState { InstanceId = "volt-1", Team = "ally", X = 20, Y = 0, Hp = 100 };
+            var target = new FighterState { InstanceId = "enemy-1", Team = "enemy", X = 60, Y = 30, Hp = 100 };
+            var lob = BattleRules.CreateProjectile(skill.Delivery, actor, target, data.Battle);
+            var previous = lob;
+            var impactX = lob.X;
+            var landed = false;
+            for (var index = 0; index < 40 && !landed; index++)
+            {
+                var next = BattleRules.AdvanceProjectile(previous, target, data.Battle, data.Battle.TickSeconds);
+                landed = BattleRules.ProjectileHitsFloor(previous, next, data.Battle.FloorY);
+                if (landed)
+                    impactX = BattleRules.ProjectileFloorImpactX(previous, next, data.Battle.FloorY);
+                previous = next;
+            }
+            Assert.That(lob.Trajectory, Is.EqualTo("ballistic"));
+            Assert.That(landed, Is.True);
+            Assert.That(impactX, Is.EqualTo(target.X).Within(1));
             Assert.That(BattleRules.PathEntersZone(20, 0, 80, 0, 50, 0, zone.Radius), Is.True);
             Assert.That(BattleRules.PathEntersZone(50, 0, 80, 0, 50, 0, zone.Radius), Is.False);
         }

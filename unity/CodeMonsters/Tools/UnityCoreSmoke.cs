@@ -89,10 +89,25 @@ internal static class UnityCoreSmoke
         var shape = BattleRules.ResolveAttackShape(verticalLance, actor, target);
         if (shape == null || shape.Kind != "box" || shape.Height.HasValue)
             throw new InvalidDataException("Infinite-height attack shape was not imported");
-        var projectile = BattleRules.CreateProjectile(seekerOrb.Delivery, actor, target, data.Battle.FighterRadius);
-        var advanced = BattleRules.AdvanceProjectile(projectile, target, 0.1);
+        var projectile = BattleRules.CreateProjectile(seekerOrb.Delivery, actor, target, data.Battle);
+        var advanced = BattleRules.AdvanceProjectile(projectile, target, data.Battle, 0.1);
         if (advanced.X == projectile.X && advanced.Y == projectile.Y)
             throw new InvalidDataException("Projectile time did not advance");
+        var corrosionFieldInstruction = data.Instructions.Single(item => item.Id == "corrosion-field");
+        var lob = BattleRules.CreateProjectile(corrosionFieldInstruction.Delivery, actor, target, data.Battle);
+        var previousLob = lob;
+        var lobImpactX = lob.X;
+        var lobLanded = false;
+        for (var index = 0; index < 40 && !lobLanded; index++)
+        {
+            var nextLob = BattleRules.AdvanceProjectile(previousLob, target, data.Battle, data.Battle.TickSeconds);
+            lobLanded = BattleRules.ProjectileHitsFloor(previousLob, nextLob, data.Battle.FloorY);
+            if (lobLanded)
+                lobImpactX = BattleRules.ProjectileFloorImpactX(previousLob, nextLob, data.Battle.FloorY);
+            previousLob = nextLob;
+        }
+        if (!lobLanded || Math.Abs(lobImpactX - target.X) > 1)
+            throw new InvalidDataException("Ballistic field projectile did not land at the targeted ground coordinate");
         if (
             data.Battle.StatusDamageTickSeconds != 2
             || poison.MaxStacks.HasValue

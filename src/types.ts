@@ -57,6 +57,7 @@ export type MotionEffect = {
   x: number;
   y: number;
   relativeTo: 'target' | 'world';
+  verticalMaxY?: number;
 };
 export type GravityEffect = {
   kind: 'gravity';
@@ -227,7 +228,14 @@ export type ProjectileDelivery = {
   turnRateDegrees?: number;
 };
 
-export type SpatialDelivery = ShapeDelivery | ProjectileDelivery;
+export type LobDelivery = {
+  kind: 'lob';
+  flightSeconds: number;
+  radius: number;
+  gravityScale: number;
+};
+
+export type SpatialDelivery = ShapeDelivery | ProjectileDelivery | LobDelivery;
 
 export type ResolvedAttackShape =
   | { kind: 'circle'; x: number; y: number; radius: number }
@@ -249,6 +257,9 @@ export type SpatialProjectile = {
   remainingSeconds: number;
   homing: boolean;
   turnRateDegrees: number;
+  trajectory: 'linear' | 'ballistic';
+  impact: 'fighter' | 'floor';
+  gravityScale: number;
 };
 
 export type UnitDefinition = {

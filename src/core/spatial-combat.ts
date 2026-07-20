@@ -1,5 +1,12 @@
 import { BATTLE_CONFIG } from '../data.ts';
-import type { Fighter, Instruction, ProjectileDelivery, ResolvedAttackShape, SpatialProjectile } from '../types.ts';
+import type {
+  Fighter,
+  Instruction,
+  LobDelivery,
+  ProjectileDelivery,
+  ResolvedAttackShape,
+  SpatialProjectile,
+} from '../types.ts';
 
 const degreesToRadians = (degrees: number) => (degrees * Math.PI) / 180;
 const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
@@ -45,7 +52,7 @@ export function shapeIntersectsFighter(shape: ResolvedAttackShape, fighter: Figh
 
 export function createProjectile(
   instruction: Instruction,
-  delivery: ProjectileDelivery,
+  delivery: ProjectileDelivery | LobDelivery,
   actor: Fighter,
   target: Fighter,
   elapsed: number,
@@ -53,10 +60,21 @@ export function createProjectile(
   reaction = false,
 ): SpatialProjectile {
   const startX = actor.x;
-  const startY = actor.y + BATTLE_CONFIG.fighterRadius * 0.6;
+  const ballistic = delivery.kind === 'lob';
+  const startY = ballistic
+    ? actor.y + BATTLE_CONFIG.fighterRadius + delivery.radius
+    : actor.y + BATTLE_CONFIG.fighterRadius * 0.6;
   const dx = target.x - startX;
   const dy = target.y - startY;
   const magnitude = Math.hypot(dx, dy) || 1;
+  const gravityScale = ballistic ? delivery.gravityScale : 0;
+  const gravity = BATTLE_CONFIG.gravityPerSecond * gravityScale;
+  const flightSeconds = ballistic ? delivery.flightSeconds : 0;
+  const destinationY = BATTLE_CONFIG.floorY + delivery.radius;
+  const vx = ballistic ? dx / flightSeconds : (dx / magnitude) * delivery.speed;
+  const vy = ballistic
+    ? (destinationY - startY + 0.5 * gravity * flightSeconds * flightSeconds) / flightSeconds
+    : (dy / magnitude) * delivery.speed;
   return {
     instanceId: `${instruction.id}:${actor.instanceId}:${Math.round(elapsed * 1000)}:${sequence}`,
     actionId: instruction.id,
@@ -66,13 +84,16 @@ export function createProjectile(
     targetId: target.instanceId,
     x: startX,
     y: startY,
-    vx: (dx / magnitude) * delivery.speed,
-    vy: (dy / magnitude) * delivery.speed,
-    speed: delivery.speed,
+    vx,
+    vy,
+    speed: ballistic ? Math.hypot(vx, vy) : delivery.speed,
     radius: delivery.radius,
-    remainingSeconds: delivery.lifetimeSeconds,
-    homing: delivery.homing,
-    turnRateDegrees: delivery.turnRateDegrees ?? 0,
+    remainingSeconds: ballistic ? delivery.flightSeconds + BATTLE_CONFIG.tickSeconds * 3 : delivery.lifetimeSeconds,
+    homing: ballistic ? false : delivery.homing,
+    turnRateDegrees: ballistic ? 0 : (delivery.turnRateDegrees ?? 0),
+    trajectory: ballistic ? 'ballistic' : 'linear',
+    impact: ballistic ? 'floor' : 'fighter',
+    gravityScale,
   };
 }
 
@@ -92,15 +113,30 @@ export function advanceProjectile(
     vx = Math.cos(nextAngle) * projectile.speed;
     vy = Math.sin(nextAngle) * projectile.speed;
   }
+  const gravity = BATTLE_CONFIG.gravityPerSecond * projectile.gravityScale;
   return {
     ...projectile,
     x: projectile.x + vx * dt,
-    y: projectile.y + vy * dt,
+    y: projectile.y + vy * dt - 0.5 * gravity * dt * dt,
     vx,
-    vy,
+    vy: vy - gravity * dt,
     remainingSeconds: Math.max(0, projectile.remainingSeconds - dt),
   };
 }
+
+export const projectileHitsFloor = (previous: SpatialProjectile, current: SpatialProjectile) =>
+  current.impact === 'floor' &&
+  current.vy <= 0 &&
+  previous.y > BATTLE_CONFIG.floorY + previous.radius &&
+  current.y <= BATTLE_CONFIG.floorY + current.radius;
+
+export const projectileFloorImpactX = (previous: SpatialProjectile, current: SpatialProjectile) => {
+  const floorLevel = BATTLE_CONFIG.floorY + current.radius;
+  const verticalTravel = previous.y - current.y;
+  if (verticalTravel <= Number.EPSILON) return current.x;
+  const progress = Math.max(0, Math.min(1, (previous.y - floorLevel) / verticalTravel));
+  return previous.x + (current.x - previous.x) * progress;
+};
 
 const pointSegmentDistance = (
   pointX: number,
