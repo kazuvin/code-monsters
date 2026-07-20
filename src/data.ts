@@ -29,7 +29,14 @@ export type BattleConfig = {
   baseActionWindupSeconds: number;
   minimumActionWindupSeconds: number;
   minimumInstructionCooldownSeconds: number;
-  rangeStopRatio: number;
+  gravityPerSecond: number;
+  horizontalDragPerSecond: number;
+  groundFrictionPerSecond: number;
+  maxFallSpeed: number;
+  floorY: number;
+  ceilingY: number;
+  fighterRadius: number;
+  knockbackVelocityScale: number;
   initialPositionInset: number;
   teamPositionSpacing: number;
   initialActionLockStaggerSeconds: number;
@@ -59,7 +66,6 @@ export type EconomyConfig = {
 export type DebugTrainingConfig = {
   minimumDummyHp: number;
   recoveryDelaySeconds: number;
-  outsideRangeGap: number;
   defaultPositionPresetId: string;
   positionPresets: DebugPositionPresetDefinition[];
 };
@@ -68,8 +74,7 @@ export type DebugPositionPresetDefinition = {
   id: string;
   label: string;
   description: string;
-  rangeReference: 'mutual' | 'actor' | 'target';
-  relation: 'inside' | 'outside';
+  distance: number;
 };
 
 export type ShopConfig = {
@@ -96,7 +101,7 @@ export type BalanceAnalysisConfig = {
   abilityReferenceSpeed: number;
   referenceDefense: number;
   effectiveHpDefenseWeight: number;
-  powerWeights: { dps: number; effectiveHp: number; range: number; knockbackPerSecond: number; programLimit: number };
+  powerWeights: { dps: number; effectiveHp: number; knockbackPerSecond: number; programLimit: number };
   reactionUptime: Record<ReactionTrigger, number>;
   warningThresholdRatio: number;
   maxSameRarityPowerSpread: number;
@@ -114,7 +119,9 @@ export type ConditionDefinition = {
   kind: ConditionKind;
   params: {
     threshold?: number;
-    thresholdSeconds?: number;
+    distance?: number;
+    height?: number;
+    verticalSpeed?: number;
     statusId?: string;
     minimumStacks?: number;
   };

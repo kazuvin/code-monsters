@@ -68,28 +68,26 @@ export function applyInstructionFighterEffects(
   instruction: Instruction,
   sourceId: string,
   actualTarget: EffectTarget,
-  airbornePath?: { startX: number; endX: number },
+  context: { direction?: number } = {},
 ): Fighter {
   let next = applyInstructionStatusEffects(fighter, instruction, sourceId, actualTarget);
-  for (const effect of effectsByKind(instruction, 'airborne')) {
+  for (const effect of effectsByKind(instruction, 'motion')) {
     if (!targetsEffect(effect.target, actualTarget)) continue;
-    const startZ = next.z;
+    const direction = effect.relativeTo === 'target' ? (context.direction ?? 1) : 1;
+    const vx = effect.x * direction;
     next = {
       ...next,
-      z: startZ,
-      airborne: {
-        remainingSeconds: effect.durationSeconds,
-        durationSeconds: effect.durationSeconds,
-        maxHeight: effect.height,
-        startX: airbornePath?.startX ?? next.x,
-        endX: airbornePath?.endX ?? next.x,
-        startZ,
-        endZ: 0,
-      },
+      vx: effect.mode === 'addVelocity' ? next.vx + vx : vx,
+      vy: effect.mode === 'addVelocity' ? next.vy + effect.y : effect.y,
     };
   }
-  for (const effect of effectsByKind(instruction, 'land')) {
-    if (targetsEffect(effect.target, actualTarget)) next = { ...next, z: 0, airborne: null };
+  for (const effect of effectsByKind(instruction, 'gravity')) {
+    if (!targetsEffect(effect.target, actualTarget)) continue;
+    next = {
+      ...next,
+      gravityScale: effect.scale,
+      gravityScaleRemaining: effect.durationSeconds,
+    };
   }
   return next;
 }

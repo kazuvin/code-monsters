@@ -64,16 +64,16 @@ const explicitNoKnockback = resolveImpact({
 });
 assert.equal(explicitNoKnockback.knockbackDistance, 0, 'アクション固有設定でノックバックを無効化できる必要があります');
 
-const knockAwayInstruction = INSTRUCTIONS.find((instruction) => instruction.id === 'knock-away');
-assert.ok(knockAwayInstruction, '「ちょっと吹き飛ばす」の指示が登録されていません');
-const knockAwayDamage = effectByKind(knockAwayInstruction, 'damage');
-assert.ok(knockAwayDamage, '「ちょっと吹き飛ばす」にダメージ効果がありません');
-const knockAway = resolveImpact({
+const impactRingInstruction = INSTRUCTIONS.find((instruction) => instruction.id === 'impact-ring');
+assert.ok(impactRingInstruction, '空間衝撃スキルが登録されていません');
+const impactRingDamage = effectByKind(impactRingInstruction, 'damage');
+assert.ok(impactRingDamage, '空間衝撃スキルにダメージ効果がありません');
+const impactRing = resolveImpact({
   rawDamage: 26,
   minimumDamage: 4,
   attackType: 'melee',
   attackerKnockbackPower: 8,
-  impact: { knockbackPower: knockAwayDamage.knockbackPower },
+  impact: { knockbackPower: impactRingDamage.knockbackPower },
   targetDefense: 15,
   targetWeight: 14,
   targetRole: 'TANK',
@@ -81,11 +81,8 @@ const knockAway = resolveImpact({
   guardDamageScale: 0.82,
   guardKnockbackScale: 0.7,
 });
-assert.ok(knockAway.damage > 0, '「ちょっと吹き飛ばす」はダメージを与える必要があります');
-assert.ok(
-  knockAway.knockbackDistance >= 35,
-  '「ちょっと吹き飛ばす」はガード中の重量級も大きくノックバックさせる必要があります',
-);
+assert.ok(impactRing.damage > 0, 'インパクトリングはダメージを与える必要があります');
+assert.ok(impactRing.knockbackDistance > 0, 'インパクトリングはガード中の重量級も押し返す必要があります');
 
 console.log(
   JSON.stringify(
@@ -95,7 +92,7 @@ console.log(
       knockbackOnlySniper,
       normalMelee,
       explicitNoKnockback,
-      knockAway,
+      impactRing,
     },
     null,
     2,

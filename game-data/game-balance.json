@@ -1,20 +1,27 @@
 {
-  "schemaVersion": 18,
+  "schemaVersion": 19,
   "battle": {
     "teamSize": 1,
-    "tickSeconds": 0.22,
+    "tickSeconds": 0.1,
     "statusDamageTickSeconds": 2,
     "abilityGaugeMax": 10,
     "abilityGaugeInitial": 8,
     "abilityGaugeRegenPerSecond": 1.5,
-    "actionStepMs": 260,
+    "actionStepMs": 180,
     "reactionCooldownSeconds": 2.6,
     "baseActionLockSeconds": 0.35,
     "minimumActionLockSeconds": 0.18,
     "baseActionWindupSeconds": 0.44,
     "minimumActionWindupSeconds": 0.22,
     "minimumInstructionCooldownSeconds": 0.45,
-    "rangeStopRatio": 0.78,
+    "gravityPerSecond": 34,
+    "horizontalDragPerSecond": 5,
+    "groundFrictionPerSecond": 18,
+    "maxFallSpeed": 42,
+    "floorY": 0,
+    "ceilingY": 48,
+    "fighterRadius": 2.4,
+    "knockbackVelocityScale": 1.8,
     "initialPositionInset": 2,
     "teamPositionSpacing": 0,
     "initialActionLockStaggerSeconds": 0,
@@ -37,47 +44,49 @@
   "debugTraining": {
     "minimumDummyHp": 1,
     "recoveryDelaySeconds": 3,
-    "outsideRangeGap": 8,
-    "defaultPositionPresetId": "mutual-in-range",
+    "defaultPositionPresetId": "near-8",
     "positionPresets": [
       {
-        "id": "mutual-in-range",
-        "label": "相互射程内",
-        "description": "双方の通常攻撃が届く距離",
-        "rangeReference": "mutual",
-        "relation": "inside"
+        "id": "near-8",
+        "label": "近距離 8m",
+        "description": "円形攻撃や打ち上げが交差しやすい距離",
+        "distance": 8
       },
       {
-        "id": "actor-in-range",
-        "label": "攻撃側の射程内",
-        "description": "攻撃側ユニットの通常射程を基準に配置",
-        "rangeReference": "actor",
-        "relation": "inside"
+        "id": "middle-20",
+        "label": "中距離 20m",
+        "description": "矩形攻撃と投射物の到達差を比較する距離",
+        "distance": 20
       },
       {
-        "id": "actor-out-of-range",
-        "label": "攻撃側の射程外",
-        "description": "攻撃側ユニットの通常射程より外に配置",
-        "rangeReference": "actor",
-        "relation": "outside"
+        "id": "far-36",
+        "label": "遠距離 36m",
+        "description": "弾速・追尾・移動速度の時間差が表れる距離",
+        "distance": 36
       }
     ]
   },
   "battleZones": [
     {
-      "id": "toxic-cloud",
-      "label": "毒エリア",
-      "description": "範囲内で行動したユニットに、行動するたび毒を1スタック付与する設置エリア",
-      "radius": 4,
-      "durationSeconds": 8,
+      "id": "corrosion-field",
+      "label": "腐食フィールド",
+      "description": "中心座標から半径6m内で行動したユニットへ、行動時刻ごとに毒を1スタック付与する空間",
+      "radius": 6,
+      "durationSeconds": 7,
       "targetFilter": "any",
       "trigger": {
         "kind": "onActionWhileInside",
-        "effects": [{ "kind": "applyStatus", "statusId": "poison", "stacks": 1 }]
+        "effects": [
+          {
+            "kind": "applyStatus",
+            "statusId": "poison",
+            "stacks": 1
+          }
+        ]
       },
       "visual": {
-        "className": "toxic-cloud-zone",
-        "label": "TOXIC FIELD",
+        "className": "corrosion-field-zone",
+        "label": "CORROSION FIELD",
         "color": "#a7ff4f"
       }
     }
@@ -90,12 +99,22 @@
       "stacking": "stack",
       "maxStacks": null,
       "clearOnAction": false,
-      "duration": { "mode": "persistent" },
+      "duration": {
+        "mode": "persistent"
+      },
       "synergy": {
         "mode": "combo",
-        "counterplay": { "kind": "consumedBySkill", "description": "増幅技で2スタックを消費する" }
+        "counterplay": {
+          "kind": "consumedBySkill",
+          "description": "増幅技で2スタックを消費する"
+        }
       },
-      "debug": { "control": "stacks", "min": 0, "max": 20, "step": 1 },
+      "debug": {
+        "control": "stacks",
+        "min": 0,
+        "max": 20,
+        "step": 1
+      },
       "visual": {
         "className": "poisoned",
         "cardClass": "poisoned",
@@ -104,7 +123,12 @@
         "showStacks": true,
         "showRemaining": false
       },
-      "effects": [{ "kind": "damagePerSecond", "value": 1 }]
+      "effects": [
+        {
+          "kind": "damagePerSecond",
+          "value": 1
+        }
+      ]
     },
     {
       "id": "vulnerable",
@@ -113,12 +137,19 @@
       "stacking": "replace",
       "maxStacks": 1,
       "clearOnAction": false,
-      "duration": { "mode": "application" },
+      "duration": {
+        "mode": "application"
+      },
       "synergy": {
         "mode": "combo",
-        "counterplay": { "kind": "expires", "description": "付与から6秒後に解除される" }
+        "counterplay": {
+          "kind": "expires",
+          "description": "付与から6秒後に解除される"
+        }
       },
-      "debug": { "control": "toggle" },
+      "debug": {
+        "control": "toggle"
+      },
       "visual": {
         "className": "vulnerable",
         "cardClass": "vulnerable",
@@ -127,7 +158,12 @@
         "showStacks": false,
         "showRemaining": true
       },
-      "effects": [{ "kind": "incomingDamageScale", "value": 1.15 }]
+      "effects": [
+        {
+          "kind": "incomingDamageScale",
+          "value": 1.15
+        }
+      ]
     },
     {
       "id": "slowed",
@@ -136,12 +172,19 @@
       "stacking": "replace",
       "maxStacks": 1,
       "clearOnAction": false,
-      "duration": { "mode": "application" },
+      "duration": {
+        "mode": "application"
+      },
       "synergy": {
         "mode": "combo",
-        "counterplay": { "kind": "expires", "description": "5秒後、または利用技で消費されると解除される" }
+        "counterplay": {
+          "kind": "expires",
+          "description": "5秒後、または利用技で消費されると解除される"
+        }
       },
-      "debug": { "control": "toggle" },
+      "debug": {
+        "control": "toggle"
+      },
       "visual": {
         "className": "slowed",
         "cardClass": "slowed",
@@ -150,7 +193,12 @@
         "showStacks": false,
         "showRemaining": true
       },
-      "effects": [{ "kind": "speedScale", "value": 0.75 }]
+      "effects": [
+        {
+          "kind": "speedScale",
+          "value": 0.75
+        }
+      ]
     },
     {
       "id": "inspired",
@@ -159,12 +207,19 @@
       "stacking": "replace",
       "maxStacks": 1,
       "clearOnAction": false,
-      "duration": { "mode": "application" },
+      "duration": {
+        "mode": "application"
+      },
       "synergy": {
         "mode": "combo",
-        "counterplay": { "kind": "expires", "description": "6秒後、または強襲で消費されると解除される" }
+        "counterplay": {
+          "kind": "expires",
+          "description": "6秒後、または強襲で消費されると解除される"
+        }
       },
-      "debug": { "control": "toggle" },
+      "debug": {
+        "control": "toggle"
+      },
       "visual": {
         "className": "inspired",
         "cardClass": "inspired",
@@ -173,7 +228,12 @@
         "showStacks": false,
         "showRemaining": true
       },
-      "effects": [{ "kind": "attackScale", "value": 1.15 }]
+      "effects": [
+        {
+          "kind": "attackScale",
+          "value": 1.15
+        }
+      ]
     },
     {
       "id": "guarded",
@@ -182,13 +242,20 @@
       "stacking": "replace",
       "maxStacks": 1,
       "clearOnAction": true,
-      "duration": { "mode": "persistent" },
+      "duration": {
+        "mode": "persistent"
+      },
       "synergy": {
         "mode": "standalone",
         "standaloneReason": "次の行動まで維持する防御姿勢",
-        "counterplay": { "kind": "clearsOnAction", "description": "次の行動開始時に解除される" }
+        "counterplay": {
+          "kind": "clearsOnAction",
+          "description": "次の行動開始時に解除される"
+        }
       },
-      "debug": { "control": "toggle" },
+      "debug": {
+        "control": "toggle"
+      },
       "visual": {
         "className": "guarded",
         "cardClass": "guarded",
@@ -197,7 +264,16 @@
         "showStacks": false,
         "showRemaining": false
       },
-      "effects": [{ "kind": "incomingDamageScale", "value": 0.82 }, { "kind": "incomingKnockbackScale", "value": 0.7 }]
+      "effects": [
+        {
+          "kind": "incomingDamageScale",
+          "value": 0.82
+        },
+        {
+          "kind": "incomingKnockbackScale",
+          "value": 0.7
+        }
+      ]
     },
     {
       "id": "berserk",
@@ -206,13 +282,20 @@
       "stacking": "replace",
       "maxStacks": 1,
       "clearOnAction": false,
-      "duration": { "mode": "persistent" },
+      "duration": {
+        "mode": "persistent"
+      },
       "synergy": {
         "mode": "standalone",
         "standaloneReason": "瀕死時にのみ起動できる決死モード",
-        "counterplay": { "kind": "lowHpRequirement", "description": "HP30%以下でのみ起動する" }
+        "counterplay": {
+          "kind": "lowHpRequirement",
+          "description": "HP30%以下でのみ起動する"
+        }
       },
-      "debug": { "control": "toggle" },
+      "debug": {
+        "control": "toggle"
+      },
       "visual": {
         "className": "berserk-active",
         "cardClass": "berserk",
@@ -221,7 +304,16 @@
         "showStacks": false,
         "showRemaining": false
       },
-      "effects": [{ "kind": "attackScale", "value": 1.6 }, { "kind": "speedScale", "value": 3 }]
+      "effects": [
+        {
+          "kind": "attackScale",
+          "value": 1.6
+        },
+        {
+          "kind": "speedScale",
+          "value": 3
+        }
+      ]
     }
   ],
   "economy": {
@@ -232,23 +324,26 @@
   "shop": {
     "size": 4,
     "equipmentSlots": [0, 1],
-    "rarityWeights": { "common": 72, "rare": 23, "epic": 5 },
+    "rarityWeights": {
+      "common": 72,
+      "rare": 23,
+      "epic": 5
+    },
     "initialPicks": []
   },
   "roster": {
     "startingUnitIds": ["volt"],
     "enemyUnitIds": ["relay"],
-    "startingActionIds": ["attack-low", "approach", "retreat"],
+    "startingActionIds": ["pulse-swipe", "vector-thrust", "backstep"],
     "startingConditionIds": [
       "always",
-      "targetInRange",
-      "targetOutOfRange",
+      "targetNear12",
+      "targetFar12",
       "selfHpBelow50",
-      "selfAirborne",
-      "selfGrounded",
-      "targetAirborne",
-      "targetGrounded",
-      "targetLandingSoon"
+      "selfHeightAbove8",
+      "selfHeightBelow3",
+      "targetHeightAbove8",
+      "selfDescending"
     ],
     "startingEquipmentIds": ["standard-frame", "pulse-edge", "reactive-servo"]
   },
@@ -256,72 +351,90 @@
     {
       "id": "rush-protocol",
       "name": "ラッシュ・プロトコル",
-      "briefing": "高速接近と離脱を繰り返す。間合いを崩す命令順で迎え撃て。",
+      "briefing": "加速と反動で間合いを揺らす。円形攻撃の発生位置を読め。",
       "enemyUnitIds": ["relay"],
       "enemyEquipmentIds": ["vector-frame", "pulse-edge", "reactive-servo"],
-      "enemyProgramActionIds": ["attack-low", "relay-dash", "retreat"],
-      "enemyReaction": { "trigger": "selfHit", "actionId": "emergency-retreat" },
+      "enemyProgramActionIds": ["pulse-swipe", "vector-thrust", "backstep"],
+      "enemyReaction": {
+        "trigger": "selfHit",
+        "actionId": "backstep"
+      },
       "enemyStatScale": 1,
       "reward": 5
     },
     {
       "id": "iron-wall",
       "name": "アイアン・ウォール",
-      "briefing": "重装甲と反応ガードを備えた防御型。毒か脆弱で装甲を迂回せよ。",
+      "briefing": "広い衝撃円と打ち上げを重ねる。上下の速度をずらして回避しろ。",
       "enemyUnitIds": ["bastion"],
       "enemyEquipmentIds": ["bulwark-frame", "impact-core", "guard-matrix"],
-      "enemyProgramActionIds": ["knock-away", "attack-low", "approach"],
-      "enemyReaction": { "trigger": "selfHit", "actionId": "tank-guard" },
+      "enemyProgramActionIds": ["impact-ring", "arc-launch", "vector-thrust"],
+      "enemyReaction": {
+        "trigger": "selfHit",
+        "actionId": "tank-guard"
+      },
       "enemyStatScale": 1,
       "reward": 6
     },
     {
       "id": "cold-pursuit",
       "name": "スカイ・パースート",
-      "briefing": "長い跳躍から空中ダッシュ、斉射、急降下へつなぐ。離陸前か着地際を対空指示で捉えろ。",
+      "briefing": "上昇推力と水平加速をつなぎ、縦長の魔法判定を通してくる。",
       "enemyUnitIds": ["relay"],
       "enemyEquipmentIds": ["vector-frame", "cryo-emitter", "reactive-servo"],
-      "enemyProgramActionIds": ["dive-strike", "aerial-barrage", "boost-jump", "air-dash"],
-      "enemyReaction": { "trigger": "selfHit", "actionId": "emergency-retreat" },
+      "enemyProgramActionIds": ["vertical-lance", "jump-jet", "air-dash", "seeker-orb"],
+      "enemyReaction": {
+        "trigger": "selfHit",
+        "actionId": "backstep"
+      },
       "enemyStatScale": 1.08,
       "reward": 7
     },
     {
       "id": "corrosion-shell",
       "name": "コロージョン・シェル",
-      "briefing": "重装機が毒を積み上げて長期戦を拒む。短期決着か自己修復を選べ。",
+      "briefing": "追尾する毒弾を撒き、毒が重なると無限高の腐食柱を起動する。",
       "enemyUnitIds": ["bastion"],
       "enemyEquipmentIds": ["bulwark-frame", "corrosion-core", "guard-matrix"],
-      "enemyProgramActionIds": ["corrosion-burst", "toxic-mark", "attack-low", "approach"],
-      "enemyReaction": { "trigger": "selfHit", "actionId": "tank-guard" },
+      "enemyProgramActionIds": ["corrosion-column", "toxin-orb", "corrosion-field", "pulse-swipe", "vector-thrust"],
+      "enemyReaction": {
+        "trigger": "selfHit",
+        "actionId": "tank-guard"
+      },
       "enemyStatScale": 1.12,
       "reward": 8
     },
     {
       "id": "mirror-redline",
       "name": "ミラー・レッドライン",
-      "briefing": "同型機ヴォルトの最終決闘。過駆動と追撃の発動順まで読み切れ。",
+      "briefing": "同型機が直進弾と追尾弾を混ぜる。時間差で交差する弾道を崩せ。",
       "enemyUnitIds": ["volt"],
       "enemyEquipmentIds": ["standard-frame", "pulse-edge", "overclock-chip"],
-      "enemyProgramActionIds": ["energized-strike", "overclock", "attack-low", "approach"],
-      "enemyReaction": { "trigger": "selfAttackHit", "actionId": "volt-follow" },
+      "enemyProgramActionIds": ["energized-bolt", "overclock", "seeker-orb", "pulse-swipe"],
+      "enemyReaction": {
+        "trigger": "selfAttackHit",
+        "actionId": "counter-orb"
+      },
       "enemyStatScale": 1.18,
       "reward": 10
     }
   ],
   "balanceAnalysis": {
-    "baselineActionId": "attack-low",
+    "baselineActionId": "pulse-swipe",
     "abilityReferenceSpeed": 1,
     "referenceDefense": 8,
     "effectiveHpDefenseWeight": 5,
     "powerWeights": {
       "dps": 4,
       "effectiveHp": 0.12,
-      "range": 2,
       "knockbackPerSecond": 0.7,
       "programLimit": 1.5
     },
-    "reactionUptime": { "selfAttackHit": 1, "selfHit": 0.65, "selfHpLow": 0.3 },
+    "reactionUptime": {
+      "selfAttackHit": 1,
+      "selfHit": 0.65,
+      "selfHpLow": 0.3
+    },
     "warningThresholdRatio": 0.85,
     "maxSameRarityPowerSpread": 1.8
   },
@@ -352,27 +465,33 @@
       "compatibleTargets": ["nearestEnemy", "self"]
     },
     {
-      "id": "targetInRange",
-      "kind": "targetInRange",
-      "params": {},
-      "label": "射程範囲内",
-      "flavor": "手が届くなら、ここで仕掛ける。",
-      "effect": "対象との距離 ≤ 自機のRNG",
+      "id": "targetNear12",
+      "kind": "targetWithinDistance",
+      "params": {
+        "distance": 12
+      },
+      "label": "相手との距離が12m以内",
+      "flavor": "座標上の距離が詰まった瞬間に仕掛ける。",
+      "effect": "√(Δx²+Δy²) ≤ 12m",
       "compatibleTargets": ["nearestEnemy"]
     },
     {
-      "id": "targetOutOfRange",
-      "kind": "targetOutOfRange",
-      "params": {},
-      "label": "射程範囲外",
-      "flavor": "まだ届かないなら、間合いを変える。",
-      "effect": "対象との距離 > 自機のRNG",
+      "id": "targetFar12",
+      "kind": "targetBeyondDistance",
+      "params": {
+        "distance": 12
+      },
+      "label": "相手との距離が12mより遠い",
+      "flavor": "届かないなら、速度を作って座標を変える。",
+      "effect": "√(Δx²+Δy²) > 12m",
       "compatibleTargets": ["nearestEnemy"]
     },
     {
       "id": "selfHpBelow50",
       "kind": "selfHpBelow",
-      "params": { "threshold": 0.5 },
+      "params": {
+        "threshold": 0.5
+      },
       "label": "自分のHP 50%以下",
       "flavor": "崩れる前に立て直す。",
       "effect": "自分のHP ≤ 50%",
@@ -381,7 +500,9 @@
     {
       "id": "enemyHpBelow50",
       "kind": "targetHpBelow",
-      "params": { "threshold": 0.5 },
+      "params": {
+        "threshold": 0.5
+      },
       "label": "相手のHP 50%以下",
       "flavor": "弱ったところを見逃さない。",
       "effect": "相手のHP ≤ 50%",
@@ -390,7 +511,9 @@
     {
       "id": "selfHpBelow30",
       "kind": "selfHpBelow",
-      "params": { "threshold": 0.3 },
+      "params": {
+        "threshold": 0.3
+      },
       "label": "自分のHP 30%以下",
       "flavor": "あとがないので、ここから全力。",
       "effect": "自分のHP ≤ 30%",
@@ -399,7 +522,10 @@
     {
       "id": "enemyHasStatus",
       "kind": "targetHasStatus",
-      "params": { "statusId": "poison", "minimumStacks": 2 },
+      "params": {
+        "statusId": "poison",
+        "minimumStacks": 2
+      },
       "label": "相手の毒が2以上",
       "flavor": "仕込み済みなら畳みかける。",
       "effect": "相手の毒スタックが2以上",
@@ -408,7 +534,10 @@
     {
       "id": "enemyVulnerable",
       "kind": "targetHasStatus",
-      "params": { "statusId": "vulnerable", "minimumStacks": 1 },
+      "params": {
+        "statusId": "vulnerable",
+        "minimumStacks": 1
+      },
       "label": "相手が脆弱状態",
       "flavor": "暴いた隙へ決定打を通す。",
       "effect": "相手が脆弱状態",
@@ -417,7 +546,10 @@
     {
       "id": "enemySlowed",
       "kind": "targetHasStatus",
-      "params": { "statusId": "slowed", "minimumStacks": 1 },
+      "params": {
+        "statusId": "slowed",
+        "minimumStacks": 1
+      },
       "label": "相手が鈍足状態",
       "flavor": "動きが鈍った瞬間に重い一撃を重ねる。",
       "effect": "相手が鈍足状態",
@@ -426,56 +558,58 @@
     {
       "id": "selfInspired",
       "kind": "selfHasStatus",
-      "params": { "statusId": "inspired", "minimumStacks": 1 },
+      "params": {
+        "statusId": "inspired",
+        "minimumStacks": 1
+      },
       "label": "自分が過駆動状態",
       "flavor": "上げた出力を強襲へ変える。",
       "effect": "自分が過駆動状態",
       "compatibleTargets": ["nearestEnemy"]
     },
     {
-      "id": "selfAirborne",
-      "kind": "selfAirborne",
-      "params": {},
-      "label": "自分が空中",
-      "flavor": "滞空中だけ使える空中機動へつなぐ。",
-      "effect": "自分が滞空中",
-      "compatibleTargets": ["nearestEnemy"]
-    },
-    {
-      "id": "selfGrounded",
-      "kind": "selfGrounded",
-      "params": {},
-      "label": "自分が地上",
-      "flavor": "足場を確保してから離陸する。",
-      "effect": "自分が地上",
+      "id": "selfHeightAbove8",
+      "kind": "selfHeightAbove",
+      "params": {
+        "height": 8
+      },
+      "label": "自分のy座標が8m以上",
+      "flavor": "高さそのものを次の機動条件にする。",
+      "effect": "自分のy ≥ 8m",
       "compatibleTargets": ["nearestEnemy", "self"]
     },
     {
-      "id": "targetAirborne",
-      "kind": "targetAirborne",
-      "params": {},
-      "label": "相手が空中",
-      "flavor": "浮いた相手を対空火器で追う。",
-      "effect": "相手が滞空中",
+      "id": "selfHeightBelow3",
+      "kind": "selfHeightBelow",
+      "params": {
+        "height": 3
+      },
+      "label": "自分のy座標が3m以下",
+      "flavor": "低い位置から上向き速度を作る。",
+      "effect": "自分のy ≤ 3m",
+      "compatibleTargets": ["nearestEnemy", "self"]
+    },
+    {
+      "id": "targetHeightAbove8",
+      "kind": "targetHeightAbove",
+      "params": {
+        "height": 8
+      },
+      "label": "相手のy座標が8m以上",
+      "flavor": "上方へ移動した座標を直接監視する。",
+      "effect": "相手のy ≥ 8m",
       "compatibleTargets": ["nearestEnemy"]
     },
     {
-      "id": "targetGrounded",
-      "kind": "targetGrounded",
-      "params": {},
-      "label": "相手が地上",
-      "flavor": "接地している相手だけを狙う。",
-      "effect": "相手が地上",
-      "compatibleTargets": ["nearestEnemy"]
-    },
-    {
-      "id": "targetLandingSoon",
-      "kind": "targetAirborneRemainingBelow",
-      "params": { "thresholdSeconds": 0.8 },
-      "label": "相手が0.8秒以内に着地",
-      "flavor": "落下軌道の終点へ先回りする。",
-      "effect": "相手の残り滞空時間 ≤ 0.8秒",
-      "compatibleTargets": ["nearestEnemy"]
+      "id": "selfDescending",
+      "kind": "selfDescending",
+      "params": {
+        "verticalSpeed": 4
+      },
+      "label": "自分が4m/s以上で下降中",
+      "flavor": "落下速度を攻撃タイミングへ変える。",
+      "effect": "自分のvy ≤ −4m/s",
+      "compatibleTargets": ["nearestEnemy", "self"]
     }
   ],
   "reactionTriggers": [
@@ -512,7 +646,6 @@
       "attack": 25,
       "defense": 7,
       "speed": 1.18,
-      "range": 10,
       "knockbackPower": 8,
       "weight": 6,
       "attackType": "melee",
@@ -529,7 +662,6 @@
       "attack": 16,
       "defense": 15,
       "speed": 0.78,
-      "range": 8,
       "knockbackPower": 13,
       "weight": 14,
       "attackType": "blunt",
@@ -546,7 +678,6 @@
       "attack": 21,
       "defense": 6,
       "speed": 1.22,
-      "range": 11,
       "knockbackPower": 7,
       "weight": 5,
       "attackType": "melee",
@@ -577,7 +708,12 @@
       "tradeoff": "HP +30 / DEF +4 / WT +5 / SPD -0.18",
       "rarity": "common",
       "price": 4,
-      "modifiers": { "maxHp": 30, "defense": 4, "weight": 5, "speed": -0.18 },
+      "modifiers": {
+        "maxHp": 30,
+        "defense": 4,
+        "weight": 5,
+        "speed": -0.18
+      },
       "grantsActionIds": [],
       "defaultReaction": null
     },
@@ -587,7 +723,7 @@
       "code": "FR-21",
       "slot": "frame",
       "description": "速度で主導権を取る代わりに、被弾の許容量を削る。",
-      "tradeoff": "SPD +0.20 / HP -20 / DEF -2 / WT -2 / RNG -2 / KB -7",
+      "tradeoff": "SPD +0.20 / HP -20 / DEF -2 / WT -2 / KB -7",
       "rarity": "common",
       "price": 4,
       "modifiers": {
@@ -595,7 +731,6 @@
         "maxHp": -20,
         "defense": -2,
         "weight": -2,
-        "range": -2,
         "knockbackPower": -7
       },
       "grantsActionIds": [],
@@ -619,12 +754,17 @@
       "name": "インパクトコア",
       "code": "WP-08",
       "slot": "weapon",
-      "description": "短い間合いから大きなノックバックを狙う打撃コア。",
-      "tradeoff": "ATK +4 / KB +6 / RNG -3 / SPD -0.08",
+      "description": "円形衝撃と上向き速度を組み合わせる打撃コア。",
+      "tradeoff": "ATK +4 / KB +6 / SPD -0.08",
       "rarity": "rare",
       "price": 4,
-      "modifiers": { "attack": 4, "knockbackPower": 6, "range": -3, "speed": -0.08, "attackType": "blunt" },
-      "grantsActionIds": ["knock-away", "shattering-blow"],
+      "modifiers": {
+        "attack": 4,
+        "knockbackPower": 6,
+        "speed": -0.08,
+        "attackType": "blunt"
+      },
+      "grantsActionIds": ["impact-ring", "arc-launch"],
       "defaultReaction": null
     },
     {
@@ -632,12 +772,17 @@
       "name": "ロングショットコア",
       "code": "WP-17",
       "slot": "weapon",
-      "description": "距離を維持して脆弱コンボを組む遠距離コア。",
-      "tradeoff": "RNG +12 / ATK -3 / KB -6 / SPD -0.10",
+      "description": "直進弾と追尾弾の到達時間をずらす遠距離コア。",
+      "tradeoff": "ATK -3 / KB -6 / SPD -0.10",
       "rarity": "rare",
       "price": 5,
-      "modifiers": { "range": 12, "attack": -3, "knockbackPower": -6, "speed": -0.1, "attackType": "sniper" },
-      "grantsActionIds": ["reveal-weakness", "pierce-vulnerability"],
+      "modifiers": {
+        "attack": -3,
+        "knockbackPower": -6,
+        "speed": -0.1,
+        "attackType": "sniper"
+      },
+      "grantsActionIds": ["pulse-bolt", "seeker-orb"],
       "defaultReaction": null
     },
     {
@@ -645,12 +790,16 @@
       "name": "コロージョンコア",
       "code": "WP-23",
       "slot": "weapon",
-      "description": "毒を蓄積し、増幅で長期戦を終わらせる射撃コア。",
-      "tradeoff": "RNG +7 / ATK -4 / KB -8",
+      "description": "追尾する毒弾から無限高の腐食柱へ接続する射撃コア。",
+      "tradeoff": "ATK -4 / KB -8",
       "rarity": "rare",
       "price": 5,
-      "modifiers": { "range": 7, "attack": -4, "knockbackPower": -8, "attackType": "sniper" },
-      "grantsActionIds": ["toxic-mark", "corrosion-burst", "throw-toxic-flask"],
+      "modifiers": {
+        "attack": -4,
+        "knockbackPower": -8,
+        "attackType": "sniper"
+      },
+      "grantsActionIds": ["toxin-orb", "corrosion-column", "corrosion-field"],
       "defaultReaction": null
     },
     {
@@ -658,12 +807,16 @@
       "name": "クライオエミッター",
       "code": "WP-31",
       "slot": "weapon",
-      "description": "相手を鈍足にし、確定追撃へつなぐ制御コア。",
-      "tradeoff": "RNG +8 / ATK -3 / KB -5",
+      "description": "直進する冷却弾と広い矩形判定で移動経路を制御する。",
+      "tradeoff": "ATK -3 / KB -5",
       "rarity": "rare",
       "price": 5,
-      "modifiers": { "range": 8, "attack": -3, "knockbackPower": -5, "attackType": "sniper" },
-      "grantsActionIds": ["coolant-shot", "corner-slowed"],
+      "modifiers": {
+        "attack": -3,
+        "knockbackPower": -5,
+        "attackType": "sniper"
+      },
+      "grantsActionIds": ["cryo-bolt", "frost-column"],
       "defaultReaction": null
     },
     {
@@ -671,13 +824,16 @@
       "name": "追撃サーボ",
       "code": "CH-01",
       "slot": "chip",
-      "description": "攻撃命中を検知し、追撃をリアクションへ接続する。",
-      "tradeoff": "命中時にCOST 4を追加消費",
+      "description": "攻撃命中を検知し、小型追尾弾を独立した時間軸へ放つ。",
+      "tradeoff": "命中時にCOST 3を追加消費",
       "rarity": "common",
       "price": 0,
       "modifiers": {},
-      "grantsActionIds": ["volt-follow"],
-      "defaultReaction": { "trigger": "selfAttackHit", "actionId": "volt-follow" }
+      "grantsActionIds": ["counter-orb"],
+      "defaultReaction": {
+        "trigger": "selfAttackHit",
+        "actionId": "counter-orb"
+      }
     },
     {
       "id": "repair-chip",
@@ -688,7 +844,9 @@
       "tradeoff": "プログラム容量 -1",
       "rarity": "common",
       "price": 4,
-      "modifiers": { "programLimit": -1 },
+      "modifiers": {
+        "programLimit": -1
+      },
       "grantsActionIds": ["field-repair"],
       "defaultReaction": null
     },
@@ -701,9 +859,14 @@
       "tradeoff": "ATK -2 / 被弾時にCOST 1を消費",
       "rarity": "common",
       "price": 4,
-      "modifiers": { "attack": -2 },
+      "modifiers": {
+        "attack": -2
+      },
       "grantsActionIds": ["tank-guard"],
-      "defaultReaction": { "trigger": "selfHit", "actionId": "tank-guard" }
+      "defaultReaction": {
+        "trigger": "selfHit",
+        "actionId": "tank-guard"
+      }
     },
     {
       "id": "overclock-chip",
@@ -714,8 +877,11 @@
       "tradeoff": "SPD +0.12 / HP -16",
       "rarity": "rare",
       "price": 5,
-      "modifiers": { "speed": 0.12, "maxHp": -16 },
-      "grantsActionIds": ["overclock", "energized-strike"],
+      "modifiers": {
+        "speed": 0.12,
+        "maxHp": -16
+      },
+      "grantsActionIds": ["overclock", "energized-bolt"],
       "defaultReaction": null
     },
     {
@@ -727,267 +893,310 @@
       "tradeoff": "DEF -3 / 発動条件 HP 30%以下",
       "rarity": "rare",
       "price": 5,
-      "modifiers": { "defense": -3 },
+      "modifiers": {
+        "defense": -3
+      },
       "grantsActionIds": ["berserker-mode"],
-      "defaultReaction": { "trigger": "selfHpLow", "actionId": "berserker-mode" }
+      "defaultReaction": {
+        "trigger": "selfHpLow",
+        "actionId": "berserker-mode"
+      }
     }
   ],
   "instructions": [
     {
-      "id": "attack-low",
-      "title": "通常攻撃",
-      "short": "通常攻撃",
-      "flavor": "射程に入った相手へ、武装の基準出力を叩き込む。",
+      "id": "pulse-swipe",
+      "title": "パルスを薙ぐ",
+      "short": "パルススワイプ",
+      "flavor": "自機中心の円形判定を一瞬だけ発生させる。上下にずれれば自然に外れる。",
       "action": "attack",
       "abilityCost": 0,
-      "cooldownSeconds": 1.45,
+      "cooldownSeconds": 1.4,
       "price": 2,
       "rarity": "common",
-      "condition": "targetInRange",
+      "condition": "targetNear12",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
       "tone": "cyan",
-      "range": { "mode": "unit" },
-      "showAttackTypeLabel": true,
-      "effects": [{ "kind": "damage", "attackScale": 1, "minimumDamage": 4 }]
+      "delivery": {
+        "kind": "shape",
+        "shape": {
+          "kind": "circle",
+          "offsetX": 0,
+          "offsetY": 3,
+          "radius": 8
+        }
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "attackScale": 1,
+          "minimumDamage": 4
+        }
+      ]
     },
     {
-      "id": "knock-away",
-      "title": "大きく吹き飛ばす",
-      "short": "インパクト",
-      "flavor": "短い間合いから戦線ごと押し返す。",
+      "id": "vector-thrust",
+      "title": "推力で接近する",
+      "short": "ベクトルスラスト",
+      "flavor": "相手方向へ水平速度を与える。移動距離は経過時間と摩擦で決まる。",
+      "action": "move",
+      "abilityCost": 0,
+      "cooldownSeconds": 1.1,
+      "price": 1,
+      "rarity": "common",
+      "condition": "targetFar12",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "cyan",
+      "visualKind": "dash",
+      "effects": [
+        {
+          "kind": "motion",
+          "target": "actor",
+          "mode": "setVelocity",
+          "x": 20,
+          "y": 0,
+          "relativeTo": "target"
+        }
+      ]
+    },
+    {
+      "id": "backstep",
+      "title": "反動で離脱する",
+      "short": "バックインパルス",
+      "flavor": "相手と逆方向へ速度を作り、同時に少し浮いて攻撃円をずらす。",
+      "action": "retreat",
+      "abilityCost": 1,
+      "cooldownSeconds": 2.6,
+      "price": 2,
+      "rarity": "common",
+      "condition": "targetNear12",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "violet",
+      "visualKind": "retreat",
+      "effects": [
+        {
+          "kind": "motion",
+          "target": "actor",
+          "mode": "setVelocity",
+          "x": -17,
+          "y": 6,
+          "relativeTo": "target"
+        }
+      ]
+    },
+    {
+      "id": "impact-ring",
+      "title": "衝撃円を放つ",
+      "short": "インパクトリング",
+      "flavor": "自機の周囲10mへ同時に衝撃を広げ、接触した相手を速度で押し返す。",
       "action": "heavy",
       "abilityCost": 4,
       "cooldownSeconds": 4,
       "price": 4,
       "rarity": "rare",
-      "condition": "targetInRange",
+      "condition": "targetNear12",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
       "tone": "amber",
-      "range": { "mode": "fixed", "value": 8 },
-      "effects": [{ "kind": "damage", "attackScale": 1, "flatDamage": 10, "minimumDamage": 4, "knockbackPower": 120 }]
-    },
-    {
-      "id": "approach",
-      "title": "前進する",
-      "short": "前進",
-      "flavor": "相手を射程に収めるまで距離を詰める。",
-      "action": "move",
-      "abilityCost": 0,
-      "cooldownSeconds": 1.2,
-      "price": 1,
-      "rarity": "common",
-      "condition": "targetOutOfRange",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "cyan",
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "move", "mode": "advance", "distance": 5.2 }]
-    },
-    {
-      "id": "retreat",
-      "title": "後退する",
-      "short": "後退",
-      "flavor": "相手が射程に入ったら、もう一度間合いを作る。",
-      "action": "retreat",
-      "abilityCost": 1,
-      "cooldownSeconds": 3,
-      "price": 2,
-      "rarity": "common",
-      "condition": "targetInRange",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "violet",
-      "range": { "mode": "unit" },
-      "visualKind": "retreat",
-      "effects": [{ "kind": "move", "mode": "retreat", "distance": 6.5 }]
-    },
-    {
-      "id": "vault-over",
-      "title": "跳び越える",
-      "short": "跳び越え",
-      "flavor": "壁際の不利を、相手の背後へ抜けて反転する。",
-      "action": "jump",
-      "abilityCost": 3,
-      "cooldownSeconds": 4,
-      "price": 3,
-      "rarity": "rare",
-      "condition": "targetInRange",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "altitude": { "actor": "grounded", "target": "grounded" },
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "amber",
-      "visualKind": "jump",
-      "range": { "mode": "fixed", "value": 9 },
+      "delivery": {
+        "kind": "shape",
+        "shape": {
+          "kind": "circle",
+          "offsetX": 0,
+          "offsetY": 4,
+          "radius": 10
+        }
+      },
       "effects": [
-        { "kind": "move", "mode": "jump", "distance": 28 },
-        { "kind": "airborne", "target": "actor", "height": 24, "durationSeconds": 2 }
+        {
+          "kind": "damage",
+          "attackScale": 1,
+          "minimumDamage": 4,
+          "flatDamage": 8,
+          "knockbackPower": 18
+        }
       ]
     },
     {
-      "id": "shoulder-throw",
-      "title": "背負い投げ",
-      "short": "背負い投げ",
-      "flavor": "懐へ入った相手を、勢いごと背後へ投げる。",
-      "action": "throw",
-      "abilityCost": 4,
-      "cooldownSeconds": 4,
+      "id": "arc-launch",
+      "title": "上向きに打ち上げる",
+      "short": "アークランチャー",
+      "flavor": "前方の小さな円へ打撃し、命中した相手のvyへ上向き速度を加える。",
+      "action": "heavy",
+      "abilityCost": 3,
+      "cooldownSeconds": 3.8,
       "price": 4,
       "rarity": "rare",
-      "condition": "targetInRange",
+      "condition": "targetNear12",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
-      "tone": "amber",
-      "range": { "mode": "fixed", "value": 9 },
+      "tone": "lime",
+      "delivery": {
+        "kind": "shape",
+        "shape": {
+          "kind": "circle",
+          "offsetX": 4,
+          "offsetY": 3,
+          "radius": 7
+        }
+      },
       "effects": [
-        { "kind": "damage", "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 0 },
-        { "kind": "move", "mode": "throwTarget", "distance": 6 }
+        {
+          "kind": "damage",
+          "attackScale": 0.7,
+          "minimumDamage": 3,
+          "knockbackPower": 0
+        },
+        {
+          "kind": "motion",
+          "target": "selected",
+          "mode": "addVelocity",
+          "x": 5,
+          "y": 28,
+          "relativeTo": "target"
+        }
       ]
     },
     {
-      "id": "pull-in",
-      "title": "引き寄せる",
-      "short": "引き寄せ",
-      "flavor": "遠い相手をこちらの間合いへ連れてくる。",
-      "action": "pull",
-      "abilityCost": 3,
-      "cooldownSeconds": 4,
-      "price": 3,
-      "rarity": "rare",
-      "condition": "targetOutOfRange",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "cyan",
-      "range": { "mode": "fixed", "value": 40 },
-      "effects": [{ "kind": "move", "mode": "pullTarget", "distance": 4 }]
-    },
-    {
-      "id": "field-repair",
-      "title": "自己修復する",
-      "short": "自己修復",
-      "flavor": "削られた装甲を、その場で立て直す。",
-      "action": "heal",
-      "abilityCost": 3,
-      "cooldownSeconds": 8,
-      "price": 0,
-      "rarity": "common",
-      "condition": "selfHpBelow50",
-      "target": "self",
-      "defaultTarget": "self",
-      "targetMode": "self",
-      "compatibleTargets": [],
-      "tone": "lime",
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "heal", "amount": 28 }]
-    },
-    {
-      "id": "overclock",
-      "title": "オーバークロックする",
-      "short": "過駆動",
-      "flavor": "一時的に出力を引き上げ、次の強襲を準備する。",
-      "action": "buff",
-      "abilityCost": 3,
-      "cooldownSeconds": 6,
-      "price": 0,
-      "rarity": "rare",
-      "condition": "always",
-      "target": "self",
-      "defaultTarget": "self",
-      "targetMode": "self",
-      "compatibleTargets": [],
-      "tone": "lime",
-      "range": { "mode": "unit" },
-      "effects": [
-        { "kind": "applyStatus", "statusId": "inspired", "target": "selected", "stacks": 1, "durationSeconds": 6 }
-      ]
-    },
-    {
-      "id": "energized-strike",
-      "title": "電光強襲",
-      "short": "電光強襲",
-      "flavor": "過駆動の出力を一撃へ集約する。",
+      "id": "pulse-bolt",
+      "title": "直進弾を撃つ",
+      "short": "パルスボルト",
+      "flavor": "発射時の相手座標へ直進する。発射後に動けば軌道から逃れられる。",
       "action": "attack",
-      "abilityCost": 3,
-      "cooldownSeconds": 3,
-      "price": 0,
-      "rarity": "rare",
-      "condition": "selfInspired",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "cyan",
-      "range": { "mode": "unit" },
-      "effects": [
-        { "kind": "damage", "attackScale": 0.75, "minimumDamage": 4, "knockbackPower": 0 },
-        { "kind": "consumeStatus", "statusId": "inspired", "target": "actor", "stacks": 1, "bonusDamage": 14 }
-      ]
-    },
-    {
-      "id": "throw-toxic-flask",
-      "title": "毒エリアを設置する",
-      "short": "毒エリア設置",
-      "flavor": "前方へカプセルを放り、双方に危険な領域を残す。",
-      "action": "field",
-      "abilityCost": 4,
-      "cooldownSeconds": 8,
-      "price": 0,
-      "rarity": "rare",
-      "condition": "always",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "lime",
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "placeZone", "zoneId": "toxic-cloud", "anchor": "actor", "offset": 12 }]
-    },
-    {
-      "id": "toxic-mark",
-      "title": "毒弾を撃つ",
-      "short": "毒付与",
-      "flavor": "毒を仕込み、増幅の条件を作る。",
-      "action": "poison",
       "abilityCost": 2,
       "cooldownSeconds": 2.4,
-      "price": 0,
+      "price": 3,
       "rarity": "common",
-      "condition": "targetInRange",
+      "condition": "always",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "cyan",
+      "delivery": {
+        "kind": "projectile",
+        "speed": 34,
+        "radius": 1.8,
+        "lifetimeSeconds": 3.2,
+        "homing": false
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "attackScale": 0.55,
+          "minimumDamage": 3,
+          "knockbackPower": 0
+        },
+        {
+          "kind": "applyStatus",
+          "statusId": "vulnerable",
+          "target": "selected",
+          "stacks": 1,
+          "durationSeconds": 6
+        }
+      ]
+    },
+    {
+      "id": "seeker-orb",
+      "title": "追尾弾を放つ",
+      "short": "シーカーオーブ",
+      "flavor": "有限の旋回速度で敵を追う。急な上下移動や反転で振り切れる。",
+      "action": "attack",
+      "abilityCost": 3,
+      "cooldownSeconds": 4.4,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "always",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
       "tone": "violet",
-      "range": { "mode": "unit" },
+      "delivery": {
+        "kind": "projectile",
+        "speed": 20,
+        "radius": 2.2,
+        "lifetimeSeconds": 5,
+        "homing": true,
+        "turnRateDegrees": 160
+      },
       "effects": [
-        { "kind": "damage", "attackScale": 0.45, "minimumDamage": 3, "knockbackPower": 0 },
-        { "kind": "applyStatus", "statusId": "poison", "target": "selected", "stacks": 1 }
+        {
+          "kind": "damage",
+          "attackScale": 0.72,
+          "minimumDamage": 4,
+          "knockbackPower": 0
+        },
+        {
+          "kind": "consumeStatus",
+          "statusId": "vulnerable",
+          "target": "selected",
+          "stacks": 1,
+          "bonusDamage": 14
+        }
       ]
     },
     {
-      "id": "corrosion-burst",
-      "title": "毒を増幅する",
-      "short": "毒増幅",
-      "flavor": "毒が回った相手を内側から崩す。",
+      "id": "toxin-orb",
+      "title": "毒の追尾弾を放つ",
+      "short": "トキシンオーブ",
+      "flavor": "遅い追尾弾が別の攻撃と異なる時刻に到達し、毒を蓄積する。",
       "action": "poison",
-      "abilityCost": 3,
-      "cooldownSeconds": 3.6,
-      "price": 0,
+      "abilityCost": 2,
+      "cooldownSeconds": 3,
+      "price": 3,
+      "rarity": "common",
+      "condition": "always",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "lime",
+      "delivery": {
+        "kind": "projectile",
+        "speed": 17,
+        "radius": 2.3,
+        "lifetimeSeconds": 5.5,
+        "homing": true,
+        "turnRateDegrees": 115
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "attackScale": 0.38,
+          "minimumDamage": 3,
+          "knockbackPower": 0
+        },
+        {
+          "kind": "applyStatus",
+          "statusId": "poison",
+          "target": "selected",
+          "stacks": 1
+        }
+      ]
+    },
+    {
+      "id": "corrosion-column",
+      "title": "腐食柱を展開する",
+      "short": "コロージョンカラム",
+      "flavor": "前方10mを中心に幅20m・高さ無限の矩形を走らせる。",
+      "action": "poison",
+      "abilityCost": 4,
+      "cooldownSeconds": 4.2,
+      "price": 4,
       "rarity": "rare",
       "condition": "enemyHasStatus",
       "target": "nearestEnemy",
@@ -995,132 +1204,424 @@
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
       "tone": "violet",
-      "range": { "mode": "unit" },
+      "delivery": {
+        "kind": "shape",
+        "shape": {
+          "kind": "box",
+          "offsetX": 10,
+          "offsetY": 0,
+          "width": 20,
+          "height": null
+        }
+      },
       "effects": [
-        { "kind": "damage", "attackScale": 0.7, "minimumDamage": 4, "knockbackPower": 0 },
-        { "kind": "consumeStatus", "statusId": "poison", "target": "selected", "stacks": 2, "bonusDamage": 18 }
+        {
+          "kind": "damage",
+          "attackScale": 0.68,
+          "minimumDamage": 4,
+          "knockbackPower": 0
+        },
+        {
+          "kind": "consumeStatus",
+          "statusId": "poison",
+          "target": "selected",
+          "stacks": 2,
+          "bonusDamage": 18
+        }
       ]
     },
     {
-      "id": "reveal-weakness",
-      "title": "弱点を暴く",
-      "short": "脆弱付与",
-      "flavor": "装甲の隙を探り、次の一撃の条件を作る。",
+      "id": "corrosion-field",
+      "title": "腐食空間を固定する",
+      "short": "コロージョンフィールド",
+      "flavor": "相手の現在座標へ時限空間を置く。範囲内で行動した時刻ごとに毒が蓄積する。",
+      "action": "field",
+      "abilityCost": 3,
+      "cooldownSeconds": 5.5,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "always",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "lime",
+      "effects": [
+        {
+          "kind": "placeZone",
+          "zoneId": "corrosion-field",
+          "anchor": "target",
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      ]
+    },
+    {
+      "id": "cryo-bolt",
+      "title": "冷却直進弾を撃つ",
+      "short": "クライオボルト",
+      "flavor": "直線軌道へ冷却弾を通し、触れた相手の時間進行を鈍らせる。",
       "action": "attack",
       "abilityCost": 2,
       "cooldownSeconds": 2.8,
-      "price": 0,
+      "price": 3,
       "rarity": "common",
-      "condition": "targetInRange",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "amber",
-      "range": { "mode": "unit" },
-      "effects": [
-        { "kind": "damage", "attackScale": 0.55, "minimumDamage": 3, "knockbackPower": 0 },
-        { "kind": "applyStatus", "statusId": "vulnerable", "target": "selected", "stacks": 1, "durationSeconds": 6 }
-      ]
-    },
-    {
-      "id": "pierce-vulnerability",
-      "title": "弱点を撃ち抜く",
-      "short": "精密射撃",
-      "flavor": "暴いた隙へ遠距離から決定打を通す。",
-      "action": "attack",
-      "abilityCost": 4,
-      "cooldownSeconds": 3.6,
-      "price": 0,
-      "rarity": "rare",
-      "condition": "enemyVulnerable",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "amber",
-      "range": { "mode": "unit" },
-      "effects": [
-        { "kind": "damage", "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 0 },
-        { "kind": "consumeStatus", "statusId": "vulnerable", "target": "selected", "stacks": 1, "bonusDamage": 20 }
-      ]
-    },
-    {
-      "id": "coolant-shot",
-      "title": "冷却弾を撃つ",
-      "short": "冷却弾",
-      "flavor": "冷却剤を撃ち込み、相手の動きを鈍らせる。",
-      "action": "attack",
-      "abilityCost": 2,
-      "cooldownSeconds": 3,
-      "price": 0,
-      "rarity": "common",
-      "condition": "targetInRange",
+      "condition": "always",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
       "tone": "cyan",
-      "range": { "mode": "fixed", "value": 24 },
+      "delivery": {
+        "kind": "projectile",
+        "speed": 28,
+        "radius": 2,
+        "lifetimeSeconds": 4,
+        "homing": false
+      },
       "effects": [
-        { "kind": "damage", "attackScale": 0.45, "minimumDamage": 3, "knockbackPower": 0 },
-        { "kind": "applyStatus", "statusId": "slowed", "target": "selected", "stacks": 1, "durationSeconds": 5 }
+        {
+          "kind": "damage",
+          "attackScale": 0.42,
+          "minimumDamage": 3,
+          "knockbackPower": 0
+        },
+        {
+          "kind": "applyStatus",
+          "statusId": "slowed",
+          "target": "selected",
+          "stacks": 1,
+          "durationSeconds": 5
+        }
       ]
     },
     {
-      "id": "shattering-blow",
-      "title": "粉砕打撃",
-      "short": "粉砕打撃",
-      "flavor": "冷えて脆くなった装甲を叩き割る。",
+      "id": "frost-column",
+      "title": "氷結矩形を展開する",
+      "short": "フロストカラム",
+      "flavor": "前方へ幅22m・高さ18mの矩形を置き、鈍った経路を塞ぐ。",
       "action": "heavy",
       "abilityCost": 4,
       "cooldownSeconds": 4,
-      "price": 0,
+      "price": 4,
       "rarity": "rare",
       "condition": "enemySlowed",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
-      "tone": "amber",
-      "range": { "mode": "fixed", "value": 9 },
+      "tone": "cyan",
+      "delivery": {
+        "kind": "shape",
+        "shape": {
+          "kind": "box",
+          "offsetX": 10,
+          "offsetY": 7,
+          "width": 22,
+          "height": 18
+        }
+      },
       "effects": [
-        { "kind": "damage", "attackScale": 0.8, "minimumDamage": 4, "knockbackPower": 110 },
-        { "kind": "consumeStatus", "statusId": "slowed", "target": "selected", "stacks": 1, "bonusDamage": 18 }
+        {
+          "kind": "damage",
+          "attackScale": 0.8,
+          "minimumDamage": 4,
+          "knockbackPower": 12
+        },
+        {
+          "kind": "consumeStatus",
+          "statusId": "slowed",
+          "target": "selected",
+          "stacks": 1,
+          "bonusDamage": 16
+        }
       ]
     },
     {
-      "id": "corner-slowed",
-      "title": "追い詰める",
-      "short": "追い詰める",
-      "flavor": "鈍った相手の逃げ道を読み、確実な追撃を入れる。",
-      "action": "attack",
-      "abilityCost": 3,
-      "cooldownSeconds": 3.2,
-      "price": 0,
-      "rarity": "common",
-      "condition": "enemySlowed",
+      "id": "jump-jet",
+      "title": "上昇推力をかける",
+      "short": "ジャンプジェット",
+      "flavor": "前方と上方へ初速度を与える。軌道は重力とその後の速度変更で決まる。",
+      "action": "jump",
+      "abilityCost": 2,
+      "cooldownSeconds": 4,
+      "price": 3,
+      "rarity": "rare",
+      "condition": "selfHeightBelow3",
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
       "compatibleTargets": ["nearestEnemy"],
       "tone": "cyan",
-      "range": { "mode": "unit" },
+      "visualKind": "jump",
       "effects": [
-        { "kind": "damage", "attackScale": 0.7, "minimumDamage": 3, "knockbackPower": 0 },
-        { "kind": "consumeStatus", "statusId": "slowed", "target": "selected", "stacks": 1, "bonusDamage": 12 }
+        {
+          "kind": "motion",
+          "target": "actor",
+          "mode": "setVelocity",
+          "x": 14,
+          "y": 30,
+          "relativeTo": "target"
+        }
+      ]
+    },
+    {
+      "id": "hover-drive",
+      "title": "低重力推進する",
+      "short": "ホバードライブ",
+      "flavor": "上向き速度と一時的な低重力を与える。空中という状態は生成しない。",
+      "action": "hover",
+      "abilityCost": 3,
+      "cooldownSeconds": 6.5,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "selfHeightBelow3",
+      "target": "self",
+      "defaultTarget": "self",
+      "targetMode": "self",
+      "compatibleTargets": [],
+      "tone": "lime",
+      "visualKind": "jump",
+      "effects": [
+        {
+          "kind": "motion",
+          "target": "actor",
+          "mode": "setVelocity",
+          "x": 0,
+          "y": 15,
+          "relativeTo": "world"
+        },
+        {
+          "kind": "gravity",
+          "target": "actor",
+          "scale": 0.08,
+          "durationSeconds": 2.8
+        }
+      ]
+    },
+    {
+      "id": "air-dash",
+      "title": "高所で水平加速する",
+      "short": "エアダッシュ",
+      "flavor": "y座標が8m以上なら水平方向へ速度を上書きする。高度分類は参照しない。",
+      "action": "jump",
+      "abilityCost": 2,
+      "cooldownSeconds": 3,
+      "price": 3,
+      "rarity": "rare",
+      "condition": "selfHeightAbove8",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "amber",
+      "visualKind": "dash",
+      "effects": [
+        {
+          "kind": "motion",
+          "target": "actor",
+          "mode": "setVelocity",
+          "x": 28,
+          "y": 0,
+          "relativeTo": "target"
+        }
+      ]
+    },
+    {
+      "id": "vertical-lance",
+      "title": "縦断魔法を放つ",
+      "short": "バーティカルランス",
+      "flavor": "前方10mを中心に幅20m・高さ無限の魔法判定を発生させる。",
+      "action": "attack",
+      "abilityCost": 3,
+      "cooldownSeconds": 3.6,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "always",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "amber",
+      "delivery": {
+        "kind": "shape",
+        "shape": {
+          "kind": "box",
+          "offsetX": 10,
+          "offsetY": 0,
+          "width": 20,
+          "height": null
+        }
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "attackScale": 0.88,
+          "minimumDamage": 4,
+          "flatDamage": 4,
+          "knockbackPower": 0
+        }
+      ]
+    },
+    {
+      "id": "field-repair",
+      "title": "自己修復する",
+      "short": "自己修復",
+      "flavor": "座標系とは独立した自己修復プロトコルを実行する。",
+      "action": "heal",
+      "abilityCost": 6,
+      "cooldownSeconds": 8,
+      "price": 5,
+      "rarity": "rare",
+      "condition": "selfHpBelow50",
+      "target": "self",
+      "defaultTarget": "self",
+      "targetMode": "self",
+      "compatibleTargets": [],
+      "tone": "lime",
+      "effects": [
+        {
+          "kind": "heal",
+          "amount": 28
+        }
+      ]
+    },
+    {
+      "id": "overclock",
+      "title": "オーバークロックする",
+      "short": "オーバークロック",
+      "flavor": "一時的に攻撃出力を上げ、次に発射する弾へ追加出力を渡す。",
+      "action": "buff",
+      "abilityCost": 3,
+      "cooldownSeconds": 6,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "always",
+      "target": "self",
+      "defaultTarget": "self",
+      "targetMode": "self",
+      "compatibleTargets": [],
+      "tone": "lime",
+      "effects": [
+        {
+          "kind": "applyStatus",
+          "statusId": "inspired",
+          "target": "actor",
+          "stacks": 1,
+          "durationSeconds": 6
+        }
+      ]
+    },
+    {
+      "id": "energized-bolt",
+      "title": "過駆動弾を撃つ",
+      "short": "エナジーボルト",
+      "flavor": "過駆動を消費して高速直進弾へ変換する。命中時刻は相手との距離で変わる。",
+      "action": "attack",
+      "abilityCost": 3,
+      "cooldownSeconds": 3,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "selfInspired",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "cyan",
+      "delivery": {
+        "kind": "projectile",
+        "speed": 38,
+        "radius": 2,
+        "lifetimeSeconds": 3,
+        "homing": false
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "attackScale": 0.82,
+          "minimumDamage": 4,
+          "flatDamage": 6,
+          "knockbackPower": 0
+        },
+        {
+          "kind": "consumeStatus",
+          "statusId": "inspired",
+          "target": "actor",
+          "stacks": 1,
+          "bonusDamage": 12
+        }
+      ]
+    },
+    {
+      "id": "counter-orb",
+      "title": "追撃オーブを放つ",
+      "short": "カウンターオーブ",
+      "flavor": "命中イベントから小型追尾弾を生成し、元の攻撃とは別の時刻に到達する。",
+      "action": "follow",
+      "abilityCost": 3,
+      "cooldownSeconds": 2.6,
+      "price": 3,
+      "rarity": "common",
+      "condition": "always",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "cyan",
+      "reactionOnly": true,
+      "delivery": {
+        "kind": "projectile",
+        "speed": 24,
+        "radius": 1.5,
+        "lifetimeSeconds": 3.2,
+        "homing": true,
+        "turnRateDegrees": 200
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "attackScale": 0.45,
+          "minimumDamage": 3,
+          "knockbackPower": 0
+        }
+      ]
+    },
+    {
+      "id": "tank-guard",
+      "title": "ガードする",
+      "short": "ガード",
+      "flavor": "被弾イベントを検知し、次の通常行動まで衝撃を軽減する。",
+      "action": "guard",
+      "abilityCost": 1,
+      "cooldownSeconds": 2.6,
+      "price": 3,
+      "rarity": "common",
+      "condition": "always",
+      "target": "self",
+      "defaultTarget": "self",
+      "targetMode": "self",
+      "compatibleTargets": [],
+      "tone": "lime",
+      "reactionOnly": true,
+      "effects": [
+        {
+          "kind": "applyStatus",
+          "statusId": "guarded",
+          "target": "actor",
+          "stacks": 1
+        }
       ]
     },
     {
       "id": "berserker-mode",
       "title": "バーサーカーモード",
       "short": "バーサーカー",
-      "flavor": "瀕死時だけ安全制御を解除する。",
+      "flavor": "HP30%以下でのみ起動し、攻撃と時間進行速度を引き上げる。",
       "action": "berserk",
-      "abilityCost": 10,
+      "abilityCost": 3,
       "cooldownSeconds": 12,
-      "price": 0,
-      "rarity": "rare",
+      "price": 5,
+      "rarity": "epic",
       "condition": "selfHpBelow30",
       "target": "self",
       "defaultTarget": "self",
@@ -1128,274 +1629,48 @@
       "compatibleTargets": [],
       "tone": "amber",
       "reactionOnly": true,
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "applyStatus", "statusId": "berserk", "target": "actor", "stacks": 1 }]
-    },
-    {
-      "id": "volt-follow",
-      "title": "追撃する",
-      "short": "追撃",
-      "flavor": "攻撃命中を検知し、もう一発だけ割り込む。",
-      "action": "follow",
-      "abilityCost": 4,
-      "cooldownSeconds": 2.6,
-      "price": 0,
-      "rarity": "common",
-      "condition": "always",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "cyan",
-      "reactionOnly": true,
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "damage", "attackScale": 0.58, "minimumDamage": 3, "knockbackPower": 0 }]
-    },
-    {
-      "id": "tank-guard",
-      "title": "ガードする",
-      "short": "防御",
-      "flavor": "被弾直後に防御姿勢へ切り替える。",
-      "action": "guard",
-      "abilityCost": 1,
-      "cooldownSeconds": 2.6,
-      "price": 0,
-      "rarity": "common",
-      "condition": "always",
-      "target": "self",
-      "defaultTarget": "self",
-      "targetMode": "self",
-      "compatibleTargets": [],
-      "tone": "lime",
-      "reactionOnly": true,
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "applyStatus", "statusId": "guarded", "target": "actor", "stacks": 1 }]
-    },
-    {
-      "id": "relay-dash",
-      "title": "高速接近する",
-      "short": "高速接近",
-      "flavor": "距離という問題を、速さで消す。",
-      "action": "move",
-      "abilityCost": 0,
-      "cooldownSeconds": 1.2,
-      "price": 0,
-      "rarity": "common",
-      "condition": "targetOutOfRange",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "amber",
-      "visualKind": "dash",
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "move", "mode": "advance", "distance": 8.58 }]
-    },
-    {
-      "id": "emergency-retreat",
-      "title": "緊急離脱する",
-      "short": "緊急離脱",
-      "flavor": "被弾直後に間合いを切り直す。",
-      "action": "retreat",
-      "abilityCost": 1,
-      "cooldownSeconds": 2.6,
-      "price": 0,
-      "rarity": "common",
-      "condition": "always",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "violet",
-      "reactionOnly": true,
-      "visualKind": "retreat",
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "move", "mode": "retreat", "distance": 9.43 }]
-    },
-    {
-      "id": "boost-jump",
-      "title": "ブーストジャンプする",
-      "short": "ブーストジャンプ",
-      "flavor": "長い滞空軌道で地上攻撃をかわしながら間合いを詰める。",
-      "action": "jump",
-      "abilityCost": 2,
-      "cooldownSeconds": 5,
-      "price": 3,
-      "rarity": "rare",
-      "condition": "targetOutOfRange",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "altitude": { "actor": "grounded", "target": "any" },
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "cyan",
-      "visualKind": "jump",
-      "range": { "mode": "fixed", "value": 80 },
       "effects": [
-        { "kind": "move", "mode": "jump", "distance": 34 },
-        { "kind": "airborne", "target": "actor", "height": 32, "durationSeconds": 3.2 }
+        {
+          "kind": "applyStatus",
+          "statusId": "berserk",
+          "target": "actor",
+          "stacks": 1
+        }
       ]
-    },
-    {
-      "id": "hover",
-      "title": "ホバリングする",
-      "short": "ホバリング",
-      "flavor": "その場で推力を維持し、地上技のタイミングを外す。",
-      "action": "hover",
-      "abilityCost": 3,
-      "cooldownSeconds": 7,
-      "price": 4,
-      "rarity": "rare",
-      "condition": "selfGrounded",
-      "target": "self",
-      "defaultTarget": "self",
-      "targetMode": "self",
-      "altitude": { "actor": "grounded", "target": "grounded" },
-      "compatibleTargets": [],
-      "tone": "lime",
-      "visualKind": "jump",
-      "range": { "mode": "unit" },
-      "effects": [{ "kind": "airborne", "target": "actor", "height": 14, "durationSeconds": 4 }]
-    },
-    {
-      "id": "air-dash",
-      "title": "空中ダッシュする",
-      "short": "空中ダッシュ",
-      "flavor": "滞空時間を継ぎ足しながら、一気に横軸を詰める。",
-      "action": "jump",
-      "abilityCost": 2,
-      "cooldownSeconds": 3,
-      "price": 3,
-      "rarity": "rare",
-      "condition": "selfAirborne",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "altitude": { "actor": "airborne", "target": "any" },
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "amber",
-      "visualKind": "dash",
-      "range": { "mode": "fixed", "value": 80 },
-      "effects": [
-        { "kind": "move", "mode": "jump", "distance": 22 },
-        { "kind": "airborne", "target": "actor", "height": 10, "durationSeconds": 1.8 }
-      ]
-    },
-    {
-      "id": "dive-strike",
-      "title": "急降下攻撃する",
-      "short": "急降下攻撃",
-      "flavor": "高度を火力へ変え、命中と同時に地上へ戻る。",
-      "action": "heavy",
-      "abilityCost": 4,
-      "cooldownSeconds": 5,
-      "price": 4,
-      "rarity": "rare",
-      "condition": "selfAirborne",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "altitude": { "actor": "airborne", "target": "grounded" },
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "amber",
-      "range": { "mode": "fixed", "value": 20 },
-      "effects": [
-        { "kind": "damage", "attackScale": 1.15, "flatDamage": 8, "minimumDamage": 4, "knockbackPower": 35 },
-        { "kind": "land", "target": "actor" }
-      ]
-    },
-    {
-      "id": "aerial-barrage",
-      "title": "空中斉射する",
-      "short": "空中斉射",
-      "flavor": "空中から地上にも空中にも届く連射を浴びせる。",
-      "action": "attack",
-      "abilityCost": 3,
-      "cooldownSeconds": 3.2,
-      "price": 4,
-      "rarity": "rare",
-      "condition": "selfAirborne",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "altitude": { "actor": "airborne", "target": "any" },
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "violet",
-      "range": { "mode": "fixed", "value": 28 },
-      "effects": [{ "kind": "damage", "attackScale": 0.7, "flatDamage": 4, "minimumDamage": 3, "knockbackPower": 0 }]
-    },
-    {
-      "id": "anti-air-shot",
-      "title": "対空射撃する",
-      "short": "対空射撃",
-      "flavor": "地上から上空へ照準を切り替え、滞空中だけを撃ち抜く。",
-      "action": "attack",
-      "abilityCost": 2,
-      "cooldownSeconds": 3,
-      "price": 3,
-      "rarity": "common",
-      "condition": "targetAirborne",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "altitude": { "actor": "grounded", "target": "airborne" },
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "cyan",
-      "range": { "mode": "fixed", "value": 30 },
-      "effects": [{ "kind": "damage", "attackScale": 1, "flatDamage": 6, "minimumDamage": 4, "knockbackPower": 0 }]
-    },
-    {
-      "id": "launch-uppercut",
-      "title": "打ち上げる",
-      "short": "打ち上げ",
-      "flavor": "接地した相手を強制的に空中戦へ引き込む。",
-      "action": "heavy",
-      "abilityCost": 3,
-      "cooldownSeconds": 4,
-      "price": 3,
-      "rarity": "rare",
-      "condition": "targetInRange",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "altitude": { "actor": "grounded", "target": "grounded" },
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "lime",
-      "range": { "mode": "fixed", "value": 9 },
-      "effects": [
-        { "kind": "damage", "attackScale": 0.65, "minimumDamage": 3, "knockbackPower": 0 },
-        { "kind": "airborne", "target": "selected", "height": 14, "durationSeconds": 1.8 }
-      ]
-    },
-    {
-      "id": "landing-punish",
-      "title": "着地を狩る",
-      "short": "着地狩り",
-      "flavor": "残り滞空時間を読み、着地点へ高威力弾を置く。",
-      "action": "attack",
-      "abilityCost": 3,
-      "cooldownSeconds": 4.2,
-      "price": 4,
-      "rarity": "rare",
-      "condition": "targetLandingSoon",
-      "target": "nearestEnemy",
-      "defaultTarget": "nearestEnemy",
-      "targetMode": "selected",
-      "altitude": { "actor": "grounded", "target": "airborne" },
-      "compatibleTargets": ["nearestEnemy"],
-      "tone": "violet",
-      "range": { "mode": "fixed", "value": 22 },
-      "effects": [{ "kind": "damage", "attackScale": 1.05, "flatDamage": 8, "minimumDamage": 4, "knockbackPower": 0 }]
     }
   ],
   "defaultPrograms": [
-    { "unitId": "volt", "actionIds": ["attack-low", "approach", "retreat"] },
-    { "unitId": "bastion", "actionIds": ["knock-away", "attack-low", "approach"] },
-    { "unitId": "relay", "actionIds": ["attack-low", "relay-dash", "retreat"] }
+    {
+      "unitId": "volt",
+      "actionIds": ["pulse-swipe", "vector-thrust", "backstep"]
+    },
+    {
+      "unitId": "bastion",
+      "actionIds": ["impact-ring", "pulse-swipe", "vector-thrust"]
+    },
+    {
+      "unitId": "relay",
+      "actionIds": ["pulse-swipe", "vector-thrust", "backstep"]
+    }
   ],
   "defaultReactions": [
-    { "unitId": "volt", "trigger": null, "actionId": null, "fixedReaction": false },
-    { "unitId": "bastion", "trigger": null, "actionId": null, "fixedReaction": false },
-    { "unitId": "relay", "trigger": null, "actionId": null, "fixedReaction": false }
+    {
+      "unitId": "volt",
+      "trigger": null,
+      "actionId": null,
+      "fixedReaction": false
+    },
+    {
+      "unitId": "bastion",
+      "trigger": null,
+      "actionId": null,
+      "fixedReaction": false
+    },
+    {
+      "unitId": "relay",
+      "trigger": null,
+      "actionId": null,
+      "fixedReaction": false
+    }
   ]
 }

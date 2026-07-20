@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 18;
+        public const int SupportedSchemaVersion = 19;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -48,6 +48,16 @@ namespace CodeMonsters.Core
                 || data.Battle.MinimumInstructionCooldownSeconds <= 0
             )
                 throw new InvalidDataException("Action windup, lock, and instruction cooldown limits must be positive");
+            if (
+                data.Battle.GravityPerSecond <= 0
+                || data.Battle.MaxFallSpeed <= 0
+                || data.Battle.CeilingY <= data.Battle.FloorY
+                || data.Battle.FighterRadius <= 0
+                || data.Battle.KnockbackVelocityScale <= 0
+                || data.Battle.HorizontalDragPerSecond < 0
+                || data.Battle.GroundFrictionPerSecond < 0
+            )
+                throw new InvalidDataException("Spatial physics configuration is invalid");
             ValidateDebugTraining(data.DebugTraining);
 
             var unitIds = UniqueIds(data.Units, unit => unit.Id, "unit");
@@ -139,12 +149,13 @@ namespace CodeMonsters.Core
             if (
                 debug.MinimumDummyHp < 1
                 || debug.RecoveryDelaySeconds <= 0
-                || debug.OutsideRangeGap <= 0
                 || debug.PositionPresets.Count == 0
             )
                 throw new InvalidDataException("Debug training HP, recovery, and position data must be valid");
             if (!debug.PositionPresets.Exists(preset => preset.Id == debug.DefaultPositionPresetId))
                 throw new InvalidDataException("Debug training default position preset is missing");
+            if (debug.PositionPresets.Exists(preset => preset.Distance <= 0))
+                throw new InvalidDataException("Debug training position distances must be positive");
         }
 
         private static void ValidateStatuses(IEnumerable<StatusDefinition> statuses)
@@ -240,17 +251,16 @@ namespace CodeMonsters.Core
             var supportedKinds = new HashSet<string>
             {
                 "always",
-                "targetInRange",
-                "targetOutOfRange",
+                "targetWithinDistance",
+                "targetBeyondDistance",
                 "targetHpBelow",
                 "selfHpBelow",
                 "targetHasStatus",
                 "selfHasStatus",
-                "selfAirborne",
-                "selfGrounded",
-                "targetAirborne",
-                "targetGrounded",
-                "targetAirborneRemainingBelow",
+                "selfHeightAbove",
+                "selfHeightBelow",
+                "targetHeightAbove",
+                "selfDescending",
             };
             foreach (var condition in conditions)
             {
@@ -264,10 +274,22 @@ namespace CodeMonsters.Core
                         throw new InvalidDataException($"Condition {condition.Id} must require positive status stacks");
                 }
                 if (
-                    condition.Kind == "targetAirborneRemainingBelow"
-                    && (!condition.Params.ThresholdSeconds.HasValue || condition.Params.ThresholdSeconds.Value <= 0)
+                    (condition.Kind == "targetWithinDistance" || condition.Kind == "targetBeyondDistance")
+                    && (!condition.Params.Distance.HasValue || condition.Params.Distance.Value <= 0)
                 )
-                    throw new InvalidDataException($"Condition {condition.Id} must define a positive airborne threshold");
+                    throw new InvalidDataException($"Condition {condition.Id} must define a positive distance");
+                if (
+                    (condition.Kind == "selfHeightAbove"
+                        || condition.Kind == "selfHeightBelow"
+                        || condition.Kind == "targetHeightAbove")
+                    && !condition.Params.Height.HasValue
+                )
+                    throw new InvalidDataException($"Condition {condition.Id} must define a height");
+                if (
+                    condition.Kind == "selfDescending"
+                    && (!condition.Params.VerticalSpeed.HasValue || condition.Params.VerticalSpeed.Value <= 0)
+                )
+                    throw new InvalidDataException($"Condition {condition.Id} must define a descent speed");
             }
         }
 
@@ -282,18 +304,16 @@ namespace CodeMonsters.Core
             var supportedKinds = new HashSet<string>
             {
                 "damage",
-                "move",
+                "motion",
+                "gravity",
                 "heal",
                 "applyStatus",
                 "consumeStatus",
                 "removeStatus",
                 "modifyStat",
                 "placeZone",
-                "airborne",
-                "land",
                 "wait",
             };
-            var supportedRanges = new HashSet<string> { "unit", "fixed", "scaled" };
             foreach (var instruction in instructions)
             {
                 if (!instructionIds.Contains(instruction.Id))
@@ -302,53 +322,48 @@ namespace CodeMonsters.Core
                     throw new InvalidDataException($"Instruction {instruction.Id} references unknown condition");
                 if (instruction.CooldownSeconds <= 0)
                     throw new InvalidDataException($"Instruction {instruction.Id} must define a positive cooldown");
-                if (!supportedRanges.Contains(instruction.Range.Mode))
-                    throw new InvalidDataException($"Instruction {instruction.Id} has unsupported range mode");
-                if (
-                    instruction.Range.Mode != "unit"
-                    && (!instruction.Range.Value.HasValue || instruction.Range.Value.Value <= 0)
-                )
-                    throw new InvalidDataException($"Instruction {instruction.Id} range requires a positive value");
                 if (instruction.Effects.Count == 0)
                     throw new InvalidDataException($"Instruction {instruction.Id} must declare finite effects");
-                if (
-                    instruction.Altitude != null
-                    && (
-                        !new HashSet<string> { "grounded", "airborne", "any" }.Contains(instruction.Altitude.Actor)
-                        || !new HashSet<string> { "grounded", "airborne", "any" }.Contains(instruction.Altitude.Target)
-                    )
-                )
-                    throw new InvalidDataException($"Instruction {instruction.Id} has invalid altitude requirements");
+                var hasDamage = false;
                 foreach (var effect in instruction.Effects)
                 {
                     if (!supportedKinds.Contains(effect.Kind))
                         throw new InvalidDataException($"Instruction {instruction.Id} has unsupported effect {effect.Kind}");
-                    if (effect.Kind == "damage" && (!effect.AttackScale.HasValue || !effect.MinimumDamage.HasValue))
-                        throw new InvalidDataException($"Instruction {instruction.Id} damage effect is incomplete");
-                    if (effect.Kind == "move" && (!effect.Distance.HasValue || effect.Distance.Value <= 0))
-                        throw new InvalidDataException($"Instruction {instruction.Id} move effect is incomplete");
-                    if (effect.Kind == "heal" && (!effect.Amount.HasValue || effect.Amount.Value <= 0))
-                        throw new InvalidDataException($"Instruction {instruction.Id} heal effect is incomplete");
+                    if (effect.Kind == "damage")
+                    {
+                        hasDamage = true;
+                        if (!effect.AttackScale.HasValue || !effect.MinimumDamage.HasValue)
+                            throw new InvalidDataException($"Instruction {instruction.Id} damage effect is incomplete");
+                    }
                     if (
-                        effect.Kind == "airborne"
+                        effect.Kind == "motion"
                         && (
-                            !effect.Height.HasValue
-                            || effect.Height.Value <= 0
+                            !effect.X.HasValue
+                            || !effect.Y.HasValue
+                            || (effect.Mode != "addVelocity" && effect.Mode != "setVelocity")
+                            || (effect.Target != "actor" && effect.Target != "selected")
+                            || (effect.RelativeTo != "target" && effect.RelativeTo != "world")
+                        )
+                    )
+                        throw new InvalidDataException($"Instruction {instruction.Id} motion effect is incomplete");
+                    if (
+                        effect.Kind == "gravity"
+                        && (
+                            !effect.Scale.HasValue
+                            || effect.Scale.Value < 0
                             || !effect.DurationSeconds.HasValue
                             || effect.DurationSeconds.Value <= 0
                             || (effect.Target != "actor" && effect.Target != "selected")
                         )
                     )
-                        throw new InvalidDataException($"Instruction {instruction.Id} airborne effect is incomplete");
-                    if (effect.Kind == "land" && effect.Target != "actor" && effect.Target != "selected")
-                        throw new InvalidDataException($"Instruction {instruction.Id} land effect is incomplete");
+                        throw new InvalidDataException($"Instruction {instruction.Id} gravity effect is incomplete");
+                    if (effect.Kind == "heal" && (!effect.Amount.HasValue || effect.Amount.Value <= 0))
+                        throw new InvalidDataException($"Instruction {instruction.Id} heal effect is incomplete");
                     if (
                         effect.Kind == "placeZone"
                         && (
                             !battleZoneIds.Contains(effect.ZoneId)
                             || (effect.Anchor != "actor" && effect.Anchor != "target")
-                            || !effect.Offset.HasValue
-                            || effect.Offset.Value < 0
                         )
                     )
                         throw new InvalidDataException($"Instruction {instruction.Id} placeZone effect is incomplete");
@@ -358,7 +373,54 @@ namespace CodeMonsters.Core
                             throw new InvalidDataException($"Instruction {instruction.Id} references unknown status");
                     }
                 }
+                ValidateDelivery(instruction, hasDamage);
             }
+        }
+
+        private static void ValidateDelivery(InstructionDefinition instruction, bool hasDamage)
+        {
+            var delivery = instruction.Delivery;
+            if (hasDamage && delivery == null)
+                throw new InvalidDataException($"Instruction {instruction.Id} damage requires spatial delivery");
+            if (delivery == null)
+                return;
+            if (delivery.Kind == "shape")
+            {
+                if (delivery.Shape == null)
+                    throw new InvalidDataException($"Instruction {instruction.Id} shape delivery is incomplete");
+                if (delivery.Shape.Kind == "circle")
+                {
+                    if (!delivery.Shape.Radius.HasValue || delivery.Shape.Radius.Value <= 0)
+                        throw new InvalidDataException($"Instruction {instruction.Id} circle radius is invalid");
+                    return;
+                }
+                if (delivery.Shape.Kind == "box")
+                {
+                    if (
+                        !delivery.Shape.Width.HasValue
+                        || delivery.Shape.Width.Value <= 0
+                        || (delivery.Shape.Height.HasValue && delivery.Shape.Height.Value <= 0)
+                    )
+                        throw new InvalidDataException($"Instruction {instruction.Id} box dimensions are invalid");
+                    return;
+                }
+                throw new InvalidDataException($"Instruction {instruction.Id} has unknown attack shape");
+            }
+            if (delivery.Kind == "projectile")
+            {
+                if (
+                    !delivery.Speed.HasValue
+                    || delivery.Speed.Value <= 0
+                    || !delivery.Radius.HasValue
+                    || delivery.Radius.Value <= 0
+                    || !delivery.LifetimeSeconds.HasValue
+                    || delivery.LifetimeSeconds.Value <= 0
+                    || (delivery.Homing && (!delivery.TurnRateDegrees.HasValue || delivery.TurnRateDegrees.Value <= 0))
+                )
+                    throw new InvalidDataException($"Instruction {instruction.Id} projectile delivery is incomplete");
+                return;
+            }
+            throw new InvalidDataException($"Instruction {instruction.Id} has unknown delivery kind");
         }
 
         private static void ValidateSynergies(GameBalanceData data, HashSet<string> unitIds)

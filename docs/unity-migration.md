@@ -14,7 +14,7 @@ The prototype now separates game definitions, deterministic rules, and rendering
 - team size, battle timing, walls, cooldowns, ability-gauge capacity/regeneration, damage/knockback formulas, overheat, debug-training recovery, economy, and shop weights
 - static-analysis weights and allowed balance spreads
 
-Stable IDs such as `nearestEnemy`, `self`, and `targetInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
+Stable IDs such as `nearestEnemy`, `self`, and `targetNear12` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
 
 For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and generate ScriptableObjects if inspector editing is preferred. Keep JSON as the canonical reviewed asset; generated ScriptableObjects should not become a second source of truth.
 
@@ -25,6 +25,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | `src/core/combat.ts` | `CombatResolver.cs` | damage and knockback math |
 | `src/core/statuses.ts` | `BattleRules.cs` / future `StatusRuntime.cs` | generic status instances, stacking, duration, effects, and visual metadata lookup |
 | `src/core/battle-zones.ts` | `BattleRules.cs` / future `BattleZoneRuntime.cs` | generic timed areas, path-entry detection, and typed trigger effects |
+| `src/core/spatial-combat.ts` | `BattleRules.cs` | 2D attack shapes, direct/homing projectiles, swept collision, and direction |
 | `src/core/rules.ts` | `BattleRules.cs` | target selection, per-target condition matching, cooldowns, movement, action effects |
 | `src/core/battle-engine.ts` | `BattleEngine.cs` | deterministic frame planning and serializable battle steps |
 | `src/core/roster.ts` | `RosterFactory.cs` | equipment application, inventory units, and one-on-one battle-state construction |
@@ -34,7 +35,7 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | `src/core/debug-simulation.ts` | editor test harness | deterministic single-action and timeline measurements using the live frame planner |
 | `src/App.tsx`, `src/BattleScene.tsx` | MonoBehaviours/UI Toolkit | orchestration, animation, audio, and presentation only |
 
-`BattleStep` contains only plain values: a visual event, optional log and damage events, and fighter field updates. Damage events carry the acting unit, stable action ID, actual HP damage, and whether the source was a normal instruction, reaction, or status tick. Status damage also carries its stable status ID. There are no closures in the core queue. Unity can mirror this with serializable structs and let animation and report code consume events independently of the simulation.
+`BattleStep` contains only plain values: a visual event, optional log and damage events, and fighter field updates. Projectile state is a separate serializable collection. Damage events carry the acting unit, stable action ID, actual HP damage, and whether the source was a normal instruction, reaction, projectile, or status tick. Status damage also carries its stable status ID. There are no closures in the core queue. The simulation applies state immediately and emits steps as a presentation stream; consuming that stream must never pause the battle clock. Unity can mirror this with serializable structs and let animation and report code consume events independently of the simulation.
 
 The debug-room harness constructs a plain two-fighter/program input and advances `planBattleFrame` on a virtual clock. Its start-distance presets come from `debugTraining.positionPresets`, while every configurable status is generated from the canonical top-level `statuses` registry; the same status runtime applies to the attacker and dummy. It preserves movement and status updates in serializable playback frames, clamps the dummy to `debugTraining.minimumDummyHp`, and restores only its HP after `debugTraining.recoveryDelaySeconds`; Reset recreates the configured initial fighters. Unit stat and state overrides remain harness inputs rather than presentation-only modifiers. It derives per-hit damage independent of remaining dummy HP, DPS, resource efficiency, healing, maximum displacement, state stacks, recovery count, and skip reasons from normal battle outputs. Port the harness as an editor tool rather than duplicating combat formulas in Unity UI code; matching harness results provide a practical parity check during migration.
 
@@ -55,7 +56,7 @@ Run `pnpm test:unity-assets:compile` for the license-independent C# smoke check 
 5. Build Unity presentation from battle-step events; do not move rules into MonoBehaviours.
 6. Keep `pnpm balance:check` available until the analyzer itself is ported to an editor tool or .NET CLI.
 
-When adding behavior, compose the finite instruction `effects` primitives (`damage`, `move`, `heal`, `applyStatus`, `consumeStatus`, `removeStatus`, `modifyStat`, `placeZone`, and `wait`) rather than embedding executable scripts. Update the TypeScript type and C# DTO/allowlist only when introducing a genuinely new runtime behavior, then add a focused parity test. Add statuses and battle zones once to their top-level registries with debug or visual metadata; runtime fighters and zones store only generic serializable instances. The web controls, chips, and synergy matrices are generated from those registries, and `pnpm verify` checks every unit, status, position preset, instruction, status pack, and position pack. Unsupported status effects, zone triggers, duration modes, instruction-effect kinds, condition kinds, or target structures fail validation rather than being silently omitted. Breaking schema changes require a `schemaVersion` increment and migration note.
+When adding behavior, compose the finite instruction `effects` primitives (`damage`, `motion`, `gravity`, `heal`, `applyStatus`, `consumeStatus`, `removeStatus`, `modifyStat`, `placeZone`, and `wait`) and the finite `delivery` kinds (`shape` and `projectile`) rather than embedding executable scripts. Update the TypeScript type and C# DTO/allowlist only when introducing a genuinely new runtime behavior, then add a focused parity test. Add statuses and battle zones once to their top-level registries with debug or visual metadata; runtime fighters, zones, and projectiles store only generic serializable instances. The web controls, chips, and synergy matrices are generated from those registries, and `pnpm verify` checks every unit, status, position preset, instruction, status pack, and position pack. Unsupported status effects, zone triggers, duration modes, instruction-effect kinds, condition kinds, delivery kinds, or target structures fail validation rather than being silently omitted. Breaking schema changes require a `schemaVersion` increment and migration note.
 
 ## Schema version 2 migration
 
@@ -159,12 +160,22 @@ Version 18 adds boost jump, hover, air dash, dive strike, aerial barrage, anti-a
 
 Airborne movement itself is the presentation path. Do not layer a separate jump animation or jump effect on top of it: doing so creates a short hop followed by apparent hovering. A `flight` battle flash may label the takeoff without transforming the unit body.
 
+## Schema version 19 migration
+
+Remove the categorical airborne state, fighter `z`, instruction `altitude`, and instruction `range`. Fighter runtime state now serializes continuous `x`, `y`, `vx`, `vy`, `gravityScale`, and `gravityScaleRemaining`. `battle` owns gravity, drag, ground friction, fall-speed, floor/ceiling, fighter-radius, and knockback-to-velocity values. Each simulation tick integrates those values; touching the floor is derived from `y`, never stored as a gameplay state.
+
+Replace the old movement, airborne, and landing effects with `motion` and `gravity`. Motion adds or sets X/Y velocity in world or target-relative coordinates. Gravity temporarily changes the fighter's acceleration scale. Height and descent conditions inspect `y` and `vy` directly, while near/far conditions use Euclidean X/Y distance.
+
+Damage instructions require a spatial `delivery`. A `shape` resolves a circle or box from the actor's impact-time coordinate; a box height of `null` means infinite height. A `projectile` owns position, velocity, radius, lifetime, homing flag, and finite turn rate. Projectiles advance every simulation tick and use swept collision so fast shots cannot pass through fighters between frames. Firing does not deal damage: contact at a later timestamp does.
+
+Simulation and presentation are now explicitly decoupled. `planBattleFrame` advances fighters, zones, pending impacts, cooldowns, and projectiles even when earlier visual steps have not been displayed. Actions sharing an impact timestamp still read a shared snapshot and may mutually knock out, but unrelated actors and projectiles do not wait for the UI queue. Schema-v18 battle snapshots and saved programs reference removed IDs and should start a new battle/run.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v18 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, airborne state and altitude requirements, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
-- actor-relative range and condition evaluation, including fixed-range contact skills
+- schema-v19 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, continuous position/velocity, physics constants, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects/deliveries, and canonical status values
+- Euclidean distance, height/descent conditions, circle/box intersection, direct/homing projectile advancement, swept collision, and deterministic gravity motion
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames
 

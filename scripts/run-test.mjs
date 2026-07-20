@@ -93,7 +93,7 @@ if (resultTitle !== '勝利') throw new Error('初期ロードアウトで最初
 for (const label of ['実行イベント', '戦闘時間', 'ゲージ空', 'ゲージ満タン'])
   if (!summaryText.includes(label)) throw new Error(`戦闘サマリーに${label}がありません`);
 if (
-  replay.schemaVersion !== 18 ||
+  replay.schemaVersion !== 19 ||
   replay.encounter?.id !== 'rush-protocol' ||
   replay.initialFighters?.filter((fighter) => fighter.team === 'ally').length !== 1 ||
   replay.initialFighters?.filter((fighter) => fighter.team === 'enemy').length !== 1
@@ -103,6 +103,8 @@ if (!Array.isArray(replay.frames) || replay.frames.length === 0)
   throw new Error('リプレイJSONに戦闘フレームがありません');
 if (!Array.isArray(replay.initialZones) || replay.frames.some((frame) => !Array.isArray(frame.zones)))
   throw new Error('リプレイJSONに設置エリアの状態が保存されていません');
+if (!Array.isArray(replay.initialProjectiles) || replay.frames.some((frame) => !Array.isArray(frame.projectiles)))
+  throw new Error('リプレイJSONに投射物の状態が保存されていません');
 if (replay.frames.flatMap((frame) => frame.decisions ?? []).length === 0)
   throw new Error('リプレイJSONに指示判定がありません');
 if (
@@ -112,7 +114,7 @@ if (
       !event.actorId ||
       !event.actionId ||
       event.amount <= 0 ||
-      !['normal', 'reaction', 'status'].includes(event.source),
+      !['normal', 'reaction', 'projectile', 'status'].includes(event.source),
   )
 )
   throw new Error('リプレイJSONに技別ダメージイベントが保存されていません');

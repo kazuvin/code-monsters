@@ -1,6 +1,6 @@
 import type { GameBalanceData } from '../data.ts';
 import type { Instruction, Rarity, ReactionTrigger, UnitDefinition } from '../types.ts';
-import { effectByKind, effectsByKind } from './instruction-effects.ts';
+import { effectByKind } from './instruction-effects.ts';
 import { analyzeSynergies } from './synergy.ts';
 
 export type BalanceSeverity = 'error' | 'warning';
@@ -181,17 +181,16 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const battleZones = new Set(data.battleZones.map((zone) => zone.id));
   const supportedConditionKinds = new Set([
     'always',
-    'targetInRange',
-    'targetOutOfRange',
+    'targetWithinDistance',
+    'targetBeyondDistance',
     'targetHpBelow',
     'selfHpBelow',
     'targetHasStatus',
     'selfHasStatus',
-    'selfAirborne',
-    'selfGrounded',
-    'targetAirborne',
-    'targetGrounded',
-    'targetAirborneRemainingBelow',
+    'selfHeightAbove',
+    'selfHeightBelow',
+    'targetHeightAbove',
+    'selfDescending',
   ]);
   const supportedActions = new Set([
     'attack',
@@ -226,15 +225,14 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   ]);
   const supportedEffectKinds = new Set([
     'damage',
-    'move',
+    'motion',
+    'gravity',
     'heal',
     'applyStatus',
     'consumeStatus',
     'removeStatus',
     'modifyStat',
     'placeZone',
-    'airborne',
-    'land',
     'wait',
   ]);
   const supportedEffectTargets = new Set(['actor', 'selected', 'allEnemies', 'allAllies']);
@@ -254,7 +252,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 18) error('INVALID_SCHEMA_VERSION', 'schemaVersion は18以上である必要があります');
+  if (data.schemaVersion < 19) error('INVALID_SCHEMA_VERSION', 'schemaVersion は19以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -267,25 +265,28 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.battle.minimumActionLockSeconds <= 0 ||
     data.battle.baseActionWindupSeconds <= 0 ||
     data.battle.minimumActionWindupSeconds <= 0 ||
-    data.battle.minimumInstructionCooldownSeconds <= 0
+    data.battle.minimumInstructionCooldownSeconds <= 0 ||
+    data.battle.gravityPerSecond <= 0 ||
+    data.battle.horizontalDragPerSecond < 0 ||
+    data.battle.groundFrictionPerSecond < 0 ||
+    data.battle.maxFallSpeed <= 0 ||
+    data.battle.floorY >= data.battle.ceilingY ||
+    data.battle.fighterRadius <= 0 ||
+    data.battle.knockbackVelocityScale <= 0
   )
     error('INVALID_BATTLE_CONFIG', '戦闘のtick/cooldown/abilityGauge設定が不正です');
   if (
     !Number.isInteger(data.debugTraining.minimumDummyHp) ||
     data.debugTraining.minimumDummyHp < 1 ||
     data.debugTraining.recoveryDelaySeconds <= 0 ||
-    data.debugTraining.outsideRangeGap <= 0 ||
     data.debugTraining.positionPresets.length === 0
   )
     error('INVALID_DEBUG_TRAINING_CONFIG', 'デバッグ訓練のHP・回復・距離設定が不正です');
   if (!data.debugTraining.positionPresets.some((preset) => preset.id === data.debugTraining.defaultPositionPresetId))
     error('INVALID_DEBUG_POSITION', 'デバッグ訓練のデフォルト開始位置が未定義です');
   for (const preset of data.debugTraining.positionPresets)
-    if (
-      !['mutual', 'actor', 'target'].includes(preset.rangeReference) ||
-      !['inside', 'outside'].includes(preset.relation)
-    )
-      error('INVALID_DEBUG_POSITION', `デバッグ開始位置 ${preset.id} の射程基準が不正です`);
+    if (!Number.isFinite(preset.distance) || preset.distance <= 0)
+      error('INVALID_DEBUG_POSITION', `デバッグ開始位置 ${preset.id} の距離が不正です`);
 
   if (data.statuses.length === 0) error('MISSING_STATUS_REGISTRY', 'statuses に状態定義がありません');
   for (const status of data.statuses) {
@@ -379,7 +380,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (uptime < 0 || uptime > 1)
       error('INVALID_BALANCE_CONFIG', `${trigger} の reactionUptime は0〜1で指定してください`);
   for (const unit of data.units)
-    if (unit.maxHp <= 0 || unit.attack < 0 || unit.defense < 0 || unit.speed <= 0 || unit.range < 0 || unit.weight <= 0)
+    if (unit.maxHp <= 0 || unit.attack < 0 || unit.defense < 0 || unit.speed <= 0 || unit.weight <= 0)
       error('INVALID_UNIT_STAT', `${unit.id} に0以下または不正な戦闘パラメータがあります`);
   const supportedEquipmentSlots = new Set(['frame', 'weapon', 'chip']);
   const supportedEquipmentModifiers = new Set([
@@ -387,7 +388,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'attack',
     'defense',
     'speed',
-    'range',
     'knockbackPower',
     'weight',
     'programLimit',
@@ -433,7 +433,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       requireTargetSelector(targetId, `条件 ${condition.id}.compatibleTargets`);
     rejectUnknownKeys(
       condition.params,
-      ['threshold', 'thresholdSeconds', 'statusId', 'minimumStacks'],
+      ['threshold', 'distance', 'height', 'verticalSpeed', 'statusId', 'minimumStacks'],
       `条件 ${condition.id}.params`,
     );
     if (['targetHpBelow', 'selfHpBelow'].includes(condition.kind)) {
@@ -448,36 +448,37 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       if (!Number.isInteger(condition.params.minimumStacks) || (condition.params.minimumStacks ?? 0) < 1)
         error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の minimumStacks は正の整数で指定してください`);
     }
-    if (condition.kind === 'targetAirborneRemainingBelow') {
-      if (!(condition.params.thresholdSeconds ?? 0) || (condition.params.thresholdSeconds ?? 0) <= 0)
-        error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の thresholdSeconds は正の数で指定してください`);
-    }
+    if (
+      ['targetWithinDistance', 'targetBeyondDistance'].includes(condition.kind) &&
+      (condition.params.distance ?? 0) <= 0
+    )
+      error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の distance は正の数で指定してください`);
+    if (
+      ['selfHeightAbove', 'selfHeightBelow', 'targetHeightAbove'].includes(condition.kind) &&
+      (condition.params.height ?? -1) < 0
+    )
+      error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の height は0以上で指定してください`);
+    if (condition.kind === 'selfDescending' && (condition.params.verticalSpeed ?? 0) <= 0)
+      error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の verticalSpeed は正の数で指定してください`);
   }
 
-  const requiredMoveMode: Partial<Record<Instruction['action'], string>> = {
-    move: 'advance',
-    retreat: 'retreat',
-    jump: 'jump',
-    throw: 'throwTarget',
-    pull: 'pullTarget',
-  };
   const allowedEffectKindsByAction: Record<Instruction['action'], Set<string>> = {
-    attack: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus', 'airborne', 'land']),
-    heavy: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus', 'airborne', 'land']),
-    move: new Set(['move']),
-    jump: new Set(['move', 'airborne']),
-    hover: new Set(['airborne']),
-    throw: new Set(['damage', 'move', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    attack: new Set(['damage', 'motion', 'gravity', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    heavy: new Set(['damage', 'motion', 'gravity', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    move: new Set(['motion', 'gravity']),
+    jump: new Set(['motion', 'gravity']),
+    hover: new Set(['motion', 'gravity']),
+    throw: new Set(['damage', 'motion', 'gravity', 'applyStatus', 'consumeStatus', 'removeStatus']),
     taunt: new Set(['applyStatus', 'removeStatus']),
-    pull: new Set(['move']),
-    retreat: new Set(['move']),
+    pull: new Set(['motion', 'gravity']),
+    retreat: new Set(['motion', 'gravity']),
     heal: new Set(['heal']),
     guard: new Set(['applyStatus', 'removeStatus']),
     buff: new Set(['applyStatus', 'removeStatus', 'modifyStat']),
     berserk: new Set(['applyStatus', 'removeStatus']),
-    poison: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
-    burn: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
-    follow: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    poison: new Set(['damage', 'motion', 'gravity', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    burn: new Set(['damage', 'motion', 'gravity', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    follow: new Set(['damage', 'motion', 'gravity', 'applyStatus', 'consumeStatus', 'removeStatus']),
     field: new Set(['placeZone']),
     wait: new Set(['wait']),
   };
@@ -519,12 +520,6 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('UNSUPPORTED_ACTION', `${instruction.id} の action "${instruction.action}" はエンジン未対応です`);
     if (!supportedTargets.has(instruction.target))
       error('UNSUPPORTED_TARGET', `${instruction.id} の target "${instruction.target}" はエンジン未対応です`);
-    const altitudeRequirements = new Set(['grounded', 'airborne', 'any']);
-    if (
-      instruction.altitude &&
-      (!altitudeRequirements.has(instruction.altitude.actor) || !altitudeRequirements.has(instruction.altitude.target))
-    )
-      error('INVALID_ALTITUDE_REQUIREMENT', `${instruction.id} の altitude 定義が不正です`);
     requireTargetSelector(instruction.defaultTarget, `スキル ${instruction.id}.defaultTarget`);
     if (!supportedTargetModes.has(instruction.targetMode))
       error('UNSUPPORTED_TARGET_MODE', `${instruction.id} の targetMode "${instruction.targetMode}" は未対応です`);
@@ -536,11 +531,33 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (defaultCondition && !defaultCondition.compatibleTargets.includes(instruction.defaultTarget))
       error('INVALID_DEFAULT_TARGET', `${instruction.id} の defaultTarget が既定条件と互換ではありません`);
     if (instruction.fixedFor) requireUnit(instruction.fixedFor, `スキル ${instruction.id}`);
-    if (!instruction.range || !['unit', 'fixed', 'scaled'].includes(instruction.range.mode))
-      error('INVALID_RANGE', `${instruction.id} の range.mode が不正です`);
-    if (instruction.range) rejectUnknownKeys(instruction.range, ['mode', 'value'], `スキル ${instruction.id}.range`);
-    if (instruction.range?.mode !== 'unit' && (!(instruction.range.value ?? 0) || (instruction.range.value ?? 0) <= 0))
-      error('INVALID_RANGE', `${instruction.id} の固定・倍率射程には正の value が必要です`);
+    const delivery = instruction.delivery;
+    if (delivery) {
+      if (!['shape', 'projectile'].includes(delivery.kind))
+        error('INVALID_DELIVERY', `${instruction.id} の delivery.kind が不正です`);
+      if (delivery.kind === 'shape') {
+        rejectUnknownKeys(delivery, ['kind', 'shape'], `スキル ${instruction.id}.delivery`);
+        const shape = delivery.shape;
+        if (shape.kind === 'circle') {
+          rejectUnknownKeys(shape, ['kind', 'offsetX', 'offsetY', 'radius'], `スキル ${instruction.id}.shape`);
+          if (shape.radius <= 0) error('INVALID_DELIVERY', `${instruction.id} の円形半径が不正です`);
+        } else if (shape.kind === 'box') {
+          rejectUnknownKeys(shape, ['kind', 'offsetX', 'offsetY', 'width', 'height'], `スキル ${instruction.id}.shape`);
+          if (shape.width <= 0 || (shape.height !== null && shape.height <= 0))
+            error('INVALID_DELIVERY', `${instruction.id} の矩形サイズが不正です`);
+        } else error('INVALID_DELIVERY', `${instruction.id} の攻撃形状が不正です`);
+      } else {
+        rejectUnknownKeys(
+          delivery,
+          ['kind', 'speed', 'radius', 'lifetimeSeconds', 'homing', 'turnRateDegrees'],
+          `スキル ${instruction.id}.delivery`,
+        );
+        if (delivery.speed <= 0 || delivery.radius <= 0 || delivery.lifetimeSeconds <= 0)
+          error('INVALID_DELIVERY', `${instruction.id} の飛び道具パラメータが不正です`);
+        if (delivery.homing && (delivery.turnRateDegrees ?? 0) <= 0)
+          error('INVALID_DELIVERY', `${instruction.id} の追尾弾には正の旋回速度が必要です`);
+      }
+    }
     if (!Array.isArray(instruction.effects) || instruction.effects.length === 0)
       error('MISSING_EFFECT', `${instruction.id} に effects がありません`);
 
@@ -562,19 +579,42 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         );
         if (effect.attackScale < 0 || effect.minimumDamage < 0 || (effect.damageScale ?? 1) < 0)
           error('INVALID_EFFECT', `${instruction.id} の damage 数値が不正です`);
-      } else if (effect.kind === 'move') {
-        rejectUnknownKeys(effect, ['kind', 'mode', 'distance'], `スキル ${instruction.id}.move`);
-        if (!['advance', 'retreat', 'jump', 'throwTarget', 'pullTarget'].includes(effect.mode) || effect.distance <= 0)
-          error('INVALID_EFFECT', `${instruction.id} の move 定義が不正です`);
+      } else if (effect.kind === 'motion') {
+        rejectUnknownKeys(
+          effect,
+          ['kind', 'target', 'mode', 'x', 'y', 'relativeTo'],
+          `スキル ${instruction.id}.motion`,
+        );
+        if (
+          !['actor', 'selected'].includes(effect.target) ||
+          !['addVelocity', 'setVelocity'].includes(effect.mode) ||
+          !['target', 'world'].includes(effect.relativeTo) ||
+          !Number.isFinite(effect.x) ||
+          !Number.isFinite(effect.y) ||
+          (effect.x === 0 && effect.y === 0)
+        )
+          error('INVALID_EFFECT', `${instruction.id} の motion 定義が不正です`);
+      } else if (effect.kind === 'gravity') {
+        rejectUnknownKeys(effect, ['kind', 'target', 'scale', 'durationSeconds'], `スキル ${instruction.id}.gravity`);
+        if (!['actor', 'selected'].includes(effect.target) || effect.scale < 0 || effect.durationSeconds <= 0)
+          error('INVALID_EFFECT', `${instruction.id} の gravity 定義が不正です`);
       } else if (effect.kind === 'heal') {
         rejectUnknownKeys(effect, ['kind', 'amount', 'supportAmount'], `スキル ${instruction.id}.heal`);
         if (effect.amount <= 0 || (effect.supportAmount !== undefined && effect.supportAmount <= 0))
           error('INVALID_EFFECT', `${instruction.id} の heal 数値が不正です`);
       } else if (effect.kind === 'placeZone') {
-        rejectUnknownKeys(effect, ['kind', 'zoneId', 'anchor', 'offset'], `スキル ${instruction.id}.placeZone`);
+        rejectUnknownKeys(
+          effect,
+          ['kind', 'zoneId', 'anchor', 'offsetX', 'offsetY'],
+          `スキル ${instruction.id}.placeZone`,
+        );
         if (!battleZones.has(effect.zoneId))
           error('UNKNOWN_BATTLE_ZONE', `${instruction.id} が未定義設置エリア "${effect.zoneId}" を参照しています`);
-        if (!['actor', 'target'].includes(effect.anchor) || effect.offset < 0)
+        if (
+          !['actor', 'target'].includes(effect.anchor) ||
+          !Number.isFinite(effect.offsetX) ||
+          !Number.isFinite(effect.offsetY)
+        )
           error('INVALID_EFFECT', `${instruction.id} の placeZone 定義が不正です`);
       } else if (effect.kind === 'applyStatus') {
         rejectUnknownKeys(
@@ -600,11 +640,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
             `${instruction.id} は永続状態 ${effect.statusId} に持続時間を指定できません`,
           );
         const expectedTarget =
-          instruction.action === 'taunt'
-            ? 'allEnemies'
-            : ['guard', 'berserk'].includes(instruction.action)
-              ? 'actor'
-              : 'selected';
+          instruction.action === 'taunt' ? 'allEnemies' : instruction.targetMode === 'self' ? 'actor' : 'selected';
         if (effect.target !== expectedTarget)
           error(
             'UNSUPPORTED_EFFECT_TARGET',
@@ -639,34 +675,28 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         rejectUnknownKeys(effect, ['kind', 'stat', 'amount', 'target'], `スキル ${instruction.id}.modifyStat`);
         if (effect.stat !== 'attack' || effect.target !== 'actor' || effect.amount === 0)
           error('INVALID_EFFECT', `${instruction.id} の modifyStat 定義が不正です`);
-      } else if (effect.kind === 'airborne') {
-        rejectUnknownKeys(effect, ['kind', 'target', 'height', 'durationSeconds'], `スキル ${instruction.id}.airborne`);
-        if (!['actor', 'selected'].includes(effect.target) || effect.height <= 0 || effect.durationSeconds <= 0)
-          error('INVALID_EFFECT', `${instruction.id} の airborne 定義が不正です`);
-      } else if (effect.kind === 'land') {
-        rejectUnknownKeys(effect, ['kind', 'target'], `スキル ${instruction.id}.land`);
-        if (!['actor', 'selected'].includes(effect.target))
-          error('INVALID_EFFECT', `${instruction.id} の land 定義が不正です`);
       } else if (effect.kind === 'wait') {
         rejectUnknownKeys(effect, ['kind', 'durationSeconds'], `スキル ${instruction.id}.wait`);
         if (effect.durationSeconds <= 0) error('INVALID_EFFECT', `${instruction.id} の wait 時間が不正です`);
       }
     }
 
-    const moveMode = requiredMoveMode[instruction.action];
-    if (moveMode && !effectsByKind(instruction, 'move').some((effect) => effect.mode === moveMode))
-      error('MISSING_EFFECT', `${instruction.id} には ${moveMode} の move 効果が必要です`);
     if (
       ['attack', 'heavy', 'throw', 'poison', 'burn', 'follow'].includes(instruction.action) &&
       !effectByKind(instruction, 'damage')
     )
       error('MISSING_EFFECT', `${instruction.id} には damage 効果が必要です`);
+    if (effectByKind(instruction, 'damage') && !instruction.delivery)
+      error('MISSING_DELIVERY', `${instruction.id} の damage 効果には空間 delivery が必要です`);
     if (instruction.action === 'heal' && !effectByKind(instruction, 'heal'))
       error('MISSING_EFFECT', `${instruction.id} には heal 効果が必要です`);
     if (instruction.action === 'wait' && !effectByKind(instruction, 'wait'))
       error('MISSING_EFFECT', `${instruction.id} には wait 効果が必要です`);
-    if (instruction.action === 'hover' && !effectByKind(instruction, 'airborne'))
-      error('MISSING_EFFECT', `${instruction.id} には airborne 効果が必要です`);
+    if (
+      ['move', 'jump', 'hover', 'retreat', 'pull'].includes(instruction.action) &&
+      !effectByKind(instruction, 'motion')
+    )
+      error('MISSING_EFFECT', `${instruction.id} には motion 効果が必要です`);
     if (
       instruction.action === 'buff' &&
       !effectByKind(instruction, 'modifyStat') &&
@@ -793,7 +823,6 @@ export function analyzeBalance(data: GameBalanceData): BalanceReport {
     const power =
       reaction.dps * weights.dps +
       reaction.effectiveHp * weights.effectiveHp +
-      unit.range * weights.range +
       knockbackPerSecond * weights.knockbackPerSecond +
       unit.programLimit * weights.programLimit;
     return { unit, baseDps, reaction, power };

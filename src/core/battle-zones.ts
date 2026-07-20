@@ -35,13 +35,15 @@ export const createBattleZone = (
 ): BattleZoneInstance => {
   const definition = battleZoneById.get(effect.zoneId);
   if (!definition) throw new Error(`Unknown battle zone: ${effect.zoneId}`);
-  const anchor = effect.anchor === 'target' ? target.x : actor.x;
+  const anchor = effect.anchor === 'target' ? target : actor;
   const direction = target.x >= actor.x ? 1 : -1;
-  const x = Math.max(BATTLE_CONFIG.wallLeft, Math.min(BATTLE_CONFIG.wallRight, anchor + direction * effect.offset));
+  const x = Math.max(BATTLE_CONFIG.wallLeft, Math.min(BATTLE_CONFIG.wallRight, anchor.x + direction * effect.offsetX));
+  const y = Math.max(BATTLE_CONFIG.floorY, Math.min(BATTLE_CONFIG.ceilingY, anchor.y + effect.offsetY));
   return {
     instanceId: `${effect.zoneId}:${actor.instanceId}:${Math.round(elapsed * 1000)}`,
     zoneId: effect.zoneId,
     x,
+    y,
     remainingSeconds: definition.durationSeconds,
     sourceId: actor.instanceId,
     sourceTeam: actor.team,
@@ -53,7 +55,8 @@ const canAffect = (fighter: Fighter, zone: BattleZoneInstance, definition: Battl
   (definition.targetFilter === 'ally' && fighter.team === zone.sourceTeam) ||
   (definition.targetFilter === 'enemy' && fighter.team !== zone.sourceTeam);
 
-const isInsideZone = (fighterX: number, zoneX: number, radius: number) => Math.abs(fighterX - zoneX) <= radius;
+const isInsideZone = (fighter: Fighter, zone: BattleZoneInstance, radius: number) =>
+  Math.hypot(fighter.x - zone.x, fighter.y - zone.y) <= radius;
 
 const applyZoneEffects = (fighter: Fighter, zone: BattleZoneInstance, definition: BattleZoneDefinition) =>
   definition.trigger.effects.reduce(
@@ -67,18 +70,31 @@ const applyZoneEffects = (fighter: Fighter, zone: BattleZoneInstance, definition
     fighter,
   );
 
-export const pathEntersZone = (fromX: number, toX: number, zoneX: number, radius: number): boolean => {
-  const wasInside = Math.abs(fromX - zoneX) <= radius;
+export const pathEntersZone = (
+  from: Pick<Fighter, 'x' | 'y'>,
+  to: Pick<Fighter, 'x' | 'y'>,
+  zone: Pick<BattleZoneInstance, 'x' | 'y'>,
+  radius: number,
+): boolean => {
+  const wasInside = Math.hypot(from.x - zone.x, from.y - zone.y) <= radius;
   if (wasInside) return false;
-  const low = Math.min(fromX, toX);
-  const high = Math.max(fromX, toX);
-  return high >= zoneX - radius && low <= zoneX + radius;
+  const segmentX = to.x - from.x;
+  const segmentY = to.y - from.y;
+  const lengthSquared = segmentX * segmentX + segmentY * segmentY;
+  if (lengthSquared <= Number.EPSILON) return false;
+  const projection = Math.max(
+    0,
+    Math.min(1, ((zone.x - from.x) * segmentX + (zone.y - from.y) * segmentY) / lengthSquared),
+  );
+  const closestX = from.x + segmentX * projection;
+  const closestY = from.y + segmentY * projection;
+  return Math.hypot(closestX - zone.x, closestY - zone.y) <= radius;
 };
 
 export const applyZoneEntries = (
   fighter: Fighter,
-  fromX: number,
-  toX: number,
+  from: Pick<Fighter, 'x' | 'y'>,
+  to: Pick<Fighter, 'x' | 'y'>,
   zones: BattleZoneInstance[],
   includeCurrentPosition = false,
 ): { fighter: Fighter; triggers: ZoneTrigger[] } => {
@@ -88,8 +104,8 @@ export const applyZoneEntries = (
     const definition = battleZoneById.get(zone.zoneId);
     if (!definition || definition.trigger.kind !== 'onEnter' || !canAffect(affected, zone, definition)) continue;
     const entered = includeCurrentPosition
-      ? isInsideZone(toX, zone.x, definition.radius)
-      : pathEntersZone(fromX, toX, zone.x, definition.radius);
+      ? isInsideZone({ ...affected, ...to }, zone, definition.radius)
+      : pathEntersZone(from, to, zone, definition.radius);
     if (!entered) continue;
     affected = applyZoneEffects(affected, zone, definition);
     triggers.push({ zoneId: zone.instanceId, fighterId: affected.instanceId, kind: definition.trigger.kind });
@@ -109,7 +125,7 @@ export const applyZoneActionTriggers = (
       !definition ||
       definition.trigger.kind !== 'onActionWhileInside' ||
       !canAffect(affected, zone, definition) ||
-      !isInsideZone(affected.x, zone.x, definition.radius)
+      !isInsideZone(affected, zone, definition.radius)
     )
       continue;
     affected = applyZoneEffects(affected, zone, definition);

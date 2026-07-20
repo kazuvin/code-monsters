@@ -25,7 +25,7 @@ It then estimates every unit against the reference defense in `game-data/game-ba
 ```text
 base DPS = expected normal-attack damage / normal-instruction cooldown
 effective HP = max HP + defense * defense weight
-power = DPS, effective HP, range, knockback/second, and program capacity (weighted sum)
+power = DPS, effective HP, knockback/second, and program capacity (weighted sum)
 ability recovery = ability cost / gauge regeneration per second
 sustainable ability interval = max(instruction cooldown at reference speed, ability recovery)
 ```
@@ -34,7 +34,7 @@ The ability-economy table reports each instruction's own cooldown, gauge cost, g
 
 The in-app catalog reads the same source data and exposes all three bodies, equipment, conditions, target selectors, and instructions as comparison cards. Its ten-cell cost rulers, recovery time, and sustainable uses-per-minute values are presentation of the analyzer inputs and output; they are not separately maintained balance data.
 
-The in-app debug room complements the static analyzer with reproducible live-engine measurements. It runs the same deterministic battle-frame planner as a normal match in a one-on-one training setup. Both units start inside each other's attack range. Movement and status changes persist so the resulting spacing and state can be inspected; only the dummy HP is clamped to the configured minimum and recovered after the configured delay. The target profile can override HP, defense, weight, role, and canonical status state; reports include per-hit damage, total damage, DPS, healing, gauge efficiency, movement, state stacks, recovery count, and decision skip reasons.
+The in-app debug room complements the static analyzer with reproducible live-engine measurements. It runs the same deterministic battle-frame planner as a normal match in a one-on-one training setup. The selected preset supplies an exact X/Y start distance instead of a unit-range category. Movement, projectiles, zones, and status changes persist so the resulting spacing and state can be inspected; only the dummy HP is clamped to the configured minimum and recovered after the configured delay. The target profile can override HP, defense, weight, role, and canonical status state; reports include per-hit damage, total damage, DPS, healing, gauge efficiency, movement, state stacks, recovery count, and decision skip reasons.
 
 This is a deterministic screening model, not proof of live-match fairness. It is intentionally good at finding broken references, impossible parameters, extreme same-rarity gaps, and price-efficiency outliers. Borderline spreads are warnings and should be followed by matchup simulation or playtesting. Exceeding configured hard limits exits non-zero.
 

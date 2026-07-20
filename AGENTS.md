@@ -15,7 +15,7 @@
 - After changing `src/core/`, `game-data/`, units, skills, reactions, combat parameters, prices, or shop settings, run `pnpm verify` before declaring the task complete.
 - `pnpm verify` must include the production build, core tests, combat-math tests, and `pnpm balance:check` equivalent.
 - Balance errors block completion. Warnings require review and should be reported; do not loosen a threshold only to silence a result.
-- For battle presentation or build-screen changes, also run the relevant browser regression scripts (`test:loadout`, `test:run`, `test:mobile`, `test:miss`, `test:jump`, `test:throw`, or `test:visual`).
+- For battle presentation or build-screen changes, also run the relevant browser regression scripts (`test:loadout`, `test:run`, `test:mobile`, `test:miss`, `test:jump`, `test:projectile`, or `test:visual`).
 
 ## Unity portability
 

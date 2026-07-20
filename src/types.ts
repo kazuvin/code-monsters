@@ -25,17 +25,16 @@ export type EquipmentSlot = 'frame' | 'weapon' | 'chip';
 export type ConditionId = string;
 export type ConditionKind =
   | 'always'
-  | 'targetInRange'
-  | 'targetOutOfRange'
+  | 'targetWithinDistance'
+  | 'targetBeyondDistance'
   | 'targetHpBelow'
   | 'selfHpBelow'
   | 'targetHasStatus'
   | 'selfHasStatus'
-  | 'selfAirborne'
-  | 'selfGrounded'
-  | 'targetAirborne'
-  | 'targetGrounded'
-  | 'targetAirborneRemainingBelow';
+  | 'selfHeightAbove'
+  | 'selfHeightBelow'
+  | 'targetHeightAbove'
+  | 'selfDescending';
 export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'partner' | 'self';
 export type TargetSelectorId = 'nearestEnemy' | 'lowestHpEnemy' | 'allEnemies' | 'self' | 'partner';
 export type TargetDomain = 'enemy' | 'ally' | 'self';
@@ -43,8 +42,6 @@ export type TargetCardinality = 'one' | 'many';
 export type ActionTargetMode = 'selected' | 'self' | 'allEnemies' | 'allAllies';
 export type ImpactProfile = { damageScale?: number; knockbackPower?: number };
 export type EffectTarget = 'actor' | 'selected' | 'allEnemies' | 'allAllies';
-export type AltitudeRequirement = 'grounded' | 'airborne' | 'any';
-export type InstructionRange = { mode: 'unit' | 'fixed' | 'scaled'; value?: number };
 export type DamageEffect = {
   kind: 'damage';
   attackScale: number;
@@ -53,10 +50,19 @@ export type DamageEffect = {
   minimumDamage: number;
   knockbackPower?: number;
 };
-export type MoveEffect = {
-  kind: 'move';
-  mode: 'advance' | 'retreat' | 'jump' | 'throwTarget' | 'pullTarget';
-  distance: number;
+export type MotionEffect = {
+  kind: 'motion';
+  target: Extract<EffectTarget, 'actor' | 'selected'>;
+  mode: 'addVelocity' | 'setVelocity';
+  x: number;
+  y: number;
+  relativeTo: 'target' | 'world';
+};
+export type GravityEffect = {
+  kind: 'gravity';
+  target: Extract<EffectTarget, 'actor' | 'selected'>;
+  scale: number;
+  durationSeconds: number;
 };
 export type HealEffect = { kind: 'heal'; amount: number; supportAmount?: number };
 export type ApplyStatusEffect = {
@@ -84,29 +90,19 @@ export type PlaceZoneEffect = {
   kind: 'placeZone';
   zoneId: string;
   anchor: 'actor' | 'target';
-  offset: number;
-};
-export type AirborneEffect = {
-  kind: 'airborne';
-  target: Extract<EffectTarget, 'actor' | 'selected'>;
-  height: number;
-  durationSeconds: number;
-};
-export type LandEffect = {
-  kind: 'land';
-  target: Extract<EffectTarget, 'actor' | 'selected'>;
+  offsetX: number;
+  offsetY: number;
 };
 export type InstructionEffect =
   | DamageEffect
-  | MoveEffect
+  | MotionEffect
+  | GravityEffect
   | HealEffect
   | ApplyStatusEffect
   | ConsumeStatusEffect
   | RemoveStatusEffect
   | ModifyStatEffect
   | PlaceZoneEffect
-  | AirborneEffect
-  | LandEffect
   | WaitEffect;
 export type InstructionEffectKind = InstructionEffect['kind'];
 export type InstructionEffectByKind<Kind extends InstructionEffectKind> = Extract<InstructionEffect, { kind: Kind }>;
@@ -194,9 +190,65 @@ export type BattleZoneInstance = {
   instanceId: string;
   zoneId: string;
   x: number;
+  y: number;
   remainingSeconds: number;
   sourceId: string;
   sourceTeam: Fighter['team'];
+};
+
+export type CircleAttackShape = {
+  kind: 'circle';
+  offsetX: number;
+  offsetY: number;
+  radius: number;
+};
+
+export type BoxAttackShape = {
+  kind: 'box';
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number | null;
+};
+
+export type AttackShape = CircleAttackShape | BoxAttackShape;
+
+export type ShapeDelivery = {
+  kind: 'shape';
+  shape: AttackShape;
+};
+
+export type ProjectileDelivery = {
+  kind: 'projectile';
+  speed: number;
+  radius: number;
+  lifetimeSeconds: number;
+  homing: boolean;
+  turnRateDegrees?: number;
+};
+
+export type SpatialDelivery = ShapeDelivery | ProjectileDelivery;
+
+export type ResolvedAttackShape =
+  | { kind: 'circle'; x: number; y: number; radius: number }
+  | { kind: 'box'; x: number; y: number; width: number; height: number | null };
+
+export type SpatialProjectile = {
+  instanceId: string;
+  actionId: string;
+  sourceId: string;
+  sourceTeam: 'ally' | 'enemy';
+  reaction: boolean;
+  targetId: string | null;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  speed: number;
+  radius: number;
+  remainingSeconds: number;
+  homing: boolean;
+  turnRateDegrees: number;
 };
 
 export type UnitDefinition = {
@@ -209,7 +261,6 @@ export type UnitDefinition = {
   attack: number;
   defense: number;
   speed: number;
-  range: number;
   knockbackPower: number;
   weight: number;
   attackType: AttackType;
@@ -218,10 +269,7 @@ export type UnitDefinition = {
 };
 
 export type EquipmentModifiers = Partial<
-  Pick<
-    UnitDefinition,
-    'maxHp' | 'attack' | 'defense' | 'speed' | 'range' | 'knockbackPower' | 'weight' | 'programLimit'
-  >
+  Pick<UnitDefinition, 'maxHp' | 'attack' | 'defense' | 'speed' | 'knockbackPower' | 'weight' | 'programLimit'>
 > & {
   attackType?: AttackType;
 };
@@ -254,13 +302,9 @@ export type Instruction = {
   target: TargetType;
   defaultTarget: TargetSelectorId;
   targetMode: ActionTargetMode;
-  altitude?: {
-    actor: AltitudeRequirement;
-    target: AltitudeRequirement;
-  };
   compatibleTargets: TargetSelectorId[];
   tone: 'cyan' | 'amber' | 'lime' | 'violet';
-  range: InstructionRange;
+  delivery?: SpatialDelivery;
   effects: InstructionEffect[];
   fixedFor?: string;
   reactionOnly?: boolean;
@@ -283,23 +327,16 @@ export type PendingAction = {
   resolvesAt: number;
 };
 
-export type AirborneState = {
-  remainingSeconds: number;
-  durationSeconds: number;
-  maxHeight: number;
-  startX?: number;
-  endX?: number;
-  startZ?: number;
-  endZ?: number;
-};
-
 export type Fighter = UnitDefinition & {
   instanceId: string;
   team: 'ally' | 'enemy';
   hp: number;
   x: number;
-  z: number;
-  airborne: AirborneState | null;
+  y: number;
+  vx: number;
+  vy: number;
+  gravityScale: number;
+  gravityScaleRemaining: number;
   actionLock: number;
   instructionCooldowns: Record<string, number>;
   pendingAction: PendingAction | null;
@@ -347,6 +384,9 @@ export type BattleFlash = {
   n: number;
   targetId?: string;
   zoneX?: number;
+  zoneY?: number;
+  shape?: ResolvedAttackShape;
+  projectileId?: string;
   attackType?: AttackType;
   actionLabel?: string;
   reaction?: boolean;

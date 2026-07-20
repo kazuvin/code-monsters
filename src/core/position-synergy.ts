@@ -23,8 +23,8 @@ export type PositionSynergyReport = {
 };
 
 const ref = ({ id, title }: Instruction): PositionInstructionRef => ({ id, title });
-const hasMoveMode = (instruction: Instruction, modes: string[]) =>
-  effectsByKind(instruction, 'move').some((effect) => modes.includes(effect.mode));
+const movesTarget = (instruction: Instruction, target: 'actor' | 'selected') =>
+  effectsByKind(instruction, 'motion').some((effect) => effect.target === target && (effect.x !== 0 || effect.y !== 0));
 
 export const positionMetricCount = (pack: PositionSynergyPack, metric: PositionMetricId): number => {
   switch (metric) {
@@ -42,12 +42,10 @@ export const positionMetricCount = (pack: PositionSynergyPack, metric: PositionM
 };
 
 export function analyzePositionSynergies(data: GameBalanceData): PositionSynergyReport {
-  const selfMovers = data.instructions.filter((instruction) =>
-    hasMoveMode(instruction, ['advance', 'retreat', 'jump']),
-  );
+  const selfMovers = data.instructions.filter((instruction) => movesTarget(instruction, 'actor'));
   const forcedMovers = data.instructions.filter(
     (instruction) =>
-      hasMoveMode(instruction, ['throwTarget', 'pullTarget']) ||
+      movesTarget(instruction, 'selected') ||
       effectsByKind(instruction, 'damage').some((effect) => (effect.knockbackPower ?? 0) > 0),
   );
   const packs = data.battleZones.map((zone): PositionSynergyPack => {

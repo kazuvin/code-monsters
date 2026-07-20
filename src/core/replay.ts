@@ -1,11 +1,12 @@
 import type { EncounterDefinition } from '../data.ts';
-import type { BattleZoneInstance, Fighter, UnitInventoryItem } from '../types.ts';
+import type { BattleZoneInstance, Fighter, SpatialProjectile, UnitInventoryItem } from '../types.ts';
 import type { BattleDamagePayload, BattleStep, DecisionReason, DecisionTrace } from './battle-engine.ts';
 
 export type ReplayFrame = {
   elapsed: number;
   fighters: Fighter[];
   zones: BattleZoneInstance[];
+  projectiles: SpatialProjectile[];
   queuedSteps: BattleStep[];
   decisions: DecisionTrace[];
 };
@@ -17,12 +18,14 @@ export type BattleReplay = {
   team: UnitInventoryItem[];
   initialFighters: Fighter[];
   initialZones: BattleZoneInstance[];
+  initialProjectiles: SpatialProjectile[];
   frames: ReplayFrame[];
   result?: {
     winner: '勝利' | '敗北';
     elapsed: number;
     finalFighters: Fighter[];
     finalZones: BattleZoneInstance[];
+    finalProjectiles: SpatialProjectile[];
   };
 };
 
@@ -48,7 +51,7 @@ export function summarizeDecisions(
       actionId,
       executed: 0,
       totalDamage: 0,
-      skipped: { condition: 0, range: 0, cost: 0, state: 0 },
+      skipped: { condition: 0, cost: 0, state: 0 },
     };
     rows.set(key, row);
     return row;

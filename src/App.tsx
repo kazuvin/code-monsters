@@ -23,16 +23,8 @@ import {
 import { BattleScene } from './BattleScene';
 import { Catalog } from './Catalog';
 import { DebugRoom } from './DebugRoom';
-import {
-  applyBattleSteps,
-  isBattleComplete,
-  planBattleFrame,
-  type BattleDamagePayload,
-  type BattleStep,
-  type DecisionTrace,
-} from './core/battle-engine';
+import { planBattleFrame, type BattleDamagePayload, type BattleStep, type DecisionTrace } from './core/battle-engine';
 import { summarizeDecisions, type BattleReplay } from './core/replay';
-import { applyBattleZoneChanges, tickBattleZones } from './core/battle-zones';
 import {
   createBattleFighters,
   createInventoryUnit,
@@ -49,7 +41,6 @@ import {
   isConditionCompatibleWithTarget,
   isInstructionCompatibleWithTarget,
   targetSelectorById,
-  tickCooldowns,
 } from './core/rules';
 import { createShop, type ShopItem } from './core/shop';
 import {
@@ -76,6 +67,7 @@ import type {
   Rarity,
   ReactionBlock,
   ReactionTrigger,
+  SpatialProjectile,
   TargetSelectorId,
   UnitDefinition,
   UnitInventoryItem,
@@ -258,6 +250,8 @@ export function App() {
   const [fighters, setFighters] = useState(() => createBattleFighters(initialUnits, ENCOUNTERS[0]));
   const [zones, setZones] = useState<BattleZoneInstance[]>([]);
   const zonesRef = useRef<BattleZoneInstance[]>([]);
+  const [projectiles, setProjectiles] = useState<SpatialProjectile[]>([]);
+  const projectilesRef = useRef<SpatialProjectile[]>([]);
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef(0);
@@ -373,7 +367,7 @@ export function App() {
       program:
         program.length > 0
           ? program
-          : [{ actionId: 'attack-low', conditionId: 'targetInRange', targetId: 'nearestEnemy' }],
+          : [{ actionId: 'pulse-swipe', conditionId: 'targetNear12', targetId: 'nearestEnemy' }],
       reaction: equipped.reaction && allowedActions.has(equipped.reaction.actionId) ? equipped.reaction : null,
     } satisfies UnitInventoryItem;
   };
@@ -545,6 +539,7 @@ export function App() {
       team: structuredClone(team),
       initialFighters: structuredClone(initialFighters),
       initialZones: [],
+      initialProjectiles: [],
       frames: [],
     };
     setDecisionReport([]);
@@ -555,6 +550,8 @@ export function App() {
     setFighters(initialFighters);
     zonesRef.current = [];
     setZones([]);
+    projectilesRef.current = [];
+    setProjectiles([]);
     setLogs([]);
     setElapsed(0);
     elapsedRef.current = 0;
@@ -573,6 +570,8 @@ export function App() {
     setFighters(createBattleFighters(nextTeam, encounter));
     zonesRef.current = [];
     setZones([]);
+    projectilesRef.current = [];
+    setProjectiles([]);
     setLogs([]);
     setLogsOpen(false);
     setMobileBuildPanel(null);
@@ -630,6 +629,7 @@ export function App() {
         elapsed,
         finalFighters: structuredClone(fighters),
         finalZones: structuredClone(zonesRef.current),
+        finalProjectiles: structuredClone(projectilesRef.current),
       },
     };
     const blob = new Blob([JSON.stringify(replay, null, 2)], { type: 'application/json' });
@@ -661,42 +661,22 @@ export function App() {
         const simultaneousSteps = battleQueueRef.current.slice(0, simultaneousCount);
         battleQueueRef.current = battleQueueRef.current.slice(simultaneousSteps.length);
         lastStepAtRef.current = now;
-        setFighters((current) => {
-          sampleAbilityGauges(current, dt);
-          const next = applyBattleSteps(tickCooldowns(current, dt), simultaneousSteps);
-          zonesRef.current = simultaneousSteps.reduce(
-            (state, step) => applyBattleZoneChanges(state, step.zoneChanges),
-            tickBattleZones(zonesRef.current, dt),
-          );
-          setZones(zonesRef.current);
-          const eventFlashes = simultaneousSteps
-            .filter((step) => step.flash.kind !== 'death')
-            .map((step) => ({ ...step.flash, n: now }));
-          const visibleFlashes = eventFlashes.length
-            ? eventFlashes
-            : simultaneousSteps.map((step) => ({ ...step.flash, n: now }));
-          setFlash(visibleFlashes[0] ?? null);
-          setConcurrentFlashes(visibleFlashes);
-          for (const step of simultaneousSteps) if (step.log) addLog(step.log.actor, step.log.text, step.log.type);
-          if (isBattleComplete(next)) setTimeout(completeBattle, BATTLE_CONFIG.resultDelayMs);
-          return next;
-        });
-        return;
-      }
-      if (queuedStep) {
-        zonesRef.current = tickBattleZones(zonesRef.current, dt);
-        setZones(zonesRef.current);
-        setFighters((current) => {
-          sampleAbilityGauges(current, dt);
-          return tickCooldowns(current, dt);
-        });
-        return;
+        const eventFlashes = simultaneousSteps
+          .filter((step) => step.flash.kind !== 'death')
+          .map((step) => ({ ...step.flash, n: now }));
+        const visibleFlashes = eventFlashes.length
+          ? eventFlashes
+          : simultaneousSteps.map((step) => ({ ...step.flash, n: now }));
+        setFlash(visibleFlashes[0] ?? null);
+        setConcurrentFlashes(visibleFlashes);
+        for (const step of simultaneousSteps) if (step.log) addLog(step.log.actor, step.log.text, step.log.type);
       }
       setFighters((current) => {
         sampleAbilityGauges(current, dt);
         const plan = planBattleFrame({
           fighters: current,
           zones: zonesRef.current,
+          projectiles: projectilesRef.current,
           team,
           dt,
           elapsed: elapsedRef.current,
@@ -704,6 +684,8 @@ export function App() {
         });
         zonesRef.current = plan.zones;
         setZones(plan.zones);
+        projectilesRef.current = plan.projectiles;
+        setProjectiles(plan.projectiles);
         battleQueueRef.current.push(...plan.steps);
         decisionTraceRef.current.push(...plan.decisions);
         damageTraceRef.current.push(...plan.steps.flatMap((step) => (step.damage ? [step.damage] : [])));
@@ -712,6 +694,7 @@ export function App() {
             elapsed: elapsedRef.current,
             fighters: structuredClone(plan.fighters),
             zones: structuredClone(plan.zones),
+            projectiles: structuredClone(plan.projectiles),
             queuedSteps: structuredClone(plan.steps),
             decisions: structuredClone(plan.decisions),
           });
@@ -763,8 +746,9 @@ export function App() {
           return definition.label;
         })
       : ['正常'];
-    if (fighter.airborne)
-      tags.push(`空中 ${fighter.airborne.remainingSeconds.toFixed(1)}秒 / 高度 ${fighter.z.toFixed(1)}m`);
+    tags.push(`座標 (${fighter.x.toFixed(1)}, ${fighter.y.toFixed(1)})`);
+    if (Math.abs(fighter.vx) > 0.1 || Math.abs(fighter.vy) > 0.1)
+      tags.push(`速度 (${fighter.vx.toFixed(1)}, ${fighter.vy.toFixed(1)})`);
     if (fighter.actionLock > 0) tags.push('行動硬直');
     if (fighter.pendingAction)
       tags.push(
@@ -943,9 +927,6 @@ export function App() {
                 </span>
                 <span>
                   ATK <b>{selectedUnit.attack}</b>
-                </span>
-                <span>
-                  RNG <b>{selectedUnit.range}</b>
                 </span>
                 <span>
                   KB <b>{selectedUnit.knockbackPower}</b>
@@ -1398,6 +1379,7 @@ export function App() {
             <BattleScene
               fighters={fighters}
               zones={zones}
+              projectiles={projectiles}
               flash={flash}
               flashes={concurrentFlashes}
               running={phase === 'battle' && !paused}
@@ -1584,7 +1566,7 @@ export function App() {
                     <span>EXEC</span>
                     <span>DMG / Δ</span>
                     <span>条件</span>
-                    <span>射程</span>
+                    <span>状態</span>
                     <span>COST</span>
                   </div>
                   <div className="report-scroll">
@@ -1603,7 +1585,7 @@ export function App() {
                           <strong>{row.executed}</strong>
                           <strong className="report-damage">{Math.round(row.totalDamage)}</strong>
                           <em>{row.skipped.condition}</em>
-                          <em>{row.skipped.range}</em>
+                          <em>{row.skipped.state}</em>
                           <em>{row.skipped.cost}</em>
                         </div>
                       );

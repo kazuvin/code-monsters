@@ -36,62 +36,63 @@ internal static class UnityCoreSmoke
         if (data.Encounters.Any(encounter => encounter.EnemyProgramActionIds.Count == 0))
             throw new InvalidDataException("An encounter does not expose its enemy program");
 
-        var volt = data.Units.Single(unit => unit.Id == "volt");
-        var shoulderThrow = data.Instructions.Single(instruction => instruction.Id == "shoulder-throw");
         var vulnerable = data.Statuses.Single(status => status.Id == "vulnerable");
-        var revealWeakness = data.Instructions.Single(instruction => instruction.Id == "reveal-weakness");
-        var pierceVulnerability = data.Instructions.Single(instruction => instruction.Id == "pierce-vulnerability");
+        var pulseBolt = data.Instructions.Single(instruction => instruction.Id == "pulse-bolt");
+        var seekerOrb = data.Instructions.Single(instruction => instruction.Id == "seeker-orb");
         var slowed = data.Statuses.Single(status => status.Id == "slowed");
-        var coolantShot = data.Instructions.Single(instruction => instruction.Id == "coolant-shot");
-        var shatteringBlow = data.Instructions.Single(instruction => instruction.Id == "shattering-blow");
-        var cornerSlowed = data.Instructions.Single(instruction => instruction.Id == "corner-slowed");
+        var cryoBolt = data.Instructions.Single(instruction => instruction.Id == "cryo-bolt");
+        var frostColumn = data.Instructions.Single(instruction => instruction.Id == "frost-column");
         var inspired = data.Statuses.Single(status => status.Id == "inspired");
         var overclock = data.Instructions.Single(instruction => instruction.Id == "overclock");
-        var inspiredStrike = data.Instructions.Single(instruction => instruction.Id == "energized-strike");
+        var energizedBolt = data.Instructions.Single(instruction => instruction.Id == "energized-bolt");
         var selfInspired = data.Conditions.Single(condition => condition.Id == "selfInspired");
-        var toxicCloud = data.BattleZones.Single(zone => zone.Id == "toxic-cloud");
-        var toxicFlask = data.Instructions.Single(instruction => instruction.Id == "throw-toxic-flask");
+        var corrosionField = data.BattleZones.Single(zone => zone.Id == "corrosion-field");
+        var corrosionFieldSkill = data.Instructions.Single(instruction => instruction.Id == "corrosion-field");
         var poison = data.Statuses.Single(status => status.Id == "poison");
-        var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
-        var actor = new FighterState { InstanceId = "volt-1", X = 40, Range = volt.Range, Hp = 74, MaxHp = 74 };
-        var target = new FighterState { InstanceId = "enemy-1", X = 50, Range = 8, Hp = 100, MaxHp = 100 };
-        if (!BattleRules.MatchesCondition(targetInRange, actor, target))
-            throw new InvalidDataException("Actor-relative attack range condition did not match");
-        if (BattleRules.ActionRange(actor, shoulderThrow) != 9)
-            throw new InvalidDataException("Fixed contact-skill range was not preserved");
+        var targetNear = data.Conditions.Single(condition => condition.Id == "targetNear12");
+        var actor = new FighterState { InstanceId = "volt-1", Team = "ally", X = 40, Y = 0, Hp = 74, MaxHp = 74 };
+        var target = new FighterState { InstanceId = "enemy-1", Team = "enemy", X = 46, Y = 8, Hp = 100, MaxHp = 100 };
+        if (!BattleRules.MatchesCondition(targetNear, actor, target))
+            throw new InvalidDataException("Two-dimensional distance condition did not match");
         if (Math.Abs(vulnerable.Effects.Single(effect => effect.Kind == "incomingDamageScale").Value.GetValueOrDefault() - 1.15) >= 0.0001)
             throw new InvalidDataException("Vulnerable status multiplier was not imported");
-        if (!revealWeakness.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "vulnerable"))
+        if (!pulseBolt.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "vulnerable"))
             throw new InvalidDataException("Vulnerable status producer was not imported");
-        if (!pierceVulnerability.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "vulnerable"))
+        if (!seekerOrb.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "vulnerable"))
             throw new InvalidDataException("Vulnerable status consumer was not imported");
         if (Math.Abs(slowed.Effects.Single(effect => effect.Kind == "speedScale").Value.GetValueOrDefault() - 0.75) >= 0.0001)
             throw new InvalidDataException("Slowed status speed multiplier was not imported");
-        if (!coolantShot.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "slowed" && effect.DurationSeconds == 5))
+        if (!cryoBolt.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "slowed" && effect.DurationSeconds == 5))
             throw new InvalidDataException("Slowed status producer was not imported");
-        if (!shatteringBlow.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "slowed"))
-            throw new InvalidDataException("Bastion slowed status consumer was not imported");
-        if (!cornerSlowed.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "slowed"))
-            throw new InvalidDataException("Relay slowed status consumer was not imported");
+        if (!frostColumn.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "slowed"))
+            throw new InvalidDataException("Slowed status consumer was not imported");
         if (Math.Abs(inspired.Effects.Single(effect => effect.Kind == "attackScale").Value.GetValueOrDefault() - 1.15) >= 0.0001)
             throw new InvalidDataException("Inspired status attack multiplier was not imported");
         if (!overclock.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "inspired" && effect.DurationSeconds == 6))
             throw new InvalidDataException("Inspired status producer was not imported");
-        if (!inspiredStrike.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "inspired" && effect.Target == "actor"))
+        if (!energizedBolt.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "inspired" && effect.Target == "actor"))
             throw new InvalidDataException("Volt inspired status consumer was not imported");
         actor.Statuses.Add(new StatusInstance { StatusId = "inspired", Stacks = 1 });
         if (!BattleRules.MatchesCondition(selfInspired, actor, target))
             throw new InvalidDataException("Actor-owned inspired condition did not match an enemy target");
         if (
-            toxicCloud.TargetFilter != "any"
-            || toxicCloud.Trigger.Kind != "onActionWhileInside"
-            || toxicCloud.Trigger.Effects.Single().StatusId != "poison"
+            corrosionField.TargetFilter != "any"
+            || corrosionField.Trigger.Kind != "onActionWhileInside"
+            || corrosionField.Trigger.Effects.Single().StatusId != "poison"
         )
             throw new InvalidDataException("Generic battle zone trigger was not imported");
-        if (!toxicFlask.Effects.Any(effect => effect.Kind == "placeZone" && effect.ZoneId == "toxic-cloud"))
+        if (!corrosionFieldSkill.Effects.Any(effect => effect.Kind == "placeZone" && effect.ZoneId == "corrosion-field"))
             throw new InvalidDataException("Battle zone placement skill was not imported");
-        if (!BattleRules.PathEntersZone(20, 80, 50, toxicCloud.Radius))
+        if (!BattleRules.PathEntersZone(20, 0, 80, 0, 50, 0, corrosionField.Radius))
             throw new InvalidDataException("Battle zone path entry parity failed");
+        var verticalLance = data.Instructions.Single(instruction => instruction.Id == "vertical-lance");
+        var shape = BattleRules.ResolveAttackShape(verticalLance, actor, target);
+        if (shape == null || shape.Kind != "box" || shape.Height.HasValue)
+            throw new InvalidDataException("Infinite-height attack shape was not imported");
+        var projectile = BattleRules.CreateProjectile(seekerOrb.Delivery, actor, target, data.Battle.FighterRadius);
+        var advanced = BattleRules.AdvanceProjectile(projectile, target, 0.1);
+        if (advanced.X == projectile.X && advanced.Y == projectile.Y)
+            throw new InvalidDataException("Projectile time did not advance");
         if (
             data.Battle.StatusDamageTickSeconds != 2
             || poison.MaxStacks.HasValue
@@ -105,8 +106,8 @@ internal static class UnityCoreSmoke
         var corrosion = data.Equipment.Single(item => item.Id == "corrosion-core");
         if (
             corrosion.Modifiers.Attack.GetValueOrDefault() >= 0
-            || corrosion.Modifiers.Range.GetValueOrDefault() <= 0
-            || !corrosion.GrantsActionIds.Contains("corrosion-burst")
+            || !corrosion.GrantsActionIds.Contains("corrosion-column")
+            || !corrosion.GrantsActionIds.Contains("corrosion-field")
         )
             throw new InvalidDataException("Equipment trade-off or granted actions were not imported");
 

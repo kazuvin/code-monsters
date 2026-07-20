@@ -20,7 +20,7 @@ There is no unit recruitment, bench, formation order, partner targeting, or unit
 | Slot | Primary decision | Examples |
 | --- | --- | --- |
 | Frame | durability versus mobility | heavy armor adds HP and defense but loses speed; a light frame does the opposite |
-| Weapon | range, damage profile, and action package | impact, long-shot, corrosion, and cryo cores each replace the tactical toolkit |
+| Weapon | attack geometry, projectile behavior, and action package | impact, long-shot, corrosion, and cryo cores each replace the tactical toolkit |
 | Logic chip | reaction and program identity | follow-up, repair, guard, overclock, and redline packages |
 
 Equipment uses authored stat tradeoffs rather than random affixes. A part may grant actions or a default reaction, but the equipment registry does not duplicate unit stats. Replacing a part removes instructions that are no longer owned so saved programs cannot execute unavailable actions.

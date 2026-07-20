@@ -65,15 +65,8 @@ for (const preset of DEBUG_TRAINING_CONFIG.positionPresets) {
   const actor = fighters.find((fighter) => fighter.team === 'ally');
   const target = fighters.find((fighter) => fighter.team === 'enemy');
   assert.ok(actor && target, `${preset.id} の配置ユニットを作れません`);
-  const distance = Math.abs(actor.x - target.x);
-  const referenceRange =
-    preset.rangeReference === 'mutual'
-      ? Math.min(actor.range, target.range)
-      : preset.rangeReference === 'actor'
-        ? actor.range
-        : target.range;
-  if (preset.relation === 'inside') assert.ok(distance <= referenceRange, `${preset.id} が射程内ではありません`);
-  else assert.ok(distance > referenceRange, `${preset.id} が射程外ではありません`);
+  const distance = Math.hypot(actor.x - target.x, actor.y - target.y);
+  assert.equal(distance, preset.distance, `${preset.id} の開始距離が反映されていません`);
 }
 
 for (const instruction of INSTRUCTIONS) {
@@ -99,10 +92,8 @@ for (const instruction of INSTRUCTIONS) {
     targetSelectorId: instruction.defaultTarget,
     actorHpRatio: condition.kind === 'selfHpBelow' || instruction.action === 'heal' ? 0.25 : 1,
     positionPresetId:
-      condition.kind === 'targetOutOfRange'
-        ? DEBUG_TRAINING_CONFIG.positionPresets.find(
-            (preset) => preset.rangeReference === 'actor' && preset.relation === 'outside',
-          )?.id
+      condition.kind === 'targetBeyondDistance'
+        ? DEBUG_TRAINING_CONFIG.positionPresets.find((preset) => preset.distance > (condition.params.distance ?? 0))?.id
         : DEBUG_TRAINING_CONFIG.defaultPositionPresetId,
     actorStatuses,
     targetStatuses,

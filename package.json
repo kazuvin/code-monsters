@@ -22,7 +22,7 @@
     "test:mobile": "node scripts/mobile-ux-test.mjs",
     "test:loadout": "node scripts/loadout-test.mjs",
     "test:jump": "node scripts/jump-test.mjs",
-    "test:throw": "node scripts/throw-test.mjs",
+    "test:projectile": "node scripts/projectile-test.mjs",
     "test:catalog": "node scripts/catalog-test.mjs",
     "test:run": "node scripts/run-test.mjs",
     "test:unity-core": "node scripts/unity-core-check.mjs",

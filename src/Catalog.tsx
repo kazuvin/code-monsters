@@ -59,8 +59,13 @@ const effectSummary = (effect: InstructionEffect): { label: string; value: strin
         label: 'ダメージ',
         value: `ATK×${effect.attackScale}${effect.flatDamage ? ` +${effect.flatDamage}` : ''} / 最低${effect.minimumDamage}`,
       };
-    case 'move':
-      return { label: `移動・${effect.mode}`, value: `${effect.distance}m` };
+    case 'motion':
+      return {
+        label: `速度・${effect.mode}`,
+        value: `X ${effect.x} / Y ${effect.y} / ${effect.relativeTo === 'target' ? '対象基準' : 'ワールド基準'}`,
+      };
+    case 'gravity':
+      return { label: '重力倍率', value: `×${effect.scale} / ${effect.durationSeconds}秒 / ${effect.target}` };
     case 'heal':
       return {
         label: '回復',
@@ -81,11 +86,10 @@ const effectSummary = (effect: InstructionEffect): { label: string; value: strin
     case 'modifyStat':
       return { label: '能力変更', value: `${effect.stat} ${effect.amount > 0 ? '+' : ''}${effect.amount}` };
     case 'placeZone':
-      return { label: 'エリア設置', value: `${effect.zoneId} / ${effect.anchor} +${effect.offset}` };
-    case 'airborne':
-      return { label: '空中化', value: `高度${effect.height}m / ${effect.durationSeconds}秒 / ${effect.target}` };
-    case 'land':
-      return { label: '着地', value: effect.target };
+      return {
+        label: 'エリア設置',
+        value: `${effect.zoneId} / ${effect.anchor} / X ${effect.offsetX} / Y ${effect.offsetY}`,
+      };
     case 'wait':
       return { label: '待機', value: `${effect.durationSeconds}秒` };
   }
@@ -288,10 +292,6 @@ export function Catalog() {
                       <dd>{unit.speed}</dd>
                     </div>
                     <div>
-                      <dt>RNG</dt>
-                      <dd>{unit.range}</dd>
-                    </div>
-                    <div>
                       <dt>KB</dt>
                       <dd>{unit.knockbackPower}</dd>
                     </div>
@@ -475,6 +475,18 @@ export function Catalog() {
                         {targetById.get(instruction.defaultTarget)?.label ?? instruction.defaultTarget}
                       </dd>
                     </div>
+                    {instruction.delivery && (
+                      <div>
+                        <dt>空間判定</dt>
+                        <dd>
+                          {instruction.delivery.kind === 'projectile'
+                            ? `${instruction.delivery.homing ? '追尾弾' : '直進弾'} / 速度${instruction.delivery.speed} / 半径${instruction.delivery.radius}`
+                            : instruction.delivery.shape.kind === 'circle'
+                              ? `円 / 半径${instruction.delivery.shape.radius}`
+                              : `矩形 / 幅${instruction.delivery.shape.width} / 高さ${instruction.delivery.shape.height ?? '無限'}`}
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                   {instruction.effects.length > 0 && (
                     <div className="catalog-parameters">

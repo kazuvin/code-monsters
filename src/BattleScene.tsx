@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { BATTLE_ZONES } from './data';
 import { activeStatusDetails, hasStatus, statusEffectTargetId, statusVisualClasses } from './core/statuses';
-import type { BattleFlash, BattleZoneInstance, Fighter } from './types';
+import type { BattleFlash, BattleZoneInstance, Fighter, SpatialProjectile } from './types';
 
 type Props = {
   fighters: Fighter[];
   zones?: BattleZoneInstance[];
+  projectiles?: SpatialProjectile[];
   flash: BattleFlash | null;
   flashes?: BattleFlash[];
   running: boolean;
@@ -38,7 +39,7 @@ const nearestOpponent = (fighter: Fighter, fighters: Fighter[]) => {
     : opponents[0];
 };
 
-export function BattleScene({ fighters, zones = [], flash, flashes, running }: Props) {
+export function BattleScene({ fighters, zones = [], projectiles = [], flash, flashes, running }: Props) {
   const activeFlashes = flashes && flashes.length > 0 ? flashes : flash ? [flash] : [];
   const [missNotice, setMissNotice] = useState<BattleFlash | null>(null);
   useEffect(() => {
@@ -59,22 +60,9 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
   const flashSubject = flash ? fighters.find((fighter) => fighter.instanceId === flash.id) : undefined;
   const flashActor = flash?.actorId ? fighters.find((fighter) => fighter.instanceId === flash.actorId) : flashSubject;
   const flashTarget = flash?.targetId ? fighters.find((fighter) => fighter.instanceId === flash.targetId) : undefined;
-  const projectileAttacks = activeFlashes.flatMap((candidate) => {
-    const actor = fighters.find((fighter) => fighter.instanceId === candidate.id);
-    const target = fighters.find((fighter) => fighter.instanceId === candidate.targetId);
-    return actor &&
-      target &&
-      (candidate.attackType ?? actor.attackType) === 'sniper' &&
-      attackKinds.some((kind) => kind === candidate.kind)
-      ? [{ actor, target, flash: candidate }]
-      : [];
-  });
-  const fieldProjectiles = activeFlashes.flatMap((candidate) => {
-    const actor = fighters.find((fighter) => fighter.instanceId === candidate.id);
-    return candidate.kind === 'field' && actor && candidate.zoneX !== undefined
-      ? [{ actor, targetX: candidate.zoneX, flash: candidate }]
-      : [];
-  });
+  const attackShapes = activeFlashes.flatMap((candidate) =>
+    candidate.shape ? [{ ...candidate.shape, flash: candidate }] : [],
+  );
 
   return (
     <div
@@ -127,6 +115,7 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
               style={{
                 left: `${zone.x - definition.radius}%`,
                 width: `${definition.radius * 2}%`,
+                ['--zone-y' as string]: `${zone.y}px`,
                 ['--zone-color' as string]: definition.visual.color,
               }}
             >
@@ -136,33 +125,32 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
             </div>
           );
         })}
-        {projectileAttacks.map((projectile) => (
+        {attackShapes.map((shape) => (
           <i
             aria-hidden="true"
-            className={`battle-projectile projectile-arrow ${projectile.target.x < projectile.actor.x ? 'flies-left' : 'flies-right'}`}
-            key={`projectile-${projectile.flash.id}-${projectile.flash.n}`}
+            className={`spatial-attack-shape shape-${shape.kind} ${shape.kind === 'box' && shape.height === null ? 'is-infinite-height' : ''}`}
+            data-attack-shape={shape.kind}
+            key={`shape-${shape.flash.id}-${shape.flash.n}`}
             style={{
-              ['--projectile-start-x' as string]: `${projectile.actor.x}%`,
-              ['--projectile-end-x' as string]: `${projectile.target.x}%`,
-              ['--projectile-start-depth' as string]: `${depthOffset(projectile.actor, fighters)}px`,
-              ['--projectile-end-depth' as string]: `${depthOffset(projectile.target, fighters)}px`,
-              ['--projectile-start-air' as string]: `${projectile.actor.z}px`,
-              ['--projectile-end-air' as string]: `${projectile.target.z}px`,
+              left: `${shape.x}%`,
+              ['--shape-y' as string]: `${shape.y}px`,
+              ['--shape-width' as string]: `${shape.kind === 'circle' ? shape.radius * 2 : shape.width}%`,
+              ['--shape-height' as string]: `${shape.kind === 'circle' ? shape.radius * 2 : (shape.height ?? 64)}px`,
             }}
           />
         ))}
-        {fieldProjectiles.map((projectile) => (
+        {projectiles.map((projectile) => (
           <i
             aria-hidden="true"
-            className={`battle-projectile projectile-flask ${projectile.targetX < projectile.actor.x ? 'flies-left' : 'flies-right'}`}
-            key={`field-projectile-${projectile.flash.id}-${projectile.flash.n}`}
+            className={`spatial-projectile ${projectile.sourceTeam} ${projectile.homing ? 'is-homing' : 'is-direct'}`}
+            data-projectile-id={projectile.instanceId}
+            data-projectile-kind={projectile.homing ? 'homing' : 'direct'}
+            key={projectile.instanceId}
             style={{
-              ['--projectile-start-x' as string]: `${projectile.actor.x}%`,
-              ['--projectile-end-x' as string]: `${projectile.targetX}%`,
-              ['--projectile-start-depth' as string]: `${depthOffset(projectile.actor, fighters)}px`,
-              ['--projectile-end-depth' as string]: '0px',
-              ['--projectile-start-air' as string]: `${projectile.actor.z}px`,
-              ['--projectile-end-air' as string]: '0px',
+              left: `${projectile.x}%`,
+              ['--projectile-y' as string]: `${projectile.y}px`,
+              ['--projectile-angle' as string]: `${Math.atan2(projectile.vy, projectile.vx)}rad`,
+              ['--projectile-size' as string]: `${Math.max(7, projectile.radius * 3)}px`,
             }}
           />
         ))}
@@ -179,9 +167,7 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
           });
           const hasMissNotice = missNotice?.id === fighter.instanceId;
           const isTarget = impactFlash !== undefined;
-          const isProjectileTarget = projectileAttacks.some(
-            (projectile) => projectile.target.instanceId === fighter.instanceId,
-          );
+          const isProjectileTarget = projectiles.some((projectile) => projectile.targetId === fighter.instanceId);
           const showsImpact =
             isTarget &&
             impactFlash?.kind !== 'miss' &&
@@ -217,16 +203,19 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
           const statusDetails = activeStatusDetails(fighter);
           return (
             <div
-              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${fighter.airborne ? 'is-airborne' : ''} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${activeFlashes.some((candidate) => candidate.actionLabel) ? (isFocusActor ? 'is-focus-actor' : isTarget ? 'is-focus-target' : 'is-focus-muted') : ''} ${state}`}
+              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${fighter.y > 0.1 ? 'has-height' : ''} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${activeFlashes.some((candidate) => candidate.actionLabel) ? (isFocusActor ? 'is-focus-actor' : isTarget ? 'is-focus-target' : 'is-focus-muted') : ''} ${state}`}
               data-depth-slot={fighterDepthSlot}
-              data-altitude={fighter.airborne ? 'airborne' : 'grounded'}
+              data-x={fighter.x.toFixed(2)}
+              data-y={fighter.y.toFixed(2)}
+              data-vx={fighter.vx.toFixed(2)}
+              data-vy={fighter.vy.toFixed(2)}
               key={fighter.instanceId}
               style={{
                 left: `${fighter.x}%`,
                 zIndex: depthIndex(fighter, fighters),
                 ['--unit-color' as string]: colorHex(fighter.color),
                 ['--depth-offset' as string]: `${depthOffset(fighter, fighters)}px`,
-                ['--air-height' as string]: `${fighter.z}px`,
+                ['--unit-y' as string]: `${fighter.y}px`,
               }}
             >
               <i className="team-ring" aria-hidden="true" />

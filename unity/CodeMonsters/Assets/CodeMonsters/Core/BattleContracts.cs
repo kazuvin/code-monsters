@@ -41,6 +41,8 @@ namespace CodeMonsters.Core
         public string VisualKind = "";
         public string ActorId = "";
         public string TargetId = "";
+        public string ProjectileId = "";
+        public ResolvedAttackShape Shape;
         public BattleDamagePayload Damage;
         public List<FighterUpdate> Updates = new List<FighterUpdate>();
         public List<BattleZoneChange> ZoneChanges = new List<BattleZoneChange>();
@@ -51,6 +53,7 @@ namespace CodeMonsters.Core
         public string InstanceId = "";
         public string ZoneId = "";
         public double X;
+        public double Y;
         public double RemainingSeconds;
         public string SourceId = "";
         public string SourceTeam = "";
@@ -68,6 +71,7 @@ namespace CodeMonsters.Core
         public double Elapsed;
         public List<FighterState> Fighters = new List<FighterState>();
         public List<BattleZoneState> Zones = new List<BattleZoneState>();
+        public List<ProjectileState> Projectiles = new List<ProjectileState>();
         public List<BattleStep> QueuedSteps = new List<BattleStep>();
         public List<DecisionTrace> Decisions = new List<DecisionTrace>();
     }

@@ -12,14 +12,14 @@ import {
 } from './core/debug-simulation';
 import { instructionHasDamage } from './core/instruction-effects';
 import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from './data';
-import type { BattleFlash, BattleZoneInstance, Fighter, Role } from './types';
+import type { BattleFlash, BattleZoneInstance, Fighter, Role, SpatialProjectile } from './types';
 
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
 const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
 const conditionById = new Map(CONDITIONS.map((condition) => [condition.id, condition]));
 
 const defaultTarget = unitById.get('bastion') ?? UNITS[0];
-const defaultInstruction = instructionById.get('attack-low') ?? INSTRUCTIONS[0];
+const defaultInstruction = instructionById.get('pulse-swipe') ?? INSTRUCTIONS[0];
 
 const roles = Array.from(new Set(UNITS.map((unit) => unit.role)));
 
@@ -44,7 +44,6 @@ const createDefaultInput = (): DebugSimulationInput => ({
 
 const skipLabels = {
   condition: '条件不一致',
-  range: '射程外',
   cost: 'コスト不足',
   state: '状態重複',
 };
@@ -179,6 +178,7 @@ function DebugBattlePreview({
   const initialFighters = useMemo(() => createDebugFighters(input), [input]);
   const [fighters, setFighters] = useState<Fighter[]>(initialFighters);
   const [zones, setZones] = useState<BattleZoneInstance[]>([]);
+  const [projectiles, setProjectiles] = useState<SpatialProjectile[]>([]);
   const [flash, setFlash] = useState<BattleFlash | null>(null);
   const [impact, setImpact] = useState<{ amount: number; kind: DebugEffectEvent['kind'] } | null>(null);
   const [running, setRunning] = useState(false);
@@ -189,6 +189,7 @@ function DebugBattlePreview({
     let recoveryTimer: number | null = null;
     setFighters(initialFighters);
     setZones([]);
+    setProjectiles([]);
     setFlash(null);
     setImpact(null);
     setRunning(false);
@@ -208,6 +209,7 @@ function DebugBattlePreview({
             setFlash({ ...frame.flash, n });
             setFighters(frame.fighters.map((fighter) => ({ ...fighter })));
             setZones(frame.zones.map((zone) => ({ ...zone })));
+            setProjectiles(frame.projectiles.map((projectile) => ({ ...projectile })));
             if (frame.effect) {
               setImpact({ amount: frame.effect.amount, kind: frame.effect.kind });
               timers.push(window.setTimeout(() => setImpact(null), 520));
@@ -237,10 +239,8 @@ function DebugBattlePreview({
   const actor = fighters.find((fighter) => fighter.instanceId === 'debug-actor') ?? fighters[0];
   const target = fighters.find((fighter) => fighter.instanceId === 'debug-target') ?? fighters[1];
   const elapsed = result?.elapsed ?? 0;
-  const currentDistance = Math.abs(actor.x - target.x);
-  const actorInRange = currentDistance <= actor.range;
-  const mutuallyInRange = currentDistance <= actor.range && currentDistance <= target.range;
-  const rangeLabel = mutuallyInRange ? '相互射程内' : actorInRange ? '攻撃側の射程内' : '攻撃側の射程外';
+  const currentDistance = Math.hypot(actor.x - target.x, actor.y - target.y);
+  const distanceBand = currentDistance <= 12 ? '近距離' : currentDistance <= 24 ? '中距離' : '遠距離';
 
   return (
     <section className="debug-arena-stage" aria-label="1対1戦闘テスト">
@@ -262,14 +262,12 @@ function DebugBattlePreview({
           <span>HP</span>
         </div>
       </div>
-      <BattleScene fighters={fighters} zones={zones} flash={flash} running={running} />
-      <div className={`debug-range-lock ${actorInRange ? '' : 'is-outside'}`}>
+      <BattleScene fighters={fighters} zones={zones} projectiles={projectiles} flash={flash} running={running} />
+      <div className={`debug-range-lock ${currentDistance > 24 ? 'is-outside' : ''}`}>
         <Crosshair size={13} />
-        <span>{rangeLabel}</span>
-        <b>{currentDistance.toFixed(1)} RNG</b>
-        <small>
-          {actor.range} / {target.range}
-        </small>
+        <span>{distanceBand}</span>
+        <b>{currentDistance.toFixed(1)}m</b>
+        <small>X/Y距離</small>
       </div>
       <div className={`debug-auto-recovery ${recovering ? 'is-pending' : ''}`}>
         <i />
@@ -472,7 +470,7 @@ export function DebugRoom() {
               <small>ATTACKER</small>
               <b>{measuredActor.name}</b>
               <span>
-                ATK {measuredActor.attack} · RNG {measuredActor.range} · SPD {measuredActor.speed.toFixed(2)}
+                ATK {measuredActor.attack} · SPD {measuredActor.speed.toFixed(2)}
               </span>
             </div>
             <div className="debug-versus">VS</div>
@@ -638,7 +636,7 @@ export function DebugRoom() {
               >
                 {UNITS.map((unit) => (
                   <option value={unit.id} key={unit.id}>
-                    {unit.name} / ATK {unit.attack} / RNG {unit.range}
+                    {unit.name} / ATK {unit.attack} / SPD {unit.speed.toFixed(2)}
                   </option>
                 ))}
               </select>

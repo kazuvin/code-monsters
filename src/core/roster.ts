@@ -39,7 +39,6 @@ export function applyEquipment(unit: UnitDefinition, equipmentIds: string[]): Un
     attack: Math.max(0, Math.round(unit.attack + sum('attack'))),
     defense: Math.max(0, Math.round(unit.defense + sum('defense'))),
     speed: Math.max(0.1, Number((unit.speed + sum('speed')).toFixed(2))),
-    range: Math.max(1, Number((unit.range + sum('range')).toFixed(2))),
     knockbackPower: Math.max(0, Number((unit.knockbackPower + sum('knockbackPower')).toFixed(2))),
     weight: Math.max(1, Number((unit.weight + sum('weight')).toFixed(2))),
     programLimit: Math.max(1, Math.round(unit.programLimit + sum('programLimit'))),
@@ -120,8 +119,11 @@ export function createBattleFighters(
   });
   const enemyStatScale = encounter?.enemyStatScale ?? 1;
   const baseState = {
-    z: 0,
-    airborne: null,
+    y: BATTLE_CONFIG.floorY,
+    vx: 0,
+    vy: 0,
+    gravityScale: 1,
+    gravityScaleRemaining: 0,
     abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
     instructionCooldowns: {},
     pendingAction: null,

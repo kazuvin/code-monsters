@@ -32,8 +32,8 @@ for (const viewport of [
   const skillRulerCells = await page
     .locator('.catalog-skill-card:not(.equipment-catalog-card) .catalog-cost-ruler i')
     .count();
-  const knockAwayFilled = await page
-    .locator('.catalog-skill-card[data-catalog-id="knock-away"] .catalog-cost-ruler i.filled')
+  const impactRingFilled = await page
+    .locator('.catalog-skill-card[data-catalog-id="impact-ring"] .catalog-cost-ruler i.filled')
     .count();
   const berserkerFilled = await page
     .locator('.catalog-skill-card[data-catalog-id="berserker-mode"] .catalog-cost-ruler i.filled')
@@ -63,7 +63,7 @@ for (const viewport of [
     counts,
     economyText,
     skillRulerCells,
-    knockAwayFilled,
+    impactRingFilled,
     berserkerFilled,
     overflow,
     searchResult,
@@ -88,7 +88,7 @@ for (const result of results) {
     throw new Error(`${result.viewport}: COST経済の要約がデータ定義と一致しません`);
   if (result.skillRulerCells !== data.instructions.length * data.battle.abilityGaugeMax)
     throw new Error(`${result.viewport}: スキルの10目盛りCOSTルーラーが不正です`);
-  if (result.knockAwayFilled !== 4 || result.berserkerFilled !== 10)
+  if (result.impactRingFilled !== 4 || result.berserkerFilled !== 3)
     throw new Error(`${result.viewport}: スキルコストがルーラーへ反映されていません`);
   if (
     result.searchResult.instructions !== 1 ||

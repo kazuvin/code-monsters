@@ -85,6 +85,30 @@ namespace CodeMonsters.Core
 
         [JsonProperty("tankKnockbackScale")]
         public double TankKnockbackScale;
+
+        [JsonProperty("gravityPerSecond")]
+        public double GravityPerSecond;
+
+        [JsonProperty("horizontalDragPerSecond")]
+        public double HorizontalDragPerSecond;
+
+        [JsonProperty("groundFrictionPerSecond")]
+        public double GroundFrictionPerSecond;
+
+        [JsonProperty("maxFallSpeed")]
+        public double MaxFallSpeed;
+
+        [JsonProperty("floorY")]
+        public double FloorY;
+
+        [JsonProperty("ceilingY")]
+        public double CeilingY;
+
+        [JsonProperty("fighterRadius")]
+        public double FighterRadius;
+
+        [JsonProperty("knockbackVelocityScale")]
+        public double KnockbackVelocityScale;
     }
 
     public sealed class DebugTrainingConfig
@@ -94,9 +118,6 @@ namespace CodeMonsters.Core
 
         [JsonProperty("recoveryDelaySeconds")]
         public double RecoveryDelaySeconds;
-
-        [JsonProperty("outsideRangeGap")]
-        public double OutsideRangeGap;
 
         [JsonProperty("defaultPositionPresetId")]
         public string DefaultPositionPresetId = "";
@@ -111,11 +132,8 @@ namespace CodeMonsters.Core
         [JsonProperty("id")]
         public string Id = "";
 
-        [JsonProperty("rangeReference")]
-        public string RangeReference = "";
-
-        [JsonProperty("relation")]
-        public string Relation = "";
+        [JsonProperty("distance")]
+        public double Distance;
     }
 
     public sealed class BattleZoneDefinition
@@ -292,8 +310,14 @@ namespace CodeMonsters.Core
         [JsonProperty("minimumStacks")]
         public int? MinimumStacks;
 
-        [JsonProperty("thresholdSeconds")]
-        public double? ThresholdSeconds;
+        [JsonProperty("distance")]
+        public double? Distance;
+
+        [JsonProperty("height")]
+        public double? Height;
+
+        [JsonProperty("verticalSpeed")]
+        public double? VerticalSpeed;
     }
 
     public sealed class UnitDefinition
@@ -318,9 +342,6 @@ namespace CodeMonsters.Core
 
         [JsonProperty("speed")]
         public double Speed;
-
-        [JsonProperty("range")]
-        public double Range;
 
         [JsonProperty("knockbackPower")]
         public double KnockbackPower;
@@ -367,23 +388,56 @@ namespace CodeMonsters.Core
         [JsonProperty("targetMode")]
         public string TargetMode = "";
 
-        [JsonProperty("altitude")]
-        public InstructionAltitudeDefinition Altitude;
-
-        [JsonProperty("range")]
-        public InstructionRangeDefinition Range = new InstructionRangeDefinition();
+        [JsonProperty("delivery")]
+        public SpatialDeliveryDefinition Delivery;
 
         [JsonProperty("effects")]
         public List<InstructionEffectDefinition> Effects = new List<InstructionEffectDefinition>();
     }
 
-    public sealed class InstructionAltitudeDefinition
+    public sealed class SpatialDeliveryDefinition
     {
-        [JsonProperty("actor")]
-        public string Actor = "grounded";
+        [JsonProperty("kind")]
+        public string Kind = "";
 
-        [JsonProperty("target")]
-        public string Target = "grounded";
+        [JsonProperty("shape")]
+        public AttackShapeDefinition Shape;
+
+        [JsonProperty("speed")]
+        public double? Speed;
+
+        [JsonProperty("radius")]
+        public double? Radius;
+
+        [JsonProperty("lifetimeSeconds")]
+        public double? LifetimeSeconds;
+
+        [JsonProperty("homing")]
+        public bool Homing;
+
+        [JsonProperty("turnRateDegrees")]
+        public double? TurnRateDegrees;
+    }
+
+    public sealed class AttackShapeDefinition
+    {
+        [JsonProperty("kind")]
+        public string Kind = "";
+
+        [JsonProperty("offsetX")]
+        public double OffsetX;
+
+        [JsonProperty("offsetY")]
+        public double OffsetY;
+
+        [JsonProperty("radius")]
+        public double? Radius;
+
+        [JsonProperty("width")]
+        public double? Width;
+
+        [JsonProperty("height")]
+        public double? Height;
     }
 
     public sealed class EquipmentDefinition
@@ -433,9 +487,6 @@ namespace CodeMonsters.Core
         [JsonProperty("speed")]
         public double? Speed;
 
-        [JsonProperty("range")]
-        public double? Range;
-
         [JsonProperty("knockbackPower")]
         public double? KnockbackPower;
 
@@ -456,15 +507,6 @@ namespace CodeMonsters.Core
 
         [JsonProperty("actionId")]
         public string ActionId = "";
-    }
-
-    public sealed class InstructionRangeDefinition
-    {
-        [JsonProperty("mode")]
-        public string Mode = "";
-
-        [JsonProperty("value")]
-        public double? Value;
     }
 
     public sealed class InstructionEffectDefinition
@@ -499,8 +541,17 @@ namespace CodeMonsters.Core
         [JsonProperty("knockbackPower")]
         public double? KnockbackPower;
 
-        [JsonProperty("distance")]
-        public double? Distance;
+        [JsonProperty("x")]
+        public double? X;
+
+        [JsonProperty("y")]
+        public double? Y;
+
+        [JsonProperty("relativeTo")]
+        public string RelativeTo = "";
+
+        [JsonProperty("scale")]
+        public double? Scale;
 
         [JsonProperty("amount")]
         public double? Amount;
@@ -514,9 +565,6 @@ namespace CodeMonsters.Core
         [JsonProperty("durationSeconds")]
         public double? DurationSeconds;
 
-        [JsonProperty("height")]
-        public double? Height;
-
         [JsonProperty("bonusDamage")]
         public double? BonusDamage;
 
@@ -526,8 +574,11 @@ namespace CodeMonsters.Core
         [JsonProperty("anchor")]
         public string Anchor = "";
 
-        [JsonProperty("offset")]
-        public double? Offset;
+        [JsonProperty("offsetX")]
+        public double OffsetX;
+
+        [JsonProperty("offsetY")]
+        public double OffsetY;
     }
 
     public sealed class EncounterDefinition

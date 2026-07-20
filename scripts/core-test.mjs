@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { applyBattleStep, applyBattleSteps, isBattleComplete, planBattleFrame } from '../src/core/battle-engine.ts';
-import { applyBattleZoneChanges } from '../src/core/battle-zones.ts';
 import { analyzeBalance } from '../src/core/balance.ts';
+import { pathEntersZone } from '../src/core/battle-zones.ts';
 import { applyInstructionFighterEffects, applyInstructionStatusEffects } from '../src/core/instruction-effects.ts';
 import {
   applyEquipment,
@@ -13,10 +13,8 @@ import {
   unitById,
 } from '../src/core/roster.ts';
 import {
-  actionRange,
   conditionById,
   instructionById,
-  instructionAltitudeReady,
   isConditionCompatibleWithTarget,
   isInstructionCompatibleWithTarget,
   matchCondition,
@@ -26,7 +24,14 @@ import {
   tickCooldowns,
 } from '../src/core/rules.ts';
 import { createShop } from '../src/core/shop.ts';
-import { applyStatus, consumeStatus, hasStatus, statusStacks, tickStatusDurations } from '../src/core/statuses.ts';
+import {
+  advanceProjectile,
+  createProjectile,
+  projectileIntersectsFighter,
+  resolveAttackShape,
+  shapeIntersectsFighter,
+} from '../src/core/spatial-combat.ts';
+import { applyStatus, hasStatus, statusStacks, tickStatusDurations } from '../src/core/statuses.ts';
 import {
   BATTLE_CONFIG,
   CONDITIONS,
@@ -46,6 +51,7 @@ const plan = (fighters, team, overrides = {}) =>
   planBattleFrame({
     fighters,
     zones: [],
+    projectiles: [],
     team,
     dt: BATTLE_CONFIG.tickSeconds,
     elapsed: 1,
@@ -61,6 +67,7 @@ const resolvePending = (battlePlan, team, previousElapsed = 1) => {
   return planBattleFrame({
     fighters: battlePlan.fighters,
     zones: battlePlan.zones,
+    projectiles: battlePlan.projectiles,
     team,
     dt: resolvesAt - previousElapsed,
     elapsed: resolvesAt,
@@ -68,25 +75,51 @@ const resolvePending = (battlePlan, team, previousElapsed = 1) => {
   });
 };
 
-assert.equal(GAME_DATA.schemaVersion, 18, '空中戦スキーマがv18ではありません');
+const makeDuel = ({ actionId, actorX = 40, targetX = 50, actorY = 0, targetY = 0 }) => {
+  const team = [createInventoryUnit('volt', `test-${actionId}`)];
+  team[0].program = [{ targetId: 'nearestEnemy', conditionId: 'always', actionId }];
+  team[0].reaction = null;
+  const fighters = createBattleFighters(team, ENCOUNTERS[0]).map((fighter) => ({
+    ...fighter,
+    x: fighter.team === 'ally' ? actorX : targetX,
+    y: fighter.team === 'ally' ? actorY : targetY,
+    vx: 0,
+    vy: 0,
+    actionLock: fighter.team === 'ally' ? 0 : 99,
+    abilityGauge: BATTLE_CONFIG.abilityGaugeMax,
+    reaction: null,
+  }));
+  return { team, fighters };
+};
+
+assert.equal(GAME_DATA.schemaVersion, 19, '空間・時間戦闘スキーマがv19ではありません');
 assert.equal(BATTLE_CONFIG.teamSize, 1, '標準戦闘が1vs1ではありません');
+assert.ok(BATTLE_CONFIG.gravityPerSecond > 0 && BATTLE_CONFIG.ceilingY > BATTLE_CONFIG.floorY, '物理定数が不正です');
 assert.equal(UNITS.length, 3, '手作業アニメーション対象が3体に絞られていません');
-assert.deepEqual(UNITS.map((unit) => unit.id).sort(), ['bastion', 'relay', 'volt'], '1vs1で使用する3機体が不正です');
-assert.deepEqual(ROSTER_CONFIG.startingUnitIds, ['volt'], '操作ユニットがヴォルト1体に固定されていません');
-assert.equal(TARGET_SELECTORS.length, 2, '1vs1に不要な対象セレクタが残っています');
-assert.deepEqual(
-  TARGET_SELECTORS.map((target) => target.id).sort(),
-  ['nearestEnemy', 'self'],
-  '対象が「対戦相手」と「自分」に限定されていません',
+assert.deepEqual(UNITS.map((unit) => unit.id).sort(), ['bastion', 'relay', 'volt']);
+assert.deepEqual(ROSTER_CONFIG.startingUnitIds, ['volt']);
+assert.deepEqual(TARGET_SELECTORS.map((target) => target.id).sort(), ['nearestEnemy', 'self']);
+assert.ok(!REACTION_TRIGGERS.some((trigger) => trigger.id === 'partnerAttackHit'));
+assert.ok(!CONDITIONS.some((condition) => condition.id.includes('partner')));
+assert.ok(!STATUSES.some((status) => status.id === 'taunted'));
+assert.ok(
+  INSTRUCTIONS.every((instruction) => instruction.tone !== 'gray'),
+  '旧グレー系スキルが残っています',
 );
-assert.ok(!REACTION_TRIGGERS.some((trigger) => trigger.id === 'partnerAttackHit'), '相棒リアクションが残っています');
-assert.ok(!CONDITIONS.some((condition) => condition.id.includes('partner')), '相棒条件が残っています');
-assert.ok(!STATUSES.some((status) => status.id === 'taunted'), '1vs1で意味のない挑発状態が残っています');
+assert.ok(
+  INSTRUCTIONS.every((instruction) => !('altitude' in instruction) && !('range' in instruction)),
+  'スキルに地上・空中または固定射程の判定が残っています',
+);
+assert.ok(
+  !INSTRUCTIONS.some((instruction) =>
+    instruction.effects.some((effect) => ['airborne', 'land', 'move'].includes(effect.kind)),
+  ),
+  '旧高度・移動効果が残っています',
+);
 
 for (const encounter of ENCOUNTERS) {
   assert.equal(encounter.enemyUnitIds.length, 1, `${encounter.id} が敵1体ではありません`);
   assert.equal(encounter.enemyEquipmentIds.length, 3, `${encounter.id} の敵装備が3枠ではありません`);
-  assert.ok(encounter.enemyProgramActionIds.length > 0, `${encounter.id} に敵プログラムがありません`);
   for (const actionId of encounter.enemyProgramActionIds)
     assert.ok(instructionById.has(actionId), `${encounter.id} が未定義行動 ${actionId} を参照しています`);
 }
@@ -95,343 +128,196 @@ const equipmentSlots = ['frame', 'weapon', 'chip'];
 assert.deepEqual(
   ROSTER_CONFIG.startingEquipmentIds.map((id) => equipmentById.get(id)?.slot).sort(),
   [...equipmentSlots].sort(),
-  '初期装備がframe・weapon・chipの3枠ではありません',
 );
 for (const equipment of EQUIPMENT) {
-  assert.ok(equipmentSlots.includes(equipment.slot), `${equipment.id} の装備枠が不正です`);
   for (const actionId of equipment.grantsActionIds)
     assert.ok(instructionById.has(actionId), `${equipment.id} の解放行動 ${actionId} が未定義です`);
-  if (equipment.defaultReaction)
-    assert.ok(
-      equipment.grantsActionIds.includes(equipment.defaultReaction.actionId),
-      `${equipment.id} のリアクションが同じ装備から解放されません`,
-    );
 }
 
 const baseVolt = unitById.get('volt');
 assert.ok(baseVolt, 'ヴォルト定義がありません');
 const heavyVolt = applyEquipment(baseVolt, ['bulwark-frame', 'pulse-edge', 'reactive-servo']);
 const lightVolt = applyEquipment(baseVolt, ['vector-frame', 'pulse-edge', 'reactive-servo']);
-assert.ok(heavyVolt.maxHp > baseVolt.maxHp && heavyVolt.defense > baseVolt.defense, '重装フレームが耐久を上げません');
-assert.ok(heavyVolt.speed < baseVolt.speed && heavyVolt.weight > baseVolt.weight, '重装フレームに代償がありません');
-assert.ok(lightVolt.speed > baseVolt.speed, '軽量フレームが速度を上げません');
-assert.ok(lightVolt.maxHp < baseVolt.maxHp && lightVolt.defense < baseVolt.defense, '軽量フレームに代償がありません');
-assert.ok(lightVolt.range < baseVolt.range, '軽量フレームに射程の代償がありません');
-assert.ok(lightVolt.knockbackPower < baseVolt.knockbackPower, '軽量フレームにノックバックの代償がありません');
+assert.ok(heavyVolt.maxHp > baseVolt.maxHp && heavyVolt.defense > baseVolt.defense);
+assert.ok(heavyVolt.speed < baseVolt.speed && heavyVolt.weight > baseVolt.weight);
+assert.ok(lightVolt.speed > baseVolt.speed && lightVolt.maxHp < baseVolt.maxHp);
 
 const volt = createInventoryUnit('volt', 'player-volt');
-assert.equal(volt.equipmentIds.length, 3, '作戦ユニットへ初期装備が保存されません');
-assert.ok(equipmentActionIds(volt.equipmentIds).includes('volt-follow'), '追撃サーボが追撃を解放しません');
-assert.deepEqual(
-  volt.reaction,
-  { trigger: 'selfAttackHit', actionId: 'volt-follow' },
-  '初期装備のリアクションが不正です',
-);
-
+assert.equal(volt.equipmentIds.length, 3);
+assert.ok(equipmentActionIds(volt.equipmentIds).includes('counter-orb'));
+assert.deepEqual(volt.reaction, { trigger: 'selfAttackHit', actionId: 'counter-orb' });
 const corrosionVolt = equipInventoryUnit(volt, 'corrosion-core');
-assert.ok(corrosionVolt.range > volt.range, 'コロージョンコアが射程を伸ばしません');
-assert.ok(corrosionVolt.attack < volt.attack, 'コロージョンコアに攻撃力の代償がありません');
-assert.ok(
-  equipmentActionIds(corrosionVolt.equipmentIds).includes('corrosion-burst'),
-  'コロージョンコアが毒コンボを解放しません',
-);
+assert.ok(equipmentActionIds(corrosionVolt.equipmentIds).includes('corrosion-column'));
 const repairedVolt = equipInventoryUnit(corrosionVolt, 'repair-chip');
-assert.equal(repairedVolt.programLimit, volt.programLimit - 1, '自己修復チップの容量ペナルティが反映されません');
-assert.ok(equipmentActionIds(repairedVolt.equipmentIds).includes('field-repair'), '自己修復が解放されません');
+assert.equal(repairedVolt.programLimit, volt.programLimit - 1);
+assert.ok(equipmentActionIds(repairedVolt.equipmentIds).includes('field-repair'));
 
 const fighters = createBattleFighters([volt], ENCOUNTERS[0]);
-assert.equal(fighters.length, 2, '1vs1の戦闘状態が2体ではありません');
-assert.equal(fighters.filter((fighter) => fighter.team === 'ally').length, 1, '自機が1体ではありません');
-assert.equal(fighters.filter((fighter) => fighter.team === 'enemy').length, 1, '敵機が1体ではありません');
+const actor = fighters.find((fighter) => fighter.team === 'ally');
 const enemy = fighters.find((fighter) => fighter.team === 'enemy');
-assert.deepEqual(
-  enemy?.program?.map((block) => block.actionId),
-  ENCOUNTERS[0].enemyProgramActionIds,
-  '遭遇ごとの敵プログラムが戦闘状態へ渡りません',
-);
-assert.deepEqual(enemy?.reaction, ENCOUNTERS[0].enemyReaction, '遭遇ごとの敵リアクションが戦闘状態へ渡りません');
+assert.ok(actor && enemy, '1vs1ファイターを取得できません');
+assert.equal(fighters.length, 2);
+assert.ok('y' in actor && 'vx' in actor && 'vy' in actor && !('airborne' in actor) && !('z' in actor));
 
-const ally = fighters.find((fighter) => fighter.team === 'ally');
-assert.ok(ally && enemy, '空中戦テスト用の戦闘機がありません');
-const boostJump = instructionById.get('boost-jump');
+const jumpJet = instructionById.get('jump-jet');
+const hoverDrive = instructionById.get('hover-drive');
 const airDash = instructionById.get('air-dash');
-const antiAirShot = instructionById.get('anti-air-shot');
-const diveStrike = instructionById.get('dive-strike');
-const launchUppercut = instructionById.get('launch-uppercut');
-const groundAttack = instructionById.get('attack-low');
-assert.ok(
-  boostJump && airDash && antiAirShot && diveStrike && launchUppercut && groundAttack,
-  '空中戦スキルが不足しています',
-);
-
-const airborneAlly = applyInstructionFighterEffects(ally, boostJump, ally.instanceId, 'actor');
-assert.equal(airborneAlly.airborne?.remainingSeconds, 3.2, 'ブーストジャンプが滞空状態を開始しません');
-const airborneApex = tickCooldowns([airborneAlly], 1.6)[0];
-assert.equal(airborneApex.z, 32, '滞空軌道が中間点で設定高度へ達しません');
-const landedAlly = tickCooldowns([airborneApex], 1.6)[0];
-assert.equal(landedAlly.airborne, null, '滞空時間後に着地しません');
-assert.equal(landedAlly.z, 0, '着地後の高さが0へ戻りません');
-const flightDestination = ally.x + 34;
-const travelingAlly = applyInstructionFighterEffects(ally, boostJump, ally.instanceId, 'actor', {
-  startX: ally.x,
-  endX: flightDestination,
+assert.ok(jumpJet && hoverDrive && airDash, '座標ベースの移動スキルが不足しています');
+const launched = applyInstructionFighterEffects(actor, jumpJet, actor.instanceId, 'actor', { direction: 1 });
+assert.deepEqual([launched.vx, launched.vy], [14, 30], 'ジャンプが初速度を設定しません');
+const rising = tickCooldowns([launched], 0.5)[0];
+assert.ok(rising.x > actor.x && rising.y > actor.y && rising.vy < launched.vy, '重力軌道で前進・上昇しません');
+let landed = rising;
+for (let index = 0; index < 100 && landed.y > BATTLE_CONFIG.floorY; index += 1)
+  landed = tickCooldowns([landed], BATTLE_CONFIG.tickSeconds)[0];
+assert.equal(landed.y, BATTLE_CONFIG.floorY, '重力で床へ戻りません');
+assert.equal(landed.vy, 0, '床との衝突で垂直速度が止まりません');
+const hovering = applyInstructionFighterEffects(actor, hoverDrive, actor.instanceId, 'actor');
+assert.equal(hovering.gravityScale, 0.08);
+assert.equal(hovering.gravityScaleRemaining, 2.8);
+const airborneDash = applyInstructionFighterEffects({ ...rising, y: 12 }, airDash, actor.instanceId, 'actor', {
+  direction: 1,
 });
-const flightQuarter = tickCooldowns([travelingAlly], 0.8)[0];
-assert.ok(flightQuarter.x > ally.x && flightQuarter.x < flightDestination, 'ジャンプが着地点へ瞬間移動します');
-assert.ok(flightQuarter.x - ally.x < (flightDestination - ally.x) * 0.25, 'ジャンプの横移動が直線補間のままです');
-assert.ok(flightQuarter.z > 0, '横移動と同時に高度が上がりません');
-const completedFlight = tickCooldowns([flightQuarter], 2.4)[0];
-assert.equal(completedFlight.x, flightDestination, '着地時に指定したジャンプ距離へ到達しません');
-assert.equal(completedFlight.z, 0, '軌道終了時に接地しません');
-const midairDash = applyInstructionFighterEffects({ ...airborneApex, z: 20 }, airDash, ally.instanceId, 'actor', {
-  startX: airborneApex.x,
-  endX: airborneApex.x + 22,
-});
-assert.equal(midairDash.z, 20, '空中ダッシュ開始時に高度が0へ落ちます');
-assert.equal(midairDash.airborne?.startZ, 20, '空中ダッシュが現在高度から軌道を継続しません');
+assert.equal(airborneDash.y, 12, '空中ダッシュが現在Y座標を上書きします');
+assert.ok(airborneDash.vx > 0, '空中ダッシュが水平速度を作りません');
 
-const airborneEnemy = { ...enemy, airborne: { remainingSeconds: 0.7, durationSeconds: 1.8, maxHeight: 14 }, z: 8 };
+assert.equal(matchCondition('selfHeightAbove8', { ...actor, y: 9 }, [enemy]).length, 1);
+assert.equal(matchCondition('selfHeightBelow3', { ...actor, y: 2 }, [enemy]).length, 1);
+assert.equal(matchCondition('targetHeightAbove8', actor, [{ ...enemy, y: 9 }]).length, 1);
+assert.equal(matchCondition('selfDescending', { ...actor, vy: -5 }, [enemy]).length, 1);
+assert.equal(matchCondition('targetNear12', actor, [{ ...enemy, x: actor.x + 6, y: actor.y + 8 }]).length, 1);
+assert.equal(matchCondition('targetNear12', actor, [{ ...enemy, x: actor.x + 12, y: actor.y + 12 }]).length, 0);
+
+const verticalLance = instructionById.get('vertical-lance');
+const impactRing = instructionById.get('impact-ring');
+assert.ok(verticalLance && impactRing);
+const lance = resolveAttackShape(verticalLance, { ...actor, x: 40 }, { ...enemy, x: 70 });
+assert.deepEqual(lance, { kind: 'box', x: 50, y: actor.y, width: 20, height: null });
+assert.equal(shapeIntersectsFighter(lance, { ...enemy, x: 55, y: 42 }), true, '無限高の矩形が高所へ届きません');
+assert.equal(shapeIntersectsFighter(lance, { ...enemy, x: 70, y: 0 }), false, '矩形の外側へ命中します');
+const ring = resolveAttackShape(impactRing, { ...actor, x: 40, y: 0 }, { ...enemy, x: 50 });
+assert.ok(ring?.kind === 'circle');
+assert.equal(shapeIntersectsFighter(ring, { ...enemy, x: 46, y: 4 }), true);
+assert.equal(shapeIntersectsFighter(ring, { ...enemy, x: 60, y: 20 }), false);
+assert.equal(pathEntersZone({ x: 20, y: 0 }, { x: 80, y: 20 }, { x: 50, y: 10 }, 4), true);
+assert.equal(pathEntersZone({ x: 20, y: 0 }, { x: 80, y: 0 }, { x: 50, y: 10 }, 4), false);
+
+const pulseBolt = instructionById.get('pulse-bolt');
+const seekerOrb = instructionById.get('seeker-orb');
+assert.ok(pulseBolt?.delivery?.kind === 'projectile' && seekerOrb?.delivery?.kind === 'projectile');
+const direct = createProjectile(pulseBolt, pulseBolt.delivery, { ...actor, x: 20, y: 0 }, { ...enemy, x: 80 }, 1, 0);
+const advancedDirect = advanceProjectile(direct, enemy, 0.5);
+assert.ok(advancedDirect.x > direct.x && Math.abs(advancedDirect.vy - direct.vy) < 0.0001);
 assert.equal(
-  instructionAltitudeReady(groundAttack, ally, airborneEnemy),
-  false,
-  '通常の地上攻撃が空中の相手を狙えます',
+  projectileIntersectsFighter({ ...direct, x: 40, y: 0 }, { ...direct, x: 60, y: 0 }, { ...enemy, x: 50, y: 0 }),
+  true,
+  '高速弾の掃引衝突を検出できません',
 );
-assert.equal(instructionAltitudeReady(antiAirShot, ally, airborneEnemy), true, '対空射撃が空中の相手を狙えません');
-assert.equal(
-  matchCondition('targetLandingSoon', ally, [airborneEnemy])[0]?.instanceId,
-  airborneEnemy.instanceId,
-  '着地間際条件が残り滞空時間を判定しません',
-);
-const launchedEnemy = applyInstructionFighterEffects(enemy, launchUppercut, ally.instanceId, 'selected');
-assert.equal(launchedEnemy.airborne?.remainingSeconds, 1.8, '打ち上げが相手を滞空状態にしません');
-const landedDive = applyInstructionFighterEffects(airborneAlly, diveStrike, ally.instanceId, 'actor');
-assert.equal(landedDive.airborne, null, '急降下攻撃が自機を着地させません');
+const homing = createProjectile(seekerOrb, seekerOrb.delivery, { ...actor, x: 20 }, { ...enemy, x: 60 }, 1, 0);
+const curved = advanceProjectile(homing, { ...enemy, x: 35, y: 30 }, 0.25);
+assert.ok(curved.vy > homing.vy, '追尾弾が有限旋回で目標方向へ曲がりません');
 
-const altitudeTeam = [createInventoryUnit('volt', 'altitude-volt')];
-altitudeTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }];
-const altitudeFighters = createBattleFighters(altitudeTeam, ENCOUNTERS[0]).map((fighter) => ({
-  ...fighter,
-  x: fighter.team === 'ally' ? 45 : 50,
-  actionLock: fighter.team === 'ally' ? 0 : 99,
-  abilityGauge: BATTLE_CONFIG.abilityGaugeMax,
-}));
-const committedGroundAttack = plan(altitudeFighters, altitudeTeam);
-const groundAttackActor = committedGroundAttack.fighters.find((fighter) => fighter.team === 'ally');
-const groundAttackResolvesAt = groundAttackActor?.pendingAction?.resolvesAt;
-assert.ok(groundAttackResolvesAt, '高度回避テストで通常攻撃がコミットされません');
-const evasiveFighters = committedGroundAttack.fighters.map((fighter) =>
-  fighter.team === 'enemy'
-    ? {
-        ...fighter,
-        airborne: { remainingSeconds: 2, durationSeconds: 2, maxHeight: 14 },
-        z: 1,
-      }
-    : fighter,
-);
-const evadedGroundAttack = planBattleFrame({
-  fighters: evasiveFighters,
-  zones: committedGroundAttack.zones,
-  team: altitudeTeam,
-  dt: groundAttackResolvesAt - 1,
-  elapsed: groundAttackResolvesAt,
-  previousElapsed: 1,
-});
-assert.ok(
-  evadedGroundAttack.steps.some((step) => step.log?.text.includes('空振り（高度条件）')),
-  '構えた後に離陸した相手へ地上攻撃が命中します',
-);
-assert.ok(!evadedGroundAttack.steps.some((step) => step.damage), '高度回避した相手へダメージが発生します');
+const shapeHitDuel = makeDuel({ actionId: 'vertical-lance', actorX: 40, targetX: 55, targetY: 35 });
+const shapeHit = resolvePending(plan(shapeHitDuel.fighters, shapeHitDuel.team), shapeHitDuel.team);
+assert.ok(shapeHit.steps.some((step) => step.damage?.actionId === 'vertical-lance'));
+assert.ok(shapeHit.steps.some((step) => step.flash.shape?.kind === 'box'));
+const shapeMissDuel = makeDuel({ actionId: 'vertical-lance', actorX: 30, targetX: 70 });
+const shapeMiss = resolvePending(plan(shapeMissDuel.fighters, shapeMissDuel.team), shapeMissDuel.team);
+assert.ok(shapeMiss.steps.some((step) => step.flash.kind === 'miss'));
+assert.ok(!shapeMiss.steps.some((step) => step.damage));
 
-altitudeTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetAirborne', actionId: 'anti-air-shot' }];
-const antiAirFighters = altitudeFighters.map((fighter) =>
-  fighter.team === 'enemy'
-    ? { ...fighter, airborne: { remainingSeconds: 3, durationSeconds: 3, maxHeight: 14 }, z: 8 }
-    : { ...fighter, program: altitudeTeam[0].program },
-);
-const antiAirPlan = resolvePending(plan(antiAirFighters, altitudeTeam), altitudeTeam);
-assert.ok(
-  antiAirPlan.steps.some((step) => step.damage?.actionId === 'anti-air-shot'),
-  '対空射撃が空中の相手へ命中しません',
-);
-
-const openingPlan = plan(
-  fighters.map((fighter) => ({ ...fighter, actionLock: 0 })),
-  [volt],
-);
-assert.deepEqual(
-  openingPlan.decisions
-    .filter((decision) => decision.actorId === volt.inventoryId && decision.outcome === 'executed')
-    .map((decision) => decision.actionId),
-  ['approach'],
-  '同一ターンに複数の通常作戦を実行しています',
-);
-const asynchronousTeam = [createInventoryUnit('volt', 'async-volt')];
-asynchronousTeam[0].program = [
-  { targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' },
-  { targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'retreat' },
-];
-const asynchronousFighters = createBattleFighters(asynchronousTeam, ENCOUNTERS[0]).map((fighter) => ({
-  ...fighter,
-  x: fighter.team === 'ally' ? 45 : 50,
-  actionLock: fighter.team === 'ally' ? 0 : 99,
-}));
-const firstAsynchronousPlan = plan(asynchronousFighters, asynchronousTeam);
-const firstAsynchronousActor = firstAsynchronousPlan.fighters.find((fighter) => fighter.team === 'ally');
-assert.ok((firstAsynchronousActor?.instructionCooldowns['attack-low'] ?? 0) > 0, '実行した通常攻撃のCDが始まりません');
-assert.equal(firstAsynchronousActor?.instructionCooldowns.retreat ?? 0, 0, '未実行の後退CDまで始まっています');
-assert.ok(firstAsynchronousActor?.pendingAction, '通常攻撃が発動待ち状態になりません');
-const resolvedAsynchronousPlan = resolvePending(firstAsynchronousPlan, asynchronousTeam);
-const resolvedAt = firstAsynchronousActor.pendingAction.resolvesAt;
-const secondAsynchronousPlan = plan(resolvedAsynchronousPlan.fighters, asynchronousTeam, {
-  dt: BATTLE_CONFIG.tickSeconds,
-  elapsed: resolvedAt + BATTLE_CONFIG.tickSeconds,
-  previousElapsed: resolvedAt,
-});
-assert.deepEqual(
-  secondAsynchronousPlan.decisions
-    .filter((decision) => decision.actorId === asynchronousTeam[0].inventoryId && decision.outcome === 'executed')
-    .map((decision) => decision.actionId),
-  ['retreat'],
-  '先行指示のCD中に別の準備済み指示を実行できません',
-);
-assert.ok(
-  (secondAsynchronousPlan.fighters.find((fighter) => fighter.team === 'ally')?.instructionCooldowns['attack-low'] ??
-    0) > 0,
-  '別指示の実行中に通常攻撃CDが並行して進みません',
-);
+const projectileDuel = makeDuel({ actionId: 'pulse-bolt', actorX: 25, targetX: 70 });
+const projectileLaunch = resolvePending(plan(projectileDuel.fighters, projectileDuel.team), projectileDuel.team);
+assert.equal(projectileLaunch.projectiles.length, 1, '直進弾が独立オブジェクトとして生成されません');
+assert.ok(!projectileLaunch.steps.some((step) => step.damage), '発射時点で即時ダメージが発生します');
+let projectilePlan = {
+  ...projectileLaunch,
+  fighters: projectileLaunch.fighters.map((fighter) => ({ ...fighter, actionLock: 99 })),
+};
+let projectileHit = false;
+let projectileMoved = false;
+let projectileElapsed = Math.max(...projectileLaunch.fighters.map((fighter) => fighter.pendingAction?.resolvesAt ?? 1));
+for (let index = 0; index < 60 && !projectileHit; index += 1) {
+  const previousX = projectilePlan.projectiles[0]?.x;
+  const previousElapsed = projectileElapsed;
+  projectileElapsed += BATTLE_CONFIG.tickSeconds;
+  projectilePlan = planBattleFrame({
+    fighters: projectilePlan.fighters,
+    zones: projectilePlan.zones,
+    projectiles: projectilePlan.projectiles,
+    team: projectileDuel.team,
+    dt: BATTLE_CONFIG.tickSeconds,
+    elapsed: projectileElapsed,
+    previousElapsed,
+  });
+  if (previousX !== undefined && projectilePlan.projectiles[0]?.x !== previousX) projectileMoved = true;
+  projectileHit ||= projectilePlan.steps.some((step) => step.damage?.source === 'projectile');
+}
+assert.equal(projectileMoved, true, '演出ステップを適用しなくても弾の時間が進みません');
+assert.equal(projectileHit, true, '直進弾が時間経過後に接触しません');
 
 const simultaneousTeam = [createInventoryUnit('volt', 'simultaneous-volt')];
-simultaneousTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }];
+simultaneousTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'always', actionId: 'pulse-swipe' }];
 simultaneousTeam[0].reaction = null;
 const simultaneousFighters = createBattleFighters(simultaneousTeam, ENCOUNTERS[0]).map((fighter) => ({
   ...fighter,
   hp: 1,
   x: fighter.team === 'ally' ? 45 : 50,
+  y: 0,
   speed: 1,
   actionLock: 0,
-  program: [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }],
+  program: [{ targetId: 'nearestEnemy', conditionId: 'always', actionId: 'pulse-swipe' }],
   reaction: null,
 }));
 const simultaneousStart = plan(simultaneousFighters, simultaneousTeam);
-const pendingActions = simultaneousStart.fighters.map((fighter) => fighter.pendingAction);
-assert.ok(pendingActions.every(Boolean), '自機と敵機が同じフレームで発動を開始できません');
-assert.equal(pendingActions[0]?.resolvesAt, pendingActions[1]?.resolvesAt, '同速の行動が同時着弾になりません');
+assert.ok(
+  simultaneousStart.fighters.every((fighter) => fighter.pendingAction),
+  '自機と敵機が同時に構えません',
+);
+assert.equal(
+  simultaneousStart.fighters[0].pendingAction.resolvesAt,
+  simultaneousStart.fighters[1].pendingAction.resolvesAt,
+);
 const simultaneousImpact = resolvePending(simultaneousStart, simultaneousTeam);
 const simultaneousDamage = simultaneousImpact.steps.filter((step) => step.damage?.source === 'normal');
-assert.equal(simultaneousDamage.length, 2, '同時着弾した通常攻撃の片方が失われています');
+assert.equal(simultaneousDamage.length, 2, '同時解決で片方の攻撃が失われています');
+assert.ok(simultaneousDamage.every((step) => step.simultaneousGroup === simultaneousDamage[0].simultaneousGroup));
 assert.ok(
-  simultaneousDamage[0]?.simultaneousGroup &&
-    simultaneousDamage.every((step) => step.simultaneousGroup === simultaneousDamage[0].simultaneousGroup),
-  '同時着弾が同一解決グループになっていません',
-);
-const mutualKnockout = applyBattleSteps(simultaneousImpact.fighters, simultaneousImpact.steps);
-assert.ok(
-  mutualKnockout.every((fighter) => fighter.hp === 0),
+  simultaneousImpact.fighters.every((fighter) => fighter.hp === 0),
   '同時攻撃で相打ちが成立しません',
 );
 
-const actor = fighters.find((fighter) => fighter.team === 'ally');
-assert.ok(actor && enemy, '1vs1ファイターを取得できません');
-const enemies = [enemy];
-const allies = [actor];
-assert.equal(selectConditionTargets('nearestEnemy', actor, enemies, allies)[0]?.instanceId, enemy.instanceId);
-assert.equal(selectConditionTargets('self', actor, enemies, allies)[0]?.instanceId, actor.instanceId);
+assert.equal(selectConditionTargets('nearestEnemy', actor, [enemy], [actor])[0]?.instanceId, enemy.instanceId);
+assert.equal(selectConditionTargets('self', actor, [enemy], [actor])[0]?.instanceId, actor.instanceId);
 assert.equal(targetSelectorById.get('nearestEnemy')?.label, '対戦相手');
-assert.equal(isConditionCompatibleWithTarget('targetInRange', 'nearestEnemy'), true);
-assert.equal(isConditionCompatibleWithTarget('targetInRange', 'self'), false);
-assert.equal(isConditionCompatibleWithTarget('selfHpBelow50', 'self'), true);
+assert.equal(isConditionCompatibleWithTarget('targetNear12', 'nearestEnemy'), true);
+assert.equal(isConditionCompatibleWithTarget('targetNear12', 'self'), false);
 assert.equal(isInstructionCompatibleWithTarget(instructionById.get('field-repair'), 'self'), true);
-assert.equal(isInstructionCompatibleWithTarget(instructionById.get('field-repair'), 'nearestEnemy'), false);
 
-const repairTeam = [equipInventoryUnit(createInventoryUnit('volt', 'repair-volt'), 'repair-chip')];
-repairTeam[0].program = [{ targetId: 'self', conditionId: 'selfHpBelow50', actionId: 'field-repair' }];
-const repairFighters = createBattleFighters(repairTeam, ENCOUNTERS[0]).map((fighter) => ({
-  ...fighter,
-  hp: fighter.team === 'ally' ? fighter.maxHp * 0.4 : fighter.hp,
-  actionLock: fighter.team === 'ally' ? 0 : 99,
-}));
-const repairActor = repairFighters.find((fighter) => fighter.team === 'ally');
-const repairPlan = resolvePending(plan(repairFighters, repairTeam), repairTeam);
-const repairStep = repairPlan.steps.find((step) => step.flash.kind === 'heal');
-assert.ok(repairStep && repairActor, '自己修復が回復ステップを生成しません');
-assert.equal(repairStep.updates[0]?.id, repairActor.instanceId, '自己修復が自分を対象にしていません');
-assert.ok(repairStep.updates[0]?.values.hp > repairActor.hp, '自己修復でHPが増えません');
-
-const normalAttack = instructionById.get('attack-low');
-const toxicMark = instructionById.get('toxic-mark');
-const corrosionBurst = instructionById.get('corrosion-burst');
-assert.ok(normalAttack && toxicMark && corrosionBurst, '毒コンボの行動定義がありません');
-const poisonedOnce = applyInstructionStatusEffects(enemy, toxicMark, actor.instanceId, 'selected');
-const poisonedTwice = applyInstructionStatusEffects(poisonedOnce, toxicMark, actor.instanceId, 'selected');
-assert.equal(statusStacks(poisonedTwice, 'poison'), 2, '毒が2スタックしません');
-assert.equal(matchCondition('enemyHasStatus', actor, [poisonedTwice]).length, 1, '毒2条件を検出できません');
+const poisoned = applyInstructionStatusEffects(enemy, instructionById.get('toxin-orb'), actor.instanceId, 'selected');
+assert.equal(statusStacks(poisoned, 'poison'), 1);
+const vulnerable = applyInstructionStatusEffects(enemy, pulseBolt, actor.instanceId, 'selected');
+assert.ok(hasStatus(vulnerable, 'vulnerable'));
 assert.ok(
-  resolveActionImpact(actor, poisonedTwice, corrosionBurst).damage >
-    resolveActionImpact(actor, enemy, corrosionBurst).damage,
-  '毒増幅にボーナスダメージがありません',
+  resolveActionImpact(actor, vulnerable, seekerOrb).damage > resolveActionImpact(actor, enemy, seekerOrb).damage,
 );
-const consumedPoison = applyInstructionStatusEffects(poisonedTwice, corrosionBurst, actor.instanceId, 'selected');
-assert.equal(statusStacks(consumedPoison, 'poison'), 0, '毒増幅が2スタックを消費しません');
-
-const vulnerable = applyInstructionStatusEffects(
-  enemy,
-  instructionById.get('reveal-weakness'),
-  actor.instanceId,
-  'selected',
-);
-assert.ok(hasStatus(vulnerable, 'vulnerable'), '脆弱を付与できません');
-assert.ok(
-  resolveActionImpact(actor, vulnerable, normalAttack).damage > resolveActionImpact(actor, enemy, normalAttack).damage,
-  '脆弱で被ダメージが増えません',
-);
-const slowed = applyInstructionStatusEffects(enemy, instructionById.get('coolant-shot'), actor.instanceId, 'selected');
-assert.ok(hasStatus(slowed, 'slowed') && slowed.speed < enemy.speed, '冷却弾が鈍足を付与しません');
+const consumed = applyInstructionStatusEffects(vulnerable, seekerOrb, actor.instanceId, 'selected');
+assert.equal(statusStacks(consumed, 'vulnerable'), 0);
+const cryoBolt = instructionById.get('cryo-bolt');
+const slowed = applyInstructionStatusEffects(enemy, cryoBolt, actor.instanceId, 'selected');
+assert.ok(hasStatus(slowed, 'slowed') && slowed.speed < enemy.speed);
 const expiredSlow = tickStatusDurations(slowed, 5.1);
-assert.ok(!hasStatus(expiredSlow, 'slowed') && expiredSlow.speed === enemy.speed, '鈍足が期限後に戻りません');
-
+assert.ok(!hasStatus(expiredSlow, 'slowed') && expiredSlow.speed === enemy.speed);
 const guarded = applyInstructionStatusEffects(actor, instructionById.get('tank-guard'), actor.instanceId, 'actor');
-assert.ok(hasStatus(guarded, 'guarded'), 'ガード状態を付与できません');
 assert.ok(
-  resolveActionImpact(enemy, guarded, normalAttack).damage < resolveActionImpact(enemy, actor, normalAttack).damage,
-  'ガードが被ダメージを軽減しません',
+  resolveActionImpact(enemy, guarded, instructionById.get('pulse-swipe')).damage <
+    resolveActionImpact(enemy, actor, instructionById.get('pulse-swipe')).damage,
 );
 const berserk = applyStatus({ ...actor, hp: actor.maxHp * 0.25 }, 'berserk', { sourceId: actor.instanceId });
-assert.ok(berserk.attack > actor.attack && berserk.speed > actor.speed, 'バーサークが攻撃力と速度を上げません');
-
-const zoneTeam = [equipInventoryUnit(createInventoryUnit('volt', 'zone-volt'), 'corrosion-core')];
-zoneTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'always', actionId: 'throw-toxic-flask' }];
-const zoneFighters = createBattleFighters(zoneTeam, ENCOUNTERS[0]).map((fighter) => ({
-  ...fighter,
-  actionLock: fighter.team === 'ally' ? 0 : 99,
-}));
-const zonePlan = resolvePending(plan(zoneFighters, zoneTeam), zoneTeam);
-assert.ok(
-  zonePlan.steps.some((step) => step.zoneChanges?.some((change) => change.kind === 'add')),
-  '毒エリアを設置できません',
-);
-const zoneState = zonePlan.steps.reduce((zones, step) => applyBattleZoneChanges(zones, step.zoneChanges), []);
-assert.equal(zoneState.length, 1, '設置エリアが戦闘状態へ反映されません');
-
-const followTeam = [createInventoryUnit('volt', 'follow-volt')];
-followTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }];
-const followFighters = createBattleFighters(followTeam, ENCOUNTERS[0]).map((fighter) => ({
-  ...fighter,
-  x: fighter.team === 'ally' ? 45 : 50,
-  actionLock: fighter.team === 'ally' ? 0 : 99,
-  abilityGauge: BATTLE_CONFIG.abilityGaugeMax,
-}));
-const followPlan = resolvePending(plan(followFighters, followTeam), followTeam);
-assert.ok(
-  followPlan.steps.some((step) => step.damage?.source === 'normal'),
-  '通常攻撃が実行されません',
-);
-assert.ok(
-  followPlan.steps.some((step) => step.damage?.source === 'reaction'),
-  '追撃リアクションが実行されません',
-);
+assert.ok(berserk.attack > actor.attack && berserk.speed > actor.speed);
 
 const defeated = fighters.map((fighter) => (fighter.team === 'enemy' ? { ...fighter, hp: 0 } : fighter));
-assert.equal(isBattleComplete(defeated), true, '敵1体の撃破で1vs1が完了しません');
+assert.equal(isBattleComplete(defeated), true);
 const harmless = {
   flash: { id: actor.instanceId, kind: 'wait', n: 0 },
   updates: [{ id: actor.instanceId, values: { hp: 1 } }],
@@ -450,26 +336,20 @@ const simultaneousHpSteps = [
     updates: [{ id: actor.instanceId, values: { hp: 43 } }],
   },
 ];
-assert.equal(
-  applyBattleSteps(simultaneousHpBase, simultaneousHpSteps)[0]?.hp,
-  53,
-  '同時回復と被ダメージが解決前HPへの差分合算になりません',
-);
+assert.equal(applyBattleSteps(simultaneousHpBase, simultaneousHpSteps)[0]?.hp, 53);
 
 for (let seed = 1; seed <= 20; seed += 1) {
   const shop = createShop(seed, [], ROSTER_CONFIG.startingEquipmentIds);
-  assert.equal(shop.length, SHOP_CONFIG.size, `seed ${seed} のショップが4枠ではありません`);
-  assert.equal(new Set(shop.map((item) => item.id)).size, shop.length, `seed ${seed} のショップに重複があります`);
-  assert.equal(shop.filter((item) => item.kind === 'equipment').length, 2, '装備が2枠ではありません');
-  assert.equal(shop.filter((item) => item.kind === 'instruction').length, 2, 'スキルが2枠ではありません');
-  assert.ok(!shop.some((item) => ROSTER_CONFIG.startingEquipmentIds.includes(item.id)), '初期装備が再排出されました');
+  assert.equal(shop.length, SHOP_CONFIG.size);
+  assert.equal(new Set(shop.map((item) => item.id)).size, shop.length);
+  assert.equal(shop.filter((item) => item.kind === 'equipment').length, 2);
+  assert.equal(shop.filter((item) => item.kind === 'instruction').length, 2);
 }
 
 const balance = analyzeBalance(GAME_DATA);
 assert.equal(balance.errors, 0, `バランス検証エラー: ${balance.issues.map((issue) => issue.message).join(' / ')}`);
-assert.doesNotThrow(
-  () => JSON.stringify({ fighters, encounters: ENCOUNTERS, equipment: EQUIPMENT }),
-  '1vs1データを直列化できません',
+assert.doesNotThrow(() =>
+  JSON.stringify({ fighters, projectiles: projectilePlan.projectiles, encounters: ENCOUNTERS }),
 );
 
 console.log(

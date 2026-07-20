@@ -1697,7 +1697,7 @@ button:focus-visible {
 .battle-zone {
   position: absolute;
   z-index: 4;
-  bottom: 30%;
+  bottom: calc(30% + var(--zone-y, 0px));
   min-width: 34px;
   height: 24px;
   transform: perspective(70px) rotateX(56deg);
@@ -1748,102 +1748,97 @@ button:focus-visible {
     animation: none;
   }
 }
-.battle-projectile {
-  --projectile-height: 29px;
+.spatial-attack-shape,
+.spatial-projectile {
   position: absolute;
-  z-index: 50;
-  left: var(--projectile-start-x);
-  bottom: calc(34% + var(--projectile-start-depth) + var(--projectile-start-air, 0px) + var(--projectile-height));
-  width: 1px;
-  height: 1px;
   pointer-events: none;
-  opacity: 0;
-  animation: projectile-flight 0.24s linear forwards;
 }
-.projectile-arrow:before {
+.spatial-attack-shape {
+  z-index: 8;
+  bottom: calc(34% + var(--shape-y));
+  width: var(--shape-width);
+  height: var(--shape-height);
+  transform: translate(-50%, 50%);
+  border: 1px solid #ffe49a;
+  background: color-mix(in srgb, #ffc94c 20%, transparent);
+  box-shadow:
+    inset 0 0 18px #ffc94c55,
+    0 0 16px #ffc94c88;
+  animation: spatial-shape-impact 0.28s ease-out forwards;
+}
+.spatial-attack-shape.shape-circle {
+  border-radius: 50%;
+}
+.spatial-attack-shape.shape-box {
+  border-color: #a7f1ff;
+  background: linear-gradient(90deg, #5adfff0f, #b7f6ff55, #5adfff0f);
+  box-shadow:
+    inset 0 0 22px #5adfff55,
+    0 0 18px #5adfff99;
+}
+.spatial-attack-shape.is-infinite-height {
+  top: 8%;
+  bottom: 34%;
+  height: auto;
+  transform: translateX(-50%);
+}
+.spatial-projectile {
+  z-index: 50;
+  bottom: calc(34% + var(--projectile-y) + 29px);
+  width: var(--projectile-size);
+  height: var(--projectile-size);
+  transform: translate(-50%, 50%) rotate(var(--projectile-angle));
+  border-radius: 50%;
+  background: #dcfbff;
+  box-shadow:
+    0 0 5px #fff,
+    0 0 13px #5ee6ff,
+    0 0 24px #5ee6ff99;
+  transition:
+    left 80ms linear,
+    bottom 80ms linear,
+    transform 80ms linear;
+}
+.spatial-projectile:after {
   content: "";
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 42px;
-  height: 8px;
-  background: linear-gradient(90deg, #e8fbff 0 64%, #8df2ff 65% 100%);
-  clip-path: polygon(0 38%, 76% 38%, 76% 0, 100% 50%, 76% 100%, 76% 62%, 0 62%);
-  filter: drop-shadow(0 0 6px #8df2ff) drop-shadow(0 0 12px #39d9ff99);
-}
-.projectile-arrow:after {
-  content: "";
-  position: absolute;
-  top: -1px;
-  width: 54px;
+  top: 50%;
+  right: 55%;
+  width: 22px;
   height: 3px;
-  background: linear-gradient(90deg, transparent, #8df2ff99);
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, transparent, #8df2ffbb);
   filter: blur(1px);
 }
-.projectile-arrow.flies-right:before {
-  transform: translate(-8px, -50%);
+.spatial-projectile.enemy {
+  background: #ffe7b8;
+  box-shadow:
+    0 0 5px #fff,
+    0 0 13px #ff8a4b,
+    0 0 24px #ff704499;
 }
-.projectile-arrow.flies-right:after {
-  right: 2px;
-  transform: translateY(-50%);
+.spatial-projectile.enemy:after {
+  background: linear-gradient(90deg, transparent, #ff8a4bbb);
 }
-.projectile-arrow.flies-left:before {
-  transform: translate(-34px, -50%) rotate(180deg);
+.spatial-projectile.is-homing {
+  outline: 1px dashed #efff9e;
+  outline-offset: 3px;
+  animation: homing-projectile-pulse 0.42s ease-in-out infinite alternate;
 }
-.projectile-arrow.flies-left:after {
-  left: 2px;
-  transform: translateY(-50%) rotate(180deg);
-}
-.projectile-flask {
-  --projectile-height: 43px;
-  animation-duration: 0.34s;
-  animation-timing-function: cubic-bezier(0.26, 0.72, 0.48, 1);
-}
-.projectile-flask:before {
-  content: "";
-  position: absolute;
-  width: 12px;
-  height: 17px;
-  border: 2px solid #d8ffad;
-  border-radius: 2px 2px 5px 5px;
-  background: linear-gradient(180deg, transparent 0 28%, #86e832 29% 100%);
-  box-shadow: 0 0 10px #a7ff4f;
-  transform: translate(-50%, -50%) rotate(32deg);
-}
-.projectile-flask:after {
-  content: "";
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border: 1px solid #d8ffad;
-  background: #3d512d;
-  transform: translate(-50%, -14px) rotate(32deg);
-}
-.projectile-flask.flies-left:before,
-.projectile-flask.flies-left:after {
-  scale: -1 1;
-}
-.sprite.projectile-impact-target .hit-spark {
-  opacity: 0;
-  animation-delay: 0.16s;
-  animation-duration: 0.08s;
-}
-@keyframes projectile-flight {
-  0% {
-    left: var(--projectile-start-x);
-    bottom: calc(34% + var(--projectile-start-depth) + var(--projectile-start-air, 0px) + var(--projectile-height));
+@keyframes spatial-shape-impact {
+  from {
+    opacity: 0.9;
+    scale: 0.75;
+  }
+  to {
     opacity: 0;
+    scale: 1.08;
   }
-  10% {
-    opacity: 1;
-  }
-  82% {
-    opacity: 1;
-  }
-  100% {
-    left: var(--projectile-end-x);
-    bottom: calc(34% + var(--projectile-end-depth) + var(--projectile-end-air, 0px) + var(--projectile-height));
-    opacity: 0;
+}
+@keyframes homing-projectile-pulse {
+  to {
+    outline-offset: 5px;
+    filter: brightness(1.3);
   }
 }
 .sprite {
@@ -2143,10 +2138,8 @@ button:focus-visible {
   .hit-spark {
     animation: none !important;
   }
-  .battle-projectile {
-    left: var(--projectile-end-x);
-    bottom: calc(34% + var(--projectile-end-depth) + var(--projectile-end-air, 0px) + var(--projectile-height));
-    opacity: 1;
+  .spatial-projectile,
+  .spatial-attack-shape {
     animation: none !important;
   }
   .sprite.projectile-impact-target .hit-spark {
@@ -2230,15 +2223,15 @@ button:focus-visible {
   bottom: 0;
 }
 .sprite {
-  bottom: calc(34% + var(--depth-offset, 0px) + var(--air-height, 0px));
+  bottom: calc(34% + var(--depth-offset, 0px) + var(--unit-y, 0px));
   height: 58px;
   transform-origin: 50% 100%;
 }
-.sprite.is-airborne .team-ring {
+.sprite.has-height .team-ring {
   opacity: 0.42;
   filter: blur(1px);
 }
-.sprite.is-airborne .sprite-body {
+.sprite.has-height .sprite-body {
   filter: drop-shadow(0 12px 10px #0009);
 }
 .sprite[data-depth-slot="1"] {
