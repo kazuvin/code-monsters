@@ -4,6 +4,7 @@ export type ActionType =
   | 'heavy'
   | 'move'
   | 'jump'
+  | 'hover'
   | 'throw'
   | 'taunt'
   | 'pull'
@@ -29,7 +30,12 @@ export type ConditionKind =
   | 'targetHpBelow'
   | 'selfHpBelow'
   | 'targetHasStatus'
-  | 'selfHasStatus';
+  | 'selfHasStatus'
+  | 'selfAirborne'
+  | 'selfGrounded'
+  | 'targetAirborne'
+  | 'targetGrounded'
+  | 'targetAirborneRemainingBelow';
 export type TargetType = 'nearestEnemy' | 'lowestHpEnemy' | 'partner' | 'self';
 export type TargetSelectorId = 'nearestEnemy' | 'lowestHpEnemy' | 'allEnemies' | 'self' | 'partner';
 export type TargetDomain = 'enemy' | 'ally' | 'self';
@@ -37,6 +43,7 @@ export type TargetCardinality = 'one' | 'many';
 export type ActionTargetMode = 'selected' | 'self' | 'allEnemies' | 'allAllies';
 export type ImpactProfile = { damageScale?: number; knockbackPower?: number };
 export type EffectTarget = 'actor' | 'selected' | 'allEnemies' | 'allAllies';
+export type AltitudeRequirement = 'grounded' | 'airborne' | 'any';
 export type InstructionRange = { mode: 'unit' | 'fixed' | 'scaled'; value?: number };
 export type DamageEffect = {
   kind: 'damage';
@@ -79,6 +86,16 @@ export type PlaceZoneEffect = {
   anchor: 'actor' | 'target';
   offset: number;
 };
+export type AirborneEffect = {
+  kind: 'airborne';
+  target: Extract<EffectTarget, 'actor' | 'selected'>;
+  height: number;
+  durationSeconds: number;
+};
+export type LandEffect = {
+  kind: 'land';
+  target: Extract<EffectTarget, 'actor' | 'selected'>;
+};
 export type InstructionEffect =
   | DamageEffect
   | MoveEffect
@@ -88,6 +105,8 @@ export type InstructionEffect =
   | RemoveStatusEffect
   | ModifyStatEffect
   | PlaceZoneEffect
+  | AirborneEffect
+  | LandEffect
   | WaitEffect;
 export type InstructionEffectKind = InstructionEffect['kind'];
 export type InstructionEffectByKind<Kind extends InstructionEffectKind> = Extract<InstructionEffect, { kind: Kind }>;
@@ -235,6 +254,10 @@ export type Instruction = {
   target: TargetType;
   defaultTarget: TargetSelectorId;
   targetMode: ActionTargetMode;
+  altitude?: {
+    actor: AltitudeRequirement;
+    target: AltitudeRequirement;
+  };
   compatibleTargets: TargetSelectorId[];
   tone: 'cyan' | 'amber' | 'lime' | 'violet';
   range: InstructionRange;
@@ -260,12 +283,19 @@ export type PendingAction = {
   resolvesAt: number;
 };
 
+export type AirborneState = {
+  remainingSeconds: number;
+  durationSeconds: number;
+  maxHeight: number;
+};
+
 export type Fighter = UnitDefinition & {
   instanceId: string;
   team: 'ally' | 'enemy';
   hp: number;
   x: number;
   z: number;
+  airborne: AirborneState | null;
   actionLock: number;
   instructionCooldowns: Record<string, number>;
   pendingAction: PendingAction | null;

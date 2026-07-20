@@ -149,11 +149,19 @@ Separate normal actions into commit, windup, and impact phases. `battle.baseActi
 
 Resolve pending actions by impact time. Actions with the same impact time must read actor and target values from the same pre-impact snapshot, then apply their effects as one `simultaneousGroup`; this permits mutual knockouts and prevents stable-ID or speed ordering from canceling an already committed action. HP changes within a group are summed as deltas from the shared snapshot and clamped once after aggregation, so healing and damage cannot overwrite each other by processing order. Reactions are evaluated after the simultaneous impact group. Version 16 fighter snapshots do not contain pending action timing and should start a new battle.
 
+## Schema version 18 migration
+
+Add serializable airborne state to fighters: current `z` plus remaining duration, total duration, and maximum height. Web advances this state deterministically from the battle tick and derives a parabolic height; Unity ports should preserve the same values rather than infer airborne state from presentation transforms. Landing clears the state and resets `z` to zero.
+
+Instructions may declare `altitude.actor` and `altitude.target` as `grounded`, `airborne`, or `any`. An omitted declaration retains the version-17 ground-to-ground behavior. Check these requirements both when committing an action and again at impact, so an opponent that takes off during windup causes a height-condition miss. Add the finite `airborne` and `land` effects plus the `selfAirborne`, `selfGrounded`, `targetAirborne`, `targetGrounded`, and `targetAirborneRemainingBelow` conditions.
+
+Version 18 adds boost jump, hover, air dash, dive strike, aerial barrage, anti-air shot, launch uppercut, and landing punish. These remain plain instruction data; neither runtime should branch on their stable IDs.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v17 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
+- schema-v18 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, airborne state and altitude requirements, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

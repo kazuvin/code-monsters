@@ -121,6 +121,7 @@ const actionKindLabels: Record<Instruction['action'], string> = {
   heavy: 'IMPACT',
   move: 'MOVE',
   jump: 'JUMP',
+  hover: 'HOVER',
   throw: 'THROW',
   taunt: 'TAUNT',
   pull: 'PULL',
@@ -284,7 +285,7 @@ export function App() {
   const availableConditions = [
     ...new Set([
       ...ownedConditions,
-      ...equippedActionIds
+      ...availableActions
         .map((id) => instructionById.get(id)?.condition)
         .filter((id): id is ConditionId => id !== undefined),
     ]),
@@ -762,6 +763,8 @@ export function App() {
           return definition.label;
         })
       : ['正常'];
+    if (fighter.airborne)
+      tags.push(`空中 ${fighter.airborne.remainingSeconds.toFixed(1)}秒 / 高度 ${fighter.z.toFixed(1)}m`);
     if (fighter.actionLock > 0) tags.push('行動硬直');
     if (fighter.pendingAction)
       tags.push(

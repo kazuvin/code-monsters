@@ -82,6 +82,10 @@ const effectSummary = (effect: InstructionEffect): { label: string; value: strin
       return { label: '能力変更', value: `${effect.stat} ${effect.amount > 0 ? '+' : ''}${effect.amount}` };
     case 'placeZone':
       return { label: 'エリア設置', value: `${effect.zoneId} / ${effect.anchor} +${effect.offset}` };
+    case 'airborne':
+      return { label: '空中化', value: `高度${effect.height}m / ${effect.durationSeconds}秒 / ${effect.target}` };
+    case 'land':
+      return { label: '着地', value: effect.target };
     case 'wait':
       return { label: '待機', value: `${effect.durationSeconds}秒` };
   }

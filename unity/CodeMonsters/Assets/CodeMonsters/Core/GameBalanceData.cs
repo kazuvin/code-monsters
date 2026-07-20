@@ -291,6 +291,9 @@ namespace CodeMonsters.Core
 
         [JsonProperty("minimumStacks")]
         public int? MinimumStacks;
+
+        [JsonProperty("thresholdSeconds")]
+        public double? ThresholdSeconds;
     }
 
     public sealed class UnitDefinition
@@ -364,11 +367,23 @@ namespace CodeMonsters.Core
         [JsonProperty("targetMode")]
         public string TargetMode = "";
 
+        [JsonProperty("altitude")]
+        public InstructionAltitudeDefinition Altitude;
+
         [JsonProperty("range")]
         public InstructionRangeDefinition Range = new InstructionRangeDefinition();
 
         [JsonProperty("effects")]
         public List<InstructionEffectDefinition> Effects = new List<InstructionEffectDefinition>();
+    }
+
+    public sealed class InstructionAltitudeDefinition
+    {
+        [JsonProperty("actor")]
+        public string Actor = "grounded";
+
+        [JsonProperty("target")]
+        public string Target = "grounded";
     }
 
     public sealed class EquipmentDefinition
@@ -498,6 +513,9 @@ namespace CodeMonsters.Core
 
         [JsonProperty("durationSeconds")]
         public double? DurationSeconds;
+
+        [JsonProperty("height")]
+        public double? Height;
 
         [JsonProperty("bonusDamage")]
         public double? BonusDamage;

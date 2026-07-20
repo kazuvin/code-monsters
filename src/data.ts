@@ -114,6 +114,7 @@ export type ConditionDefinition = {
   kind: ConditionKind;
   params: {
     threshold?: number;
+    thresholdSeconds?: number;
     statusId?: string;
     minimumStacks?: number;
   };

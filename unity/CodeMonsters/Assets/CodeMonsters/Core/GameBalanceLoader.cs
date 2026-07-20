@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 17;
+        public const int SupportedSchemaVersion = 18;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -246,6 +246,11 @@ namespace CodeMonsters.Core
                 "selfHpBelow",
                 "targetHasStatus",
                 "selfHasStatus",
+                "selfAirborne",
+                "selfGrounded",
+                "targetAirborne",
+                "targetGrounded",
+                "targetAirborneRemainingBelow",
             };
             foreach (var condition in conditions)
             {
@@ -258,6 +263,11 @@ namespace CodeMonsters.Core
                     if (!condition.Params.MinimumStacks.HasValue || condition.Params.MinimumStacks.Value < 1)
                         throw new InvalidDataException($"Condition {condition.Id} must require positive status stacks");
                 }
+                if (
+                    condition.Kind == "targetAirborneRemainingBelow"
+                    && (!condition.Params.ThresholdSeconds.HasValue || condition.Params.ThresholdSeconds.Value <= 0)
+                )
+                    throw new InvalidDataException($"Condition {condition.Id} must define a positive airborne threshold");
             }
         }
 
@@ -279,6 +289,8 @@ namespace CodeMonsters.Core
                 "removeStatus",
                 "modifyStat",
                 "placeZone",
+                "airborne",
+                "land",
                 "wait",
             };
             var supportedRanges = new HashSet<string> { "unit", "fixed", "scaled" };
@@ -299,6 +311,14 @@ namespace CodeMonsters.Core
                     throw new InvalidDataException($"Instruction {instruction.Id} range requires a positive value");
                 if (instruction.Effects.Count == 0)
                     throw new InvalidDataException($"Instruction {instruction.Id} must declare finite effects");
+                if (
+                    instruction.Altitude != null
+                    && (
+                        !new HashSet<string> { "grounded", "airborne", "any" }.Contains(instruction.Altitude.Actor)
+                        || !new HashSet<string> { "grounded", "airborne", "any" }.Contains(instruction.Altitude.Target)
+                    )
+                )
+                    throw new InvalidDataException($"Instruction {instruction.Id} has invalid altitude requirements");
                 foreach (var effect in instruction.Effects)
                 {
                     if (!supportedKinds.Contains(effect.Kind))
@@ -309,6 +329,19 @@ namespace CodeMonsters.Core
                         throw new InvalidDataException($"Instruction {instruction.Id} move effect is incomplete");
                     if (effect.Kind == "heal" && (!effect.Amount.HasValue || effect.Amount.Value <= 0))
                         throw new InvalidDataException($"Instruction {instruction.Id} heal effect is incomplete");
+                    if (
+                        effect.Kind == "airborne"
+                        && (
+                            !effect.Height.HasValue
+                            || effect.Height.Value <= 0
+                            || !effect.DurationSeconds.HasValue
+                            || effect.DurationSeconds.Value <= 0
+                            || (effect.Target != "actor" && effect.Target != "selected")
+                        )
+                    )
+                        throw new InvalidDataException($"Instruction {instruction.Id} airborne effect is incomplete");
+                    if (effect.Kind == "land" && effect.Target != "actor" && effect.Target != "selected")
+                        throw new InvalidDataException($"Instruction {instruction.Id} land effect is incomplete");
                     if (
                         effect.Kind == "placeZone"
                         && (

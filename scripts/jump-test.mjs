@@ -11,7 +11,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 await page.addInitScript(() => {
-  Math.random = () => 5.25 / 0x7fffffff;
+  Math.random = () => 8.25 / 0x7fffffff;
 });
 await page.goto(targetUrl, { waitUntil: 'networkidle' });
 
@@ -29,10 +29,12 @@ await page.getByRole('button', { name: 'x2' }).click();
 
 let jumpSeen = false;
 let crossedEnemy = false;
+let airborneSeen = false;
 let jumpAnimation = '';
 for (let tick = 0; tick < 900; tick += 1) {
   const volt = page.locator('.sprite.ally.unit-volt').first();
   const className = (await volt.getAttribute('class')) ?? '';
+  if ((await volt.getAttribute('data-altitude')) === 'airborne') airborneSeen = true;
   if (className.includes('is-jump')) {
     jumpSeen = true;
     jumpAnimation = await volt.locator('.sprite-body').evaluate((element) => getComputedStyle(element).animationName);
@@ -52,10 +54,15 @@ for (let tick = 0; tick < 900; tick += 1) {
 
 await browser.close();
 
-const result = { shopText, configuredProgram, jumpSeen, crossedEnemy, jumpAnimation, errors };
+const result = { shopText, configuredProgram, jumpSeen, airborneSeen, crossedEnemy, jumpAnimation, errors };
 console.log(JSON.stringify(result, null, 2));
 
-if (!shopText.includes('RARE / JUMP') || !shopText.includes('跳躍 14 m') || !shopText.includes('通過 可能'))
+if (
+  !shopText.includes('RARE / JUMP') ||
+  !shopText.includes('跳躍 14 m') ||
+  !shopText.includes('高度 12 m') ||
+  !shopText.includes('滞空 1.4 s')
+)
   throw new Error('ジャンプ指示のショップ表示が不正です');
 if (
   !configuredProgram.includes('このユニットから見て 対戦相手 が 射程範囲内') ||
@@ -64,5 +71,6 @@ if (
   throw new Error('ジャンプ指示を通常作戦へ設定できません');
 if (!jumpSeen || !jumpAnimation.startsWith('ability-jump-'))
   throw new Error('ジャンプの戦闘アニメーションを確認できません');
+if (!airborneSeen) throw new Error('ジャンプ後の滞空状態を戦闘表示で確認できません');
 if (!crossedEnemy) throw new Error('固定距離ジャンプで敵の背後へ移動できません');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

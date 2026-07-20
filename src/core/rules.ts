@@ -1,6 +1,13 @@
 import { BATTLE_CONFIG, CONDITIONS, INSTRUCTIONS, TARGET_SELECTORS } from '../data.ts';
 import { resolveImpact, type ImpactResult } from './combat.ts';
-import type { ConditionId, Fighter, Instruction, TargetSelectorId, UnitDefinition } from '../types.ts';
+import type {
+  AltitudeRequirement,
+  ConditionId,
+  Fighter,
+  Instruction,
+  TargetSelectorId,
+  UnitDefinition,
+} from '../types.ts';
 import { effectByKind, requireEffect, statusBonusDamage } from './instruction-effects.ts';
 import {
   applyStatus,
@@ -17,6 +24,13 @@ export const targetSelectorById = new Map(TARGET_SELECTORS.map((target) => [targ
 
 export const clampStage = (x: number) => Math.max(BATTLE_CONFIG.wallLeft, Math.min(BATTLE_CONFIG.wallRight, x));
 export const distanceTo = (a: Pick<Fighter, 'x'>, b: Pick<Fighter, 'x'>) => Math.abs(a.x - b.x);
+export const isAirborne = (fighter: Pick<Fighter, 'airborne'>) => fighter.airborne !== null;
+export const matchesAltitude = (fighter: Pick<Fighter, 'airborne'>, requirement: AltitudeRequirement) =>
+  requirement === 'any' || (requirement === 'airborne' ? isAirborne(fighter) : !isAirborne(fighter));
+export const instructionAltitudeReady = (instruction: Instruction, actor: Fighter, target: Fighter) => {
+  const altitude = instruction.altitude ?? { actor: 'grounded', target: 'grounded' };
+  return matchesAltitude(actor, altitude.actor) && matchesAltitude(target, altitude.target);
+};
 export const nearestEnemy = (actor: Fighter, enemies: Fighter[]) =>
   [...enemies].sort((a, b) => distanceTo(actor, a) - distanceTo(actor, b))[0];
 export const lowestHpRatio = (fighters: Fighter[]) => [...fighters].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
@@ -107,6 +121,16 @@ export function matchCondition(condition: ConditionId, actor: Fighter, targets: 
       (target) =>
         target.instanceId === actor.instanceId && actor.hp / actor.maxHp <= (definition.params.threshold ?? 0),
     );
+  if (definition.kind === 'selfAirborne') return isAirborne(actor) ? targets : [];
+  if (definition.kind === 'selfGrounded') return isAirborne(actor) ? [] : targets;
+  if (definition.kind === 'targetAirborne') return targets.filter(isAirborne);
+  if (definition.kind === 'targetGrounded') return targets.filter((target) => !isAirborne(target));
+  if (definition.kind === 'targetAirborneRemainingBelow')
+    return targets.filter(
+      (target) =>
+        target.airborne !== null &&
+        target.airborne.remainingSeconds <= (definition.params.thresholdSeconds ?? Number.NEGATIVE_INFINITY),
+    );
   const statusId = definition.params.statusId;
   const minimumStacks = definition.params.minimumStacks ?? 1;
   if (definition.kind === 'selfHasStatus')
@@ -143,8 +167,14 @@ export function instructionCooldown(instruction: Instruction, speed: number): nu
 export function tickCooldowns(fighters: Fighter[], dt: number): Fighter[] {
   return fighters.map((fighter) => {
     const statusTicked = tickStatusDurations(fighter, dt);
+    const remainingSeconds = Math.max(0, (fighter.airborne?.remainingSeconds ?? 0) - dt);
+    const airborne = fighter.airborne && remainingSeconds > 0 ? { ...fighter.airborne, remainingSeconds } : null;
+    const progress = airborne ? 1 - airborne.remainingSeconds / airborne.durationSeconds : 0;
+    const z = airborne ? 4 * airborne.maxHeight * progress * (1 - progress) : 0;
     return {
       ...statusTicked,
+      airborne,
+      z,
       actionLock: Math.max(0, fighter.actionLock - dt),
       instructionCooldowns: Object.fromEntries(
         Object.entries(fighter.instructionCooldowns).map(([actionId, remaining]) => [
@@ -229,6 +259,8 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
   const move = effectByKind(instruction, 'move');
   const damage = effectByKind(instruction, 'damage');
   const application = effectByKind(instruction, 'applyStatus');
+  const airborne = effectByKind(instruction, 'airborne');
+  const landing = effectByKind(instruction, 'land');
   if (instruction.action === 'move' && move)
     return withCost([
       { label: '前進', value: `${metricNumber(move.distance)} m` },
@@ -237,7 +269,17 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
   if (instruction.action === 'jump' && move)
     return withCost([
       { label: '跳躍', value: `${metricNumber(move.distance)} m` },
-      { label: '通過', value: '可能' },
+      ...(airborne
+        ? [
+            { label: '高度', value: `${metricNumber(airborne.height)} m` },
+            { label: '滞空', value: `${metricNumber(airborne.durationSeconds)} s` },
+          ]
+        : [{ label: '通過', value: '可能' }]),
+    ]);
+  if (instruction.action === 'hover' && airborne)
+    return withCost([
+      { label: '高度', value: `${metricNumber(airborne.height)} m` },
+      { label: '滞空', value: `${metricNumber(airborne.durationSeconds)} s` },
     ]);
   if (instruction.action === 'throw' && move && damage) {
     const rawDamage = unit.attack * damage.attackScale + (damage.flatDamage ?? 0);
@@ -301,5 +343,9 @@ export function instructionMetrics(instruction: Instruction, unit: UnitDefinitio
   return withCost([
     { label: '基礎DMG', value: metricNumber(rawDamage) },
     { label: 'KB出力', value: metricNumber(knockbackPower) },
+    ...(airborne?.target === 'selected'
+      ? [{ label: '打上', value: `${metricNumber(airborne.durationSeconds)} s` }]
+      : []),
+    ...(landing?.target === 'actor' ? [{ label: '着地', value: '攻撃後' }] : []),
   ]);
 }

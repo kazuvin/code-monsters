@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { applyBattleStep, applyBattleSteps, isBattleComplete, planBattleFrame } from '../src/core/battle-engine.ts';
 import { applyBattleZoneChanges } from '../src/core/battle-zones.ts';
 import { analyzeBalance } from '../src/core/balance.ts';
-import { applyInstructionStatusEffects } from '../src/core/instruction-effects.ts';
+import { applyInstructionFighterEffects, applyInstructionStatusEffects } from '../src/core/instruction-effects.ts';
 import {
   applyEquipment,
   createBattleFighters,
@@ -16,12 +16,14 @@ import {
   actionRange,
   conditionById,
   instructionById,
+  instructionAltitudeReady,
   isConditionCompatibleWithTarget,
   isInstructionCompatibleWithTarget,
   matchCondition,
   resolveActionImpact,
   selectConditionTargets,
   targetSelectorById,
+  tickCooldowns,
 } from '../src/core/rules.ts';
 import { createShop } from '../src/core/shop.ts';
 import { applyStatus, consumeStatus, hasStatus, statusStacks, tickStatusDurations } from '../src/core/statuses.ts';
@@ -66,7 +68,7 @@ const resolvePending = (battlePlan, team, previousElapsed = 1) => {
   });
 };
 
-assert.equal(GAME_DATA.schemaVersion, 17, '同時発動スキーマがv17ではありません');
+assert.equal(GAME_DATA.schemaVersion, 18, '空中戦スキーマがv18ではありません');
 assert.equal(BATTLE_CONFIG.teamSize, 1, '標準戦闘が1vs1ではありません');
 assert.equal(UNITS.length, 3, '手作業アニメーション対象が3体に絞られていません');
 assert.deepEqual(UNITS.map((unit) => unit.id).sort(), ['bastion', 'relay', 'volt'], '1vs1で使用する3機体が不正です');
@@ -148,6 +150,87 @@ assert.deepEqual(
   '遭遇ごとの敵プログラムが戦闘状態へ渡りません',
 );
 assert.deepEqual(enemy?.reaction, ENCOUNTERS[0].enemyReaction, '遭遇ごとの敵リアクションが戦闘状態へ渡りません');
+
+const ally = fighters.find((fighter) => fighter.team === 'ally');
+assert.ok(ally && enemy, '空中戦テスト用の戦闘機がありません');
+const boostJump = instructionById.get('boost-jump');
+const antiAirShot = instructionById.get('anti-air-shot');
+const diveStrike = instructionById.get('dive-strike');
+const launchUppercut = instructionById.get('launch-uppercut');
+const groundAttack = instructionById.get('attack-low');
+assert.ok(boostJump && antiAirShot && diveStrike && launchUppercut && groundAttack, '空中戦スキルが不足しています');
+
+const airborneAlly = applyInstructionFighterEffects(ally, boostJump, ally.instanceId, 'actor');
+assert.equal(airborneAlly.airborne?.remainingSeconds, 2.8, 'ブーストジャンプが滞空状態を開始しません');
+const airborneApex = tickCooldowns([airborneAlly], 1.4)[0];
+assert.equal(airborneApex.z, 18, '滞空軌道が中間点で設定高度へ達しません');
+const landedAlly = tickCooldowns([airborneApex], 1.4)[0];
+assert.equal(landedAlly.airborne, null, '滞空時間後に着地しません');
+assert.equal(landedAlly.z, 0, '着地後の高さが0へ戻りません');
+
+const airborneEnemy = { ...enemy, airborne: { remainingSeconds: 0.7, durationSeconds: 1.8, maxHeight: 14 }, z: 8 };
+assert.equal(
+  instructionAltitudeReady(groundAttack, ally, airborneEnemy),
+  false,
+  '通常の地上攻撃が空中の相手を狙えます',
+);
+assert.equal(instructionAltitudeReady(antiAirShot, ally, airborneEnemy), true, '対空射撃が空中の相手を狙えません');
+assert.equal(
+  matchCondition('targetLandingSoon', ally, [airborneEnemy])[0]?.instanceId,
+  airborneEnemy.instanceId,
+  '着地間際条件が残り滞空時間を判定しません',
+);
+const launchedEnemy = applyInstructionFighterEffects(enemy, launchUppercut, ally.instanceId, 'selected');
+assert.equal(launchedEnemy.airborne?.remainingSeconds, 1.8, '打ち上げが相手を滞空状態にしません');
+const landedDive = applyInstructionFighterEffects(airborneAlly, diveStrike, ally.instanceId, 'actor');
+assert.equal(landedDive.airborne, null, '急降下攻撃が自機を着地させません');
+
+const altitudeTeam = [createInventoryUnit('volt', 'altitude-volt')];
+altitudeTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }];
+const altitudeFighters = createBattleFighters(altitudeTeam, ENCOUNTERS[0]).map((fighter) => ({
+  ...fighter,
+  x: fighter.team === 'ally' ? 45 : 50,
+  actionLock: fighter.team === 'ally' ? 0 : 99,
+  abilityGauge: BATTLE_CONFIG.abilityGaugeMax,
+}));
+const committedGroundAttack = plan(altitudeFighters, altitudeTeam);
+const groundAttackActor = committedGroundAttack.fighters.find((fighter) => fighter.team === 'ally');
+const groundAttackResolvesAt = groundAttackActor?.pendingAction?.resolvesAt;
+assert.ok(groundAttackResolvesAt, '高度回避テストで通常攻撃がコミットされません');
+const evasiveFighters = committedGroundAttack.fighters.map((fighter) =>
+  fighter.team === 'enemy'
+    ? {
+        ...fighter,
+        airborne: { remainingSeconds: 2, durationSeconds: 2, maxHeight: 14 },
+        z: 1,
+      }
+    : fighter,
+);
+const evadedGroundAttack = planBattleFrame({
+  fighters: evasiveFighters,
+  zones: committedGroundAttack.zones,
+  team: altitudeTeam,
+  dt: groundAttackResolvesAt - 1,
+  elapsed: groundAttackResolvesAt,
+  previousElapsed: 1,
+});
+assert.ok(
+  evadedGroundAttack.steps.some((step) => step.log?.text.includes('空振り（高度条件）')),
+  '構えた後に離陸した相手へ地上攻撃が命中します',
+);
+assert.ok(!evadedGroundAttack.steps.some((step) => step.damage), '高度回避した相手へダメージが発生します');
+
+altitudeTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetAirborne', actionId: 'anti-air-shot' }];
+const antiAirFighters = altitudeFighters.map((fighter) =>
+  fighter.team === 'enemy'
+    ? { ...fighter, airborne: { remainingSeconds: 3, durationSeconds: 3, maxHeight: 14 }, z: 8 }
+    : { ...fighter, program: altitudeTeam[0].program },
+);
+const antiAirPlan = resolvePending(plan(antiAirFighters, altitudeTeam), altitudeTeam);
+assert.ok(
+  antiAirPlan.steps.some((step) => step.damage?.actionId === 'anti-air-shot'),
+  '対空射撃が空中の相手へ命中しません',
+);
 
 const openingPlan = plan(
   fighters.map((fighter) => ({ ...fighter, actionLock: 0 })),

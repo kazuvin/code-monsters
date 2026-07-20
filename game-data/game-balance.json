@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 17,
+  "schemaVersion": 18,
   "battle": {
     "teamSize": 1,
     "tickSeconds": 0.22,
@@ -239,7 +239,17 @@
     "startingUnitIds": ["volt"],
     "enemyUnitIds": ["relay"],
     "startingActionIds": ["attack-low", "approach", "retreat"],
-    "startingConditionIds": ["always", "targetInRange", "targetOutOfRange", "selfHpBelow50"],
+    "startingConditionIds": [
+      "always",
+      "targetInRange",
+      "targetOutOfRange",
+      "selfHpBelow50",
+      "selfAirborne",
+      "selfGrounded",
+      "targetAirborne",
+      "targetGrounded",
+      "targetLandingSoon"
+    ],
     "startingEquipmentIds": ["standard-frame", "pulse-edge", "reactive-servo"]
   },
   "encounters": [
@@ -267,11 +277,11 @@
     },
     {
       "id": "cold-pursuit",
-      "name": "コールド・パースート",
-      "briefing": "冷却弾から追撃へつなぐ制御型。鈍足を受ける前提で優先順位を組み直せ。",
+      "name": "スカイ・パースート",
+      "briefing": "長い跳躍から空中ダッシュ、斉射、急降下へつなぐ。離陸前か着地際を対空指示で捉えろ。",
       "enemyUnitIds": ["relay"],
       "enemyEquipmentIds": ["vector-frame", "cryo-emitter", "reactive-servo"],
-      "enemyProgramActionIds": ["corner-slowed", "coolant-shot", "attack-low", "relay-dash"],
+      "enemyProgramActionIds": ["dive-strike", "aerial-barrage", "boost-jump", "air-dash"],
       "enemyReaction": { "trigger": "selfHit", "actionId": "emergency-retreat" },
       "enemyStatScale": 1.08,
       "reward": 7
@@ -420,6 +430,51 @@
       "label": "自分が過駆動状態",
       "flavor": "上げた出力を強襲へ変える。",
       "effect": "自分が過駆動状態",
+      "compatibleTargets": ["nearestEnemy"]
+    },
+    {
+      "id": "selfAirborne",
+      "kind": "selfAirborne",
+      "params": {},
+      "label": "自分が空中",
+      "flavor": "滞空中だけ使える空中機動へつなぐ。",
+      "effect": "自分が滞空中",
+      "compatibleTargets": ["nearestEnemy"]
+    },
+    {
+      "id": "selfGrounded",
+      "kind": "selfGrounded",
+      "params": {},
+      "label": "自分が地上",
+      "flavor": "足場を確保してから離陸する。",
+      "effect": "自分が地上",
+      "compatibleTargets": ["nearestEnemy", "self"]
+    },
+    {
+      "id": "targetAirborne",
+      "kind": "targetAirborne",
+      "params": {},
+      "label": "相手が空中",
+      "flavor": "浮いた相手を対空火器で追う。",
+      "effect": "相手が滞空中",
+      "compatibleTargets": ["nearestEnemy"]
+    },
+    {
+      "id": "targetGrounded",
+      "kind": "targetGrounded",
+      "params": {},
+      "label": "相手が地上",
+      "flavor": "接地している相手だけを狙う。",
+      "effect": "相手が地上",
+      "compatibleTargets": ["nearestEnemy"]
+    },
+    {
+      "id": "targetLandingSoon",
+      "kind": "targetAirborneRemainingBelow",
+      "params": { "thresholdSeconds": 0.8 },
+      "label": "相手が0.8秒以内に着地",
+      "flavor": "落下軌道の終点へ先回りする。",
+      "effect": "相手の残り滞空時間 ≤ 0.8秒",
       "compatibleTargets": ["nearestEnemy"]
     }
   ],
@@ -770,11 +825,15 @@
       "target": "nearestEnemy",
       "defaultTarget": "nearestEnemy",
       "targetMode": "selected",
+      "altitude": { "actor": "grounded", "target": "grounded" },
       "compatibleTargets": ["nearestEnemy"],
       "tone": "amber",
       "visualKind": "jump",
       "range": { "mode": "fixed", "value": 9 },
-      "effects": [{ "kind": "move", "mode": "jump", "distance": 14 }]
+      "effects": [
+        { "kind": "move", "mode": "jump", "distance": 14 },
+        { "kind": "airborne", "target": "actor", "height": 12, "durationSeconds": 1.4 }
+      ]
     },
     {
       "id": "shoulder-throw",
@@ -1152,6 +1211,181 @@
       "visualKind": "retreat",
       "range": { "mode": "unit" },
       "effects": [{ "kind": "move", "mode": "retreat", "distance": 9.43 }]
+    },
+    {
+      "id": "boost-jump",
+      "title": "ブーストジャンプする",
+      "short": "ブーストジャンプ",
+      "flavor": "長い滞空軌道で地上攻撃をかわしながら間合いを詰める。",
+      "action": "jump",
+      "abilityCost": 2,
+      "cooldownSeconds": 5,
+      "price": 3,
+      "rarity": "rare",
+      "condition": "targetOutOfRange",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "altitude": { "actor": "grounded", "target": "any" },
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "cyan",
+      "visualKind": "jump",
+      "range": { "mode": "fixed", "value": 80 },
+      "effects": [
+        { "kind": "move", "mode": "jump", "distance": 18 },
+        { "kind": "airborne", "target": "actor", "height": 18, "durationSeconds": 2.8 }
+      ]
+    },
+    {
+      "id": "hover",
+      "title": "ホバリングする",
+      "short": "ホバリング",
+      "flavor": "その場で推力を維持し、地上技のタイミングを外す。",
+      "action": "hover",
+      "abilityCost": 3,
+      "cooldownSeconds": 7,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "selfGrounded",
+      "target": "self",
+      "defaultTarget": "self",
+      "targetMode": "self",
+      "altitude": { "actor": "grounded", "target": "grounded" },
+      "compatibleTargets": [],
+      "tone": "lime",
+      "visualKind": "jump",
+      "range": { "mode": "unit" },
+      "effects": [{ "kind": "airborne", "target": "actor", "height": 14, "durationSeconds": 4 }]
+    },
+    {
+      "id": "air-dash",
+      "title": "空中ダッシュする",
+      "short": "空中ダッシュ",
+      "flavor": "滞空時間を継ぎ足しながら、一気に横軸を詰める。",
+      "action": "jump",
+      "abilityCost": 2,
+      "cooldownSeconds": 3,
+      "price": 3,
+      "rarity": "rare",
+      "condition": "selfAirborne",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "altitude": { "actor": "airborne", "target": "any" },
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "amber",
+      "visualKind": "dash",
+      "range": { "mode": "fixed", "value": 80 },
+      "effects": [
+        { "kind": "move", "mode": "jump", "distance": 12 },
+        { "kind": "airborne", "target": "actor", "height": 16, "durationSeconds": 1.8 }
+      ]
+    },
+    {
+      "id": "dive-strike",
+      "title": "急降下攻撃する",
+      "short": "急降下攻撃",
+      "flavor": "高度を火力へ変え、命中と同時に地上へ戻る。",
+      "action": "heavy",
+      "abilityCost": 4,
+      "cooldownSeconds": 5,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "selfAirborne",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "altitude": { "actor": "airborne", "target": "grounded" },
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "amber",
+      "range": { "mode": "fixed", "value": 20 },
+      "effects": [
+        { "kind": "damage", "attackScale": 1.15, "flatDamage": 8, "minimumDamage": 4, "knockbackPower": 35 },
+        { "kind": "land", "target": "actor" }
+      ]
+    },
+    {
+      "id": "aerial-barrage",
+      "title": "空中斉射する",
+      "short": "空中斉射",
+      "flavor": "空中から地上にも空中にも届く連射を浴びせる。",
+      "action": "attack",
+      "abilityCost": 3,
+      "cooldownSeconds": 3.2,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "selfAirborne",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "altitude": { "actor": "airborne", "target": "any" },
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "violet",
+      "range": { "mode": "fixed", "value": 28 },
+      "effects": [{ "kind": "damage", "attackScale": 0.7, "flatDamage": 4, "minimumDamage": 3, "knockbackPower": 0 }]
+    },
+    {
+      "id": "anti-air-shot",
+      "title": "対空射撃する",
+      "short": "対空射撃",
+      "flavor": "地上から上空へ照準を切り替え、滞空中だけを撃ち抜く。",
+      "action": "attack",
+      "abilityCost": 2,
+      "cooldownSeconds": 3,
+      "price": 3,
+      "rarity": "common",
+      "condition": "targetAirborne",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "altitude": { "actor": "grounded", "target": "airborne" },
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "cyan",
+      "range": { "mode": "fixed", "value": 30 },
+      "effects": [{ "kind": "damage", "attackScale": 1, "flatDamage": 6, "minimumDamage": 4, "knockbackPower": 0 }]
+    },
+    {
+      "id": "launch-uppercut",
+      "title": "打ち上げる",
+      "short": "打ち上げ",
+      "flavor": "接地した相手を強制的に空中戦へ引き込む。",
+      "action": "heavy",
+      "abilityCost": 3,
+      "cooldownSeconds": 4,
+      "price": 3,
+      "rarity": "rare",
+      "condition": "targetInRange",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "altitude": { "actor": "grounded", "target": "grounded" },
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "lime",
+      "range": { "mode": "fixed", "value": 9 },
+      "effects": [
+        { "kind": "damage", "attackScale": 0.65, "minimumDamage": 3, "knockbackPower": 0 },
+        { "kind": "airborne", "target": "selected", "height": 14, "durationSeconds": 1.8 }
+      ]
+    },
+    {
+      "id": "landing-punish",
+      "title": "着地を狩る",
+      "short": "着地狩り",
+      "flavor": "残り滞空時間を読み、着地点へ高威力弾を置く。",
+      "action": "attack",
+      "abilityCost": 3,
+      "cooldownSeconds": 4.2,
+      "price": 4,
+      "rarity": "rare",
+      "condition": "targetLandingSoon",
+      "target": "nearestEnemy",
+      "defaultTarget": "nearestEnemy",
+      "targetMode": "selected",
+      "altitude": { "actor": "grounded", "target": "airborne" },
+      "compatibleTargets": ["nearestEnemy"],
+      "tone": "violet",
+      "range": { "mode": "fixed", "value": 22 },
+      "effects": [{ "kind": "damage", "attackScale": 1.05, "flatDamage": 8, "minimumDamage": 4, "knockbackPower": 0 }]
     }
   ],
   "defaultPrograms": [

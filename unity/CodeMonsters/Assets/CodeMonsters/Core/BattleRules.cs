@@ -13,6 +13,7 @@ namespace CodeMonsters.Core
         public double Hp;
         public double MaxHp;
         public double Range;
+        public double? AirborneRemainingSeconds;
         public List<StatusInstance> Statuses = new List<StatusInstance>();
 
         public bool HasStatus(string statusId)
@@ -24,6 +25,11 @@ namespace CodeMonsters.Core
         {
             var status = Statuses.Find(candidate => candidate.StatusId == statusId);
             return status == null ? 0 : status.Stacks;
+        }
+
+        public bool IsAirborne()
+        {
+            return AirborneRemainingSeconds.HasValue && AirborneRemainingSeconds.Value > 0;
         }
     }
 
@@ -82,8 +88,31 @@ namespace CodeMonsters.Core
                     && target.StatusStacks(condition.Params.StatusId) >= (condition.Params.MinimumStacks ?? 1),
                 "selfHasStatus" => !string.IsNullOrEmpty(condition.Params.StatusId)
                     && actor.StatusStacks(condition.Params.StatusId) >= (condition.Params.MinimumStacks ?? 1),
+                "selfAirborne" => actor.IsAirborne(),
+                "selfGrounded" => !actor.IsAirborne(),
+                "targetAirborne" => target.IsAirborne(),
+                "targetGrounded" => !target.IsAirborne(),
+                "targetAirborneRemainingBelow" => target.IsAirborne()
+                    && condition.Params.ThresholdSeconds.HasValue
+                    && target.AirborneRemainingSeconds.Value <= condition.Params.ThresholdSeconds.Value,
                 _ => throw new ArgumentOutOfRangeException(nameof(condition.Kind), condition.Kind, "Unknown condition"),
             };
+        }
+
+        public static bool InstructionAltitudeReady(
+            InstructionDefinition instruction,
+            FighterState actor,
+            FighterState target
+        )
+        {
+            var actorRequirement = instruction.Altitude?.Actor ?? "grounded";
+            var targetRequirement = instruction.Altitude?.Target ?? "grounded";
+            return MatchesAltitude(actor, actorRequirement) && MatchesAltitude(target, targetRequirement);
+        }
+
+        private static bool MatchesAltitude(FighterState fighter, string requirement)
+        {
+            return requirement == "any" || (requirement == "airborne" ? fighter.IsAirborne() : !fighter.IsAirborne());
         }
     }
 }

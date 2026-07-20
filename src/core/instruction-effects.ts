@@ -62,3 +62,28 @@ export function applyInstructionStatusEffects(
   }
   return next;
 }
+
+export function applyInstructionFighterEffects(
+  fighter: Fighter,
+  instruction: Instruction,
+  sourceId: string,
+  actualTarget: EffectTarget,
+): Fighter {
+  let next = applyInstructionStatusEffects(fighter, instruction, sourceId, actualTarget);
+  for (const effect of effectsByKind(instruction, 'airborne')) {
+    if (!targetsEffect(effect.target, actualTarget)) continue;
+    next = {
+      ...next,
+      z: 0,
+      airborne: {
+        remainingSeconds: effect.durationSeconds,
+        durationSeconds: effect.durationSeconds,
+        maxHeight: effect.height,
+      },
+    };
+  }
+  for (const effect of effectsByKind(instruction, 'land')) {
+    if (targetsEffect(effect.target, actualTarget)) next = { ...next, z: 0, airborne: null };
+  }
+  return next;
+}

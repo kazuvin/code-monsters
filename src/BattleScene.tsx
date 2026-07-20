@@ -146,6 +146,8 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
               ['--projectile-end-x' as string]: `${projectile.target.x}%`,
               ['--projectile-start-depth' as string]: `${depthOffset(projectile.actor, fighters)}px`,
               ['--projectile-end-depth' as string]: `${depthOffset(projectile.target, fighters)}px`,
+              ['--projectile-start-air' as string]: `${projectile.actor.z}px`,
+              ['--projectile-end-air' as string]: `${projectile.target.z}px`,
             }}
           />
         ))}
@@ -159,6 +161,8 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
               ['--projectile-end-x' as string]: `${projectile.targetX}%`,
               ['--projectile-start-depth' as string]: `${depthOffset(projectile.actor, fighters)}px`,
               ['--projectile-end-depth' as string]: '0px',
+              ['--projectile-start-air' as string]: `${projectile.actor.z}px`,
+              ['--projectile-end-air' as string]: '0px',
             }}
           />
         ))}
@@ -214,14 +218,16 @@ export function BattleScene({ fighters, zones = [], flash, flashes, running }: P
           const statusDetails = activeStatusDetails(fighter);
           return (
             <div
-              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${activeFlashes.some((candidate) => candidate.actionLabel) ? (isFocusActor ? 'is-focus-actor' : isTarget ? 'is-focus-target' : 'is-focus-muted') : ''} ${state}`}
+              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${fighter.airborne ? 'is-airborne' : ''} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${activeFlashes.some((candidate) => candidate.actionLabel) ? (isFocusActor ? 'is-focus-actor' : isTarget ? 'is-focus-target' : 'is-focus-muted') : ''} ${state}`}
               data-depth-slot={fighterDepthSlot}
+              data-altitude={fighter.airborne ? 'airborne' : 'grounded'}
               key={fighter.instanceId}
               style={{
                 left: `${fighter.x}%`,
                 zIndex: depthIndex(fighter, fighters),
                 ['--unit-color' as string]: colorHex(fighter.color),
                 ['--depth-offset' as string]: `${depthOffset(fighter, fighters)}px`,
+                ['--air-height' as string]: `${fighter.z}px`,
               }}
             >
               <i className="team-ring" aria-hidden="true" />

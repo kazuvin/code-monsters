@@ -187,12 +187,18 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'selfHpBelow',
     'targetHasStatus',
     'selfHasStatus',
+    'selfAirborne',
+    'selfGrounded',
+    'targetAirborne',
+    'targetGrounded',
+    'targetAirborneRemainingBelow',
   ]);
   const supportedActions = new Set([
     'attack',
     'heavy',
     'move',
     'jump',
+    'hover',
     'throw',
     'taunt',
     'pull',
@@ -227,6 +233,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     'removeStatus',
     'modifyStat',
     'placeZone',
+    'airborne',
+    'land',
     'wait',
   ]);
   const supportedEffectTargets = new Set(['actor', 'selected', 'allEnemies', 'allAllies']);
@@ -246,7 +254,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 17) error('INVALID_SCHEMA_VERSION', 'schemaVersion は17以上である必要があります');
+  if (data.schemaVersion < 18) error('INVALID_SCHEMA_VERSION', 'schemaVersion は18以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -423,7 +431,11 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_TARGET_COMPATIBILITY', `${condition.id} に対応対象がありません`);
     for (const targetId of condition.compatibleTargets)
       requireTargetSelector(targetId, `条件 ${condition.id}.compatibleTargets`);
-    rejectUnknownKeys(condition.params, ['threshold', 'statusId', 'minimumStacks'], `条件 ${condition.id}.params`);
+    rejectUnknownKeys(
+      condition.params,
+      ['threshold', 'thresholdSeconds', 'statusId', 'minimumStacks'],
+      `条件 ${condition.id}.params`,
+    );
     if (['targetHpBelow', 'selfHpBelow'].includes(condition.kind)) {
       const threshold = condition.params.threshold;
       if (typeof threshold !== 'number' || threshold <= 0 || threshold >= 1)
@@ -436,6 +448,10 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       if (!Number.isInteger(condition.params.minimumStacks) || (condition.params.minimumStacks ?? 0) < 1)
         error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の minimumStacks は正の整数で指定してください`);
     }
+    if (condition.kind === 'targetAirborneRemainingBelow') {
+      if (!(condition.params.thresholdSeconds ?? 0) || (condition.params.thresholdSeconds ?? 0) <= 0)
+        error('INVALID_CONDITION_PARAMETER', `条件 ${condition.id} の thresholdSeconds は正の数で指定してください`);
+    }
   }
 
   const requiredMoveMode: Partial<Record<Instruction['action'], string>> = {
@@ -446,10 +462,11 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     pull: 'pullTarget',
   };
   const allowedEffectKindsByAction: Record<Instruction['action'], Set<string>> = {
-    attack: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
-    heavy: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus']),
+    attack: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus', 'airborne', 'land']),
+    heavy: new Set(['damage', 'applyStatus', 'consumeStatus', 'removeStatus', 'airborne', 'land']),
     move: new Set(['move']),
-    jump: new Set(['move']),
+    jump: new Set(['move', 'airborne']),
+    hover: new Set(['airborne']),
     throw: new Set(['damage', 'move', 'applyStatus', 'consumeStatus', 'removeStatus']),
     taunt: new Set(['applyStatus', 'removeStatus']),
     pull: new Set(['move']),
@@ -480,6 +497,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       [
         'heavy',
         'jump',
+        'hover',
         'throw',
         'taunt',
         'pull',
@@ -501,6 +519,12 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('UNSUPPORTED_ACTION', `${instruction.id} の action "${instruction.action}" はエンジン未対応です`);
     if (!supportedTargets.has(instruction.target))
       error('UNSUPPORTED_TARGET', `${instruction.id} の target "${instruction.target}" はエンジン未対応です`);
+    const altitudeRequirements = new Set(['grounded', 'airborne', 'any']);
+    if (
+      instruction.altitude &&
+      (!altitudeRequirements.has(instruction.altitude.actor) || !altitudeRequirements.has(instruction.altitude.target))
+    )
+      error('INVALID_ALTITUDE_REQUIREMENT', `${instruction.id} の altitude 定義が不正です`);
     requireTargetSelector(instruction.defaultTarget, `スキル ${instruction.id}.defaultTarget`);
     if (!supportedTargetModes.has(instruction.targetMode))
       error('UNSUPPORTED_TARGET_MODE', `${instruction.id} の targetMode "${instruction.targetMode}" は未対応です`);
@@ -615,6 +639,14 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
         rejectUnknownKeys(effect, ['kind', 'stat', 'amount', 'target'], `スキル ${instruction.id}.modifyStat`);
         if (effect.stat !== 'attack' || effect.target !== 'actor' || effect.amount === 0)
           error('INVALID_EFFECT', `${instruction.id} の modifyStat 定義が不正です`);
+      } else if (effect.kind === 'airborne') {
+        rejectUnknownKeys(effect, ['kind', 'target', 'height', 'durationSeconds'], `スキル ${instruction.id}.airborne`);
+        if (!['actor', 'selected'].includes(effect.target) || effect.height <= 0 || effect.durationSeconds <= 0)
+          error('INVALID_EFFECT', `${instruction.id} の airborne 定義が不正です`);
+      } else if (effect.kind === 'land') {
+        rejectUnknownKeys(effect, ['kind', 'target'], `スキル ${instruction.id}.land`);
+        if (!['actor', 'selected'].includes(effect.target))
+          error('INVALID_EFFECT', `${instruction.id} の land 定義が不正です`);
       } else if (effect.kind === 'wait') {
         rejectUnknownKeys(effect, ['kind', 'durationSeconds'], `スキル ${instruction.id}.wait`);
         if (effect.durationSeconds <= 0) error('INVALID_EFFECT', `${instruction.id} の wait 時間が不正です`);
@@ -633,6 +665,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_EFFECT', `${instruction.id} には heal 効果が必要です`);
     if (instruction.action === 'wait' && !effectByKind(instruction, 'wait'))
       error('MISSING_EFFECT', `${instruction.id} には wait 効果が必要です`);
+    if (instruction.action === 'hover' && !effectByKind(instruction, 'airborne'))
+      error('MISSING_EFFECT', `${instruction.id} には airborne 効果が必要です`);
     if (
       instruction.action === 'buff' &&
       !effectByKind(instruction, 'modifyStat') &&

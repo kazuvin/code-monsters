@@ -121,6 +121,7 @@ export function createBattleFighters(
   const enemyStatScale = encounter?.enemyStatScale ?? 1;
   const baseState = {
     z: 0,
+    airborne: null,
     abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
     instructionCooldowns: {},
     pendingAction: null,

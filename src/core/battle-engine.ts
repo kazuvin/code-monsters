@@ -15,6 +15,7 @@ import {
   activateBerserker,
   advanceToward,
   distanceTo,
+  instructionAltitudeReady,
   instructionById,
   instructionCooldown,
   jumpToward,
@@ -29,7 +30,7 @@ import {
   throwBehind,
   tickCooldowns,
 } from './rules.ts';
-import { applyInstructionStatusEffects, effectByKind, requireEffect } from './instruction-effects.ts';
+import { applyInstructionFighterEffects, effectByKind, requireEffect } from './instruction-effects.ts';
 import {
   applyZoneActionTriggers,
   applyZoneEntries,
@@ -45,6 +46,8 @@ type MutableFighterFields = Pick<
   Fighter,
   | 'hp'
   | 'x'
+  | 'z'
+  | 'airborne'
   | 'actionLock'
   | 'instructionCooldowns'
   | 'pendingAction'
@@ -94,6 +97,13 @@ export type BattlePlan = {
 };
 
 const attackTypeLabels: Record<Fighter['attackType'], string> = { melee: '近距離', blunt: '打撃', sniper: '狙撃' };
+const fighterEffectValues = (fighter: Fighter) => ({
+  statuses: fighter.statuses,
+  attack: fighter.attack,
+  speed: fighter.speed,
+  z: fighter.z,
+  airborne: fighter.airborne,
+});
 
 export function applyFighterUpdates(fighters: Fighter[], updates: FighterUpdate[]): Fighter[] {
   return fighters.map((fighter) => {
@@ -259,12 +269,14 @@ export function planBattleFrame({
           : eventTarget;
     const instruction = instructionById.get(reaction.actionId);
     if (!instruction) return;
+    const altitudeTarget = instruction.targetMode === 'self' ? reactor : target;
+    if (!altitudeTarget || !instructionAltitudeReady(instruction, reactor, altitudeTarget)) return;
     const actionLabel = `⚡ ${instruction.short}`;
 
     if (instruction.action === 'guard') {
       if (!canAffordAbility(reactor, instruction.abilityCost)) return;
       reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
-      const guarded = applyInstructionStatusEffects(reactor, instruction, reactor.instanceId, 'actor');
+      const guarded = applyInstructionFighterEffects(reactor, instruction, reactor.instanceId, 'actor');
       const values = {
         statuses: guarded.statuses,
         reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds,
@@ -304,7 +316,7 @@ export function planBattleFrame({
       const enemyUpdates = next
         .filter((fighter) => fighter.team !== reactor.team && fighter.hp > 0)
         .map((fighter) => {
-          const taunted = applyInstructionStatusEffects(fighter, instruction, reactor.instanceId, 'allEnemies');
+          const taunted = applyInstructionFighterEffects(fighter, instruction, reactor.instanceId, 'allEnemies');
           return { id: fighter.instanceId, values: { statuses: taunted.statuses } };
         });
       const reactorUpdate = {
@@ -346,13 +358,36 @@ export function planBattleFrame({
       reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
       const x = jumpToward(reactor, target, requireEffect(instruction, 'move').distance);
       const movement = moveThroughZones(reactor, x);
-      const values = { ...movement.values, reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
+      const affected = applyInstructionFighterEffects(
+        { ...reactor, ...movement.values },
+        instruction,
+        reactor.instanceId,
+        'actor',
+      );
+      const values = {
+        ...movement.values,
+        ...fighterEffectValues(affected),
+        reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds,
+      };
       setNext(reactor.instanceId, values);
       queueStep({
         flash: { id: reactor.instanceId, kind: instruction.visualKind ?? 'jump', actionLabel, reaction: true, n: 0 },
         log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜戦線 ${Math.round(x)}`, type: 'reaction' },
         updates: [{ id: reactor.instanceId, values }],
         zoneTriggers: movement.triggers,
+      });
+      return;
+    }
+    if (instruction.action === 'hover') {
+      if (!canAffordAbility(reactor, instruction.abilityCost)) return;
+      reactor = beginAction(reactor.instanceId, instruction.abilityCost) ?? reactor;
+      const affected = applyInstructionFighterEffects(reactor, instruction, reactor.instanceId, 'actor');
+      const values = { ...fighterEffectValues(affected), reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds };
+      setNext(reactor.instanceId, values);
+      queueStep({
+        flash: { id: reactor.instanceId, kind: 'jump', actionLabel, reaction: true, n: 0 },
+        log: { actor: reactor.name, text: `REACTION｜${instruction.short}｜滞空開始`, type: 'reaction' },
+        updates: [{ id: reactor.instanceId, values }],
       });
       return;
     }
@@ -451,8 +486,8 @@ export function planBattleFrame({
     }
     const impact = resolveActionImpact(reactor, target, instruction);
     const hp = Math.max(0, target.hp - impact.damage);
-    const affectedTarget = applyInstructionStatusEffects(target, instruction, reactor.instanceId, 'selected');
-    const affectedReactor = applyInstructionStatusEffects(reactor, instruction, reactor.instanceId, 'actor');
+    const affectedTarget = applyInstructionFighterEffects(target, instruction, reactor.instanceId, 'selected');
+    const affectedReactor = applyInstructionFighterEffects(reactor, instruction, reactor.instanceId, 'actor');
     const x =
       hp > 0 && instruction.action === 'throw'
         ? throwBehind(reactor, target, requireEffect(instruction, 'move').distance)
@@ -463,16 +498,12 @@ export function planBattleFrame({
     const statuses = movedTarget.fighter.statuses;
     const reactorValues = {
       reactionCooldown: BATTLE_CONFIG.reactionCooldownSeconds,
-      statuses: affectedReactor.statuses,
-      attack: affectedReactor.attack,
-      speed: affectedReactor.speed,
+      ...fighterEffectValues(affectedReactor),
     };
     setNext(reactor.instanceId, reactorValues);
     setNext(target.instanceId, {
       hp,
-      statuses,
-      attack: movedTarget.fighter.attack,
-      speed: movedTarget.fighter.speed,
+      ...fighterEffectValues({ ...movedTarget.fighter, statuses }),
       x,
     });
     const attackKind =
@@ -510,7 +541,7 @@ export function planBattleFrame({
         { id: reactor.instanceId, values: reactorValues },
         {
           id: target.instanceId,
-          values: { hp, statuses, attack: movedTarget.fighter.attack, speed: movedTarget.fighter.speed },
+          values: { hp, x, ...fighterEffectValues({ ...movedTarget.fighter, statuses }) },
         },
       ],
     });
@@ -556,6 +587,21 @@ export function planBattleFrame({
     const currentEnemies = resolutionSnapshot.filter((fighter) => fighter.team !== current.team && fighter.hp > 0);
     const target = resolutionSnapshot.find((fighter) => fighter.instanceId === targetIds[0]);
     if (!target || target.hp <= 0) return;
+    if (!instructionAltitudeReady(instruction, current, target)) {
+      queueStep({
+        flash: {
+          id: current.instanceId,
+          kind: 'miss',
+          targetId: target.instanceId,
+          attackType: current.attackType,
+          actionLabel: `${instruction.short}｜MISS`,
+          n: 0,
+        },
+        log: { actor: current.name, text: `${instruction.short} → ${target.name}｜空振り（高度条件）`, type: 'miss' },
+        updates: [],
+      });
+      return;
+    }
     const isMultiTargetAttack =
       instruction.targetMode === 'allEnemies' && ['attack', 'heavy', 'poison', 'burn'].includes(instruction.action);
     const multiTargets = isMultiTargetAttack
@@ -583,7 +629,7 @@ export function planBattleFrame({
       const statusApplication = requireEffect(instruction, 'applyStatus');
       const duration = statusApplication.durationSeconds ?? 0;
       const updates = currentEnemies.map((enemy) => {
-        const taunted = applyInstructionStatusEffects(enemy, instruction, current.instanceId, 'allEnemies');
+        const taunted = applyInstructionFighterEffects(enemy, instruction, current.instanceId, 'allEnemies');
         return { id: enemy.instanceId, values: { statuses: taunted.statuses } };
       });
       for (const update of updates) setNext(update.id, update.values);
@@ -627,7 +673,14 @@ export function planBattleFrame({
     } else if (instruction.action === 'jump') {
       const x = jumpToward(current, target, requireEffect(instruction, 'move').distance);
       const movement = moveThroughZones(current, x);
-      setNext(current.instanceId, movement.values);
+      const affected = applyInstructionFighterEffects(
+        { ...current, ...movement.values },
+        instruction,
+        current.instanceId,
+        'actor',
+      );
+      const values = { ...movement.values, ...fighterEffectValues(affected) };
+      setNext(current.instanceId, values);
       queueStep({
         flash: {
           id: current.instanceId,
@@ -641,8 +694,17 @@ export function planBattleFrame({
           text: `${target.name}へ${instruction.short}｜戦線 ${Math.round(x)}`,
           type: 'info',
         },
-        updates: [{ id: current.instanceId, values: movement.values }],
+        updates: [{ id: current.instanceId, values }],
         zoneTriggers: movement.triggers,
+      });
+    } else if (instruction.action === 'hover') {
+      const affected = applyInstructionFighterEffects(current, instruction, current.instanceId, 'actor');
+      const values = fighterEffectValues(affected);
+      setNext(current.instanceId, values);
+      queueStep({
+        flash: { id: current.instanceId, kind: 'jump', actionLabel: instruction.short, n: 0 },
+        log: { actor: current.name, text: `${instruction.short}｜滞空開始`, type: 'info' },
+        updates: [{ id: current.instanceId, values }],
       });
     } else if (instruction.action === 'pull') {
       const x = pullToward(current, target, requireEffect(instruction, 'move').distance);
@@ -706,7 +768,7 @@ export function planBattleFrame({
         zoneTriggers: movement.triggers,
       });
     } else if (instruction.action === 'guard') {
-      const guarded = applyInstructionStatusEffects(current, instruction, current.instanceId, 'actor');
+      const guarded = applyInstructionFighterEffects(current, instruction, current.instanceId, 'actor');
       const values = { statuses: guarded.statuses };
       setNext(current.instanceId, values);
       queueStep({
@@ -747,7 +809,7 @@ export function planBattleFrame({
         });
       } else {
         const application = requireEffect(instruction, 'applyStatus');
-        const affectedTarget = applyInstructionStatusEffects(target, instruction, current.instanceId, 'selected');
+        const affectedTarget = applyInstructionFighterEffects(target, instruction, current.instanceId, 'selected');
         const values = {
           statuses: affectedTarget.statuses,
           attack: affectedTarget.attack,
@@ -784,24 +846,20 @@ export function planBattleFrame({
       for (const matchedTarget of multiTargets) {
         const impact = resolveActionImpact(current, matchedTarget, instruction);
         const hp = Math.max(0, matchedTarget.hp - impact.damage);
-        const affectedTarget = applyInstructionStatusEffects(
+        const affectedTarget = applyInstructionFighterEffects(
           matchedTarget,
           instruction,
           current.instanceId,
           'selected',
         );
         const affectedActor = actorStatusUpdatePending
-          ? applyInstructionStatusEffects(current, instruction, current.instanceId, 'actor')
+          ? applyInstructionFighterEffects(current, instruction, current.instanceId, 'actor')
           : current;
         const actorUpdate =
           actorStatusUpdatePending && affectedActor !== current
             ? {
                 id: current.instanceId,
-                values: {
-                  statuses: affectedActor.statuses,
-                  attack: affectedActor.attack,
-                  speed: affectedActor.speed,
-                },
+                values: fighterEffectValues(affectedActor),
               }
             : null;
         actorStatusUpdatePending = false;
@@ -813,9 +871,7 @@ export function planBattleFrame({
         setNext(matchedTarget.instanceId, {
           x,
           hp,
-          statuses: movedTarget.fighter.statuses,
-          attack: movedTarget.fighter.attack,
-          speed: movedTarget.fighter.speed,
+          ...fighterEffectValues(movedTarget.fighter),
         });
         if (actorUpdate) setNext(actorUpdate.id, actorUpdate.values);
         const attackKind =
@@ -849,9 +905,7 @@ export function planBattleFrame({
               id: matchedTarget.instanceId,
               values: {
                 hp,
-                statuses: affectedTarget.statuses,
-                attack: affectedTarget.attack,
-                speed: affectedTarget.speed,
+                ...fighterEffectValues(affectedTarget),
               },
             },
             ...(actorUpdate ? [actorUpdate] : []),
@@ -865,9 +919,7 @@ export function planBattleFrame({
                 id: matchedTarget.instanceId,
                 values: {
                   x,
-                  statuses: movedTarget.fighter.statuses,
-                  attack: movedTarget.fighter.attack,
-                  speed: movedTarget.fighter.speed,
+                  ...fighterEffectValues(movedTarget.fighter),
                 },
               },
             ],
@@ -893,8 +945,8 @@ export function planBattleFrame({
     } else {
       const impact = resolveActionImpact(current, target, instruction);
       const hp = Math.max(0, target.hp - impact.damage);
-      const affectedTarget = applyInstructionStatusEffects(target, instruction, current.instanceId, 'selected');
-      const affectedActor = applyInstructionStatusEffects(current, instruction, current.instanceId, 'actor');
+      const affectedTarget = applyInstructionFighterEffects(target, instruction, current.instanceId, 'selected');
+      const affectedActor = applyInstructionFighterEffects(current, instruction, current.instanceId, 'actor');
       const x =
         hp > 0 && instruction.action === 'throw'
           ? throwBehind(current, target, requireEffect(instruction, 'move').distance)
@@ -905,19 +957,13 @@ export function planBattleFrame({
       setNext(target.instanceId, {
         x,
         hp,
-        statuses: movedTarget.fighter.statuses,
-        attack: movedTarget.fighter.attack,
-        speed: movedTarget.fighter.speed,
+        ...fighterEffectValues(movedTarget.fighter),
       });
       const actorUpdate =
         affectedActor !== current
           ? {
               id: current.instanceId,
-              values: {
-                statuses: affectedActor.statuses,
-                attack: affectedActor.attack,
-                speed: affectedActor.speed,
-              },
+              values: fighterEffectValues(affectedActor),
             }
           : null;
       if (actorUpdate) setNext(actorUpdate.id, actorUpdate.values);
@@ -956,9 +1002,7 @@ export function planBattleFrame({
             id: target.instanceId,
             values: {
               hp,
-              statuses: affectedTarget.statuses,
-              attack: affectedTarget.attack,
-              speed: affectedTarget.speed,
+              ...fighterEffectValues(affectedTarget),
             },
           },
           ...(actorUpdate ? [actorUpdate] : []),
@@ -977,9 +1021,7 @@ export function planBattleFrame({
               id: target.instanceId,
               values: {
                 x,
-                statuses: movedTarget.fighter.statuses,
-                attack: movedTarget.fighter.attack,
-                speed: movedTarget.fighter.speed,
+                ...fighterEffectValues(movedTarget.fighter),
               },
             },
           ],
@@ -1200,12 +1242,18 @@ export function planBattleFrame({
         instruction.targetMode === 'selected'
           ? matchedTargets[0]
           : (selectInstructionTarget(instruction, current, currentEnemies, currentAllies) ?? nearest);
+      if (!instructionAltitudeReady(instruction, current, target)) {
+        traceDecision('skipped', 'state');
+        continue;
+      }
       const isMultiTargetAttack =
         instruction.targetMode === 'allEnemies' && ['attack', 'heavy', 'poison', 'burn'].includes(instruction.action);
       const multiTargets = isMultiTargetAttack
         ? matchedTargets.filter(
             (candidate) =>
-              candidate.team !== current.team && distanceTo(current, candidate) <= actionRange(current, instruction),
+              candidate.team !== current.team &&
+              instructionAltitudeReady(instruction, current, candidate) &&
+              distanceTo(current, candidate) <= actionRange(current, instruction),
           )
         : [];
       if (isMultiTargetAttack && multiTargets.length === 0) {

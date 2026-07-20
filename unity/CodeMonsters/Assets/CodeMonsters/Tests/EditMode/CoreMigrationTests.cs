@@ -20,7 +20,7 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(17));
+            Assert.That(data.SchemaVersion, Is.EqualTo(18));
             Assert.That(data.Battle.TeamSize, Is.EqualTo(1));
             Assert.That(data.Battle.BaseActionLockSeconds, Is.GreaterThan(0));
             Assert.That(data.Battle.BaseActionWindupSeconds, Is.GreaterThan(0));
@@ -90,6 +90,27 @@ namespace CodeMonsters.Core.Tests
             Assert.That(BattleRules.MatchesCondition(enemyHasStatus, actor, enemy), Is.True);
             Assert.That(BattleRules.MatchesCondition(selfHpBelow, actor, actor), Is.True);
             Assert.That(BattleRules.MatchesCondition(selfInspired, actor, enemy), Is.True);
+        }
+
+        [Test]
+        public void AirborneConditionsAndAltitudeRequirementsImport()
+        {
+            var actor = new FighterState
+            {
+                InstanceId = "volt-1",
+                Hp = 100,
+                MaxHp = 100,
+                AirborneRemainingSeconds = 1.2,
+            };
+            var enemy = new FighterState { InstanceId = "enemy-1", Hp = 100, MaxHp = 100 };
+            var selfAirborne = data.Conditions.Single(candidate => candidate.Id == "selfAirborne");
+            var targetGrounded = data.Conditions.Single(candidate => candidate.Id == "targetGrounded");
+            var diveStrike = data.Instructions.Single(candidate => candidate.Id == "dive-strike");
+
+            Assert.That(BattleRules.MatchesCondition(selfAirborne, actor, enemy), Is.True);
+            Assert.That(BattleRules.MatchesCondition(targetGrounded, actor, enemy), Is.True);
+            Assert.That(BattleRules.InstructionAltitudeReady(diveStrike, actor, enemy), Is.True);
+            Assert.That(diveStrike.Effects.Select(effect => effect.Kind), Does.Contain("land"));
         }
 
         [Test]

@@ -126,6 +126,7 @@ const clamp = (value: number, minimum: number, maximum: number) => Math.min(maxi
 
 const baseFighterState = {
   z: 0,
+  airborne: null,
   abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
   instructionCooldowns: {},
   pendingAction: null,
@@ -225,7 +226,9 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
   const actorDefinition = requireUnit(input.actorUnitId);
   const targetDefinition = requireUnit(input.targetUnitId);
   const instruction = requireInstruction(input.instructionId);
-  if (!conditionIds.has(input.conditionId)) throw new Error(`Unknown debug condition: ${input.conditionId}`);
+  const condition = CONDITIONS.find((candidate) => candidate.id === input.conditionId);
+  if (!conditionIds.has(input.conditionId) || !condition)
+    throw new Error(`Unknown debug condition: ${input.conditionId}`);
 
   const actorId = 'debug-actor';
   const dummyId = 'debug-target';
@@ -237,6 +240,16 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
   const targetMaxHp = Math.max(1, Math.round(input.targetMaxHp));
   const targetSelectorId = debugTargetSelector(instruction, input.targetSelectorId);
   const targetDomain: TargetDomain = targetSelectorId === 'self' ? 'self' : 'enemy';
+  const actorStartsAirborne = instruction.altitude?.actor === 'airborne' || condition.kind === 'selfAirborne';
+  const targetStartsAirborne =
+    instruction.altitude?.target === 'airborne' ||
+    condition.kind === 'targetAirborne' ||
+    condition.kind === 'targetAirborneRemainingBelow';
+  const airborneState = (remainingSeconds: number) => ({
+    remainingSeconds,
+    durationSeconds: remainingSeconds,
+    maxHeight: 14,
+  });
 
   const actorInventory: UnitInventoryItem = {
     ...actorDefinition,
@@ -254,6 +267,8 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
       hp: Math.max(1, Math.round(actorDefinition.maxHp * clamp(input.actorHpRatio, 0.01, 1))),
       abilityGauge: clamp(input.initialGauge, 0, BATTLE_CONFIG.abilityGaugeMax),
       x: actorX,
+      z: actorStartsAirborne ? 14 : 0,
+      airborne: actorStartsAirborne ? airborneState(inertCooldown) : null,
       actionLock: 0,
     },
     input.actorStatuses,
@@ -274,6 +289,14 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
       weight: Math.max(0, input.targetWeight),
       attack: 0,
       x: targetX,
+      z: targetStartsAirborne ? 14 : 0,
+      airborne: targetStartsAirborne
+        ? airborneState(
+            condition.kind === 'targetAirborneRemainingBelow'
+              ? (condition.params.thresholdSeconds ?? BATTLE_CONFIG.tickSeconds)
+              : inertCooldown,
+          )
+        : null,
       actionLock: inertCooldown,
     },
     input.targetStatuses,
