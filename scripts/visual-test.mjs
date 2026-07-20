@@ -19,6 +19,8 @@ for (const viewport of [
   const buildOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
+  const targetSlotCount = await page.locator('.target-word-slot').count();
+  const buildCopy = await page.locator('.view-game.phase-build').innerText();
   await page.screenshot({ path: `/tmp/code-monsters-${viewport.name}-build.png`, fullPage: true });
   await page.getByRole('button', { name: /戦闘開始/ }).click();
   await page.waitForSelector('.side-battlefield');
@@ -60,6 +62,8 @@ for (const viewport of [
     viewport: viewport.name,
     deviceScaleFactor: viewport.deviceScaleFactor,
     buildOverflow,
+    targetSlotCount,
+    hasRedundantTargetCopy: buildCopy.includes('対象スロット') || buildCopy.includes('このユニットから見て'),
     battleOverflow,
     battlefieldCount,
     spriteCount,
@@ -87,6 +91,8 @@ for (const result of results) {
   }
   if (result.actionReadoutCount !== 1 || result.actionBubbleCount !== 0)
     throw new Error(`${result.viewport}: 実行者・技・対象の表示が一意ではありません`);
+  if (result.targetSlotCount !== 0 || result.hasRedundantTargetCopy)
+    throw new Error(`${result.viewport}: 1vs1で不要な対象選択UIが残っています`);
   if (result.buildOverflow > 0 || result.battleOverflow > 0)
     throw new Error(`${result.viewport}: 画面が横にはみ出しています`);
   if (result.errors.length > 0) throw new Error(`${result.viewport}: ブラウザエラー: ${result.errors.join(', ')}`);

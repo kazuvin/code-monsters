@@ -78,12 +78,12 @@ const result = {
 };
 console.log(JSON.stringify(result, null, 2));
 
-if (!shopText.includes('RARE / JUMP') || !shopText.includes('水平速度 +12') || !shopText.includes('垂直速度 +54'))
+if (!shopText.includes('RARE / JUMP') || !shopText.includes('水平速度 +12') || !shopText.includes('垂直速度 +68'))
   throw new Error('ジャンプジェットの速度ベース表示が不正です');
 if (!configuredProgram.includes('上昇推力をかける')) throw new Error('ジャンプジェットを通常作戦へ設定できません');
 if (!flightEventSeen || !ascentSeen || !descentSeen || !returnedToFloor)
   throw new Error('Y座標と重力による上昇・下降・接地を確認できません');
-if (horizontalTravel < 4 || peakHeight < 30) throw new Error('ジャンプジェットの大跳躍量が不足しています');
+if (horizontalTravel < 4 || peakHeight < 55) throw new Error('ジャンプジェットの大跳躍量が不足しています');
 if (cannedJumpAnimation) throw new Error('廃止したジャンプ専用アニメーションが再生されています');
 if (staleAltitudeAttribute !== null) throw new Error('地上・空中のカテゴリ属性が戦闘表示に残っています');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

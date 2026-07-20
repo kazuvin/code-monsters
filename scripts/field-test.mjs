@@ -19,7 +19,7 @@ const corrosionCore = page.locator('.shop-item:not(.instruction-shop-item)').fil
 await corrosionCore.getByRole('button', { name: /購入/ }).click();
 
 const firstProgramBlock = page.locator('.workbench > .program-list').first().locator('.sentence-block').first();
-await firstProgramBlock.locator('.word-slot').nth(1).click();
+await firstProgramBlock.locator('.word-slot').first().click();
 await page.locator('.condition-choice-card').filter({ hasText: 'いつでも' }).click();
 await firstProgramBlock.locator('.word-slot').last().click();
 await page.locator('.choice-list .instruction-choice-card').filter({ hasText: '腐食弾を投げ込む' }).click();

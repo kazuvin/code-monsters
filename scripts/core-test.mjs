@@ -166,7 +166,8 @@ const airDash = instructionById.get('air-dash');
 const vectorThrust = instructionById.get('vector-thrust');
 assert.ok(jumpJet && hoverDrive && airDash && vectorThrust, '座標ベースの移動スキルが不足しています');
 const launched = applyInstructionFighterEffects(actor, jumpJet, actor.instanceId, 'actor', { direction: 1 });
-assert.deepEqual([launched.vx, launched.vy], [12, 54], 'ジャンプが現在速度へ大跳躍の推進を加えません');
+assert.deepEqual([launched.vx, launched.vy], [12, 68], 'ジャンプが現在速度へ大跳躍の推進を加えません');
+assert.equal(BATTLE_CONFIG.ceilingY, 96, '高高度ジャンプを途中で止めない天井が設定されていません');
 const groundThrust = applyInstructionFighterEffects(actor, vectorThrust, actor.instanceId, 'actor', {
   direction: 1,
 });
@@ -185,7 +186,7 @@ for (let index = 0; index < 100; index += 1) {
   peakHeight = Math.max(peakHeight, landed.y);
   if (index > 0 && landed.y <= BATTLE_CONFIG.floorY && landed.vy === 0) break;
 }
-assert.ok(peakHeight >= 39, 'ジャンプが地上弾を越える十分な高さへ到達しません');
+assert.ok(peakHeight >= 63, 'ジャンプが地上弾を越える十分な高さへ到達しません');
 assert.equal(landed.y, BATTLE_CONFIG.floorY, '重力で床へ戻りません');
 assert.equal(landed.vy, 0, '床との衝突で垂直速度が止まりません');
 const hovering = applyInstructionFighterEffects(actor, hoverDrive, actor.instanceId, 'actor');
@@ -222,10 +223,26 @@ assert.equal(pathEntersZone({ x: 20, y: 0 }, { x: 80, y: 0 }, { x: 50, y: 10 }, 
 
 const pulseBolt = instructionById.get('pulse-bolt');
 const seekerOrb = instructionById.get('seeker-orb');
-assert.ok(pulseBolt?.delivery?.kind === 'projectile' && seekerOrb?.delivery?.kind === 'projectile');
+const toxinOrb = instructionById.get('toxin-orb');
+const counterOrb = instructionById.get('counter-orb');
+assert.ok(
+  pulseBolt?.delivery?.kind === 'projectile' &&
+    seekerOrb?.delivery?.kind === 'projectile' &&
+    toxinOrb?.delivery?.kind === 'projectile' &&
+    counterOrb?.delivery?.kind === 'projectile',
+);
+assert.equal(toxinOrb.delivery.homing, false, '毒弾が発射後も敵を追尾します');
+for (const instruction of [seekerOrb, counterOrb]) {
+  const damage = instruction.effects.find((effect) => effect.kind === 'damage');
+  assert.ok(damage && damage.attackScale <= 0.42, `${instruction.id} の確定性に対する威力が高すぎます`);
+}
 const direct = createProjectile(pulseBolt, pulseBolt.delivery, { ...actor, x: 20, y: 0 }, { ...enemy, x: 80 }, 1, 0);
 const advancedDirect = advanceProjectile(direct, enemy, 0.5);
 assert.ok(advancedDirect.x > direct.x && Math.abs(advancedDirect.vy - direct.vy) < 0.0001);
+const toxin = createProjectile(toxinOrb, toxinOrb.delivery, { ...actor, x: 20, y: 0 }, { ...enemy, x: 80 }, 1, 0);
+const advancedToxin = advanceProjectile(toxin, { ...enemy, x: 35, y: 30 }, 0.25);
+assert.equal(advancedToxin.vx, toxin.vx, '直進毒弾が移動後の敵へ向けて水平速度を変えます');
+assert.equal(advancedToxin.vy, toxin.vy, '直進毒弾が移動後の敵へ向けて垂直速度を変えます');
 let groundShot = createProjectile(
   pulseBolt,
   pulseBolt.delivery,

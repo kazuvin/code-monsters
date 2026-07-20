@@ -38,6 +38,10 @@ for (const viewport of [
   const berserkerFilled = await page
     .locator('.catalog-skill-card[data-catalog-id="berserker-mode"] .catalog-cost-ruler i.filled')
     .count();
+  const skillCopy = await page.locator('#skills').innerText();
+  const toxinRules = (await page.locator('[data-catalog-id="toxin-orb"]').innerText()).replace(/\s+/g, ' ').trim();
+  const seekerRules = (await page.locator('[data-catalog-id="seeker-orb"]').innerText()).replace(/\s+/g, ' ').trim();
+  const counterRules = (await page.locator('[data-catalog-id="counter-orb"]').innerText()).replace(/\s+/g, ' ').trim();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
@@ -65,6 +69,10 @@ for (const viewport of [
     skillRulerCells,
     impactRingFilled,
     berserkerFilled,
+    hasTargetSlotCopy: skillCopy.includes('対象スロット'),
+    toxinRules,
+    seekerRules,
+    counterRules,
     overflow,
     searchResult,
     errors,
@@ -90,6 +98,13 @@ for (const result of results) {
     throw new Error(`${result.viewport}: スキルの10目盛りCOSTルーラーが不正です`);
   if (result.impactRingFilled !== 4 || result.berserkerFilled !== 3)
     throw new Error(`${result.viewport}: スキルコストがルーラーへ反映されていません`);
+  if (result.hasTargetSlotCopy) throw new Error(`${result.viewport}: 1vs1で不要な対象スロット表記が残っています`);
+  if (!result.toxinRules.includes('直進弾 / 速度17') || !result.toxinRules.includes('ATK×0.38'))
+    throw new Error(`${result.viewport}: 毒弾の直進設定がカタログへ反映されていません`);
+  if (!result.seekerRules.includes('追尾弾') || !result.seekerRules.includes('ATK×0.42'))
+    throw new Error(`${result.viewport}: シーカーオーブの弱体化がカタログへ反映されていません`);
+  if (!result.counterRules.includes('追尾弾') || !result.counterRules.includes('ATK×0.28'))
+    throw new Error(`${result.viewport}: カウンターオーブの弱体化がカタログへ反映されていません`);
   if (
     result.searchResult.instructions !== 1 ||
     !result.searchResult.text.includes('自己修復する') ||

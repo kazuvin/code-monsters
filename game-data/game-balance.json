@@ -19,7 +19,7 @@
     "groundFrictionPerSecond": 18,
     "maxFallSpeed": 42,
     "floorY": 0,
-    "ceilingY": 72,
+    "ceilingY": 96,
     "fighterRadius": 2.4,
     "knockbackVelocityScale": 1.8,
     "initialPositionInset": 2,
@@ -790,7 +790,7 @@
       "name": "コロージョンコア",
       "code": "WP-23",
       "slot": "weapon",
-      "description": "追尾する毒弾、着地して広がる毒床、無限高の腐食柱を接続する射撃コア。",
+      "description": "直進する毒弾、着地して広がる毒床、無限高の腐食柱を接続する射撃コア。",
       "tradeoff": "ATK -4 / KB -8",
       "rarity": "rare",
       "price": 5,
@@ -1137,8 +1137,8 @@
       "effects": [
         {
           "kind": "damage",
-          "attackScale": 0.72,
-          "minimumDamage": 4,
+          "attackScale": 0.42,
+          "minimumDamage": 3,
           "knockbackPower": 0
         },
         {
@@ -1146,15 +1146,15 @@
           "statusId": "vulnerable",
           "target": "selected",
           "stacks": 1,
-          "bonusDamage": 14
+          "bonusDamage": 8
         }
       ]
     },
     {
       "id": "toxin-orb",
-      "title": "毒の追尾弾を放つ",
-      "short": "トキシンオーブ",
-      "flavor": "遅い追尾弾が別の攻撃と異なる時刻に到達し、毒を蓄積する。",
+      "title": "毒弾を直射する",
+      "short": "トキシンボルト",
+      "flavor": "発射時の相手座標へ低速で直進し、命中すると毒を蓄積する。",
       "action": "poison",
       "abilityCost": 2,
       "cooldownSeconds": 3,
@@ -1171,8 +1171,7 @@
         "speed": 17,
         "radius": 2.3,
         "lifetimeSeconds": 5.5,
-        "homing": true,
-        "turnRateDegrees": 115
+        "homing": false
       },
       "effects": [
         {
@@ -1367,7 +1366,7 @@
           "target": "actor",
           "mode": "addVelocity",
           "x": 12,
-          "y": 54,
+          "y": 68,
           "relativeTo": "target"
         }
       ]
@@ -1587,8 +1586,8 @@
       "effects": [
         {
           "kind": "damage",
-          "attackScale": 0.45,
-          "minimumDamage": 3,
+          "attackScale": 0.28,
+          "minimumDamage": 2,
           "knockbackPower": 0
         }
       ]

@@ -29,12 +29,6 @@ const attackTypeLabels: Record<UnitDefinition['attackType'], string> = {
   blunt: '打撃',
   sniper: '狙撃',
 };
-const targetModeLabels: Record<Instruction['targetMode'], string> = {
-  selected: '対象スロット',
-  self: '自分固定',
-  allEnemies: '敵全体固定',
-  allAllies: '味方全体固定',
-};
 const domainLabels = { enemy: '敵', ally: '味方', self: '自分' } as const;
 const cardinalityLabels = { one: '単体', many: '複数' } as const;
 const targetById = new Map(TARGET_SELECTORS.map((target) => [target.id, target]));
@@ -467,13 +461,6 @@ export function Catalog() {
                     <div>
                       <dt>条件</dt>
                       <dd>{conditionById.get(instruction.condition)?.label ?? instruction.condition}</dd>
-                    </div>
-                    <div>
-                      <dt>対象</dt>
-                      <dd>
-                        {targetModeLabels[instruction.targetMode]} /{' '}
-                        {targetById.get(instruction.defaultTarget)?.label ?? instruction.defaultTarget}
-                      </dd>
                     </div>
                     {instruction.delivery && (
                       <div>

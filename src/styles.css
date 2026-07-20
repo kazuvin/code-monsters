@@ -2725,15 +2725,6 @@ button:focus-visible {
   color: #c5ccd5;
   padding: 10px 0;
 }
-.program-viewpoint {
-  color: #8f9aa7;
-  font:
-    600 11px "IBM Plex Mono",
-    "Noto Sans JP",
-    sans-serif;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
 .word-slot {
   border: 1px solid #3b424d;
   background: #12161c;
@@ -2748,26 +2739,6 @@ button:focus-visible {
   background: #30291a;
   color: #ffd46a;
   box-shadow: inset 0 -2px var(--amber);
-}
-.target-word-slot {
-  --target-accent: var(--red);
-  border-color: color-mix(in srgb, var(--target-accent) 55%, #3b424d);
-  color: color-mix(in srgb, var(--target-accent) 72%, #fff);
-}
-.target-word-slot.target-ally {
-  --target-accent: var(--lime);
-}
-.target-word-slot.target-self {
-  --target-accent: var(--amber);
-}
-.target-word-slot.target-many {
-  border-style: double;
-}
-.target-word-slot.active {
-  border-color: var(--target-accent);
-  background: color-mix(in srgb, var(--target-accent) 13%, #12161c);
-  color: #fff;
-  box-shadow: inset 0 -2px var(--target-accent);
 }
 .remove-line {
   height: 100%;
@@ -3689,8 +3660,7 @@ button:focus-visible {
   letter-spacing: 0.06em;
 }
 .choice-list .instruction-choice-card,
-.choice-list .condition-choice-card,
-.choice-list .target-choice-card {
+.choice-list .condition-choice-card {
   --choice-accent: var(--cyan);
   position: relative;
   min-height: 164px;
@@ -3711,8 +3681,7 @@ button:focus-visible {
     background 0.16s ease;
 }
 .choice-list .instruction-choice-card:before,
-.choice-list .condition-choice-card:before,
-.choice-list .target-choice-card:before {
+.choice-list .condition-choice-card:before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
@@ -3721,15 +3690,13 @@ button:focus-visible {
   opacity: 0.38;
 }
 .choice-list .instruction-choice-card:hover,
-.choice-list .condition-choice-card:hover,
-.choice-list .target-choice-card:hover {
+.choice-list .condition-choice-card:hover {
   transform: translateY(-1px);
   border-color: #58616e;
   background: linear-gradient(145deg, #282d36 0, #1c2027 72%);
 }
 .choice-list .instruction-choice-card.active,
-.choice-list .condition-choice-card.active,
-.choice-list .target-choice-card.active {
+.choice-list .condition-choice-card.active {
   border-color: var(--choice-accent);
   background: linear-gradient(145deg, #20313a 0, #182128 72%);
   color: #f7fbfd;
@@ -3761,8 +3728,7 @@ button:focus-visible {
   letter-spacing: 0.09em;
 }
 .choice-list .instruction-choice-card > strong,
-.choice-list .condition-choice-card > strong,
-.choice-list .target-choice-card > strong {
+.choice-list .condition-choice-card > strong {
   display: block;
   margin-top: 5px;
   font-size: 16px;
@@ -3775,25 +3741,6 @@ button:focus-visible {
   font-size: 10px;
   line-height: 1.55;
   font-weight: 500;
-}
-.choice-action-target {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 9px;
-  padding: 6px 8px;
-  border: 1px solid #343a44;
-  background: #15191f;
-}
-.choice-action-target small {
-  color: #737c88;
-  font: 600 7px "IBM Plex Mono";
-  letter-spacing: 0.06em;
-}
-.choice-action-target b {
-  color: var(--choice-accent);
-  font: 600 10px "IBM Plex Mono";
 }
 .choice-card-state {
   position: absolute;
@@ -3853,30 +3800,9 @@ button:focus-visible {
   color: #eff4f7;
   font: 600 12px "IBM Plex Mono";
 }
-.choice-list .condition-choice-card,
-.choice-list .target-choice-card {
+.choice-list .condition-choice-card {
   min-height: 136px;
   grid-template-rows: auto auto 1fr auto;
-}
-.choice-list .target-choice-card {
-  --choice-accent: var(--red);
-  min-height: 112px;
-  grid-template-rows: auto auto 1fr;
-}
-.choice-list .target-choice-card.target-ally {
-  --choice-accent: var(--lime);
-}
-.choice-list .target-choice-card.target-self {
-  --choice-accent: var(--amber);
-}
-.choice-list .target-choice-card.target-many:after {
-  content: "MULTI";
-  position: absolute;
-  right: 10px;
-  bottom: 9px;
-  color: var(--choice-accent);
-  font: 600 7px "IBM Plex Mono";
-  letter-spacing: 0.08em;
 }
 .condition-effect {
   align-self: end;
@@ -3933,15 +3859,13 @@ button:focus-visible {
 }
 @media (max-width: 800px) {
   .choice-list .instruction-choice-card,
-  .choice-list .condition-choice-card,
-  .choice-list .target-choice-card {
+  .choice-list .condition-choice-card {
     min-height: 142px;
   }
   .choice-card-flavor {
     min-height: 0;
   }
-  .choice-list .condition-choice-card,
-  .choice-list .target-choice-card {
+  .choice-list .condition-choice-card {
     min-height: 126px;
   }
 }
@@ -3964,13 +3888,11 @@ button:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .choice-list .instruction-choice-card,
-  .choice-list .condition-choice-card,
-  .choice-list .target-choice-card {
+  .choice-list .condition-choice-card {
     transition: none;
   }
   .choice-list .instruction-choice-card:hover,
-  .choice-list .condition-choice-card:hover,
-  .choice-list .target-choice-card:hover {
+  .choice-list .condition-choice-card:hover {
     transform: none;
   }
 }
@@ -4697,7 +4619,7 @@ button:focus-visible {
   .mobile-program-preview > div {
     min-height: 30px;
     display: grid;
-    grid-template-columns: 22px minmax(62px, 0.8fr) minmax(68px, 0.9fr) minmax(78px, 1fr);
+    grid-template-columns: 22px minmax(68px, 0.9fr) minmax(78px, 1fr);
     align-items: center;
     gap: 5px;
     border-bottom: 1px solid #272c34;
@@ -4710,16 +4632,12 @@ button:focus-visible {
     color: #5f6874;
     font: 600 7px "IBM Plex Mono";
   }
-  .mobile-program-preview span,
   .mobile-program-preview i,
   .mobile-program-preview b {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .mobile-program-preview span {
-    color: #ff939b;
   }
   .mobile-program-preview i {
     color: #c5cbd3;
@@ -4940,15 +4858,13 @@ button:focus-visible {
     overflow-y: auto;
   }
   .view-game.phase-build .choice-list .instruction-choice-card,
-  .view-game.phase-build .choice-list .condition-choice-card,
-  .view-game.phase-build .choice-list .target-choice-card {
+  .view-game.phase-build .choice-list .condition-choice-card {
     min-height: 82px;
     padding: 8px 9px;
     grid-template-rows: auto auto 1fr;
   }
   .view-game.phase-build .choice-list .instruction-choice-card > strong,
-  .view-game.phase-build .choice-list .condition-choice-card > strong,
-  .view-game.phase-build .choice-list .target-choice-card > strong {
+  .view-game.phase-build .choice-list .condition-choice-card > strong {
     margin-top: 3px;
     padding-right: 33px;
     font-size: 11px;
@@ -4958,7 +4874,6 @@ button:focus-visible {
     font-size: 6px;
   }
   .view-game.phase-build .choice-card-flavor,
-  .view-game.phase-build .choice-action-target,
   .view-game.phase-build .condition-effect {
     display: none;
   }
