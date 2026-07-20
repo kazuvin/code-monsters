@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "rules": {
+    "lanes": 3,
+    "programSlots": 4,
+    "maxRounds": 4,
+    "stackLimit": 2,
+    "startingCoins": 7,
+    "winReward": 4,
+    "retryReward": 1,
+    "rerollCost": 1,
+    "shopSize": 5
+  },
+  "units": [
+    { "id": "volt", "name": "ヴォルト", "code": "V-01", "maxHp": 15, "color": "#5de7f2" },
+    { "id": "bastion", "name": "バスティオン", "code": "B-07", "maxHp": 19, "color": "#ffd36a" },
+    { "id": "relay", "name": "リレイ", "code": "R-11", "maxHp": 13, "color": "#ff786e" }
+  ],
+  "commands": [
+    {
+      "id": "strike",
+      "code": "HIT",
+      "title": "攻撃",
+      "description": "正面へ3ダメージ",
+      "price": 2,
+      "rarity": "common",
+      "shopWeight": 4,
+      "effect": { "kind": "damage", "amount": 3 }
+    },
+    {
+      "id": "guard",
+      "code": "GRD",
+      "title": "守る",
+      "description": "シールドを3得る",
+      "price": 2,
+      "rarity": "common",
+      "shopWeight": 4,
+      "effect": { "kind": "shield", "amount": 3 }
+    },
+    {
+      "id": "charge",
+      "code": "PWR",
+      "title": "ためる",
+      "description": "パワーを1ためる",
+      "price": 2,
+      "rarity": "common",
+      "shopWeight": 4,
+      "effect": { "kind": "charge", "amount": 1 }
+    },
+    {
+      "id": "burst",
+      "code": "BST",
+      "title": "放つ",
+      "description": "パワーを全部ダメージへ",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "effect": { "kind": "burst", "baseDamage": 2, "damagePerPower": 2 }
+    },
+    {
+      "id": "loop",
+      "code": "RPT",
+      "title": "もう一度",
+      "description": "ひとつ前を再実行",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "effect": { "kind": "repeatPrevious" }
+    },
+    {
+      "id": "link",
+      "code": "LNK",
+      "title": "わける",
+      "description": "次の仲間へパワーを1渡す",
+      "price": 2,
+      "rarity": "common",
+      "shopWeight": 3,
+      "effect": { "kind": "sharePower", "amount": 1 }
+    },
+    {
+      "id": "repair",
+      "code": "FIX",
+      "title": "直す",
+      "description": "弱った仲間を3回復",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "effect": { "kind": "healLowest", "amount": 3 }
+    }
+  ],
+  "startingInventory": [
+    "strike",
+    "strike",
+    "strike",
+    "guard",
+    "guard",
+    "charge",
+    "charge",
+    "burst",
+    "loop",
+    "loop",
+    "link",
+    "repair"
+  ],
+  "playerProgram": [
+    ["charge", "strike", "loop", "burst"],
+    ["guard", "strike", "loop", "guard"],
+    ["charge", "link", "repair", "strike"]
+  ],
+  "enemyProgram": [
+    ["strike", "charge", "burst", "strike"],
+    ["guard", "strike", "guard", "strike"],
+    ["charge", "link", "strike", "repair"]
+  ]
+}

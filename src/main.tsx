@@ -1,9 +1,11 @@
-import ReactDOM from 'react-dom/client';
+import '@fontsource/pixelify-sans/600.css';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './styles.css';
-import './catalog.css';
-import './debug-room.css';
-import './battle-status.css';
-import './berserker.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

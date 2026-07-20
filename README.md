@@ -1,41 +1,37 @@
-# Code Monsters
+# CODE MONSTERS
 
-Code Monsters is a one-on-one programmable auto-battle prototype. A single duelist is configured with an ordered normal program and one interrupt reaction before facing five authored rival protocols. The repository includes a React/Vite web client, canonical JSON game data, a deterministic TypeScript battle core, a Unity 6 migration project, and an authoring-time sprite asset pipeline.
+3体のモンスターに4つの命令を並べ、同時実行されるターン制バトルを見守るミニプロトタイプです。
 
-The playable animation scope is deliberately limited to three reusable unit bodies: `volt`, `bastion`, and `relay`. Matchup variety comes from purchasable skills, spatial interactions, reactions, and enemy programs rather than equipment layers or a large recruitable roster.
+## 遊び方
 
-## Repository layout
+1. 作戦ボードのマスを選ぶ
+2. 命令チップを置く
+3. ショップで命令を増やす
+4. 「プログラム実行」で3対3の結果を見る
 
-```text
-src/                         Web application and deterministic game core
-game-data/                   Canonical gameplay data and golden combat cases
-game-assets/                 Sprite pipeline configuration, specs, approved assets
-packages/asset-contracts/    Language-neutral JSON contracts
-tools/asset-cli/             TypeScript orchestration and approval CLI
-tools/sprite-pipeline/       Python/OpenCV/Pillow image processing
-unity/CodeMonsters/          Unity 6 core migration and presentation importer
-scripts/                     Verification and browser/Unity test entrypoints
-docs/                        Architecture and operator documentation
-```
+`もう一度` は、ひとつ前の命令を再実行します。連鎖は2段までです。
 
-The root is a pnpm workspace. Python dependencies are locked separately with uv, and Unity keeps its own package manifest.
-
-## Setup
+## 開発
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm assets:python:setup
-```
-
-## Main commands
-
-```bash
+pnpm install
 pnpm dev
 pnpm verify
-pnpm synergy:report
-pnpm test:unity-core
-pnpm test:unity-assets:compile
-pnpm test:unity-assets
+pnpm test:browser
 ```
 
-For the sprite authoring flow, see [docs/sprite-asset-workflow.md](docs/sprite-asset-workflow.md).
+- `src/game/game.json`: ユニット、命令、初期構成、ゲームルール
+- `src/core/`: UIに依存しない決定的な戦闘・ショップ・装備ロジック
+- `src/App.tsx`: 状態管理と画面
+- `src/styles.css`: ピクセルアート風のプレゼンテーション
+
+旧リアルタイム版はブランチ `archive/realtime-prototype-v1` とタグ `realtime-prototype-v1` に保存しています。
+
+## デプロイ
+
+```bash
+pnpm build
+pnpm deploy
+```
+
+Cloudflare Workers Static Assets に `dist/` を公開します。

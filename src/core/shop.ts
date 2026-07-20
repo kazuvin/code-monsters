@@ -1,46 +1,45 @@
-import { INSTRUCTIONS, ROSTER_CONFIG, SHOP_CONFIG } from '../data.ts';
-import type { Rarity } from '../types.ts';
+import type { CommandDefinition, ShopOffer } from './types';
 
-export type ShopItem = {
-  key: string;
-  slot: number;
-  id: string;
-  locked: boolean;
+const randomUnit = (seed: number) => {
+  const value = Math.sin(seed * 9301 + 49297) * 233280;
+  return value - Math.floor(value);
 };
 
-const shopInstructions = INSTRUCTIONS.filter(
-  (instruction) =>
-    !instruction.fixedFor && instruction.price > 0 && !ROSTER_CONFIG.startingActionIds.includes(instruction.id),
-);
-
-const seededRandom = (seed: number) => {
-  const x = Math.sin(seed * 999.7 + 17.13) * 10000;
-  return x - Math.floor(x);
-};
-
-const weightedPick = <T extends { rarity: Rarity }>(items: T[], seed: number): T => {
-  if (items.length === 0) throw new Error('Shop candidate pool is empty');
-  const total = items.reduce((sum, item) => sum + SHOP_CONFIG.rarityWeights[item.rarity], 0);
-  let cursor = seededRandom(seed) * total;
-  for (const item of items) {
-    cursor -= SHOP_CONFIG.rarityWeights[item.rarity];
-    if (cursor <= 0) return item;
+const pickWeighted = (commands: CommandDefinition[], seed: number) => {
+  const total = commands.reduce((sum, command) => sum + (command.shopWeight ?? 1), 0);
+  let cursor = randomUnit(seed) * total;
+  for (const command of commands) {
+    cursor -= command.shopWeight ?? 1;
+    if (cursor <= 0) return command;
   }
-  return items[items.length - 1];
+  return commands[commands.length - 1];
 };
 
-export function createShop(seed = 0, current: ShopItem[] = []): ShopItem[] {
-  const retainedBySlot = new Map(current.filter((item) => item.locked).map((item) => [item.slot, item]));
-  const usedIds = new Set<string>();
-  return Array.from({ length: SHOP_CONFIG.size }, (_, index): ShopItem => {
-    const retained = retainedBySlot.get(index);
-    if (retained && !usedIds.has(retained.id)) {
-      usedIds.add(retained.id);
-      return retained;
-    }
-    const candidates = shopInstructions.filter((item) => !usedIds.has(item.id));
-    const id = weightedPick(candidates, seed * 17 + index * 13 + 5).id;
-    usedIds.add(id);
-    return { key: `${seed}-${index}`, slot: index, id, locked: false };
+export function createShop(commands: CommandDefinition[], seed: number, size: number): ShopOffer[] {
+  if (commands.length < size) throw new Error('Shop size exceeds the command pool');
+  const used = new Set<string>();
+  return Array.from({ length: size }, (_, slot) => {
+    const candidates = commands.filter((command) => !used.has(command.id));
+    const command = pickWeighted(candidates, seed * 17 + slot * 31 + 7);
+    used.add(command.id);
+    return { id: `${seed}-${slot}-${command.id}`, slot, commandId: command.id, locked: false };
+  });
+}
+
+export function rerollShop(
+  commands: CommandDefinition[],
+  current: ShopOffer[],
+  seed: number,
+  size: number,
+): ShopOffer[] {
+  const retained = new Map(current.filter((offer) => offer.locked).map((offer) => [offer.slot, offer]));
+  const used = new Set([...retained.values()].map((offer) => offer.commandId));
+  return Array.from({ length: size }, (_, slot) => {
+    const locked = retained.get(slot);
+    if (locked) return locked;
+    const candidates = commands.filter((command) => !used.has(command.id));
+    const command = pickWeighted(candidates, seed * 17 + slot * 31 + 7);
+    used.add(command.id);
+    return { id: `${seed}-${slot}-${command.id}`, slot, commandId: command.id, locked: false };
   });
 }
