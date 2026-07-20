@@ -958,7 +958,7 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "setVelocity",
+          "mode": "addVelocity",
           "x": 20,
           "y": 0,
           "relativeTo": "target"
@@ -1341,7 +1341,7 @@
       "id": "jump-jet",
       "title": "上昇推力をかける",
       "short": "ジャンプジェット",
-      "flavor": "前方と上方へ初速度を与える。軌道は重力とその後の速度変更で決まる。",
+      "flavor": "前方へ踏み込みながら大きな上向き初速度を与え、地上を走る直進弾を飛び越える。",
       "action": "jump",
       "abilityCost": 2,
       "cooldownSeconds": 4,
@@ -1360,7 +1360,7 @@
           "target": "actor",
           "mode": "setVelocity",
           "x": 14,
-          "y": 30,
+          "y": 54,
           "relativeTo": "target"
         }
       ]
@@ -1420,7 +1420,7 @@
         {
           "kind": "motion",
           "target": "actor",
-          "mode": "setVelocity",
+          "mode": "addVelocity",
           "x": 28,
           "y": 0,
           "relativeTo": "target"

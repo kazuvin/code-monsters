@@ -27,6 +27,7 @@ import { createShop } from '../src/core/shop.ts';
 import {
   advanceProjectile,
   createProjectile,
+  projectileInBounds,
   projectileIntersectsFighter,
   resolveAttackShape,
   shapeIntersectsFighter,
@@ -162,14 +163,25 @@ assert.ok('y' in actor && 'vx' in actor && 'vy' in actor && !('airborne' in acto
 const jumpJet = instructionById.get('jump-jet');
 const hoverDrive = instructionById.get('hover-drive');
 const airDash = instructionById.get('air-dash');
-assert.ok(jumpJet && hoverDrive && airDash, '座標ベースの移動スキルが不足しています');
+const vectorThrust = instructionById.get('vector-thrust');
+assert.ok(jumpJet && hoverDrive && airDash && vectorThrust, '座標ベースの移動スキルが不足しています');
 const launched = applyInstructionFighterEffects(actor, jumpJet, actor.instanceId, 'actor', { direction: 1 });
-assert.deepEqual([launched.vx, launched.vy], [14, 30], 'ジャンプが初速度を設定しません');
+assert.deepEqual([launched.vx, launched.vy], [14, 54], 'ジャンプが大跳躍用の初速度を設定しません');
+const thrustWhileRising = applyInstructionFighterEffects(launched, vectorThrust, actor.instanceId, 'actor', {
+  direction: 1,
+});
+assert.equal(thrustWhileRising.vy, launched.vy, '水平推力がジャンプの上昇速度を打ち消します');
+assert.ok(thrustWhileRising.vx > launched.vx, '水平推力が現在の軌道へ加速を合成しません');
 const rising = tickCooldowns([launched], 0.5)[0];
 assert.ok(rising.x > actor.x && rising.y > actor.y && rising.vy < launched.vy, '重力軌道で前進・上昇しません');
-let landed = rising;
-for (let index = 0; index < 100 && landed.y > BATTLE_CONFIG.floorY; index += 1)
-  landed = tickCooldowns([landed], BATTLE_CONFIG.tickSeconds)[0];
+let landed = launched;
+let peakHeight = launched.y;
+for (let index = 0; index < 100; index += 1) {
+  [landed] = tickCooldowns([landed], BATTLE_CONFIG.tickSeconds);
+  peakHeight = Math.max(peakHeight, landed.y);
+  if (index > 0 && landed.y <= BATTLE_CONFIG.floorY && landed.vy === 0) break;
+}
+assert.ok(peakHeight >= 39, 'ジャンプが地上弾を越える十分な高さへ到達しません');
 assert.equal(landed.y, BATTLE_CONFIG.floorY, '重力で床へ戻りません');
 assert.equal(landed.vy, 0, '床との衝突で垂直速度が止まりません');
 const hovering = applyInstructionFighterEffects(actor, hoverDrive, actor.instanceId, 'actor');
@@ -180,6 +192,7 @@ const airborneDash = applyInstructionFighterEffects({ ...rising, y: 12 }, airDas
 });
 assert.equal(airborneDash.y, 12, '空中ダッシュが現在Y座標を上書きします');
 assert.ok(airborneDash.vx > 0, '空中ダッシュが水平速度を作りません');
+assert.equal(airborneDash.vy, rising.vy, '空中ダッシュが現在の上下軌道を打ち消します');
 
 assert.equal(matchCondition('selfHeightAbove8', { ...actor, y: 9 }, [enemy]).length, 1);
 assert.equal(matchCondition('selfHeightBelow3', { ...actor, y: 2 }, [enemy]).length, 1);
@@ -208,6 +221,29 @@ assert.ok(pulseBolt?.delivery?.kind === 'projectile' && seekerOrb?.delivery?.kin
 const direct = createProjectile(pulseBolt, pulseBolt.delivery, { ...actor, x: 20, y: 0 }, { ...enemy, x: 80 }, 1, 0);
 const advancedDirect = advanceProjectile(direct, enemy, 0.5);
 assert.ok(advancedDirect.x > direct.x && Math.abs(advancedDirect.vy - direct.vy) < 0.0001);
+let groundShot = createProjectile(
+  pulseBolt,
+  pulseBolt.delivery,
+  { ...enemy, x: 20, y: BATTLE_CONFIG.floorY },
+  { ...actor, x: 80, y: BATTLE_CONFIG.floorY },
+  1,
+  1,
+);
+let jumpingTarget = applyInstructionFighterEffects(
+  { ...actor, x: 80, y: BATTLE_CONFIG.floorY },
+  jumpJet,
+  actor.instanceId,
+  'actor',
+  { direction: -1 },
+);
+let groundShotHit = false;
+for (let index = 0; index < 30 && projectileInBounds(groundShot); index += 1) {
+  const previous = groundShot;
+  groundShot = advanceProjectile(previous, jumpingTarget, BATTLE_CONFIG.tickSeconds);
+  [jumpingTarget] = tickCooldowns([jumpingTarget], BATTLE_CONFIG.tickSeconds);
+  groundShotHit ||= projectileIntersectsFighter(previous, groundShot, jumpingTarget);
+}
+assert.equal(groundShotHit, false, '大跳躍中の対象へ発射済み地上直進弾が命中します');
 assert.equal(
   projectileIntersectsFighter({ ...direct, x: 40, y: 0 }, { ...direct, x: 60, y: 0 }, { ...enemy, x: 50, y: 0 }),
   true,
