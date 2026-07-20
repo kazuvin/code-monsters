@@ -79,10 +79,7 @@ for (const preset of DEBUG_TRAINING_CONFIG.positionPresets) {
 for (const instruction of INSTRUCTIONS) {
   const condition = CONDITIONS.find((candidate) => candidate.id === instruction.condition);
   assert.ok(condition, `${instruction.id} の条件を解決できません`);
-  const actor =
-    (instruction.fixedFor && unitById.get(instruction.fixedFor)) ||
-    (instruction.action === 'heal' ? unitById.get('mender') : undefined) ||
-    defaultActor;
+  const actor = (instruction.fixedFor && unitById.get(instruction.fixedFor)) || defaultActor;
   const actorStatuses = createDefaultDebugStatuses();
   const targetStatuses = createDefaultDebugStatuses();
   if (condition.kind === 'targetHasStatus') {

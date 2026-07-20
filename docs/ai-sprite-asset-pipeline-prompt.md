@@ -1,4 +1,6 @@
-# Code Monsters AI Sprite Production Pipeline
+# Archived design brief: AI Sprite Production Pipeline
+
+> This brief records the original pipeline proposal and is not the current character-animation policy. Final combat animation for `volt`, `bastion`, and `relay` is now hand-authored. Use AI generation for static backgrounds, equipment icons, portraits, effects, and non-animated props. The deterministic processing, QA, approval, and Unity export stages remain supported; follow `docs/sprite-asset-workflow.md` for the active workflow.
 
 ## あなたの役割
 

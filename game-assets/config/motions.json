@@ -74,14 +74,6 @@
       "generationHints": "Target-side airborne tumble without losing body parts."
     },
     {
-      "motionId": "taunt",
-      "frames": 6,
-      "fps": 10,
-      "loop": false,
-      "fallbackMotionId": "idle",
-      "generationHints": "Confident challenge gesture; runtime adds the lock effect."
-    },
-    {
       "motionId": "pull",
       "frames": 6,
       "fps": 12,
@@ -114,6 +106,14 @@
       "generationHints": "Operate repair equipment; runtime adds healing effects."
     },
     {
+      "motionId": "buff",
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "fallbackMotionId": "idle",
+      "generationHints": "Activate an internal overclock or support system while keeping the body silhouette stable."
+    },
+    {
       "motionId": "heavy",
       "frames": 8,
       "fps": 12,
@@ -128,14 +128,6 @@
       "loop": false,
       "fallbackMotionId": "attack",
       "generationHints": "Fire a toxin payload; do not bake persistent poison haze into the unit."
-    },
-    {
-      "motionId": "burn",
-      "frames": 6,
-      "fps": 12,
-      "loop": false,
-      "fallbackMotionId": "attack",
-      "generationHints": "Fire a thermal payload; runtime owns persistent burn effects."
     },
     {
       "motionId": "follow",

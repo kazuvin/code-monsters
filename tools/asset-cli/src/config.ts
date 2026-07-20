@@ -6,7 +6,15 @@ const stableId = /^[a-z][a-z0-9-]*$/;
 
 export async function loadGameData(): Promise<GameData> {
   const data = await readJson<GameData>(gameDataPath);
-  if (!Number.isInteger(data.schemaVersion) || !Array.isArray(data.units) || !Array.isArray(data.instructions)) {
+  if (
+    !Number.isInteger(data.schemaVersion) ||
+    !Array.isArray(data.units) ||
+    !Array.isArray(data.instructions) ||
+    !Array.isArray(data.equipment) ||
+    !Array.isArray(data.encounters) ||
+    !Array.isArray(data.roster?.startingUnitIds) ||
+    !Array.isArray(data.roster?.startingEquipmentIds)
+  ) {
     throw new Error('game-data/game-balance.json does not match the asset CLI contract');
   }
   return data;

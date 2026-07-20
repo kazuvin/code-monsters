@@ -76,14 +76,15 @@ const shopItems = {
 };
 await page.screenshot({ path: '/tmp/code-monsters-mobile-command-shop.png' });
 
-await page.locator('.mobile-build-dock button').filter({ hasText: '編成' }).click();
-const squad = await viewportSnapshot();
-const squadActions = {
-  sell: await page.locator('.mobile-panel-squad .sell-unit').isVisible(),
-  bench: await page.locator('.mobile-panel-squad .bench-unit').isVisible(),
-  inventory: await page.locator('.mobile-panel-squad .inventory-grid').isVisible(),
+await page.locator('.mobile-build-dock button').filter({ hasText: '装備' }).click();
+const loadout = await viewportSnapshot();
+const loadoutDetails = {
+  rack: await page.locator('.mobile-panel-loadout .loadout-rack').isVisible(),
+  bays: await page.locator('.mobile-panel-loadout .loadout-bay').count(),
+  options: await page.locator('.mobile-panel-loadout .loadout-options button').count(),
+  labels: await page.locator('.mobile-panel-loadout .loadout-bay-head small').allInnerTexts(),
 };
-await page.screenshot({ path: '/tmp/code-monsters-mobile-command-squad.png' });
+await page.screenshot({ path: '/tmp/code-monsters-mobile-command-loadout.png' });
 
 await page.getByRole('button', { name: 'パネルを閉じる' }).click();
 const closed = await viewportSnapshot();
@@ -95,14 +96,14 @@ const result = {
   program: { ...program, rows: programRows, title: programPanelTitle },
   reaction: { ...reaction, visible: reactionVisible },
   shop: { ...shop, flow: shopFlow, items: shopItems },
-  squad: { ...squad, actions: squadActions },
+  loadout: { ...loadout, details: loadoutDetails },
   closed,
   errors,
 };
 console.log(JSON.stringify(result, null, 2));
 
 if (main.documentOverflow.x > 0 || main.documentOverflow.y > 0 || main.pageScroll.x !== 0 || main.pageScroll.y !== 0)
-  throw new Error('モバイル編成メイン画面にページスクロールが残っています');
+  throw new Error('モバイルのデュエル準備画面にページスクロールが残っています');
 if (
   !main.topbar ||
   !main.encounter ||
@@ -113,7 +114,7 @@ if (
   main.dock.bottom !== main.viewport.height
 )
   throw new Error('モバイルの指揮画面が1画面内に収まっていません');
-for (const label of ['通常', '反応', '編成', '購入', '戦闘開始'])
+for (const label of ['通常', '反応', '装備', '購入', '戦闘開始'])
   if (!dockLabels.includes(label)) throw new Error(`固定コマンドドックに${label}がありません`);
 if (
   !programPanelTitle.includes('通常作戦') ||
@@ -133,6 +134,11 @@ if (
   shopFlow.scrollHeight > shopFlow.clientHeight + 1
 )
   throw new Error('ショップの重複なし4商品が1画面内に収まっていません');
-if (!squadActions.sell || !squadActions.bench || !squadActions.inventory)
-  throw new Error('編成シートで売却・外す・控え操作を行えません');
+if (
+  !loadoutDetails.rack ||
+  loadoutDetails.bays !== 3 ||
+  loadoutDetails.options < 3 ||
+  !['フレーム', 'ウェポン', 'ロジックチップ'].every((label) => loadoutDetails.labels.includes(label))
+)
+  throw new Error('装備シートで3つのハードウェアベイを操作できません');
 if (closed.documentOverflow.y > 0 || errors.length > 0) throw new Error(`モバイルUIエラー: ${errors.join(', ')}`);

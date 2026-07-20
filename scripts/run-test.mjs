@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 
 const targetUrl = process.argv[2] ?? 'http://127.0.0.1:5173/';
@@ -24,6 +25,7 @@ const reportedDamage = await page
     elements.reduce((total, element) => total + Number.parseFloat(element.textContent ?? '0'), 0),
   );
 const summaryText = (await page.locator('.result-summary').innerText()).replace(/\s+/g, ' ').trim();
+const resultTitle = await page.locator('.result-dialog h1').innerText();
 const desktopOverflow = await page.evaluate(
   () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
 );
@@ -32,10 +34,9 @@ await page.screenshot({ path: '/tmp/code-monsters-run-report-desktop.png', fullP
 const downloadPromise = page.waitForEvent('download');
 await page.getByRole('button', { name: /リプレイJSON/ }).click();
 const download = await downloadPromise;
-const stream = await download.createReadStream();
-const chunks = [];
-for await (const chunk of stream) chunks.push(chunk);
-const replay = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+const replayPath = await download.path();
+if (!replayPath) throw new Error('リプレイJSONの一時ファイルを取得できません');
+const replay = JSON.parse(await fs.readFile(replayPath, 'utf8'));
 const replayDamage = replay.frames
   .flatMap((frame) => frame.queuedSteps ?? [])
   .map((step) => step.damage)
@@ -59,6 +60,7 @@ console.log(
       reportRows,
       reportText,
       summaryText,
+      resultTitle,
       replay: {
         schemaVersion: replay.schemaVersion,
         encounter: replay.encounter?.id,
@@ -78,14 +80,24 @@ console.log(
   ),
 );
 
-if (!encounterText.includes('MISSION 01') || !encounterText.includes('接近戦プロトコル'))
-  throw new Error('初回遭遇の予告が編成画面に表示されていません');
+if (
+  !encounterText.includes('MISSION 01') ||
+  !encounterText.includes('ラッシュ・プロトコル') ||
+  !encounterText.includes('ENEMY PROGRAM')
+)
+  throw new Error('初回の1vs1遭遇と敵プログラムが準備画面に表示されていません');
 if (reportRows === 0 || !reportText.includes('COMBAT EXECUTION TRACE') || !reportText.includes('DMG'))
   throw new Error('戦闘結果に指示実行レポートが表示されていません');
 if (reportedDamage <= 0) throw new Error('指示実行レポートに技別ダメージが集計されていません');
+if (resultTitle !== '勝利') throw new Error('初期ロードアウトで最初の1vs1を突破できません');
 for (const label of ['実行イベント', '戦闘時間', 'ゲージ空', 'ゲージ満タン'])
   if (!summaryText.includes(label)) throw new Error(`戦闘サマリーに${label}がありません`);
-if (replay.schemaVersion !== 14 || replay.encounter?.id !== 'opening-line')
+if (
+  replay.schemaVersion !== 15 ||
+  replay.encounter?.id !== 'rush-protocol' ||
+  replay.initialFighters?.filter((fighter) => fighter.team === 'ally').length !== 1 ||
+  replay.initialFighters?.filter((fighter) => fighter.team === 'enemy').length !== 1
+)
   throw new Error('リプレイJSONに遭遇とスキーマ情報が保存されていません');
 if (!Array.isArray(replay.frames) || replay.frames.length === 0)
   throw new Error('リプレイJSONに戦闘フレームがありません');

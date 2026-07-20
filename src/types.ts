@@ -19,7 +19,8 @@ export type ActionType =
   | 'wait';
 export type AttackType = 'melee' | 'blunt' | 'sniper';
 export type Rarity = 'common' | 'rare' | 'epic';
-export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'partnerAttackHit' | 'selfHpLow';
+export type ReactionTrigger = 'selfAttackHit' | 'selfHit' | 'selfHpLow';
+export type EquipmentSlot = 'frame' | 'weapon' | 'chip';
 export type ConditionId = string;
 export type ConditionKind =
   | 'always'
@@ -189,13 +190,35 @@ export type UnitDefinition = {
   attack: number;
   defense: number;
   speed: number;
-  price: number;
   range: number;
   knockbackPower: number;
   weight: number;
   attackType: AttackType;
   rarity: Rarity;
   programLimit: number;
+};
+
+export type EquipmentModifiers = Partial<
+  Pick<
+    UnitDefinition,
+    'maxHp' | 'attack' | 'defense' | 'speed' | 'range' | 'knockbackPower' | 'weight' | 'programLimit'
+  >
+> & {
+  attackType?: AttackType;
+};
+
+export type EquipmentDefinition = {
+  id: string;
+  name: string;
+  code: string;
+  slot: EquipmentSlot;
+  description: string;
+  tradeoff: string;
+  rarity: Rarity;
+  price: number;
+  modifiers: EquipmentModifiers;
+  grantsActionIds: string[];
+  defaultReaction: ReactionBlock | null;
 };
 
 export type Instruction = {
@@ -221,6 +244,14 @@ export type Instruction = {
   showAttackTypeLabel?: boolean;
 };
 
+export type ProgramBlock = {
+  targetId: TargetSelectorId;
+  conditionId: ConditionId;
+  actionId: string;
+  fixedAction?: boolean;
+};
+export type ReactionBlock = { trigger: ReactionTrigger; actionId: string; fixedReaction?: boolean };
+
 export type Fighter = UnitDefinition & {
   instanceId: string;
   team: 'ally' | 'enemy';
@@ -231,17 +262,13 @@ export type Fighter = UnitDefinition & {
   abilityGauge: number;
   reactionCooldown: number;
   statuses: StatusInstance[];
+  equipmentIds?: string[];
+  program?: ProgramBlock[];
+  reaction?: ReactionBlock | null;
 };
-
-export type ProgramBlock = {
-  targetId: TargetSelectorId;
-  conditionId: ConditionId;
-  actionId: string;
-  fixedAction?: boolean;
-};
-export type ReactionBlock = { trigger: ReactionTrigger; actionId: string; fixedReaction?: boolean };
 export type UnitInventoryItem = UnitDefinition & {
   inventoryId: string;
+  equipmentIds: string[];
   program: ProgramBlock[];
   reaction: ReactionBlock | null;
 };

@@ -15,13 +15,11 @@ if (process.argv.includes('--json')) {
     report.metrics.map((metric) => ({
       Unit: `${metric.name} (${metric.id})`,
       Rarity: metric.rarity,
-      Price: metric.price,
       DPS: metric.baseDps,
       EHP: metric.effectiveHp,
       Reaction: `x${metric.reactionFactor}`,
       Power: metric.power,
       Index: metric.powerIndex,
-      'Power/Coin': metric.costEfficiency,
     })),
   );
   console.log('Ability economy (resource-sustainable rate)');

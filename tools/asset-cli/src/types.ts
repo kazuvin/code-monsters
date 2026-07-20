@@ -13,12 +13,27 @@ export type InstructionDefinition = {
   visualKind?: string;
 };
 
+export type ReactionDefinition = { actionId: string | null };
+export type EquipmentDefinition = {
+  id: string;
+  grantsActionIds: string[];
+  defaultReaction: ReactionDefinition | null;
+};
+export type EncounterDefinition = {
+  enemyUnitIds: string[];
+  enemyProgramActionIds: string[];
+  enemyReaction: ReactionDefinition | null;
+};
+
 export type GameData = {
   schemaVersion: number;
   units: UnitDefinition[];
   instructions: InstructionDefinition[];
+  equipment: EquipmentDefinition[];
+  roster: { startingUnitIds: string[]; startingEquipmentIds: string[] };
+  encounters: EncounterDefinition[];
   defaultPrograms: { unitId: string; actionIds: string[] }[];
-  defaultReactions: { unitId: string; actionId: string | null }[];
+  defaultReactions: ({ unitId: string } & ReactionDefinition)[];
 };
 
 export type MotionDefinition = {

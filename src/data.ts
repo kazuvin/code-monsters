@@ -3,6 +3,7 @@ import type {
   ConditionId,
   ConditionKind,
   BattleZoneDefinition,
+  EquipmentDefinition,
   Instruction,
   Rarity,
   ReactionBlock,
@@ -50,8 +51,6 @@ export type EconomyConfig = {
   startingCoins: number;
   refreshCost: number;
   roundReward: number;
-  minimumSellPrice: number;
-  sellPricePenalty: number;
 };
 
 export type DebugTrainingConfig = {
@@ -72,9 +71,9 @@ export type DebugPositionPresetDefinition = {
 
 export type ShopConfig = {
   size: number;
-  unitSlots: number[];
+  equipmentSlots: number[];
   rarityWeights: Record<Rarity, number>;
-  initialPicks: { slot: number; kind: 'unit' | 'instruction'; id: string }[];
+  initialPicks: { slot: number; kind: 'equipment' | 'instruction'; id: string }[];
 };
 
 export type EncounterDefinition = {
@@ -82,6 +81,9 @@ export type EncounterDefinition = {
   name: string;
   briefing: string;
   enemyUnitIds: string[];
+  enemyEquipmentIds: string[];
+  enemyProgramActionIds: string[];
+  enemyReaction: ReactionBlock | null;
   enemyStatScale: number;
   reward: number;
 };
@@ -94,7 +96,6 @@ export type BalanceAnalysisConfig = {
   powerWeights: { dps: number; effectiveHp: number; range: number; knockbackPerSecond: number; programLimit: number };
   reactionUptime: Record<ReactionTrigger, number>;
   warningThresholdRatio: number;
-  maxCostEfficiencySpread: number;
   maxSameRarityPowerSpread: number;
 };
 
@@ -139,6 +140,7 @@ export type GameBalanceData = {
     enemyUnitIds: string[];
     startingActionIds: string[];
     startingConditionIds: ConditionId[];
+    startingEquipmentIds: string[];
   };
   encounters: EncounterDefinition[];
   balanceAnalysis: BalanceAnalysisConfig;
@@ -146,6 +148,7 @@ export type GameBalanceData = {
   conditions: ConditionDefinition[];
   reactionTriggers: ReactionTriggerDefinition[];
   units: UnitDefinition[];
+  equipment: EquipmentDefinition[];
   instructions: Instruction[];
   defaultPrograms: { unitId: string; actionIds: string[] }[];
   defaultReactions: {
@@ -171,6 +174,7 @@ export const TARGET_SELECTORS = GAME_DATA.targetSelectors;
 export const CONDITIONS = GAME_DATA.conditions;
 export const REACTION_TRIGGERS = GAME_DATA.reactionTriggers;
 export const UNITS = GAME_DATA.units;
+export const EQUIPMENT = GAME_DATA.equipment;
 export const INSTRUCTIONS = GAME_DATA.instructions;
 
 export const DEFAULT_PROGRAMS: Record<string, string[]> = Object.fromEntries(

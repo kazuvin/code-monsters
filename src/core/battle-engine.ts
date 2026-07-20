@@ -194,9 +194,10 @@ export function planBattleFrame({
     };
   };
   const reactionFor = (fighter: Fighter): ReactionBlock | null =>
-    fighter.team === 'ally'
+    fighter.reaction ??
+    (fighter.team === 'ally'
       ? (team.find((unit) => unit.inventoryId === fighter.instanceId)?.reaction ?? null)
-      : (DEFAULT_REACTIONS[fighter.id] ?? null);
+      : (DEFAULT_REACTIONS[fighter.id] ?? null));
 
   const queueReaction = (reactorId: string, trigger: ReactionTrigger, sourceId: string, targetId: string) => {
     const foundReactor = next.find((fighter) => fighter.instanceId === reactorId);
@@ -497,11 +498,6 @@ export function planBattleFrame({
         queueReaction(target.instanceId, 'selfHpLow', attacker.instanceId, target.instanceId);
     }
     queueReaction(attacker.instanceId, 'selfAttackHit', attacker.instanceId, target.instanceId);
-    for (const ally of next.filter(
-      (fighter) => fighter.team === attacker.team && fighter.instanceId !== attacker.instanceId && fighter.hp > 0,
-    )) {
-      queueReaction(ally.instanceId, 'partnerAttackHit', attacker.instanceId, target.instanceId);
-    }
   };
 
   if (elapsed >= BATTLE_CONFIG.overheatStartSeconds) {
@@ -617,9 +613,10 @@ export function planBattleFrame({
       targetId: instructionById.get(actionId)?.defaultTarget ?? 'nearestEnemy',
     }));
     const program =
-      actor.team === 'ally'
+      actor.program ??
+      (actor.team === 'ally'
         ? (team.find((unit) => unit.inventoryId === actor.instanceId)?.program ?? [])
-        : enemyProgram;
+        : enemyProgram);
     const cooldown = actionCooldown(actor.speed);
     const actionReady = clearActionStatuses(actor);
     const readyValues = {
@@ -1114,6 +1111,7 @@ export function planBattleFrame({
           queueStep({ flash: { id: target.instanceId, kind: 'death', actionLabel: 'DOWN', n: 0 }, updates: [] });
         if (instruction.action !== 'follow') triggerHitReactions(current.instanceId, target.instanceId);
       }
+      break;
     }
     if (!acted)
       logs.push({

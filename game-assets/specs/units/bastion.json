@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "unitId": "bastion",
+  "silhouette": "Broad low-center tank body with a reinforced shoulder line, compact head and heavy planted legs.",
+  "bodyParts": [
+    "small armored head recessed between the shoulders",
+    "two heavy forearms with one impact ram",
+    "two short wide mechanical legs",
+    "layered frontal chest plate",
+    "compact rear stabilizer"
+  ],
+  "weapon": "Integrated impact ram on the leading forearm; equipment effects remain runtime overlays.",
+  "surfaceMaterials": ["dark graphite armor", "worn gunmetal joints", "unit accent armor seams"],
+  "identityConstraints": [
+    "always keep exactly two arms and two legs",
+    "keep the head recessed below the shoulder line",
+    "the leading-arm impact ram keeps the same dimensions",
+    "maintain the wide planted stance and low center of gravity",
+    "use the accent color resolved from game-balance.json"
+  ],
+  "negativeConstraints": [
+    "tall human proportions",
+    "handheld shield",
+    "separate firearm",
+    "cape",
+    "human face",
+    "lettering"
+  ],
+  "notes": "Hand-authored identity reference reused by the defense and corrosion rival protocols."
+}

@@ -4,20 +4,21 @@ import { analyzeBalance } from './core/balance';
 import {
   BATTLE_CONFIG,
   CONDITIONS,
-  DEFAULT_REACTIONS,
+  EQUIPMENT,
   GAME_DATA,
   INSTRUCTIONS,
   STATUSES,
   TARGET_SELECTORS,
   UNITS,
 } from './data';
-import type { Instruction, InstructionEffect, UnitDefinition } from './types';
+import type { EquipmentDefinition, Instruction, InstructionEffect, UnitDefinition } from './types';
 
-type CatalogKind = 'all' | 'unit' | 'condition' | 'target' | 'instruction';
+type CatalogKind = 'all' | 'unit' | 'equipment' | 'condition' | 'target' | 'instruction';
 
 const kindLabels: Record<CatalogKind, string> = {
   all: 'すべて',
   unit: 'ユニット',
+  equipment: '装備',
   condition: '条件',
   target: '対象',
   instruction: 'スキル',
@@ -34,14 +35,13 @@ const targetModeLabels: Record<Instruction['targetMode'], string> = {
   allEnemies: '敵全体固定',
   allAllies: '味方全体固定',
 };
-const domainLabels = { enemy: '敵', ally: '相棒', self: '自分' } as const;
+const domainLabels = { enemy: '敵', ally: '味方', self: '自分' } as const;
 const cardinalityLabels = { one: '単体', many: '複数' } as const;
 const targetById = new Map(TARGET_SELECTORS.map((target) => [target.id, target]));
 const conditionById = new Map(CONDITIONS.map((condition) => [condition.id, condition]));
 const instructionById = new Map(INSTRUCTIONS.map((instruction) => [instruction.id, instruction]));
 const unitById = new Map(UNITS.map((unit) => [unit.id, unit]));
 const statusById = new Map(STATUSES.map((status) => [status.id, status]));
-const reactionByUnit = new Map(Object.entries(DEFAULT_REACTIONS));
 const abilityMetricById = new Map(analyzeBalance(GAME_DATA).abilityMetrics.map((metric) => [metric.id, metric]));
 
 const searchable = (query: string, values: Array<string | number | undefined>) =>
@@ -118,8 +118,9 @@ export function Catalog() {
   const query = search.trim().toLocaleLowerCase('ja');
   const visible = (candidate: Exclude<CatalogKind, 'all'>) => kind === 'all' || kind === candidate;
   const counts = {
-    all: UNITS.length + CONDITIONS.length + TARGET_SELECTORS.length + INSTRUCTIONS.length,
+    all: UNITS.length + EQUIPMENT.length + CONDITIONS.length + TARGET_SELECTORS.length + INSTRUCTIONS.length,
     unit: UNITS.length,
+    equipment: EQUIPMENT.length,
     condition: CONDITIONS.length,
     target: TARGET_SELECTORS.length,
     instruction: INSTRUCTIONS.length,
@@ -129,6 +130,17 @@ export function Catalog() {
     () => ({
       units: UNITS.filter((unit) =>
         searchable(query, [unit.id, unit.name, unit.code, unit.role, unit.rarity, unit.attackType]),
+      ),
+      equipment: EQUIPMENT.filter((equipment) =>
+        searchable(query, [
+          equipment.id,
+          equipment.name,
+          equipment.code,
+          equipment.slot,
+          equipment.description,
+          equipment.tradeoff,
+          equipment.rarity,
+        ]),
       ),
       conditions: CONDITIONS.filter((condition) =>
         searchable(query, [condition.id, condition.label, condition.flavor, condition.effect]),
@@ -155,6 +167,7 @@ export function Catalog() {
   );
   const visibleCount =
     (visible('unit') ? filtered.units.length : 0) +
+    (visible('equipment') ? filtered.equipment.length : 0) +
     (visible('condition') ? filtered.conditions.length : 0) +
     (visible('target') ? filtered.targets.length : 0) +
     (visible('instruction') ? filtered.instructions.length : 0);
@@ -167,7 +180,7 @@ export function Catalog() {
           <h1>
             戦力を、<em>同じ物差し</em>で見る。
           </h1>
-          <p>ユニット・条件・対象・スキルを、実際のゲームデータから一覧化した調整用カタログです。</p>
+          <p>3体の機体・装備・条件・スキルを、実際の1vs1ゲームデータから一覧化した調整用カタログです。</p>
         </div>
         <div className="catalog-economy" aria-label="コストゲージ設定">
           <div>
@@ -234,8 +247,6 @@ export function Catalog() {
         {visible('unit') && filtered.units.length > 0 && (
           <CatalogSection id="units" label="ユニット" count={filtered.units.length}>
             {filtered.units.map((unit) => {
-              const reaction = reactionByUnit.get(unit.id);
-              const reactionInstruction = reaction?.actionId ? instructionById.get(reaction.actionId) : undefined;
               return (
                 <article
                   className="catalog-card catalog-unit-card"
@@ -291,21 +302,62 @@ export function Catalog() {
                   </dl>
                   <div className="catalog-unit-footer">
                     <span>{attackTypeLabels[unit.attackType]}</span>
-                    <span>購入 {unit.price}</span>
+                    <span>{unit.id === 'volt' ? 'PLAYER' : 'RIVAL'}</span>
                   </div>
                   <div className="catalog-trait">
-                    <small>FIXED REACTION</small>
-                    {reactionInstruction ? (
-                      <b>
-                        {reactionInstruction.short} / COST {reactionInstruction.abilityCost}
-                      </b>
-                    ) : (
-                      <b>なし</b>
-                    )}
+                    <small>LOADOUT POLICY</small>
+                    <b>固有能力なし / 装備とプログラムで構成</b>
                   </div>
                 </article>
               );
             })}
+          </CatalogSection>
+        )}
+
+        {visible('equipment') && filtered.equipment.length > 0 && (
+          <CatalogSection id="equipment" label="装備" count={filtered.equipment.length} wide>
+            {filtered.equipment.map((equipment: EquipmentDefinition) => (
+              <article
+                className={`catalog-card catalog-skill-card equipment-catalog-card slot-${equipment.slot}`}
+                data-catalog-id={equipment.id}
+                key={equipment.id}
+              >
+                <header>
+                  <span>
+                    {equipment.slot.toUpperCase()} / {rarityLabels[equipment.rarity]}
+                  </span>
+                  <code>{equipment.code}</code>
+                </header>
+                <div className="catalog-skill-title">
+                  <div>
+                    <h3>{equipment.name}</h3>
+                    <p>{equipment.description}</p>
+                  </div>
+                  <strong>
+                    <small>PRICE</small>
+                    {equipment.price}
+                  </strong>
+                </div>
+                <div className="equipment-tradeoff">
+                  <small>TRADE-OFF</small>
+                  <b>{equipment.tradeoff}</b>
+                </div>
+                {equipment.grantsActionIds.length > 0 && (
+                  <div className="catalog-compatible">
+                    <small>解放する行動</small>
+                    <div>
+                      {equipment.grantsActionIds.map((id) => (
+                        <span key={id}>{instructionById.get(id)?.title ?? id}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <footer>
+                  <span>{equipment.id}</span>
+                  {equipment.defaultReaction && <span>リアクション自動設定</span>}
+                </footer>
+              </article>
+            ))}
           </CatalogSection>
         )}
 

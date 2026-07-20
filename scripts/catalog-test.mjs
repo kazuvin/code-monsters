@@ -23,12 +23,15 @@ for (const viewport of [
 
   const counts = {
     units: await page.locator('.catalog-unit-card').count(),
+    equipment: await page.locator('.equipment-catalog-card').count(),
     conditions: await page.locator('.catalog-rule-card').count(),
     targets: await page.locator('.catalog-target-card').count(),
-    instructions: await page.locator('.catalog-skill-card').count(),
+    instructions: await page.locator('.catalog-skill-card:not(.equipment-catalog-card)').count(),
   };
   const economyText = (await page.locator('.catalog-economy').innerText()).replace(/\s+/g, ' ').trim();
-  const skillRulerCells = await page.locator('.catalog-skill-card .catalog-cost-ruler i').count();
+  const skillRulerCells = await page
+    .locator('.catalog-skill-card:not(.equipment-catalog-card) .catalog-cost-ruler i')
+    .count();
   const knockAwayFilled = await page
     .locator('.catalog-skill-card[data-catalog-id="knock-away"] .catalog-cost-ruler i.filled')
     .count();
@@ -48,9 +51,9 @@ for (const viewport of [
   }
 
   await page.getByRole('button', { name: new RegExp(`スキル ${data.instructions.length}`) }).click();
-  await page.getByRole('searchbox', { name: 'カタログを検索' }).fill('ヒール');
+  await page.getByRole('searchbox', { name: 'カタログを検索' }).fill('自己修復');
   const searchResult = {
-    instructions: await page.locator('.catalog-skill-card').count(),
+    instructions: await page.locator('.catalog-skill-card:not(.equipment-catalog-card)').count(),
     text: (await page.locator('.catalog-content').innerText()).replace(/\s+/g, ' ').trim(),
     visibleCount: await page.locator('.catalog-controls output').textContent(),
   };
@@ -75,6 +78,7 @@ console.log(JSON.stringify(results, null, 2));
 for (const result of results) {
   if (
     result.counts.units !== data.units.length ||
+    result.counts.equipment !== data.equipment.length ||
     result.counts.conditions !== data.conditions.length ||
     result.counts.targets !== data.targetSelectors.length ||
     result.counts.instructions !== data.instructions.length
@@ -84,11 +88,11 @@ for (const result of results) {
     throw new Error(`${result.viewport}: COST経済の要約がデータ定義と一致しません`);
   if (result.skillRulerCells !== data.instructions.length * data.battle.abilityGaugeMax)
     throw new Error(`${result.viewport}: スキルの10目盛りCOSTルーラーが不正です`);
-  if (result.knockAwayFilled !== 6 || result.berserkerFilled !== 10)
+  if (result.knockAwayFilled !== 4 || result.berserkerFilled !== 10)
     throw new Error(`${result.viewport}: スキルコストがルーラーへ反映されていません`);
   if (
     result.searchResult.instructions !== 1 ||
-    !result.searchResult.text.includes('ヒールする') ||
+    !result.searchResult.text.includes('自己修復する') ||
     result.searchResult.visibleCount !== '1件を表示'
   )
     throw new Error(`${result.viewport}: スキル検索の結果が不正です`);

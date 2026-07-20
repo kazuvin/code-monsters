@@ -1,4 +1,12 @@
-import { BATTLE_CONFIG, CONDITIONS, DEBUG_TRAINING_CONFIG, INSTRUCTIONS, STATUSES, UNITS } from '../data.ts';
+import {
+  BATTLE_CONFIG,
+  CONDITIONS,
+  DEBUG_TRAINING_CONFIG,
+  INSTRUCTIONS,
+  ROSTER_CONFIG,
+  STATUSES,
+  UNITS,
+} from '../data.ts';
 import type {
   BattleFlash,
   BattleZoneInstance,
@@ -231,6 +239,7 @@ function makeDebugSetup(input: DebugSimulationInput): DebugSetup {
   const actorInventory: UnitInventoryItem = {
     ...actorDefinition,
     inventoryId: actorId,
+    equipmentIds: [...ROSTER_CONFIG.startingEquipmentIds],
     program: [{ actionId: instruction.id, conditionId: input.conditionId, targetId: targetSelectorId }],
     reaction: null,
   };

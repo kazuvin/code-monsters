@@ -27,7 +27,16 @@ internal static class UnityCoreSmoke
             checkedCases += 1;
         }
 
-        var arrow = data.Units.Single(unit => unit.Id == "arrow");
+        if (data.Battle.TeamSize != 1 || data.Units.Count != 3)
+            throw new InvalidDataException("The canonical duel and animation-scope contract was not imported");
+        if (data.Encounters.Any(encounter => encounter.EnemyUnitIds.Count != 1))
+            throw new InvalidDataException("An encounter is not one-on-one");
+        if (data.Encounters.Any(encounter => encounter.EnemyEquipmentIds.Count != 3))
+            throw new InvalidDataException("An encounter does not define three equipment bays");
+        if (data.Encounters.Any(encounter => encounter.EnemyProgramActionIds.Count == 0))
+            throw new InvalidDataException("An encounter does not expose its enemy program");
+
+        var volt = data.Units.Single(unit => unit.Id == "volt");
         var shoulderThrow = data.Instructions.Single(instruction => instruction.Id == "shoulder-throw");
         var vulnerable = data.Statuses.Single(status => status.Id == "vulnerable");
         var revealWeakness = data.Instructions.Single(instruction => instruction.Id == "reveal-weakness");
@@ -37,16 +46,15 @@ internal static class UnityCoreSmoke
         var shatteringBlow = data.Instructions.Single(instruction => instruction.Id == "shattering-blow");
         var cornerSlowed = data.Instructions.Single(instruction => instruction.Id == "corner-slowed");
         var inspired = data.Statuses.Single(status => status.Id == "inspired");
-        var tacticalSupport = data.Instructions.Single(instruction => instruction.Id == "tactical-support");
-        var inspiredStrike = data.Instructions.Single(instruction => instruction.Id == "volt-inspired-strike");
-        var inspiredSmash = data.Instructions.Single(instruction => instruction.Id == "wrath-inspired-smash");
+        var overclock = data.Instructions.Single(instruction => instruction.Id == "overclock");
+        var inspiredStrike = data.Instructions.Single(instruction => instruction.Id == "energized-strike");
         var selfInspired = data.Conditions.Single(condition => condition.Id == "selfInspired");
         var toxicCloud = data.BattleZones.Single(zone => zone.Id == "toxic-cloud");
         var toxicFlask = data.Instructions.Single(instruction => instruction.Id == "throw-toxic-flask");
         var poison = data.Statuses.Single(status => status.Id == "poison");
         var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
-        var actor = new FighterState { InstanceId = "arrow-1", X = 40, Range = arrow.Range, Hp = 74, MaxHp = 74 };
-        var target = new FighterState { InstanceId = "enemy-1", X = 55, Range = 8, Hp = 100, MaxHp = 100 };
+        var actor = new FighterState { InstanceId = "volt-1", X = 40, Range = volt.Range, Hp = 74, MaxHp = 74 };
+        var target = new FighterState { InstanceId = "enemy-1", X = 50, Range = 8, Hp = 100, MaxHp = 100 };
         if (!BattleRules.MatchesCondition(targetInRange, actor, target))
             throw new InvalidDataException("Actor-relative attack range condition did not match");
         if (BattleRules.ActionRange(actor, shoulderThrow) != 9)
@@ -67,12 +75,10 @@ internal static class UnityCoreSmoke
             throw new InvalidDataException("Relay slowed status consumer was not imported");
         if (Math.Abs(inspired.Effects.Single(effect => effect.Kind == "attackScale").Value.GetValueOrDefault() - 1.15) >= 0.0001)
             throw new InvalidDataException("Inspired status attack multiplier was not imported");
-        if (!tacticalSupport.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "inspired" && effect.DurationSeconds == 6))
+        if (!overclock.Effects.Any(effect => effect.Kind == "applyStatus" && effect.StatusId == "inspired" && effect.DurationSeconds == 6))
             throw new InvalidDataException("Inspired status producer was not imported");
         if (!inspiredStrike.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "inspired" && effect.Target == "actor"))
             throw new InvalidDataException("Volt inspired status consumer was not imported");
-        if (!inspiredSmash.Effects.Any(effect => effect.Kind == "consumeStatus" && effect.StatusId == "inspired" && effect.Target == "actor"))
-            throw new InvalidDataException("Wrath inspired status consumer was not imported");
         actor.Statuses.Add(new StatusInstance { StatusId = "inspired", Stacks = 1 });
         if (!BattleRules.MatchesCondition(selfInspired, actor, target))
             throw new InvalidDataException("Actor-owned inspired condition did not match an enemy target");
@@ -93,9 +99,19 @@ internal static class UnityCoreSmoke
             || poison.Effects.Any(effect => effect.Kind == "decayStacksPerTick")
         )
             throw new InvalidDataException("Unbounded non-decaying poison was not imported");
+        var equipmentSlots = data.Equipment.Select(item => item.Slot).Distinct().OrderBy(slot => slot).ToArray();
+        if (!equipmentSlots.SequenceEqual(new[] { "chip", "frame", "weapon" }))
+            throw new InvalidDataException("The three equipment slot types were not imported");
+        var corrosion = data.Equipment.Single(item => item.Id == "corrosion-core");
+        if (
+            corrosion.Modifiers.Attack.GetValueOrDefault() >= 0
+            || corrosion.Modifiers.Range.GetValueOrDefault() <= 0
+            || !corrosion.GrantsActionIds.Contains("corrosion-burst")
+        )
+            throw new InvalidDataException("Equipment trade-off or granted actions were not imported");
 
         Console.WriteLine(
-            $"{{\"schemaVersion\":{data.SchemaVersion},\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"
+            $"{{\"schemaVersion\":{data.SchemaVersion},\"mode\":\"1vs1\",\"encounters\":{data.Encounters.Count},\"units\":{data.Units.Count},\"equipment\":{data.Equipment.Count},\"instructions\":{data.Instructions.Count},\"goldenCases\":{checkedCases}}}"
         );
         return 0;
     }

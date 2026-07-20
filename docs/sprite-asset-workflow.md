@@ -1,22 +1,22 @@
 # Sprite asset workflow
 
-This runbook covers the implemented authoring flow from reviewed high-resolution PNG frames to Web assets and Unity `.anim` files.
+This runbook covers the implemented authoring flow from reviewed PNG frames to Web assets and Unity `.anim` files for the three animated combat bodies: `volt`, `bastion`, and `relay`.
 
-The first provider is `manual`: a human or an external image-generation tool creates the high-resolution source frames, then the repository pipeline performs deterministic normalization and export. No image-generation API is selected or required by this workflow.
+The provider is `manual`: a pixel artist authors the final character motion frames, then the repository pipeline performs deterministic normalization, QA, sheet construction, approval, and export. AI-generated character motion is not an approval path because frame-to-frame anatomy and pixel clusters are not reliable enough for the target quality. AI generation is reserved for static backgrounds, equipment icons, portraits, effects, and non-animated props.
 
 ## Responsibility boundary
 
 | Step | Owner |
 | --- | --- |
 | Define unit identity and motion intent | Human, `game-assets/specs` and `game-assets/config` |
-| Create high-resolution source candidates | Human or an external AI image generator |
+| Author coherent character motion frames | Pixel artist |
 | Remove background, normalize, pixelate, build sheet | Python pipeline |
 | Calculate QA metrics and blocking errors | Python pipeline and TypeScript CLI |
 | Review preview and approve the candidate | Human |
 | Publish approved PNG and manifest | TypeScript CLI |
 | Slice sprites and generate `.anim`, controller, prefab | Unity Editor importer |
 
-Humans do not manually assemble ordinary `.anim` files. Human work ends at visual review and approval unless a motion needs custom transitions or Animation Events beyond the generated contract.
+Humans author and review the sprite frames, but do not manually assemble ordinary `.anim` files. The Unity importer still owns slicing, clip construction, controllers, and Prefabs unless a motion needs custom transitions or Animation Events beyond the generated contract.
 
 ## One-time setup
 
@@ -40,18 +40,20 @@ Required local tools:
 
 ```bash
 pnpm assets:requirements --unit volt
+pnpm assets:requirements --unit bastion
+pnpm assets:requirements --unit relay
 ```
 
 The command reads `game-data/game-balance.json` and reports:
 
-- required motions for the unit's base presentation, default program, and fixed reaction
+- required motions for the unit's base presentation, default program, authored rival encounters, and starting equipment reaction
 - optional motions reachable through general instructions
 - fallback mappings for motions without dedicated frames
 - the recommended single-color source background, selected by perceptual distance from the unit palette
 
-For the initial `volt` vertical slice, the required motions are `idle`, `move`, `attack`, `hit`, `death`, and `follow`.
+For the current `volt` player and mirror-match build, the required motions are `idle`, `move`, `attack`, `hit`, `death`, `retreat`, `buff`, and `follow`. Always use the command output rather than maintaining this list by hand.
 
-## 2. Prepare high-resolution source frames
+## 2. Prepare hand-authored source frames
 
 Use the reported background color and create one PNG per frame. Input names only determine sort order; motion IDs come from directory names.
 
@@ -74,7 +76,7 @@ The number of PNGs must match `game-assets/config/motions.json` exactly.
 
 Source rules:
 
-- high resolution, not finished pixel art
+- finished pixel art at the configured frame size or a deliberate integer multiple
 - right-facing side view
 - fixed camera, scale, and ground line
 - full body and weapon inside the frame

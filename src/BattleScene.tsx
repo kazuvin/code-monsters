@@ -15,8 +15,10 @@ const depthSlot = (fighter: Fighter, fighters: Fighter[]) =>
     .findIndex((other) => other.instanceId === fighter.instanceId) % DEPTH_SLOTS;
 const depthIndex = (fighter: Fighter, fighters: Fighter[]) =>
   50 - depthSlot(fighter, fighters) * 10 + (fighter.team === 'ally' ? 1 : 0);
-const depthOffset = (fighter: Fighter, fighters: Fighter[]) =>
-  DEPTH_SLOT_OFFSETS_PX[depthSlot(fighter, fighters)] + TEAM_DEPTH_NUDGE_PX[fighter.team];
+const depthOffset = (fighter: Fighter, fighters: Fighter[]) => {
+  const teamSize = fighters.filter((other) => other.team === fighter.team).length;
+  return teamSize <= 1 ? 0 : DEPTH_SLOT_OFFSETS_PX[depthSlot(fighter, fighters)] + TEAM_DEPTH_NUDGE_PX[fighter.team];
+};
 
 const colorHex = (value: string) => value;
 const attackKinds = ['attack', 'heavy', 'poison', 'burn', 'follow', 'miss'] as const;

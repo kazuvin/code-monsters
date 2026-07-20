@@ -9,13 +9,11 @@ export type UnitBalanceMetric = {
   id: string;
   name: string;
   rarity: Rarity;
-  price: number;
   baseDps: number;
   effectiveHp: number;
   reactionFactor: number;
   power: number;
   powerIndex: number;
-  costEfficiency: number;
 };
 export type AbilityBalanceMetric = {
   id: string;
@@ -141,6 +139,10 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.instructions.map((instruction) => instruction.id),
   );
   unique(
+    'equipment',
+    data.equipment.map((equipment) => equipment.id),
+  );
+  unique(
     'condition',
     data.conditions.map((condition) => condition.id),
   );
@@ -171,6 +173,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
 
   const units = new Set(data.units.map((unit) => unit.id));
   const instructions = new Set(data.instructions.map((instruction) => instruction.id));
+  const equipmentIds = new Set(data.equipment.map((equipment) => equipment.id));
   const conditions = new Set(data.conditions.map((condition) => condition.id));
   const targetSelectors = new Set<string>(data.targetSelectors.map((target) => target.id));
   const statuses = new Set(data.statuses.map((status) => status.id));
@@ -232,6 +235,9 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   const requireInstruction = (id: string, context: string) => {
     if (!instructions.has(id)) error('UNKNOWN_INSTRUCTION', `${context} が未定義スキル "${id}" を参照しています`);
   };
+  const requireEquipment = (id: string, context: string) => {
+    if (!equipmentIds.has(id)) error('UNKNOWN_EQUIPMENT', `${context} が未定義装備 "${id}" を参照しています`);
+  };
   const requireTargetSelector = (id: string, context: string) => {
     if (!targetSelectors.has(id)) error('UNKNOWN_TARGET', `${context} が未定義対象 "${id}" を参照しています`);
   };
@@ -239,7 +245,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 14) error('INVALID_SCHEMA_VERSION', 'schemaVersion は14以上である必要があります');
+  if (data.schemaVersion < 15) error('INVALID_SCHEMA_VERSION', 'schemaVersion は15以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -355,22 +361,51 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     error('INVALID_BALANCE_CONFIG', 'abilityReferenceSpeed は正数である必要があります');
   if (data.balanceAnalysis.warningThresholdRatio <= 0 || data.balanceAnalysis.warningThresholdRatio >= 1)
     error('INVALID_BALANCE_CONFIG', 'warningThresholdRatio は0より大きく1未満である必要があります');
-  if (data.balanceAnalysis.maxCostEfficiencySpread <= 1 || data.balanceAnalysis.maxSameRarityPowerSpread <= 1)
+  if (data.balanceAnalysis.maxSameRarityPowerSpread <= 1)
     error('INVALID_BALANCE_CONFIG', 'バランス差の上限は1より大きい必要があります');
   for (const [trigger, uptime] of Object.entries(data.balanceAnalysis.reactionUptime))
     if (uptime < 0 || uptime > 1)
       error('INVALID_BALANCE_CONFIG', `${trigger} の reactionUptime は0〜1で指定してください`);
   for (const unit of data.units)
-    if (
-      unit.maxHp <= 0 ||
-      unit.attack < 0 ||
-      unit.defense < 0 ||
-      unit.speed <= 0 ||
-      unit.price <= 0 ||
-      unit.range < 0 ||
-      unit.weight <= 0
-    )
+    if (unit.maxHp <= 0 || unit.attack < 0 || unit.defense < 0 || unit.speed <= 0 || unit.range < 0 || unit.weight <= 0)
       error('INVALID_UNIT_STAT', `${unit.id} に0以下または不正な戦闘パラメータがあります`);
+  const supportedEquipmentSlots = new Set(['frame', 'weapon', 'chip']);
+  const supportedEquipmentModifiers = new Set([
+    'maxHp',
+    'attack',
+    'defense',
+    'speed',
+    'range',
+    'knockbackPower',
+    'weight',
+    'programLimit',
+    'attackType',
+  ]);
+  for (const equipment of data.equipment) {
+    if (!equipment.id || !equipment.name || !equipment.code || !equipment.description || !equipment.tradeoff)
+      error('INVALID_EQUIPMENT', '装備には id・name・code・description・tradeoff が必要です');
+    if (!supportedEquipmentSlots.has(equipment.slot))
+      error('INVALID_EQUIPMENT_SLOT', `${equipment.id} の装備枠 ${equipment.slot} は未対応です`);
+    if (equipment.price < 0) error('INVALID_EQUIPMENT_PRICE', `${equipment.id} の価格が負です`);
+    for (const [key, value] of Object.entries(equipment.modifiers)) {
+      if (!supportedEquipmentModifiers.has(key))
+        error('UNSUPPORTED_EQUIPMENT_MODIFIER', `${equipment.id} の補正 ${key} は未対応です`);
+      if (key === 'attackType') {
+        if (!['melee', 'blunt', 'sniper'].includes(String(value)))
+          error('INVALID_EQUIPMENT_MODIFIER', `${equipment.id}.attackType が不正です`);
+      } else if (typeof value !== 'number' || !Number.isFinite(value)) {
+        error('INVALID_EQUIPMENT_MODIFIER', `${equipment.id}.${key} は有限数で指定してください`);
+      }
+    }
+    for (const actionId of equipment.grantsActionIds) requireInstruction(actionId, `equipment.${equipment.id}`);
+    if (equipment.defaultReaction) {
+      requireInstruction(equipment.defaultReaction.actionId, `equipment.${equipment.id}.defaultReaction`);
+      if (!data.reactionTriggers.some((trigger) => trigger.id === equipment.defaultReaction?.trigger))
+        error('UNKNOWN_REACTION_TRIGGER', `${equipment.id} のリアクショントリガーが未定義です`);
+      if (!equipment.grantsActionIds.includes(equipment.defaultReaction.actionId))
+        error('INVALID_EQUIPMENT_REACTION', `${equipment.id} の既定リアクションは同じ装備が解放する必要があります`);
+    }
+  }
   for (const target of data.targetSelectors) {
     if (!supportedTargetSelectors.has(target.id))
       error('UNSUPPORTED_TARGET', `対象セレクタ "${target.id}" はエンジン未対応です`);
@@ -631,8 +666,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
       error('MISSING_DEFAULT_REACTION', `${unit.id} にデフォルトリアクション定義がありません`);
   }
   for (const id of [...data.roster.startingUnitIds, ...data.roster.enemyUnitIds]) requireUnit(id, 'roster');
-  if (!Number.isInteger(data.battle.teamSize) || data.battle.teamSize < 1)
-    error('INVALID_TEAM_SIZE', 'battle.teamSize は正の整数にしてください');
+  if (data.battle.teamSize !== 1) error('INVALID_TEAM_SIZE', '1vs1では battle.teamSize を1にしてください');
   if (
     data.roster.startingUnitIds.length !== data.battle.teamSize ||
     data.roster.enemyUnitIds.length !== data.battle.teamSize
@@ -645,23 +679,49 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (encounter.enemyStatScale <= 0 || encounter.reward < 0)
       error('INVALID_ENCOUNTER', `${encounter.id} の倍率または報酬が不正です`);
     for (const id of encounter.enemyUnitIds) requireUnit(id, `encounter ${encounter.id}`);
+    if (encounter.enemyEquipmentIds.length !== 3)
+      error('INVALID_ENCOUNTER_EQUIPMENT', `${encounter.id} の敵装備は3枠にしてください`);
+    for (const id of encounter.enemyEquipmentIds) requireEquipment(id, `encounter ${encounter.id}`);
+    for (const actionId of encounter.enemyProgramActionIds)
+      requireInstruction(actionId, `encounter ${encounter.id}.enemyProgramActionIds`);
+    if (encounter.enemyReaction) {
+      requireInstruction(encounter.enemyReaction.actionId, `encounter ${encounter.id}.enemyReaction`);
+      if (!data.reactionTriggers.some((trigger) => trigger.id === encounter.enemyReaction?.trigger))
+        error('UNKNOWN_REACTION_TRIGGER', `${encounter.id} の敵リアクショントリガーが未定義です`);
+    }
   }
   for (const id of data.roster.startingActionIds) requireInstruction(id, 'roster.startingActionIds');
   for (const id of data.roster.startingConditionIds)
     if (!conditions.has(id)) error('UNKNOWN_CONDITION', `roster が未定義条件 "${id}" を参照しています`);
+  if (data.roster.startingEquipmentIds.length !== 3)
+    error('INVALID_STARTING_EQUIPMENT', '初期装備は frame・weapon・chip の3枠にしてください');
+  for (const id of data.roster.startingEquipmentIds) requireEquipment(id, 'roster.startingEquipmentIds');
+  const startingSlots = data.roster.startingEquipmentIds
+    .map((id) => data.equipment.find((equipment) => equipment.id === id)?.slot)
+    .filter((slot) => slot !== undefined);
+  if (new Set(startingSlots).size !== 3)
+    error('INVALID_STARTING_EQUIPMENT', '初期装備の frame・weapon・chip が重複または不足しています');
   if (data.shop.size !== 4) error('INVALID_SHOP_SIZE', 'ショップの排出数は4枠にしてください');
   if (
-    data.shop.unitSlots.length !== 1 ||
-    new Set(data.shop.unitSlots).size !== data.shop.unitSlots.length ||
-    data.shop.unitSlots.some((slot) => !Number.isInteger(slot) || slot < 0 || slot >= data.shop.size)
+    data.shop.equipmentSlots.length !== 2 ||
+    new Set(data.shop.equipmentSlots).size !== data.shop.equipmentSlots.length ||
+    data.shop.equipmentSlots.some((slot) => !Number.isInteger(slot) || slot < 0 || slot >= data.shop.size)
   )
-    error('INVALID_SHOP_LAYOUT', 'ショップは重複しない1ユニット・3スキル構成にしてください');
+    error('INVALID_SHOP_LAYOUT', 'ショップは重複しない2装備・2スキル構成にしてください');
   const shopInstructionCount = data.instructions.filter(
-    (instruction) => !instruction.fixedFor && !data.roster.startingActionIds.includes(instruction.id),
+    (instruction) =>
+      !instruction.fixedFor &&
+      !instruction.reactionOnly &&
+      instruction.price > 0 &&
+      !data.roster.startingActionIds.includes(instruction.id) &&
+      !data.equipment.some((equipment) => equipment.grantsActionIds.includes(instruction.id)),
+  ).length;
+  const shopEquipmentCount = data.equipment.filter(
+    (equipment) => equipment.price > 0 && !data.roster.startingEquipmentIds.includes(equipment.id),
   ).length;
   if (
-    data.units.length < data.shop.unitSlots.length ||
-    shopInstructionCount < data.shop.size - data.shop.unitSlots.length
+    shopEquipmentCount < data.shop.equipmentSlots.length ||
+    shopInstructionCount < data.shop.size - data.shop.equipmentSlots.length
   )
     error('INSUFFICIENT_SHOP_POOL', '重複なしで4枠を生成できるショップ候補がありません');
   if (data.shop.initialPicks.length > 0)
@@ -669,7 +729,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
   for (const pick of data.shop.initialPicks) {
     if (pick.slot < 0 || pick.slot >= data.shop.size)
       error('INVALID_SHOP_SLOT', `shop.initialPicks の slot ${pick.slot} はショップ範囲外です`);
-    if (pick.kind === 'unit') requireUnit(pick.id, 'shop.initialPicks');
+    if (pick.kind === 'equipment') requireEquipment(pick.id, 'shop.initialPicks');
     else requireInstruction(pick.id, 'shop.initialPicks');
   }
   const canAnalyzeSynergies =
@@ -704,13 +764,11 @@ export function analyzeBalance(data: GameBalanceData): BalanceReport {
     id: unit.id,
     name: unit.name,
     rarity: unit.rarity,
-    price: unit.price,
     baseDps: round(baseDps),
     effectiveHp: round(reaction.effectiveHp),
     reactionFactor: round(reaction.factor),
     power: round(power),
     powerIndex: round((power / medianPower) * 100, 1),
-    costEfficiency: round(unit.price > 0 ? power / unit.price : 0),
   }));
   const referenceCooldown = cooldown(data, data.balanceAnalysis.abilityReferenceSpeed);
   const abilityMetrics = data.instructions.map((instruction) => {
@@ -733,26 +791,6 @@ export function analyzeBalance(data: GameBalanceData): BalanceReport {
       costLimited: recoverySeconds > referenceCooldown,
     };
   });
-  const efficiencySpread = ratio(metrics.map((metric) => metric.costEfficiency));
-  const mostEfficient = [...metrics].sort((a, b) => b.costEfficiency - a.costEfficiency)[0];
-  const leastEfficient = [...metrics].sort((a, b) => a.costEfficiency - b.costEfficiency)[0];
-  const efficiencyDetail = `${mostEfficient.id} ${mostEfficient.costEfficiency} / ${leastEfficient.id} ${leastEfficient.costEfficiency}`;
-  if (efficiencySpread > data.balanceAnalysis.maxCostEfficiencySpread) {
-    issues.push({
-      severity: 'error',
-      code: 'COST_EFFICIENCY_SPREAD',
-      message: `価格効率の最大差 ${efficiencySpread.toFixed(2)}x (${efficiencyDetail}) が上限 ${data.balanceAnalysis.maxCostEfficiencySpread.toFixed(2)}x を超えています`,
-    });
-  } else if (
-    efficiencySpread >
-    data.balanceAnalysis.maxCostEfficiencySpread * data.balanceAnalysis.warningThresholdRatio
-  ) {
-    issues.push({
-      severity: 'warning',
-      code: 'COST_EFFICIENCY_NEAR_LIMIT',
-      message: `価格効率の最大差 ${efficiencySpread.toFixed(2)}x (${efficiencyDetail}) が上限に近づいています`,
-    });
-  }
   for (const rarity of ['common', 'rare', 'epic'] as const) {
     const group = metrics.filter((metric) => metric.rarity === rarity);
     const spread = ratio(group.map((metric) => metric.power));

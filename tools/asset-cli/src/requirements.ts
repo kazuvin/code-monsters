@@ -17,21 +17,44 @@ export function deriveMotionRequirements(
 ): MotionRequirements {
   const configuredIds = new Set(motionConfig.motions.map((motion) => motion.motionId));
   const instructionById = new Map(data.instructions.map((instruction) => [instruction.id, instruction]));
+  const equipmentById = new Map(data.equipment.map((equipment) => [equipment.id, equipment]));
   const required = new Set(baseMotionIds);
   const program = data.defaultPrograms.find((entry) => entry.unitId === unitId);
   const reaction = data.defaultReactions.find((entry) => entry.unitId === unitId);
-  for (const actionId of [...(program?.actionIds ?? []), ...(reaction?.actionId ? [reaction.actionId] : [])]) {
+  const encounterActionIds = data.encounters
+    .filter((encounter) => encounter.enemyUnitIds.includes(unitId))
+    .flatMap((encounter) => [
+      ...encounter.enemyProgramActionIds,
+      ...(encounter.enemyReaction?.actionId ? [encounter.enemyReaction.actionId] : []),
+    ]);
+  const startingEquipmentActionIds = data.roster.startingUnitIds.includes(unitId)
+    ? data.roster.startingEquipmentIds.flatMap((equipmentId) => {
+        const equipment = equipmentById.get(equipmentId);
+        return equipment?.defaultReaction?.actionId ? [equipment.defaultReaction.actionId] : [];
+      })
+    : [];
+  for (const actionId of [
+    ...(program?.actionIds ?? []),
+    ...(reaction?.actionId ? [reaction.actionId] : []),
+    ...encounterActionIds,
+    ...startingEquipmentActionIds,
+  ]) {
     const instruction = instructionById.get(actionId);
     if (instruction) required.add(instruction.visualKind ?? instruction.action);
   }
   for (const instruction of data.instructions) {
     if (instruction.fixedFor === unitId) required.add(instruction.visualKind ?? instruction.action);
   }
-
   const optional = new Set(targetReactionIds);
   for (const instruction of data.instructions) {
     if (!instruction.fixedFor || instruction.fixedFor === unitId) {
       optional.add(instruction.visualKind ?? instruction.action);
+    }
+  }
+  for (const equipment of data.equipment) {
+    for (const actionId of equipment.grantsActionIds) {
+      const instruction = instructionById.get(actionId);
+      if (instruction) optional.add(instruction.visualKind ?? instruction.action);
     }
   }
   for (const id of required) optional.delete(id);

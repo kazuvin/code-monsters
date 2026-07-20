@@ -6,13 +6,15 @@ The prototype now separates game definitions, deterministic rules, and rendering
 
 `game-data/game-balance.json` owns every adjustable gameplay value:
 
-- unit stats, rarity, price, role, attack type, and program capacity
+- unit-body stats, rarity, role, attack type, and program capacity
+- frame, weapon, and chip equipment; stat modifiers; granted actions; and default reactions
 - target selectors, condition compatibility, instruction target modes, effects, movement, damage, knockback, healing, and buffs
 - fixed reactions and default programs
+- ordered one-on-one encounters, including each rival's equipment loadout, program, reaction, stat scale, and reward
 - team size, battle timing, walls, cooldowns, ability-gauge capacity/regeneration, damage/knockback formulas, overheat, debug-training recovery, economy, and shop weights
 - static-analysis weights and allowed balance spreads
 
-Stable IDs such as `nearestEnemy`, `partner`, and `targetInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
+Stable IDs such as `nearestEnemy`, `self`, and `targetInRange` are saved and evaluated. Japanese copy is display data only. This avoids coupling Unity rules to localization.
 
 For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and generate ScriptableObjects if inspector editing is preferred. Keep JSON as the canonical reviewed asset; generated ScriptableObjects should not become a second source of truth.
 
@@ -25,8 +27,8 @@ For Unity, import the JSON with Newtonsoft Json.NET (or a custom importer) and g
 | `src/core/battle-zones.ts` | `BattleRules.cs` / future `BattleZoneRuntime.cs` | generic timed areas, path-entry detection, and typed trigger effects |
 | `src/core/rules.ts` | `BattleRules.cs` | target selection, per-target condition matching, cooldowns, movement, action effects |
 | `src/core/battle-engine.ts` | `BattleEngine.cs` | deterministic frame planning and serializable battle steps |
-| `src/core/roster.ts` | `RosterFactory.cs` | inventory units and battle-state construction |
-| `src/core/shop.ts` | `ShopGenerator.cs` | seeded shop generation |
+| `src/core/roster.ts` | `RosterFactory.cs` | equipment application, inventory units, and one-on-one battle-state construction |
+| `src/core/shop.ts` | `ShopGenerator.cs` | seeded equipment and instruction shop generation |
 | `src/core/balance.ts` | editor/CLI validation | reference validation and power scoring |
 | `src/core/synergy.ts` | editor/CLI validation | status-pack graph generation and synergy completeness checks |
 | `src/core/debug-simulation.ts` | editor test harness | deterministic single-action and timeline measurements using the live frame planner |
@@ -127,11 +129,19 @@ Remove the `decayStacksPerTick` status effect and the replay-only `statusChange`
 
 Battle-zone triggers may now use `onActionWhileInside`. The canonical `toxic-cloud` no longer fires on placement, entry, or path crossing. Instead, each successfully executed normal action or reaction adds 1 poison stack when the acting unit's action-start position is inside the zone. A skipped instruction does not fire the trigger; an executed miss does. Importers should retain `onEnter` support for compatible zone data, add `onActionWhileInside` to the finite trigger allowlist, and evaluate the trigger before resolving the action so movement uses the start position.
 
+## Schema version 15 migration
+
+Set `battle.teamSize` to exactly `1`. The canonical roster now contains only `volt`, `bastion`, and `relay`, with one starting player unit and one fallback rival. Remove `partner`, low-HP enemy, and multi-target selectors from canonical data; remove partner conditions, `partnerAttackHit`, and the `taunted` status. Version 14 saves that reference removed units, targets, conditions, reactions, or statuses are not directly compatible and should start a new run.
+
+Add the top-level `equipment` registry and the `roster.startingEquipmentIds` loadout. Every inventory unit serializes exactly one `frame`, `weapon`, and `chip`. Equipment can modify base stats, override attack type, grant instruction IDs, and supply a default reaction. Replacing equipment must recalculate the unit from its immutable base definition and remove program or reaction entries that are no longer owned.
+
+Encounters now serialize one enemy unit plus `enemyEquipmentIds`, `enemyProgramActionIds`, and `enemyReaction`. This allows the same three animated bodies to provide distinct authored matchups. The four-slot shop reserves two deterministic positions for unowned equipment and fills the other two with instructions; unit recruitment, bench management, and unit resale are removed from the run loop.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v14 DTO loading and stable-ID/reference validation, including the 2vs2 team-size contract, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
+- schema-v15 DTO loading and stable-ID/reference validation, including the one-on-one contract, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

@@ -20,8 +20,8 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(14));
-            Assert.That(data.Battle.TeamSize, Is.EqualTo(2));
+            Assert.That(data.SchemaVersion, Is.EqualTo(15));
+            Assert.That(data.Battle.TeamSize, Is.EqualTo(1));
             Assert.That(data.Battle.StatusDamageTickSeconds, Is.EqualTo(2));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));
             Assert.That(data.DebugTraining.RecoveryDelaySeconds, Is.EqualTo(3));
@@ -33,9 +33,11 @@ namespace CodeMonsters.Core.Tests
             Assert.That(poison.Effects.Select(effect => effect.Kind), Does.Not.Contain("decayStacksPerTick"));
             Assert.That(data.BattleZones.Select(zone => zone.Id), Does.Contain("toxic-cloud"));
             Assert.That(data.Encounters, Has.Count.EqualTo(5));
-            Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 2), Is.True);
-            Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("mender"));
-            Assert.That(data.Units.Select(unit => unit.Id), Does.Contain("toxin"));
+            Assert.That(data.Encounters.All(encounter => encounter.EnemyUnitIds.Count == 1), Is.True);
+            Assert.That(data.Encounters.All(encounter => encounter.EnemyEquipmentIds.Count == 3), Is.True);
+            Assert.That(data.Encounters.All(encounter => encounter.EnemyProgramActionIds.Count > 0), Is.True);
+            Assert.That(data.Units, Has.Count.EqualTo(3));
+            Assert.That(data.Units.Select(unit => unit.Id), Is.EquivalentTo(new[] { "volt", "bastion", "relay" }));
         }
 
         [Test]
@@ -56,11 +58,11 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void ContactSkillKeepsFixedRangeWhileConditionUsesUnitRange()
         {
-            var arrow = data.Units.Single(unit => unit.Id == "arrow");
+            var relay = data.Units.Single(unit => unit.Id == "relay");
             var shoulderThrow = data.Instructions.Single(instruction => instruction.Id == "shoulder-throw");
             var targetInRange = data.Conditions.Single(condition => condition.Id == "targetInRange");
-            var actor = new FighterState { InstanceId = "arrow-1", X = 40, Range = arrow.Range, Hp = 74, MaxHp = 74 };
-            var target = new FighterState { InstanceId = "enemy-1", X = 55, Range = 8, Hp = 100, MaxHp = 100 };
+            var actor = new FighterState { InstanceId = "relay-1", X = 40, Range = relay.Range, Hp = 74, MaxHp = 74 };
+            var target = new FighterState { InstanceId = "enemy-1", X = 50, Range = 8, Hp = 100, MaxHp = 100 };
 
             Assert.That(BattleRules.MatchesCondition(targetInRange, actor, target), Is.True);
             Assert.That(BattleRules.ActionRange(actor, shoulderThrow), Is.EqualTo(9));
@@ -68,11 +70,10 @@ namespace CodeMonsters.Core.Tests
         }
 
         [Test]
-        public void SupportAndStatusConditionsRemainActorRelative()
+        public void DuelStatusConditionsRemainActorRelative()
         {
-            var actor = new FighterState { InstanceId = "mender-1", X = 40, Range = 14, Hp = 118, MaxHp = 118 };
-            var ally = new FighterState { InstanceId = "volt-1", X = 52, Range = 10, Hp = 30, MaxHp = 116 };
-            var enemy = new FighterState { InstanceId = "enemy-1", X = 54, Range = 10, Hp = 80, MaxHp = 100 };
+            var actor = new FighterState { InstanceId = "volt-1", X = 40, Range = 10, Hp = 25, MaxHp = 116 };
+            var enemy = new FighterState { InstanceId = "enemy-1", X = 48, Range = 10, Hp = 80, MaxHp = 100 };
             enemy.Statuses.Add(new StatusInstance { StatusId = "poison", Stacks = 2 });
             var targetInRange = data.Conditions.Single(candidate => candidate.Id == "targetInRange");
             var enemyHasStatus = data.Conditions.Single(candidate => candidate.Id == "enemyHasStatus");
@@ -80,10 +81,24 @@ namespace CodeMonsters.Core.Tests
             var selfInspired = data.Conditions.Single(candidate => candidate.Id == "selfInspired");
             actor.Statuses.Add(new StatusInstance { StatusId = "inspired", Stacks = 1 });
 
-            Assert.That(BattleRules.MatchesCondition(targetInRange, actor, ally), Is.True);
+            Assert.That(BattleRules.MatchesCondition(targetInRange, actor, enemy), Is.True);
             Assert.That(BattleRules.MatchesCondition(enemyHasStatus, actor, enemy), Is.True);
-            Assert.That(BattleRules.MatchesCondition(selfHpBelow, actor, ally), Is.False);
+            Assert.That(BattleRules.MatchesCondition(selfHpBelow, actor, actor), Is.True);
             Assert.That(BattleRules.MatchesCondition(selfInspired, actor, enemy), Is.True);
+        }
+
+        [Test]
+        public void EquipmentImportsTradeoffsAndGrantedActions()
+        {
+            Assert.That(data.Equipment.Select(item => item.Slot).Distinct(), Is.EquivalentTo(new[] { "frame", "weapon", "chip" }));
+            var corrosion = data.Equipment.Single(item => item.Id == "corrosion-core");
+            Assert.That(corrosion.Modifiers.Attack, Is.LessThan(0));
+            Assert.That(corrosion.Modifiers.Range, Is.GreaterThan(0));
+            Assert.That(corrosion.GrantsActionIds, Does.Contain("toxic-mark"));
+            Assert.That(corrosion.GrantsActionIds, Does.Contain("corrosion-burst"));
+            var reactive = data.Equipment.Single(item => item.Id == "reactive-servo");
+            Assert.That(reactive.DefaultReaction.Trigger, Is.EqualTo("selfAttackHit"));
+            Assert.That(reactive.DefaultReaction.ActionId, Is.EqualTo("volt-follow"));
         }
 
         [Test]

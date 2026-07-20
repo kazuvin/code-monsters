@@ -15,7 +15,7 @@
 - After changing `src/core/`, `game-data/`, units, skills, reactions, combat parameters, prices, or shop settings, run `pnpm verify` before declaring the task complete.
 - `pnpm verify` must include the production build, core tests, combat-math tests, and `pnpm balance:check` equivalent.
 - Balance errors block completion. Warnings require review and should be reported; do not loosen a threshold only to silence a result.
-- For battle presentation changes, also run the relevant browser regression scripts (`test:ability`, `test:berserker`, `test:knockback`, `test:miss`, `test:sniper`, or `test:visual`).
+- For battle presentation or build-screen changes, also run the relevant browser regression scripts (`test:loadout`, `test:run`, `test:mobile`, `test:miss`, `test:jump`, `test:throw`, or `test:visual`).
 
 ## Unity portability
 
@@ -25,6 +25,7 @@
 
 ## Sprite asset pipeline
 
+- Keep animated combat units limited to the canonical `volt`, `bastion`, and `relay` roster unless the game scope is intentionally revised. Unit animation sheets are human-authored; use AI generation for static backgrounds, equipment icons, portraits, effects, and non-animated props instead of final character motion frames.
 - Keep gameplay definitions in `game-data/game-balance.json`; art specs and manifests may reference a stable unit ID but must not duplicate stats or localized names.
 - Treat `game-assets/config/`, `game-assets/specs/`, and `packages/asset-contracts/schemas/` as reviewed authoring inputs. Keep unapproved `game-assets/runs/` out of Git.
 - Only `game-assets/approved/<unitId>/manifest.json` may be published to Web or Unity. QA errors block approval; warnings require human review.
