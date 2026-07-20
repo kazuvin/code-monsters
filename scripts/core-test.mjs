@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { applyBattleStep, isBattleComplete, planBattleFrame } from '../src/core/battle-engine.ts';
+import { applyBattleStep, applyBattleSteps, isBattleComplete, planBattleFrame } from '../src/core/battle-engine.ts';
 import { applyBattleZoneChanges } from '../src/core/battle-zones.ts';
 import { analyzeBalance } from '../src/core/balance.ts';
 import { applyInstructionStatusEffects } from '../src/core/instruction-effects.ts';
@@ -51,7 +51,22 @@ const plan = (fighters, team, overrides = {}) =>
     ...overrides,
   });
 
-assert.equal(GAME_DATA.schemaVersion, 16, '非同期指示スキーマがv16ではありません');
+const resolvePending = (battlePlan, team, previousElapsed = 1) => {
+  const resolvesAt = Math.max(
+    ...battlePlan.fighters.flatMap((fighter) => (fighter.pendingAction ? [fighter.pendingAction.resolvesAt] : [])),
+  );
+  assert.ok(Number.isFinite(resolvesAt), '解決対象の保留アクションがありません');
+  return planBattleFrame({
+    fighters: battlePlan.fighters,
+    zones: battlePlan.zones,
+    team,
+    dt: resolvesAt - previousElapsed,
+    elapsed: resolvesAt,
+    previousElapsed,
+  });
+};
+
+assert.equal(GAME_DATA.schemaVersion, 17, '同時発動スキーマがv17ではありません');
 assert.equal(BATTLE_CONFIG.teamSize, 1, '標準戦闘が1vs1ではありません');
 assert.equal(UNITS.length, 3, '手作業アニメーション対象が3体に絞られていません');
 assert.deepEqual(UNITS.map((unit) => unit.id).sort(), ['bastion', 'relay', 'volt'], '1vs1で使用する3機体が不正です');
@@ -159,11 +174,13 @@ const firstAsynchronousPlan = plan(asynchronousFighters, asynchronousTeam);
 const firstAsynchronousActor = firstAsynchronousPlan.fighters.find((fighter) => fighter.team === 'ally');
 assert.ok((firstAsynchronousActor?.instructionCooldowns['attack-low'] ?? 0) > 0, '実行した通常攻撃のCDが始まりません');
 assert.equal(firstAsynchronousActor?.instructionCooldowns.retreat ?? 0, 0, '未実行の後退CDまで始まっています');
-const asynchronousDt = BATTLE_CONFIG.baseActionLockSeconds + BATTLE_CONFIG.tickSeconds;
-const secondAsynchronousPlan = plan(firstAsynchronousPlan.fighters, asynchronousTeam, {
-  dt: asynchronousDt,
-  elapsed: 2,
-  previousElapsed: 2 - asynchronousDt,
+assert.ok(firstAsynchronousActor?.pendingAction, '通常攻撃が発動待ち状態になりません');
+const resolvedAsynchronousPlan = resolvePending(firstAsynchronousPlan, asynchronousTeam);
+const resolvedAt = firstAsynchronousActor.pendingAction.resolvesAt;
+const secondAsynchronousPlan = plan(resolvedAsynchronousPlan.fighters, asynchronousTeam, {
+  dt: BATTLE_CONFIG.tickSeconds,
+  elapsed: resolvedAt + BATTLE_CONFIG.tickSeconds,
+  previousElapsed: resolvedAt,
 });
 assert.deepEqual(
   secondAsynchronousPlan.decisions
@@ -176,6 +193,36 @@ assert.ok(
   (secondAsynchronousPlan.fighters.find((fighter) => fighter.team === 'ally')?.instructionCooldowns['attack-low'] ??
     0) > 0,
   '別指示の実行中に通常攻撃CDが並行して進みません',
+);
+
+const simultaneousTeam = [createInventoryUnit('volt', 'simultaneous-volt')];
+simultaneousTeam[0].program = [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }];
+simultaneousTeam[0].reaction = null;
+const simultaneousFighters = createBattleFighters(simultaneousTeam, ENCOUNTERS[0]).map((fighter) => ({
+  ...fighter,
+  hp: 1,
+  x: fighter.team === 'ally' ? 45 : 50,
+  speed: 1,
+  actionLock: 0,
+  program: [{ targetId: 'nearestEnemy', conditionId: 'targetInRange', actionId: 'attack-low' }],
+  reaction: null,
+}));
+const simultaneousStart = plan(simultaneousFighters, simultaneousTeam);
+const pendingActions = simultaneousStart.fighters.map((fighter) => fighter.pendingAction);
+assert.ok(pendingActions.every(Boolean), '自機と敵機が同じフレームで発動を開始できません');
+assert.equal(pendingActions[0]?.resolvesAt, pendingActions[1]?.resolvesAt, '同速の行動が同時着弾になりません');
+const simultaneousImpact = resolvePending(simultaneousStart, simultaneousTeam);
+const simultaneousDamage = simultaneousImpact.steps.filter((step) => step.damage?.source === 'normal');
+assert.equal(simultaneousDamage.length, 2, '同時着弾した通常攻撃の片方が失われています');
+assert.ok(
+  simultaneousDamage[0]?.simultaneousGroup &&
+    simultaneousDamage.every((step) => step.simultaneousGroup === simultaneousDamage[0].simultaneousGroup),
+  '同時着弾が同一解決グループになっていません',
+);
+const mutualKnockout = applyBattleSteps(simultaneousImpact.fighters, simultaneousImpact.steps);
+assert.ok(
+  mutualKnockout.every((fighter) => fighter.hp === 0),
+  '同時攻撃で相打ちが成立しません',
 );
 
 const actor = fighters.find((fighter) => fighter.team === 'ally');
@@ -199,7 +246,7 @@ const repairFighters = createBattleFighters(repairTeam, ENCOUNTERS[0]).map((figh
   actionLock: fighter.team === 'ally' ? 0 : 99,
 }));
 const repairActor = repairFighters.find((fighter) => fighter.team === 'ally');
-const repairPlan = plan(repairFighters, repairTeam);
+const repairPlan = resolvePending(plan(repairFighters, repairTeam), repairTeam);
 const repairStep = repairPlan.steps.find((step) => step.flash.kind === 'heal');
 assert.ok(repairStep && repairActor, '自己修復が回復ステップを生成しません');
 assert.equal(repairStep.updates[0]?.id, repairActor.instanceId, '自己修復が自分を対象にしていません');
@@ -252,7 +299,7 @@ const zoneFighters = createBattleFighters(zoneTeam, ENCOUNTERS[0]).map((fighter)
   ...fighter,
   actionLock: fighter.team === 'ally' ? 0 : 99,
 }));
-const zonePlan = plan(zoneFighters, zoneTeam);
+const zonePlan = resolvePending(plan(zoneFighters, zoneTeam), zoneTeam);
 assert.ok(
   zonePlan.steps.some((step) => step.zoneChanges?.some((change) => change.kind === 'add')),
   '毒エリアを設置できません',
@@ -268,7 +315,7 @@ const followFighters = createBattleFighters(followTeam, ENCOUNTERS[0]).map((figh
   actionLock: fighter.team === 'ally' ? 0 : 99,
   abilityGauge: BATTLE_CONFIG.abilityGaugeMax,
 }));
-const followPlan = plan(followFighters, followTeam);
+const followPlan = resolvePending(plan(followFighters, followTeam), followTeam);
 assert.ok(
   followPlan.steps.some((step) => step.damage?.source === 'normal'),
   '通常攻撃が実行されません',
@@ -285,6 +332,24 @@ const harmless = {
   updates: [{ id: actor.instanceId, values: { hp: 1 } }],
 };
 assert.equal(applyBattleStep(fighters, harmless).find((fighter) => fighter.instanceId === actor.instanceId)?.hp, 1);
+const simultaneousHpBase = [{ ...actor, hp: 50 }];
+const simultaneousHpSteps = [
+  {
+    flash: { id: actor.instanceId, kind: 'heal', n: 0 },
+    simultaneousGroup: 'hp-test',
+    updates: [{ id: actor.instanceId, values: { hp: 60 } }],
+  },
+  {
+    flash: { id: enemy.instanceId, kind: 'attack', targetId: actor.instanceId, n: 0 },
+    simultaneousGroup: 'hp-test',
+    updates: [{ id: actor.instanceId, values: { hp: 43 } }],
+  },
+];
+assert.equal(
+  applyBattleSteps(simultaneousHpBase, simultaneousHpSteps)[0]?.hp,
+  53,
+  '同時回復と被ダメージが解決前HPへの差分合算になりません',
+);
 
 for (let seed = 1; seed <= 20; seed += 1) {
   const shop = createShop(seed, [], ROSTER_CONFIG.startingEquipmentIds);

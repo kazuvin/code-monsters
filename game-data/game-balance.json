@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 16,
+  "schemaVersion": 17,
   "battle": {
     "teamSize": 1,
     "tickSeconds": 0.22,
@@ -11,6 +11,8 @@
     "reactionCooldownSeconds": 2.6,
     "baseActionLockSeconds": 0.35,
     "minimumActionLockSeconds": 0.18,
+    "baseActionWindupSeconds": 0.44,
+    "minimumActionWindupSeconds": 0.22,
     "minimumInstructionCooldownSeconds": 0.45,
     "rangeStopRatio": 0.78,
     "initialPositionInset": 2,

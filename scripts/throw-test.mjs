@@ -82,5 +82,6 @@ if (
 if (!throwSeen || !throwAnimation.startsWith('ability-throw-'))
   throw new Error('背負い投げの戦闘アニメーションを確認できません');
 if (!thrownAnimation.startsWith('ability-thrown-')) throw new Error('投げられた敵の着地アニメーションを確認できません');
-if (!targetMovedBehind || !actions.has('THROW')) throw new Error('背負い投げで敵を使用者の背後へ移動できません');
+if (!targetMovedBehind || ![...actions].some((label) => label.split(' / ').includes('THROW')))
+  throw new Error('背負い投げで敵を使用者の背後へ移動できません');
 if (errors.length > 0) throw new Error(`ブラウザエラー: ${errors.join(', ')}`);

@@ -7,7 +7,7 @@ Code Monsters is designed around one programmable unit versus one authored rival
 ## Run loop
 
 1. Inspect the next rival's body, three equipped parts, and program summary.
-2. Configure Volt's ordered normal program and one interrupt reaction. Every instruction has an independent cooldown. When Volt's short action lock opens, ready instructions are evaluated from the top and only the first matching normal action executes.
+2. Configure Volt's ordered normal program and one interrupt reaction. Every instruction has an independent cooldown. When Volt's short action lock opens, ready instructions are evaluated from the top and only the first matching normal action starts. Each fighter then winds up independently; impacts at the same time resolve from one shared snapshot, so committed attacks can trade and produce a mutual knockout.
 3. Equip exactly one frame, weapon, and logic chip.
 4. Fight a deterministic one-on-one battle.
 5. Spend the reward on one of two unowned equipment offers or two instruction offers.

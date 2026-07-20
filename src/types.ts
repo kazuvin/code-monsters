@@ -253,6 +253,13 @@ export type ProgramBlock = {
 };
 export type ReactionBlock = { trigger: ReactionTrigger; actionId: string; fixedReaction?: boolean };
 
+export type PendingAction = {
+  actionId: string;
+  targetIds: string[];
+  startedAt: number;
+  resolvesAt: number;
+};
+
 export type Fighter = UnitDefinition & {
   instanceId: string;
   team: 'ally' | 'enemy';
@@ -261,6 +268,7 @@ export type Fighter = UnitDefinition & {
   z: number;
   actionLock: number;
   instructionCooldowns: Record<string, number>;
+  pendingAction: PendingAction | null;
   abilityGauge: number;
   reactionCooldown: number;
   statuses: StatusInstance[];

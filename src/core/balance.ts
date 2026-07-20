@@ -246,7 +246,7 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     if (!statuses.has(id)) error('UNKNOWN_STATUS', `${context} が未定義状態 "${id}" を参照しています`);
   };
 
-  if (data.schemaVersion < 16) error('INVALID_SCHEMA_VERSION', 'schemaVersion は16以上である必要があります');
+  if (data.schemaVersion < 17) error('INVALID_SCHEMA_VERSION', 'schemaVersion は17以上である必要があります');
   if (
     data.battle.tickSeconds <= 0 ||
     data.battle.statusDamageTickSeconds <= 0 ||
@@ -257,6 +257,8 @@ function validateData(data: GameBalanceData): BalanceIssue[] {
     data.battle.abilityGaugeRegenPerSecond <= 0 ||
     data.battle.baseActionLockSeconds <= 0 ||
     data.battle.minimumActionLockSeconds <= 0 ||
+    data.battle.baseActionWindupSeconds <= 0 ||
+    data.battle.minimumActionWindupSeconds <= 0 ||
     data.battle.minimumInstructionCooldownSeconds <= 0
   )
     error('INVALID_BATTLE_CONFIG', '戦闘のtick/cooldown/abilityGauge設定が不正です');

@@ -26,6 +26,8 @@ export type BattleConfig = {
   reactionCooldownSeconds: number;
   baseActionLockSeconds: number;
   minimumActionLockSeconds: number;
+  baseActionWindupSeconds: number;
+  minimumActionWindupSeconds: number;
   minimumInstructionCooldownSeconds: number;
   rangeStopRatio: number;
   initialPositionInset: number;

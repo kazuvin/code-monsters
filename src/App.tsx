@@ -24,7 +24,7 @@ import { BattleScene } from './BattleScene';
 import { Catalog } from './Catalog';
 import { DebugRoom } from './DebugRoom';
 import {
-  applyBattleStep,
+  applyBattleSteps,
   isBattleComplete,
   planBattleFrame,
   type BattleDamagePayload,
@@ -263,6 +263,7 @@ export function App() {
   const [speed, setSpeed] = useState(1);
   const [paused, setPaused] = useState(false);
   const [flash, setFlash] = useState<BattleFlash | null>(null);
+  const [concurrentFlashes, setConcurrentFlashes] = useState<BattleFlash[]>([]);
   const battleQueueRef = useRef<BattleStep[]>([]);
   const decisionTraceRef = useRef<DecisionTrace[]>([]);
   const damageTraceRef = useRef<BattleDamagePayload[]>([]);
@@ -549,6 +550,7 @@ export function App() {
     setDamageReport([]);
     lastStepAtRef.current = 0;
     setFlash(null);
+    setConcurrentFlashes([]);
     setFighters(initialFighters);
     zonesRef.current = [];
     setZones([]);
@@ -565,6 +567,7 @@ export function App() {
     battleQueueRef.current = [];
     lastStepAtRef.current = 0;
     setFlash(null);
+    setConcurrentFlashes([]);
     setPhase('build');
     setFighters(createBattleFighters(nextTeam, encounter));
     zonesRef.current = [];
@@ -648,15 +651,32 @@ export function App() {
       const queuedStep = battleQueueRef.current[0];
       const now = Date.now();
       if (queuedStep && now - lastStepAtRef.current >= BATTLE_CONFIG.actionStepMs / speed) {
-        battleQueueRef.current = battleQueueRef.current.slice(1);
+        let simultaneousCount = 1;
+        while (
+          queuedStep.simultaneousGroup &&
+          battleQueueRef.current[simultaneousCount]?.simultaneousGroup === queuedStep.simultaneousGroup
+        )
+          simultaneousCount += 1;
+        const simultaneousSteps = battleQueueRef.current.slice(0, simultaneousCount);
+        battleQueueRef.current = battleQueueRef.current.slice(simultaneousSteps.length);
         lastStepAtRef.current = now;
         setFighters((current) => {
           sampleAbilityGauges(current, dt);
-          const next = applyBattleStep(tickCooldowns(current, dt), queuedStep);
-          zonesRef.current = applyBattleZoneChanges(tickBattleZones(zonesRef.current, dt), queuedStep.zoneChanges);
+          const next = applyBattleSteps(tickCooldowns(current, dt), simultaneousSteps);
+          zonesRef.current = simultaneousSteps.reduce(
+            (state, step) => applyBattleZoneChanges(state, step.zoneChanges),
+            tickBattleZones(zonesRef.current, dt),
+          );
           setZones(zonesRef.current);
-          setFlash({ ...queuedStep.flash, n: now });
-          if (queuedStep.log) addLog(queuedStep.log.actor, queuedStep.log.text, queuedStep.log.type);
+          const eventFlashes = simultaneousSteps
+            .filter((step) => step.flash.kind !== 'death')
+            .map((step) => ({ ...step.flash, n: now }));
+          const visibleFlashes = eventFlashes.length
+            ? eventFlashes
+            : simultaneousSteps.map((step) => ({ ...step.flash, n: now }));
+          setFlash(visibleFlashes[0] ?? null);
+          setConcurrentFlashes(visibleFlashes);
+          for (const step of simultaneousSteps) if (step.log) addLog(step.log.actor, step.log.text, step.log.type);
           if (isBattleComplete(next)) setTimeout(completeBattle, BATTLE_CONFIG.resultDelayMs);
           return next;
         });
@@ -743,6 +763,10 @@ export function App() {
         })
       : ['正常'];
     if (fighter.actionLock > 0) tags.push('行動硬直');
+    if (fighter.pendingAction)
+      tags.push(
+        `発動中：${instructionById.get(fighter.pendingAction.actionId)?.short ?? fighter.pendingAction.actionId}`,
+      );
     return tags;
   };
   const instructionReadiness = (fighter: Fighter) => {
@@ -1368,7 +1392,13 @@ export function App() {
                 <span>HP</span>
               </div>
             </div>
-            <BattleScene fighters={fighters} zones={zones} flash={flash} running={phase === 'battle' && !paused} />
+            <BattleScene
+              fighters={fighters}
+              zones={zones}
+              flash={flash}
+              flashes={concurrentFlashes}
+              running={phase === 'battle' && !paused}
+            />
             <div className="battle-controls">
               <button onClick={() => setPaused((current) => !current)}>{paused ? <Play /> : <Pause />}</button>
               <button className={speed === 1 ? 'active' : ''} onClick={() => setSpeed(1)}>

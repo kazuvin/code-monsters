@@ -20,9 +20,11 @@ namespace CodeMonsters.Core.Tests
         [Test]
         public void CanonicalDataLoadsFiveEncounterRun()
         {
-            Assert.That(data.SchemaVersion, Is.EqualTo(16));
+            Assert.That(data.SchemaVersion, Is.EqualTo(17));
             Assert.That(data.Battle.TeamSize, Is.EqualTo(1));
             Assert.That(data.Battle.BaseActionLockSeconds, Is.GreaterThan(0));
+            Assert.That(data.Battle.BaseActionWindupSeconds, Is.GreaterThan(0));
+            Assert.That(data.Battle.MinimumActionWindupSeconds, Is.GreaterThan(0));
             Assert.That(data.Battle.MinimumInstructionCooldownSeconds, Is.GreaterThan(0));
             Assert.That(data.Battle.StatusDamageTickSeconds, Is.EqualTo(2));
             Assert.That(data.DebugTraining.MinimumDummyHp, Is.EqualTo(1));

@@ -132,6 +132,10 @@ export function actionLockDuration(speed: number): number {
   return Math.max(BATTLE_CONFIG.minimumActionLockSeconds, BATTLE_CONFIG.baseActionLockSeconds / speed);
 }
 
+export function actionWindupDuration(speed: number): number {
+  return Math.max(BATTLE_CONFIG.minimumActionWindupSeconds, BATTLE_CONFIG.baseActionWindupSeconds / speed);
+}
+
 export function instructionCooldown(instruction: Instruction, speed: number): number {
   return Math.max(BATTLE_CONFIG.minimumInstructionCooldownSeconds, instruction.cooldownSeconds / speed);
 }

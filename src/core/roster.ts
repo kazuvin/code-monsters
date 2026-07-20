@@ -123,6 +123,7 @@ export function createBattleFighters(
     z: 0,
     abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
     instructionCooldowns: {},
+    pendingAction: null,
     reactionCooldown: 0,
     statuses: [],
   };

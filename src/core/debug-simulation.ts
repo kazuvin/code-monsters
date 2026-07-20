@@ -128,6 +128,7 @@ const baseFighterState = {
   z: 0,
   abilityGauge: BATTLE_CONFIG.abilityGaugeInitial,
   instructionCooldowns: {},
+  pendingAction: null,
   reactionCooldown: 0,
   statuses: [],
 };
@@ -461,7 +462,8 @@ export function runDebugSimulation(input: DebugSimulationInput): DebugSimulation
       minimumGauge = Math.min(minimumGauge, actor.abilityGauge);
       if (actor.abilityGauge <= Number.EPSILON) emptyGaugeSeconds += tick;
     }
-    if (input.mode === 'single' && singleAttempted && queue.length === 0) break;
+    const actorPending = fighters.find((fighter) => fighter.instanceId === setup.actorId)?.pendingAction ?? null;
+    if (input.mode === 'single' && singleAttempted && queue.length === 0 && actorPending === null) break;
   }
 
   const actionDecisions = decisions.filter(

@@ -3,7 +3,13 @@ import { BATTLE_ZONES } from './data';
 import { activeStatusDetails, hasStatus, statusEffectTargetId, statusVisualClasses } from './core/statuses';
 import type { BattleFlash, BattleZoneInstance, Fighter } from './types';
 
-type Props = { fighters: Fighter[]; zones?: BattleZoneInstance[]; flash: BattleFlash | null; running: boolean };
+type Props = {
+  fighters: Fighter[];
+  zones?: BattleZoneInstance[];
+  flash: BattleFlash | null;
+  flashes?: BattleFlash[];
+  running: boolean;
+};
 const zoneById = new Map(BATTLE_ZONES.map((zone) => [zone.id, zone]));
 
 const DEPTH_SLOTS = 2;
@@ -32,11 +38,15 @@ const nearestOpponent = (fighter: Fighter, fighters: Fighter[]) => {
     : opponents[0];
 };
 
-export function BattleScene({ fighters, zones = [], flash, running }: Props) {
+export function BattleScene({ fighters, zones = [], flash, flashes, running }: Props) {
+  const activeFlashes = flashes && flashes.length > 0 ? flashes : flash ? [flash] : [];
   const [missNotice, setMissNotice] = useState<BattleFlash | null>(null);
   useEffect(() => {
-    if (flash?.kind === 'miss') setMissNotice(flash);
-  }, [flash]);
+    const missed = (flashes && flashes.length > 0 ? flashes : flash ? [flash] : []).find(
+      (candidate) => candidate.kind === 'miss',
+    );
+    if (missed) setMissNotice(missed);
+  }, [flash, flashes]);
   useEffect(() => {
     if (!missNotice) return;
     const timer = setTimeout(() => setMissNotice(null), 1200);
@@ -49,26 +59,33 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
   const flashSubject = flash ? fighters.find((fighter) => fighter.instanceId === flash.id) : undefined;
   const flashActor = flash?.actorId ? fighters.find((fighter) => fighter.instanceId === flash.actorId) : flashSubject;
   const flashTarget = flash?.targetId ? fighters.find((fighter) => fighter.instanceId === flash.targetId) : undefined;
-  const projectileAttack =
-    flash &&
-    flashSubject &&
-    flashTarget &&
-    (flash.attackType ?? flashSubject.attackType) === 'sniper' &&
-    attackKinds.some((kind) => kind === flash.kind)
-      ? { actor: flashSubject, target: flashTarget }
-      : null;
-  const fieldProjectile =
-    flash?.kind === 'field' && flashSubject && flash.zoneX !== undefined
-      ? { actor: flashSubject, targetX: flash.zoneX }
-      : null;
+  const projectileAttacks = activeFlashes.flatMap((candidate) => {
+    const actor = fighters.find((fighter) => fighter.instanceId === candidate.id);
+    const target = fighters.find((fighter) => fighter.instanceId === candidate.targetId);
+    return actor &&
+      target &&
+      (candidate.attackType ?? actor.attackType) === 'sniper' &&
+      attackKinds.some((kind) => kind === candidate.kind)
+      ? [{ actor, target, flash: candidate }]
+      : [];
+  });
+  const fieldProjectiles = activeFlashes.flatMap((candidate) => {
+    const actor = fighters.find((fighter) => fighter.instanceId === candidate.id);
+    return candidate.kind === 'field' && actor && candidate.zoneX !== undefined
+      ? [{ actor, targetX: candidate.zoneX, flash: candidate }]
+      : [];
+  });
 
   return (
     <div
-      className={`side-battlefield ${running ? 'is-running' : 'is-paused'} ${flashActor && flash?.actionLabel ? 'has-action-focus' : ''}`}
+      className={`side-battlefield ${running ? 'is-running' : 'is-paused'} ${activeFlashes.some((candidate) => candidate.actionLabel) ? 'has-action-focus' : ''}`}
       aria-label="2D戦闘フィールド"
       data-event-id={flash?.n ?? ''}
-      data-event-kind={flash?.kind ?? ''}
-      data-action-label={flash?.actionLabel ?? ''}
+      data-event-kind={activeFlashes.map((candidate) => candidate.kind).join(',')}
+      data-action-label={activeFlashes
+        .map((candidate) => candidate.actionLabel)
+        .filter(Boolean)
+        .join(' / ')}
     >
       <div className="stage-wall wall-ally" />
       <div className="stage-wall wall-enemy" />
@@ -119,58 +136,70 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
             </div>
           );
         })}
-        {projectileAttack && (
+        {projectileAttacks.map((projectile) => (
           <i
             aria-hidden="true"
-            className={`battle-projectile projectile-arrow ${projectileAttack.target.x < projectileAttack.actor.x ? 'flies-left' : 'flies-right'}`}
-            key={`projectile-${flash?.n}`}
+            className={`battle-projectile projectile-arrow ${projectile.target.x < projectile.actor.x ? 'flies-left' : 'flies-right'}`}
+            key={`projectile-${projectile.flash.id}-${projectile.flash.n}`}
             style={{
-              ['--projectile-start-x' as string]: `${projectileAttack.actor.x}%`,
-              ['--projectile-end-x' as string]: `${projectileAttack.target.x}%`,
-              ['--projectile-start-depth' as string]: `${depthOffset(projectileAttack.actor, fighters)}px`,
-              ['--projectile-end-depth' as string]: `${depthOffset(projectileAttack.target, fighters)}px`,
+              ['--projectile-start-x' as string]: `${projectile.actor.x}%`,
+              ['--projectile-end-x' as string]: `${projectile.target.x}%`,
+              ['--projectile-start-depth' as string]: `${depthOffset(projectile.actor, fighters)}px`,
+              ['--projectile-end-depth' as string]: `${depthOffset(projectile.target, fighters)}px`,
             }}
           />
-        )}
-        {fieldProjectile && (
+        ))}
+        {fieldProjectiles.map((projectile) => (
           <i
             aria-hidden="true"
-            className={`battle-projectile projectile-flask ${fieldProjectile.targetX < fieldProjectile.actor.x ? 'flies-left' : 'flies-right'}`}
-            key={`field-projectile-${flash?.n}`}
+            className={`battle-projectile projectile-flask ${projectile.targetX < projectile.actor.x ? 'flies-left' : 'flies-right'}`}
+            key={`field-projectile-${projectile.flash.id}-${projectile.flash.n}`}
             style={{
-              ['--projectile-start-x' as string]: `${fieldProjectile.actor.x}%`,
-              ['--projectile-end-x' as string]: `${fieldProjectile.targetX}%`,
-              ['--projectile-start-depth' as string]: `${depthOffset(fieldProjectile.actor, fighters)}px`,
+              ['--projectile-start-x' as string]: `${projectile.actor.x}%`,
+              ['--projectile-end-x' as string]: `${projectile.targetX}%`,
+              ['--projectile-start-depth' as string]: `${depthOffset(projectile.actor, fighters)}px`,
               ['--projectile-end-depth' as string]: '0px',
             }}
           />
-        )}
+        ))}
         {fighters.map((fighter) => {
-          const isActor = flash?.id === fighter.instanceId;
-          const isFocusActor = flashActor?.instanceId === fighter.instanceId;
+          const fighterFlashes = activeFlashes.filter((candidate) => candidate.id === fighter.instanceId);
+          const fighterFlash =
+            fighterFlashes.find((candidate) => candidate.kind === 'thrown' || candidate.kind === 'pulled') ??
+            fighterFlashes[0];
+          const impactFlash = activeFlashes.find((candidate) => candidate.targetId === fighter.instanceId);
+          const isActor = fighterFlash !== undefined;
+          const isFocusActor = activeFlashes.some((candidate) => {
+            const actorId = candidate.actorId ?? candidate.id;
+            return actorId === fighter.instanceId;
+          });
           const hasMissNotice = missNotice?.id === fighter.instanceId;
-          const isTarget = flash?.targetId === fighter.instanceId;
-          const isProjectileTarget = isTarget && projectileAttack?.target.instanceId === fighter.instanceId;
+          const isTarget = impactFlash !== undefined;
+          const isProjectileTarget = projectileAttacks.some(
+            (projectile) => projectile.target.instanceId === fighter.instanceId,
+          );
           const showsImpact =
             isTarget &&
-            flash?.kind !== 'miss' &&
-            (attackKinds.some((kind) => kind === flash?.kind) || flash?.kind === 'throw' || flash?.kind === 'status');
-          const isAttack = isActor && attackKinds.some((kind) => kind === flash?.kind);
-          const attackType = isActor && flash?.attackType ? flash.attackType : fighter.attackType;
-          const attackEffect = flash?.kind === 'follow' ? 'follow' : attackType;
+            impactFlash?.kind !== 'miss' &&
+            (attackKinds.some((kind) => kind === impactFlash?.kind) ||
+              impactFlash?.kind === 'throw' ||
+              impactFlash?.kind === 'status');
+          const isAttack = isActor && attackKinds.some((kind) => kind === fighterFlash?.kind);
+          const attackType = isActor && fighterFlash?.attackType ? fighterFlash.attackType : fighter.attackType;
+          const attackEffect = fighterFlash?.kind === 'follow' ? 'follow' : attackType;
           const abilityEffect =
             isActor &&
-            (flash?.kind === 'dash' ||
-              flash?.kind === 'jump' ||
-              flash?.kind === 'throw' ||
-              flash?.kind === 'taunt' ||
-              flash?.kind === 'pull' ||
-              flash?.kind === 'retreat' ||
-              flash?.kind === 'field' ||
-              flash?.kind === 'guard')
-              ? flash.kind
+            (fighterFlash?.kind === 'dash' ||
+              fighterFlash?.kind === 'jump' ||
+              fighterFlash?.kind === 'throw' ||
+              fighterFlash?.kind === 'taunt' ||
+              fighterFlash?.kind === 'pull' ||
+              fighterFlash?.kind === 'retreat' ||
+              fighterFlash?.kind === 'field' ||
+              fighterFlash?.kind === 'guard')
+              ? fighterFlash.kind
               : null;
-          const state = fighter.hp <= 0 ? 'is-dead' : isActor ? `is-${flash?.kind}` : '';
+          const state = fighter.hp <= 0 ? 'is-dead' : isActor ? `is-${fighterFlash?.kind}` : '';
           const hpRatio = Math.max(0, fighter.hp / fighter.maxHp);
           const opponent = nearestOpponent(fighter, fighters);
           const facingClass = opponent
@@ -180,12 +209,12 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
             : fighter.team === 'enemy'
               ? 'face-left'
               : 'face-right';
-          const animationKey = (isActor || isTarget) && flash ? flash.n : 'idle';
+          const animationKey = fighterFlash?.n ?? impactFlash?.n ?? 'idle';
           const fighterDepthSlot = depthSlot(fighter, fighters);
           const statusDetails = activeStatusDetails(fighter);
           return (
             <div
-              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${flashActor && flash?.actionLabel ? (isFocusActor ? 'is-focus-actor' : isTarget ? 'is-focus-target' : 'is-focus-muted') : ''} ${state}`}
+              className={`sprite unit-${fighter.id} ${fighter.team} ${facingClass} role-${fighter.role.toLowerCase()} attack-${attackType} ${statusVisualClasses(fighter)} ${isProjectileTarget ? 'projectile-impact-target' : ''} ${activeFlashes.some((candidate) => candidate.actionLabel) ? (isFocusActor ? 'is-focus-actor' : isTarget ? 'is-focus-target' : 'is-focus-muted') : ''} ${state}`}
               data-depth-slot={fighterDepthSlot}
               key={fighter.instanceId}
               style={{
@@ -219,7 +248,7 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
                   <span>空振り</span>
                 </div>
               )}
-              {isActor && flash?.reaction && <i className="reaction-pulse" key={`reaction-${animationKey}`} />}
+              {isActor && fighterFlash?.reaction && <i className="reaction-pulse" key={`reaction-${animationKey}`} />}
               {abilityEffect && <i className={`ability-fx fx-${abilityEffect}`} key={`ability-${animationKey}`} />}
               <div className="sprite-hp">
                 <i style={{ width: `${hpRatio * 100}%` }} />
@@ -239,7 +268,7 @@ export function BattleScene({ fighters, zones = [], flash, running }: Props) {
                     )}
                   </div>
                 ))}
-              {isActor && flash?.kind === 'heal' && <div className="status-chip heal">PATCH</div>}
+              {isActor && fighterFlash?.kind === 'heal' && <div className="status-chip heal">PATCH</div>}
             </div>
           );
         })}

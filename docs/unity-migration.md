@@ -143,11 +143,17 @@ Replace the fighter-wide normal-action cooldown with a short action lock plus pe
 
 When the action lock is open, scan the ordered program and execute the first block whose instruction cooldown is ready, condition matches, range/state constraints pass, and cost is affordable. Committing an action starts only that instruction's cooldown plus the short actor action lock; skipped blocks consume neither. Reactions retain their independent interrupt cooldown. Version 15 fighter snapshots containing a single `cooldown` value are not timing-compatible and should start a new battle.
 
+## Schema version 17 migration
+
+Separate normal actions into commit, windup, and impact phases. `battle.baseActionWindupSeconds` and `battle.minimumActionWindupSeconds` define the speed-scaled delay between commit and impact. Runtime fighters serialize a nullable `pendingAction` containing the stable action ID, locked target IDs, start time, and impact time. A fighter cannot commit another normal action while this value is present.
+
+Resolve pending actions by impact time. Actions with the same impact time must read actor and target values from the same pre-impact snapshot, then apply their effects as one `simultaneousGroup`; this permits mutual knockouts and prevents stable-ID or speed ordering from canceling an already committed action. HP changes within a group are summed as deltas from the shared snapshot and clamped once after aggregation, so healing and damage cannot overwrite each other by processing order. Reactions are evaluated after the simultaneous impact group. Version 16 fighter snapshots do not contain pending action timing and should start a new battle.
+
 ## Executable migration spike
 
 `unity/CodeMonsters` is a minimal Unity 6 project that proves the first migration boundary without introducing a second balance-data source. It reads the repository's canonical `game-data/game-balance.json` at EditMode test time and currently ports:
 
-- schema-v16 DTO loading and stable-ID/reference validation, including the one-on-one contract, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
+- schema-v17 DTO loading and stable-ID/reference validation, including the one-on-one contract, action windup, instruction cooldowns and action-lock limits, three-slot equipment, encounter programs, uncapped non-decaying status damage, action-triggered battle zones, finite instruction effects, and canonical status values
 - actor-relative range and condition evaluation, including fixed-range contact skills
 - damage and knockback math
 - plain C# contracts for program blocks, decision traces, battle steps, and replay frames

@@ -59,6 +59,12 @@ namespace CodeMonsters.Core
         [JsonProperty("minimumActionLockSeconds")]
         public double MinimumActionLockSeconds;
 
+        [JsonProperty("baseActionWindupSeconds")]
+        public double BaseActionWindupSeconds;
+
+        [JsonProperty("minimumActionWindupSeconds")]
+        public double MinimumActionWindupSeconds;
+
         [JsonProperty("minimumInstructionCooldownSeconds")]
         public double MinimumInstructionCooldownSeconds;
 

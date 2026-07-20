@@ -7,7 +7,7 @@ namespace CodeMonsters.Core
 {
     public static class GameBalanceLoader
     {
-        public const int SupportedSchemaVersion = 16;
+        public const int SupportedSchemaVersion = 17;
 
         public static string CanonicalDataPath => Path.GetFullPath(
             Path.Combine(Application.dataPath, "..", "..", "..", "game-data", "game-balance.json")
@@ -43,9 +43,11 @@ namespace CodeMonsters.Core
             if (
                 data.Battle.BaseActionLockSeconds <= 0
                 || data.Battle.MinimumActionLockSeconds <= 0
+                || data.Battle.BaseActionWindupSeconds <= 0
+                || data.Battle.MinimumActionWindupSeconds <= 0
                 || data.Battle.MinimumInstructionCooldownSeconds <= 0
             )
-                throw new InvalidDataException("Action lock and instruction cooldown limits must be positive");
+                throw new InvalidDataException("Action windup, lock, and instruction cooldown limits must be positive");
             ValidateDebugTraining(data.DebugTraining);
 
             var unitIds = UniqueIds(data.Units, unit => unit.Id, "unit");
