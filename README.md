@@ -31,7 +31,7 @@ pnpm test:browser
 
 ```bash
 pnpm build
-pnpm deploy
+pnpm run deploy
 ```
 
 Cloudflare Workers Static Assets に `dist/` を公開します。
