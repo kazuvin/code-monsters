@@ -1,6 +1,6 @@
 import { chromium } from 'playwright-core';
 
-const target = process.argv[2] ?? 'http://127.0.0.1:5173';
+const target = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: true,
