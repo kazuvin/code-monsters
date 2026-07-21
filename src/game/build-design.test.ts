@@ -6,6 +6,7 @@ describe('build design', () => {
   it('models build concepts as trait and weapon axes with reusable combinations', () => {
     expect(GAME_DATA.buildDesign.axes.map((axis) => axis.id)).toEqual(['trait', 'weapon']);
     expect(GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'trait')?.values.map((value) => value.id)).toEqual([
+      'neutral',
       'poison',
       'charge',
     ]);
@@ -19,7 +20,7 @@ describe('build design', () => {
     const hybridSkills = GAME_DATA.buildDesign.skills.filter(
       (skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2,
     );
-    expect(hybridSkills.length).toBeGreaterThanOrEqual(3);
+    expect(hybridSkills.map((skill) => skill.id).sort()).toEqual(['status-relay', 'toxic-reservoir']);
 
     GAME_DATA.buildDesign.skills.forEach((skill) => {
       expect(skill.axisLinks.map((link) => link.axisId).sort(), skill.id).toEqual(['trait', 'weapon']);
@@ -124,11 +125,24 @@ describe('build design', () => {
     ).toContain('skill design "status-relay" does not tag linked build "trait/charge"');
   });
 
+  it('allows a neutral shared node to support builds without pretending to own their traits', () => {
+    const strike = GAME_DATA.buildDesign.skills.find((skill) => skill.id === 'strike')!;
+
+    expect(strike.axisLinks.find((link) => link.axisId === 'trait')?.valueIds).toEqual(['neutral']);
+    expect(strike.buildLinks.map((link) => link.buildId).sort()).toEqual(['charge', 'poison']);
+    expect(
+      validateBuildDesign(
+        GAME_DATA.buildDesign,
+        GAME_DATA.blocks.map((block) => block.id),
+      ),
+    ).toEqual([]);
+  });
+
   it('renders a compact Japanese matrix for design review', () => {
     const markdown = renderBuildMatrixMarkdown(GAME_DATA.buildDesign);
 
     expect(markdown).toContain('# ビルド・シナジーマトリクス');
-    expect(markdown).toContain('| 特性 | 戦闘中に育て、別の武器へ受け渡せる仕組み |');
+    expect(markdown).toContain('| 特性 | ノード固有の蓄積・変換。無特性はどのビルドにも属さない |');
     expect(markdown).toContain('| `poison-needle` | `poison` | `bow` |');
     expect(markdown).toContain('配置思想 | 充電ノードを連ねた経路と遠い解放点');
     expect(markdown).toContain('| 培養 | 毒を残して育てる |');

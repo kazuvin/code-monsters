@@ -11,6 +11,7 @@ import { createBattleReport, type BattleReport, type TeamBattleReport } from './
 import { analyzeCircuit, calculateChargeByCell, rotatePorts } from './core/circuit';
 import { damageTierFor, type DamageTier } from './core/combat-presentation';
 import { battleReward } from './core/economy';
+import { generateEnemyBuild } from './core/enemy-builder';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
 import { BATTLE_SPEEDS, playbackFrameMs, type BattleSpeed } from './core/playback';
 import { advanceShop, createShop, rerollShop } from './core/shop';
@@ -64,6 +65,7 @@ type FighterFeedback = {
   shield: number;
   repair: number;
 };
+type FeedbackKind = keyof FighterFeedback;
 
 const directionBetween = (from: CellPosition, to: CellPosition): Direction => {
   if (to.row < from.row) return 'north';
@@ -96,7 +98,13 @@ const RARITY_COPY: Record<Rarity, { label: string; code: string; color: string; 
 };
 const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 const WEAPON_MARK: Record<string, string> = { blade: '剣', bow: '弓', cannon: '砲', device: '機' };
-const DAMAGE_TIER_COPY: Record<DamageTier, string> = { small: 'HIT', medium: 'HEAVY', large: 'BREAK' };
+const FEEDBACK_COPY: Record<FeedbackKind, string> = {
+  damage: 'ダメージ',
+  poison: '毒付与',
+  shield: '防護',
+  repair: '回復',
+};
+const FEEDBACK_TIER_ORDER: DamageTier[] = ['small', 'medium', 'large'];
 
 const axisValuesForBlock = (blockId: string, axisId: string) => {
   const valueIds = skillDesignByBlockId.get(blockId)?.axisLinks.find((link) => link.axisId === axisId)?.valueIds ?? [];
@@ -253,7 +261,7 @@ const CatalogScreen = ({
       <div>
         <small>NODE ARCHIVE / {String(GAME_DATA.blocks.length).padStart(2, '0')}</small>
         <h2>カードカタログ</h2>
-        <p>特性で育て、武器で届ける。すべての組み合わせと接続数を確認できます。</p>
+        <p>特性を選び、無特性でつなぎ、武器で届ける。すべての組み合わせと接続数を確認できます。</p>
       </div>
       <div className="rarity-legend" aria-label="レアリティの色">
         {RARITY_ORDER.map((rarity) => (
@@ -359,6 +367,14 @@ const ArenaFighter = ({
   feedbackKey: string;
 }) => {
   const damageTier = feedback.damage > 0 ? damageTierFor(feedback.damage, fighter.maxHp) : null;
+  const feedbackItems = (Object.entries(feedback) as Array<[FeedbackKind, number]>).flatMap(([kind, value]) =>
+    value > 0 ? [{ kind, value, tier: damageTierFor(value, fighter.maxHp) }] : [],
+  );
+  const feedbackTier = feedbackItems.reduce<DamageTier>(
+    (strongest, item) =>
+      FEEDBACK_TIER_ORDER.indexOf(item.tier) > FEEDBACK_TIER_ORDER.indexOf(strongest) ? item.tier : strongest,
+    'small',
+  );
   return (
     <article
       className={`arena-fighter team-${fighter.team} ${fighter.hp <= 0 ? 'is-down' : ''} ${acting ? 'is-acting' : ''} ${hit ? 'is-hit' : ''} ${damageTier ? `damage-${damageTier}` : ''} ${feedback.poison > 0 ? 'is-poisoned-now' : ''} ${feedback.shield > 0 ? 'is-shielded-now' : ''} ${feedback.repair > 0 ? 'is-repaired-now' : ''}`}
@@ -375,22 +391,22 @@ const ArenaFighter = ({
           </span>
         )}
       </div>
-      {(feedback.damage > 0 || feedback.poison > 0 || feedback.shield > 0 || feedback.repair > 0) && (
-        <div
-          className={`combat-feedback ${damageTier ? `damage-${damageTier}` : ''}`}
-          key={feedbackKey}
-          aria-live="polite"
-        >
-          {feedback.damage > 0 && damageTier && (
-            <b className="feedback-damage" aria-label={`${feedback.damage}ダメージ`}>
-              <small>{DAMAGE_TIER_COPY[damageTier]}</small>
-              <strong>-{feedback.damage}</strong>
-              <i>HP</i>
+      {feedbackItems.length > 0 && (
+        <div className={`combat-feedback tier-${feedbackTier}`} key={feedbackKey} aria-live="polite">
+          {feedbackItems.map(({ kind, value, tier }) => (
+            <b
+              className={`feedback-number feedback-${kind} tier-${tier}`}
+              data-feedback-kind={kind}
+              data-feedback-tier={tier}
+              aria-label={`${FEEDBACK_COPY[kind]} ${value}`}
+              key={kind}
+            >
+              <strong>
+                {kind === 'damage' ? '-' : '+'}
+                {value}
+              </strong>
             </b>
-          )}
-          {feedback.poison > 0 && <b className="feedback-poison">毒 +{feedback.poison}</b>}
-          {feedback.shield > 0 && <b className="feedback-shield">防護 +{feedback.shield}</b>}
-          {feedback.repair > 0 && <b className="feedback-repair">回復 +{feedback.repair}</b>}
+          ))}
         </div>
       )}
       <div className="arena-unit-copy">
@@ -749,6 +765,7 @@ export function App() {
   const [coins, setCoins] = useState(GAME_DATA.rules.startingCoins);
   const [run, setRun] = useState(1);
   const [seed, setSeed] = useState(initialSeed);
+  const [enemySeed, setEnemySeed] = useState(initialSeed + 101);
   const [shop, setShop] = useState(() =>
     createShop(shopBlocks, GAME_DATA.rules.rarityWeights, initialSeed, GAME_DATA.rules.shopSize),
   );
@@ -772,7 +789,12 @@ export function App() {
 
   const circuitAnalysis = useMemo(() => analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
   const powered = circuitAnalysis.poweredCells;
-  const preview = useMemo(() => createBattle(GAME_DATA, board, GAME_DATA.enemyBoard), [board]);
+  const enemyBuild = useMemo(() => generateEnemyBuild(GAME_DATA, run, enemySeed), [run, enemySeed]);
+  const enemyTrait = axisById.get('trait')?.values.find((value) => value.id === enemyBuild.traitId);
+  const preview = useMemo(
+    () => createBattle(GAME_DATA, board, enemyBuild.board, { enemyMaxHpBonus: enemyBuild.maxHpBonus }),
+    [board, enemyBuild.board, enemyBuild.maxHpBonus],
+  );
   const battle = playback[frame] ?? preview;
   const fighters = battle.fighters;
   const player = fighters.find((fighter) => fighter.team === 'player')!;
@@ -1078,6 +1100,7 @@ export function App() {
     const nextSeed = seed + 1;
     setCoins((current) => current - GAME_DATA.rules.rerollCost);
     setSeed(nextSeed);
+    setEnemySeed((current) => current + 47);
     setShop((current) =>
       rerollShop(shopBlocks, GAME_DATA.rules.rarityWeights, current, nextSeed, GAME_DATA.rules.shopSize),
     );
@@ -1088,7 +1111,7 @@ export function App() {
     setShop((current) => current.map((offer) => (offer.id === id ? { ...offer, locked: !offer.locked } : offer)));
 
   const startBattle = () => {
-    const next = createPlayback(GAME_DATA, board, GAME_DATA.enemyBoard);
+    const next = createPlayback(GAME_DATA, board, enemyBuild.board, { enemyMaxHpBonus: enemyBuild.maxHpBonus });
     setDetail(null);
     setReportOpen(false);
     setPlayback(next);
@@ -1400,6 +1423,11 @@ export function App() {
               <h1>BATTLE RUN {String(run).padStart(2, '0')}</h1>
             </div>
             <div className="battle-hud-tools">
+              <div className="rival-readout">
+                <small>RIVAL LV.{String(run).padStart(2, '0')}</small>
+                <b>{enemyTrait?.title ?? enemyBuild.traitId}</b>
+                <i>{enemyBuild.nodeCount} NODE</i>
+              </div>
               <div className="battle-speed" role="group" aria-label="戦闘速度">
                 {BATTLE_SPEEDS.map((speed) => (
                   <button
@@ -1671,7 +1699,7 @@ export function App() {
                 自機 <b>{player.hp}</b>
               </span>
               <span>
-                相手 <b>{enemy.hp}</b>
+                相手 LV.{run} <b>{enemy.hp}</b>
               </span>
             </div>
             <p className="result-reward">報酬 COIN +{battleReward(GAME_DATA, battle.winner)}</p>

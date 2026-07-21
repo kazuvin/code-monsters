@@ -29,6 +29,8 @@ type PlannedActivation = {
   charge: number;
 };
 
+export type BattleOptions = { enemyMaxHpBonus?: number };
+
 const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player');
 
 const winnerOf = (fighters: FighterState[]): Winner => {
@@ -52,10 +54,11 @@ export const overloadDamageAtTick = (data: GameData, tick: number) => {
   return Math.round(data.rules.suddenDeathBaseDamage * data.rules.suddenDeathGrowth ** (level - 1));
 };
 
-const fighterFor = (data: GameData, team: Team): FighterState => {
+const fighterFor = (data: GameData, team: Team, options: BattleOptions): FighterState => {
   const unitId = team === 'player' ? data.playerUnitId : data.enemyUnitId;
   const unit = data.units.find((candidate) => candidate.id === unitId);
   if (!unit) throw new Error(`Missing ${team} unit "${unitId}"`);
+  const maxHp = unit.maxHp + (team === 'enemy' ? (options.enemyMaxHpBonus ?? 0) : 0);
   return {
     instanceId: `${team}-${unit.id}`,
     unitId: unit.id,
@@ -63,19 +66,24 @@ const fighterFor = (data: GameData, team: Team): FighterState => {
     code: unit.code,
     color: unit.color,
     team,
-    hp: unit.maxHp,
-    maxHp: unit.maxHp,
+    hp: maxHp,
+    maxHp,
     shield: 0,
     poison: 0,
   };
 };
 
-export function createBattle(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState {
+export function createBattle(
+  data: GameData,
+  playerBoard: CircuitBoard,
+  enemyBoard: CircuitBoard,
+  options: BattleOptions = {},
+): BattleState {
   const playerAnalysis = analyzeCircuit(playerBoard, data.blocks, data.rules.sourceRow);
   const enemyAnalysis = analyzeCircuit(enemyBoard, data.blocks, data.rules.sourceRow);
   return {
     tick: 0,
-    fighters: [fighterFor(data, 'player'), fighterFor(data, 'enemy')],
+    fighters: [fighterFor(data, 'player', options), fighterFor(data, 'enemy', options)],
     playerBoard: cloneBoard(playerBoard),
     enemyBoard: cloneBoard(enemyBoard),
     playerPowered: [...playerAnalysis.poweredCells],
@@ -394,8 +402,13 @@ export function resolveTick(data: GameData, state: BattleState, tick: number): B
   return resolveWave(data, state, tick).at(-1)!;
 }
 
-export function createPlayback(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState[] {
-  let state = createBattle(data, playerBoard, enemyBoard);
+export function createPlayback(
+  data: GameData,
+  playerBoard: CircuitBoard,
+  enemyBoard: CircuitBoard,
+  options: BattleOptions = {},
+): BattleState[] {
+  let state = createBattle(data, playerBoard, enemyBoard, options);
   const frames = [state];
   for (let tick = 1; !state.winner; tick += 1) {
     const waveFrames = resolveWave(data, state, tick);
@@ -405,6 +418,11 @@ export function createPlayback(data: GameData, playerBoard: CircuitBoard, enemyB
   return frames;
 }
 
-export function runBattle(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState {
-  return createPlayback(data, playerBoard, enemyBoard).at(-1)!;
+export function runBattle(
+  data: GameData,
+  playerBoard: CircuitBoard,
+  enemyBoard: CircuitBoard,
+  options: BattleOptions = {},
+): BattleState {
+  return createPlayback(data, playerBoard, enemyBoard, options).at(-1)!;
 }

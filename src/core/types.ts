@@ -168,6 +168,14 @@ export type GameData = {
     rerollCost: number;
     shopSize: number;
     rarityWeights: RarityWeights;
+    enemyGeneration: {
+      startingNodes: number;
+      nodesPerRun: number;
+      maxNodes: number;
+      epicUnlockRun: number;
+      legendaryUnlockRun: number;
+      hpGrowthPerRun: number;
+    };
   };
   units: UnitDefinition[];
   playerUnitId: string;
@@ -176,7 +184,6 @@ export type GameData = {
   blocks: BlockDefinition[];
   startingRack: string[];
   playerBoard: CircuitBoard;
-  enemyBoard: CircuitBoard;
 };
 
 export type CellPosition = { row: number; column: number };

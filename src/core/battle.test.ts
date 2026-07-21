@@ -24,6 +24,14 @@ const testData = (): GameData => ({
     rerollCost: 1,
     shopSize: 3,
     rarityWeights: { common: 100, rare: 45, epic: 15, legendary: 4 },
+    enemyGeneration: {
+      startingNodes: 2,
+      nodesPerRun: 1,
+      maxNodes: 3,
+      epicUnlockRun: 2,
+      legendaryUnlockRun: 3,
+      hpGrowthPerRun: 0,
+    },
   },
   units: [
     { id: 'player-bot', name: 'プレイヤー', code: 'P-01', maxHp: 12, color: '#5de7f2' },
@@ -110,7 +118,6 @@ const testData = (): GameData => ({
   ],
   startingRack: [],
   playerBoard: emptyBoard(),
-  enemyBoard: emptyBoard(),
 });
 
 const route = (...blockIds: string[]): CircuitBoard => {

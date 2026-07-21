@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeCircuit } from '../core/circuit';
 import { GAME_DATA, validateGameData } from './game-data';
 
 describe('game data', () => {
@@ -7,7 +6,6 @@ describe('game data', () => {
     expect(validateGameData(GAME_DATA)).toEqual([]);
     expect(GAME_DATA.playerBoard).toHaveLength(5);
     expect(GAME_DATA.playerBoard.every((row) => row.length === 5)).toBe(true);
-    expect(GAME_DATA.enemyBoard.every((row) => row.length === 5)).toBe(true);
   });
 
   it('starts the player empty and offers only skills with gameplay effects', () => {
@@ -107,28 +105,55 @@ describe('game data', () => {
     const trait = GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'trait');
 
     expect(trait?.values.map((value) => [value.id, value.color])).toEqual([
+      ['neutral', '#486977'],
       ['poison', '#8bd450'],
       ['charge', '#ffd36a'],
     ]);
   });
 
-  it('starts the rival with a readable split and merge circuit', () => {
-    const analysis = analyzeCircuit(GAME_DATA.enemyBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+  it('defines a rival generator that adds one node per round and unlocks rarities over time', () => {
+    expect(GAME_DATA.rules.enemyGeneration).toEqual({
+      startingNodes: 7,
+      nodesPerRun: 1,
+      maxNodes: 15,
+      epicUnlockRun: 3,
+      legendaryUnlockRun: 5,
+      hpGrowthPerRun: 300,
+    });
+  });
 
-    expect(analysis.waveStep.get('2:0')).toBe(1);
+  it('uses neutral for generic nodes and reserves mixed traits for real mixed mechanics', () => {
+    const traitIds = (blockId: string) =>
+      GAME_DATA.buildDesign.skills
+        .find((skill) => skill.blockId === blockId)
+        ?.axisLinks.find((link) => link.axisId === 'trait')?.valueIds;
+    const genericIds = [
+      'strike',
+      'breaker',
+      'arc-shot',
+      'barrier',
+      'repair',
+      'return-coil',
+      'long-route-fang',
+      'amplifier',
+      'accelerator',
+    ];
+
+    genericIds.forEach((blockId) => {
+      const block = GAME_DATA.blocks.find((candidate) => candidate.id === blockId)!;
+      expect(traitIds(blockId), blockId).toEqual(['neutral']);
+      expect(
+        block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge'),
+        blockId,
+      ).toBe(false);
+    });
+    expect(traitIds('charge-guard')).toEqual(['charge']);
     expect(
-      [...analysis.waveStep]
-        .filter(([, step]) => step === 2)
-        .map(([key]) => key)
+      GAME_DATA.buildDesign.skills
+        .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2)
+        .map((skill) => skill.id)
         .sort(),
-    ).toEqual(['1:0', '2:1']);
-    expect(analysis.waveStep.get('2:2')).toBe(3);
-    expect(analysis.waveStep.get('1:2')).toBe(4);
-    expect(analysis.upstreamCells.get('1:2')).toEqual([
-      { row: 1, column: 1 },
-      { row: 2, column: 2 },
-    ]);
-    expect(analysis.mergeCells).toEqual(new Set(['1:2']));
+    ).toEqual(['status-relay', 'toxic-reservoir']);
   });
 
   it('replaces poison-only nodes with weapon combinations and cross-trait nodes', () => {
@@ -136,9 +161,10 @@ describe('game data', () => {
       skill.buildLinks.some((link) => link.buildId === 'poison'),
     );
     const poisonBlocks = GAME_DATA.blocks.filter((block) => block.buildIds?.includes('poison'));
-    const poisonOnly = poisonDesigns.filter(
-      (skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 1,
-    );
+    const poisonOnly = poisonDesigns.filter((skill) => {
+      const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds;
+      return traits?.length === 1 && traits[0] === 'poison';
+    });
 
     expect(poisonOnly).toHaveLength(4);
     expect(poisonDesigns.length).toBeGreaterThan(poisonOnly.length);
@@ -189,11 +215,11 @@ describe('game data', () => {
     });
   });
 
-  it('rejects an unknown block in a circuit', () => {
+  it('rejects an unknown block in the player circuit', () => {
     const invalid = structuredClone(GAME_DATA);
-    invalid.enemyBoard[0][0] = { blockId: 'missing-block', rotation: 0 };
+    invalid.playerBoard[0][0] = { blockId: 'missing-block', rotation: 0 };
 
-    expect(validateGameData(invalid)).toContain('enemyBoard[0][0] references unknown block "missing-block"');
+    expect(validateGameData(invalid)).toContain('playerBoard[0][0] references unknown block "missing-block"');
   });
 
   it('rejects an overload rule that cannot escalate', () => {
@@ -212,7 +238,9 @@ describe('game data', () => {
 
   it('rejects a trait axis value without a display color', () => {
     const invalid = structuredClone(GAME_DATA);
-    const poison = invalid.buildDesign.axes.find((axis) => axis.id === 'trait')?.values[0];
+    const poison = invalid.buildDesign.axes
+      .find((axis) => axis.id === 'trait')
+      ?.values.find((value) => value.id === 'poison');
     if (!poison) throw new Error('missing trait fixture');
     poison.color = '';
 
@@ -243,11 +271,11 @@ describe('game data', () => {
 
   it('rejects a charge-trait node without a charge or release effect', () => {
     const invalid = structuredClone(GAME_DATA);
-    const strike = invalid.blocks.find((block) => block.id === 'strike')!;
-    strike.effects = strike.effects.filter((effect) => effect.kind !== 'charge');
+    const blade = invalid.blocks.find((block) => block.id === 'charge-blade')!;
+    blade.effects = blade.effects.filter((effect) => effect.kind !== 'charge');
 
     expect(validateGameData(invalid)).toContain(
-      'block "strike" is tagged with charge but has no charge or release effect',
+      'block "charge-blade" is tagged with charge but has no charge or release effect',
     );
   });
 

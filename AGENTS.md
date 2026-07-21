@@ -2,7 +2,7 @@
 
 ## Architecture
 
-- Treat `src/game/game.json` as the single source of truth for units, circuit blocks, starting boards, economy, and battle tuning.
+- Treat `src/game/game.json` as the single source of truth for units, circuit blocks, the player starting board, rival generation, economy, and battle tuning.
 - Keep deterministic game rules in `src/core/`. Core modules must not import React, DOM, CSS, or browser APIs.
 - Keep battle inputs and outputs as plain serializable data so replays and ports stay straightforward.
 - Use stable English IDs in state and rules. Japanese labels are presentation data; never branch on localized strings.
@@ -12,7 +12,7 @@
 ## Build design
 
 - Model build concepts on two independent axes in `buildDesign.axes`: traits such as poison or charge, and weapon or device types such as blade, bow, cannon, or device.
-- Give every playable node exactly one design entry with both axis links. Use multiple trait values for genuine cross-build or pivot nodes instead of duplicating a poison-only version for each build.
+- Give every playable node exactly one design entry with both axis links. Assign generic nodes to the neutral trait, and use multiple trait values only when the node mechanically combines those traits.
 - Keep trait behavior and weapon delivery separate: traits define what is accumulated or transformed, while weapon types define how the node attacks, branches, sustains, or finishes.
 - Define a build as a placement identity, strength, risk, game plan, and payoff paths in `src/game/game.json` before expanding its skills.
 - Give every build coverage for starter, grower, cycler, sustain, and payoff roles. A label or status type alone is not a build.
@@ -25,6 +25,7 @@
 - Run `pnpm design:matrix` after build-design changes and review `docs/build-synergy-matrix.md`. Run `pnpm design:matrix:check` to detect stale output and invalid coverage.
 - Treat charge as a transient value carried by one circuit pulse, not a persistent energy meter. Only nodes with an explicit `charge` effect add charge; ordinary traversed nodes merely carry the incoming total, and release nodes convert it into their output.
 - Every playable node tagged with the charge trait must define either a `charge` effect or a `release-charge` effect; reject mismatches in game-data validation.
+- Generate the rival circuit deterministically from the run and seed. Each run must add configured board pressure until the board cap, continue scaling rival health after the cap, and include a starter plus payoff for one real trait with optional neutral support.
 - Keep node price bands strictly separated by rarity, and make higher-rarity nodes meaningfully stronger through output, multi-effects, or payoff efficiency.
 - Give rare, epic, and legendary tiers one or two charge-release nodes each so the build has finishers before its rarest rolls appear.
 - Define the four node rarities and their progressively lower base shop weights in `src/game/game.json`; individual `shopWeight` values may tune nodes only within that rarity baseline.

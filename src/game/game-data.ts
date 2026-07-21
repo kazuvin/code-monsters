@@ -53,6 +53,17 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.suddenDeathSeconds <= 0) errors.push('suddenDeathSeconds must be positive');
   if (data.rules.suddenDeathBaseDamage <= 0) errors.push('suddenDeathBaseDamage must be positive');
   if (data.rules.suddenDeathGrowth <= 1) errors.push('suddenDeathGrowth must be greater than 1');
+  const enemyGeneration = data.rules.enemyGeneration;
+  const boardCellCount = data.rules.boardSize ** 2;
+  if (enemyGeneration.startingNodes < 2) errors.push('enemyGeneration.startingNodes must be at least 2');
+  if (enemyGeneration.nodesPerRun < 1) errors.push('enemyGeneration.nodesPerRun must be positive');
+  if (enemyGeneration.maxNodes < enemyGeneration.startingNodes || enemyGeneration.maxNodes > boardCellCount) {
+    errors.push('enemyGeneration.maxNodes must fit the board and not be below startingNodes');
+  }
+  if (enemyGeneration.epicUnlockRun < 1 || enemyGeneration.legendaryUnlockRun <= enemyGeneration.epicUnlockRun) {
+    errors.push('enemyGeneration rarity unlock runs must progress from epic to legendary');
+  }
+  if (enemyGeneration.hpGrowthPerRun < 0) errors.push('enemyGeneration.hpGrowthPerRun must not be negative');
   if (data.rules.poisonTickSeconds <= 0) errors.push('poisonTickSeconds must be positive');
   if (data.rules.poisonDecay < 0) errors.push('poisonDecay must not be negative');
   if (data.rules.mergeEffectMultiplier <= 1) errors.push('mergeEffectMultiplier must be greater than 1');
@@ -69,7 +80,6 @@ export function validateGameData(data: GameData): string[] {
   });
 
   validateBoard('playerBoard', data.playerBoard, data, errors);
-  validateBoard('enemyBoard', data.enemyBoard, data, errors);
   const blockIds = new Set(data.blocks.map((block) => block.id));
   data.startingRack.forEach((blockId, index) => {
     if (!blockIds.has(blockId)) errors.push(`startingRack[${index}] references unknown block "${blockId}"`);

@@ -324,7 +324,7 @@ if (!(await desktop.getByText('相手の技', { exact: true }).count())) {
 if (!(await desktop.locator('.dialog-merge-rule').textContent())?.includes('×2')) {
   throw new Error('Enemy merge skill detail does not show its doubled effect');
 }
-if (!(await desktop.getByRole('dialog').textContent())?.includes('接続下・左 · 合流')) {
+if (!(await desktop.getByRole('dialog').textContent())?.includes(' · 合流')) {
   throw new Error('Enemy merge skill is mislabeled as a branch');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-buff-detail.png', fullPage: true });
@@ -462,17 +462,26 @@ if (
 if ((await pulse.locator('.battle-circuit-summary.team-enemy .block-port.is-conducting').count()) === 0) {
   throw new Error('The first pulse did not animate current on its input edge');
 }
+const firstDamageFeedback = pulse.locator(
+  '.arena-fighter.team-player [data-feedback-kind="damage"][data-feedback-tier="small"]',
+);
 if (
   (await pulse.locator('.battle-projectile.team-enemy.effect-damage').count()) === 0 ||
-  !(await pulse.locator('.arena-fighter.team-player .combat-feedback').textContent())?.includes('HP')
+  (await firstDamageFeedback.count()) !== 1
 ) {
   throw new Error('Damage did not show its projectile and impact value');
 }
-if (
-  (await pulse.locator('.arena-fighter.team-player[data-damage-tier="medium"] .feedback-damage').count()) !== 1 ||
-  !(await pulse.locator('.arena-fighter.team-player .feedback-damage').textContent())?.includes('HEAVY')
-) {
-  throw new Error('Medium damage did not use its stronger animated impact tier');
+if (!/^-\d+$/.test((await firstDamageFeedback.textContent())?.trim() ?? '')) {
+  throw new Error(
+    `Damage feedback contains labels instead of only a number: ${await firstDamageFeedback.textContent()}`,
+  );
+}
+const feedbackAnimation = await pulse.locator('.arena-fighter.team-player .combat-feedback').evaluate((feedback) => {
+  const animation = feedback.getAnimations()[0];
+  return animation?.effect?.getComputedTiming().duration ?? 0;
+});
+if (Number(feedbackAnimation) < 1000) {
+  throw new Error(`Damage feedback does not hold long enough to read: ${feedbackAnimation}`);
 }
 await pulse.clock.runFor(480);
 const parallelPulse = await pulse
@@ -505,6 +514,7 @@ if (
 await pulse.screenshot({ path: '/tmp/code-monsters-circuit-pulse-merge.png', fullPage: true });
 await pulse.clock.runFor(480);
 const cooldownSource = pulse.locator('.battle-circuit-summary.team-enemy [data-cell-key="2:0"]');
+if ((await cooldownSource.getAttribute('data-pulse-step')) !== '1') await pulse.clock.runFor(480);
 if (
   (await cooldownSource.getAttribute('data-pulse-step')) !== '1' ||
   (await cooldownSource.getAttribute('data-conducting')) !== 'true' ||
@@ -547,21 +557,32 @@ await overload.clock.install();
 await overload.getByRole('button', { name: /戦闘開始/ }).click();
 await overload.locator('.battle-screen').waitFor();
 await overload.getByRole('button', { name: '3倍' }).click();
-await advanceClock(overload, 25_605, 160);
-await overload.getByText('OVERLOAD', { exact: true }).waitFor();
-if ((await overload.locator('.status-overload').count()) !== 2) {
-  throw new Error('Overload status is not visible on both fighters');
+let shieldFeedback = null;
+for (let step = 0; step < 12; step += 1) {
+  await advanceClock(overload, 160, 160);
+  const shield = overload.locator('[data-feedback-kind="shield"]').first();
+  if ((await shield.count()) > 0) {
+    shieldFeedback = shield;
+    break;
+  }
 }
-if (!(await overload.locator('.battle-counter').textContent())?.includes('DMG 250')) {
-  throw new Error('The first exponential overload pulse is not shown');
+if (!shieldFeedback || !/^\+\d+$/.test((await shieldFeedback.textContent())?.trim() ?? '')) {
+  throw new Error('Shield feedback is not shown as a color-coded number without a label');
 }
-await overload.screenshot({ path: '/tmp/code-monsters-circuit-overload.png', fullPage: true });
-await advanceClock(overload, 960, 160);
-await overload.locator('.arena-fighter.damage-large .feedback-damage').first().waitFor();
-if (
-  !(await overload.locator('.arena-fighter.damage-large .feedback-damage').first().textContent())?.includes('BREAK')
-) {
-  throw new Error('Large damage did not use its maximum-impact BREAK treatment');
+if ((await shieldFeedback.getAttribute('data-feedback-tier')) !== 'medium') {
+  throw new Error('Shield feedback does not share the amount-based presentation tiers');
+}
+await overload.screenshot({ path: '/tmp/code-monsters-circuit-support-feedback.png', fullPage: true });
+
+let largeFeedback = overload.locator('[data-feedback-kind="damage"][data-feedback-tier="large"]').first();
+for (let step = 0; step < 240 && (await largeFeedback.count()) === 0; step += 1) {
+  if ((await overload.locator('.result-panel').count()) > 0) break;
+  await advanceClock(overload, 160, 160);
+  largeFeedback = overload.locator('[data-feedback-kind="damage"][data-feedback-tier="large"]').first();
+}
+await largeFeedback.waitFor();
+if (!/^-\d+$/.test((await largeFeedback.textContent())?.trim() ?? '')) {
+  throw new Error('Large damage feedback contains a text label');
 }
 await overload.screenshot({ path: '/tmp/code-monsters-circuit-large-damage.png', fullPage: true });
 
@@ -625,6 +646,18 @@ if (
 ) {
   throw new Error('Locked offer was not retained after returning from battle');
 }
+await lockedRun.getByRole('button', { name: /戦闘開始/ }).click();
+await lockedRun.locator('.battle-screen').waitFor();
+const secondRunRival = (await lockedRun.locator('.rival-readout').textContent()) ?? '';
+if (!secondRunRival.includes('LV.02') || !secondRunRival.includes('8 NODE')) {
+  throw new Error(`The rival did not grow on run two: ${secondRunRival}`);
+}
+if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 8) {
+  throw new Error('The generated run-two rival circuit does not contain eight powered nodes');
+}
+if (!(await lockedRun.locator('.arena-fighter.team-enemy .unit-health').getAttribute('aria-label'))?.includes('5300')) {
+  throw new Error('The run-two rival did not receive its configured health growth');
+}
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
 console.log(
@@ -643,7 +676,7 @@ console.log(
         'mobile-battle',
         'mobile-buff-detail',
         'pulse-merge',
-        'overload',
+        'support-feedback',
         'large-damage',
         'battle-report-desktop',
         'battle-report-mobile',

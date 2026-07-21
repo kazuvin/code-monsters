@@ -250,13 +250,20 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
         }
       });
     });
+    const traitValues = axisLinkFor(skill, 'trait')?.valueIds ?? [];
+    if (traitValues.includes('neutral') && (traitValues.length !== 1 || skill.scope !== 'shared')) {
+      errors.push(`skill design "${skill.id}" must use neutral as its only trait and remain shared`);
+    }
     skill.buildLinks.forEach((link) => {
       const build = design.builds.find((candidate) => candidate.id === link.buildId);
       if (!buildIds.has(link.buildId) || !build) {
         errors.push(`skill design "${skill.id}" references unknown build "${link.buildId}"`);
         return;
       }
-      if (!axisLinkFor(skill, build.axisId)?.valueIds.includes(build.id)) {
+      const buildAxisValues = axisLinkFor(skill, build.axisId)?.valueIds ?? [];
+      const isNeutralSharedSkill =
+        build.axisId === 'trait' && skill.scope === 'shared' && buildAxisValues[0] === 'neutral';
+      if (!buildAxisValues.includes(build.id) && !isNeutralSharedSkill) {
         errors.push(`skill design "${skill.id}" does not tag linked build "${build.axisId}/${build.id}"`);
       }
       link.roles.forEach((role) => {
