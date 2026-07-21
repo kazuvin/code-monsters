@@ -108,7 +108,7 @@ describe('circuit connectivity', () => {
     board[2][0] = { blockId: 'poison-needle', rotation: 0 };
     board[2][1] = { blockId: 'cultivation-blade', rotation: 0 };
     board[1][1] = { blockId: 'return-coil', rotation: 0 };
-    board[1][0] = { blockId: 'serpentine-venom', rotation: 0 };
+    board[1][0] = { blockId: 'charge-guard', rotation: 0 };
 
     const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
 
@@ -122,7 +122,7 @@ describe('circuit connectivity', () => {
     );
     board[2][0] = { blockId: 'arc-shot', rotation: 0 };
     board[2][1] = { blockId: 'strike', rotation: 0 };
-    board[1][0] = { blockId: 'corrosion-film', rotation: 0 };
+    board[1][0] = { blockId: 'charge-guard', rotation: 0 };
 
     expect(findPoweredCells(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow)).toEqual(
       new Set(['2:0', '2:1', '1:0']),
@@ -171,7 +171,7 @@ describe('circuit connectivity', () => {
     board[2][0] = { blockId: 'poison-needle', rotation: 0 };
     board[2][1] = { blockId: 'cultivation-blade', rotation: 0 };
     board[1][1] = { blockId: 'return-coil', rotation: 0 };
-    board[1][0] = { blockId: 'serpentine-venom', rotation: 0 };
+    board[1][0] = { blockId: 'charge-guard', rotation: 0 };
 
     expect(analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow).mergeCells).toEqual(new Set(['1:1']));
   });

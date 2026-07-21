@@ -43,6 +43,7 @@ export function buffStatForEffect(effect: BlockEffect): BuffStat | null {
   if (effect.kind === 'shield') return 'shield';
   if (effect.kind === 'repair') return 'repair';
   if (effect.kind === 'rupture-poison') return 'rupture';
+  if (effect.kind === 'release-charge') return effect.output;
   return null;
 }
 

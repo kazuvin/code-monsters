@@ -429,6 +429,20 @@ button:focus-visible {
   background-color: #2b2c4e;
 }
 
+.block-visual.rarity-epic {
+  border-color: #d36fc2;
+  background-color: #45254d;
+}
+
+.block-visual.rarity-legendary {
+  border-color: #ffd26f;
+  background-color: #523817;
+  box-shadow:
+    inset 0 -5px 0 rgb(45 25 3 / 38%),
+    0 0 0 1px rgb(255 210 111 / 35%),
+    3px 3px 0 rgb(2 12 17 / 46%);
+}
+
 .block-visual.effect-damage {
   border-left-color: var(--coral);
 }
@@ -445,6 +459,11 @@ button:focus-visible {
 .block-visual.effect-growth {
   border-left-color: #8bd450;
   background-color: #183f39;
+}
+
+.block-visual.effect-charge {
+  border-left-color: #ffe083;
+  background-color: #35404d;
 }
 
 .block-visual.effect-amplify,
@@ -713,6 +732,17 @@ button:focus-visible {
 .shop-card.rarity-rare {
   border-color: #705996;
   background: #191f38;
+}
+
+.shop-card.rarity-epic {
+  border-color: #b85aac;
+  background: #2b1935;
+}
+
+.shop-card.rarity-legendary {
+  border-color: #d9a93f;
+  background: #332817;
+  box-shadow: inset 0 0 0 1px rgb(255 210 111 / 20%);
 }
 
 .shop-card:nth-child(5),
@@ -1992,6 +2022,21 @@ button:focus-visible {
     -12px 12px 0 rgb(139 212 80 / 20%);
 }
 
+.battle-projectile.effect-charge {
+  width: 11px;
+  height: 7px;
+  background: #ffe083;
+  box-shadow:
+    -8px 0 0 rgb(93 231 242 / 70%),
+    -14px 0 0 rgb(255 224 131 / 30%);
+}
+
+.battle-projectile.team-enemy.effect-charge {
+  box-shadow:
+    8px 0 0 rgb(93 231 242 / 70%),
+    14px 0 0 rgb(255 224 131 / 30%);
+}
+
 .battle-projectile.team-enemy.effect-poison {
   box-shadow:
     7px -7px 0 rgb(139 212 80 / 55%),
@@ -2693,6 +2738,20 @@ button:focus-visible {
   font-size: 6px;
   line-height: 1;
   box-shadow: 2px 2px 0 #4a2c0d;
+}
+
+.block-charge-chip {
+  position: absolute;
+  z-index: 8;
+  right: -3px;
+  bottom: -3px;
+  padding: 2px 3px;
+  border: 1px solid #ffe083;
+  color: #ffe083;
+  background: #122d3b;
+  font-size: 6px;
+  line-height: 1;
+  box-shadow: 2px 2px 0 #07161d;
 }
 
 @keyframes circuit-arrival {

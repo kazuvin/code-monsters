@@ -25,6 +25,13 @@ describe('game data', () => {
     expect(GAME_DATA.rules.pulseAnimationMs).toBeGreaterThanOrEqual(300);
   });
 
+  it('defines four progressively rarer shop tiers', () => {
+    expect(GAME_DATA.rules.rarityWeights).toEqual({ normal: 100, rare: 45, epic: 15, legendary: 4 });
+    expect(new Set(GAME_DATA.blocks.map((block) => block.rarity))).toEqual(
+      new Set(['normal', 'rare', 'epic', 'legendary']),
+    );
+  });
+
   it('starts the rival with a readable split and merge circuit', () => {
     const analysis = analyzeCircuit(GAME_DATA.enemyBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
 
@@ -44,19 +51,34 @@ describe('game data', () => {
     expect(analysis.mergeCells).toEqual(new Set(['1:2']));
   });
 
-  it('implements all ten poison designs as fixed-shape playable skills', () => {
+  it('replaces poison-only nodes with weapon combinations and cross-trait nodes', () => {
     const poisonDesigns = GAME_DATA.buildDesign.skills.filter((skill) =>
       skill.buildLinks.some((link) => link.buildId === 'poison'),
     );
     const poisonBlocks = GAME_DATA.blocks.filter((block) => block.buildIds?.includes('poison'));
+    const poisonOnly = poisonDesigns.filter(
+      (skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 1,
+    );
 
-    expect(poisonDesigns).toHaveLength(10);
-    expect(poisonBlocks).toHaveLength(10);
+    expect(poisonOnly).toHaveLength(4);
+    expect(poisonDesigns.length).toBeGreaterThan(poisonOnly.length);
+    expect(poisonBlocks).toHaveLength(poisonDesigns.length);
     expect(poisonDesigns.every((skill) => skill.status === 'playable' && skill.blockId)).toBe(true);
-    expect(poisonBlocks.every((block) => block.rotatable === false)).toBe(true);
+    expect(
+      poisonOnly.every((skill) => GAME_DATA.blocks.find((block) => block.id === skill.blockId)?.rotatable === false),
+    ).toBe(true);
     expect(new Set(poisonDesigns.map((skill) => skill.blockId))).toEqual(
       new Set(poisonBlocks.map((block) => block.id)),
     );
+  });
+
+  it('assigns every playable node to both design axes exactly once', () => {
+    expect(GAME_DATA.buildDesign.skills.map((skill) => skill.blockId).sort()).toEqual(
+      GAME_DATA.blocks.map((block) => block.id).sort(),
+    );
+    GAME_DATA.buildDesign.skills.forEach((skill) => {
+      expect(skill.axisLinks.map((link) => link.axisId).sort(), skill.id).toEqual(['trait', 'weapon']);
+    });
   });
 
   it('uses one undirected set of unique connection ports for every skill', () => {
@@ -70,7 +92,7 @@ describe('game data', () => {
     const branchingSkills = GAME_DATA.blocks.filter((block) => block.ports.length >= 3);
 
     expect(branchingSkills.map((block) => block.id).sort()).toEqual(
-      ['accelerator', 'arc-shot', 'barrier', 'poison-needle', 'serpentine-venom'].sort(),
+      ['accelerator', 'arc-shot', 'barrier', 'charge-arrow', 'poison-needle'].sort(),
     );
     branchingSkills.forEach((block) => {
       if (block.cooldown) expect(block.cooldown, `${block.id} should pay a cooldown tax`).toBeGreaterThanOrEqual(2);
@@ -101,15 +123,29 @@ describe('game data', () => {
     expect(validateGameData(invalid)).toContain('suddenDeathGrowth must be greater than 1');
   });
 
+  it('rejects rarity weights that do not become progressively lower', () => {
+    const invalid = structuredClone(GAME_DATA);
+    invalid.rules.rarityWeights.epic = invalid.rules.rarityWeights.rare;
+
+    expect(validateGameData(invalid)).toContain('rarityWeights.epic must be lower than rarityWeights.rare');
+  });
+
+  it('keeps per-node tuning from making a higher rarity easier to roll', () => {
+    const invalid = structuredClone(GAME_DATA);
+    invalid.blocks.find((block) => block.id === 'overcharge-cannon')!.shopWeight = 100;
+
+    expect(validateGameData(invalid)).toContain('legendary nodes must be harder to roll than every epic node');
+  });
+
   it('rejects an effect scaling interval that cannot progress', () => {
     const invalid = structuredClone(GAME_DATA);
-    const film = invalid.blocks.find((block) => block.id === 'corrosion-film')!;
-    const shield = film.effects.find((effect) => effect.kind === 'shield');
-    if (!shield || shield.kind !== 'shield' || !shield.scaling) throw new Error('missing shield scaling fixture');
-    shield.scaling.every = 0;
+    const fang = invalid.blocks.find((block) => block.id === 'long-route-fang')!;
+    const damage = fang.effects.find((effect) => effect.kind === 'damage');
+    if (!damage || damage.kind !== 'damage' || !damage.scaling) throw new Error('missing damage scaling fixture');
+    damage.scaling.every = 0;
 
     expect(validateGameData(invalid)).toContain(
-      'block "corrosion-film" effect "shield" scaling every must be positive',
+      'block "long-route-fang" effect "damage" scaling every must be positive',
     );
   });
 

@@ -11,6 +11,9 @@
 
 ## Build design
 
+- Model build concepts on two independent axes in `buildDesign.axes`: traits such as poison or charge, and weapon or device types such as blade, bow, cannon, or device.
+- Give every playable node exactly one design entry with both axis links. Use multiple trait values for genuine cross-build or pivot nodes instead of duplicating a poison-only version for each build.
+- Keep trait behavior and weapon delivery separate: traits define what is accumulated or transformed, while weapon types define how the node attacks, branches, sustains, or finishes.
 - Define a build as a placement identity, strength, risk, game plan, and payoff paths in `src/game/game.json` before expanding its skills.
 - Give every build coverage for starter, grower, cycler, sustain, and payoff roles. A label or status type alone is not a build.
 - Give every build at least two distinct payoff paths. Each path must have its own payoff skill plus supporting grower and cycler skills.
@@ -20,6 +23,8 @@
 - Keep unimplemented concepts in `buildDesign.skills` with `status: "planned"`; only use `status: "playable"` with a valid `blockId`.
 - Keep `minimumPlayableSkillsPerBuild` at `0` while build design is exploratory; raise it deliberately when playable coverage should become a release gate.
 - Run `pnpm design:matrix` after build-design changes and review `docs/build-synergy-matrix.md`. Run `pnpm design:matrix:check` to detect stale output and invalid coverage.
+- Treat charge as a transient value carried by one circuit pulse, not a persistent energy meter. Each traversed node adds one charge, charge effects add bonuses, and release nodes convert the incoming total into their output.
+- Define the four node rarities and their progressively lower base shop weights in `src/game/game.json`; individual `shopWeight` values may tune nodes only within that rarity baseline.
 
 ## Test-driven development
 

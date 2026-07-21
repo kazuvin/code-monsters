@@ -1,6 +1,6 @@
 import rawGameData from './game.json';
 import { buffStatsForBlock } from '../core/skill-progress';
-import type { CircuitBoard, GameData } from '../core/types';
+import type { CircuitBoard, GameData, Rarity } from '../core/types';
 import { validateBuildDesign } from './build-design';
 
 export const GAME_DATA = rawGameData as GameData;
@@ -25,6 +25,7 @@ const validateBoard = (name: string, board: CircuitBoard, data: GameData, errors
 export function validateGameData(data: GameData): string[] {
   const errors: string[] = [];
   const directions = new Set(['north', 'east', 'south', 'west']);
+  const rarities: Rarity[] = ['normal', 'rare', 'epic', 'legendary'];
   const unique = (label: string, ids: string[]) => {
     const seen = new Set<string>();
     for (const id of ids) {
@@ -55,6 +56,17 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.poisonTickSeconds <= 0) errors.push('poisonTickSeconds must be positive');
   if (data.rules.poisonDecay < 0) errors.push('poisonDecay must not be negative');
   if (data.rules.mergeEffectMultiplier <= 1) errors.push('mergeEffectMultiplier must be greater than 1');
+  rarities.forEach((rarity) => {
+    if (!Number.isFinite(data.rules.rarityWeights[rarity]) || data.rules.rarityWeights[rarity] <= 0) {
+      errors.push(`rarityWeights.${rarity} must be positive`);
+    }
+  });
+  rarities.slice(1).forEach((rarity, index) => {
+    const previous = rarities[index];
+    if (data.rules.rarityWeights[previous] <= data.rules.rarityWeights[rarity]) {
+      errors.push(`rarityWeights.${rarity} must be lower than rarityWeights.${previous}`);
+    }
+  });
 
   validateBoard('playerBoard', data.playerBoard, data, errors);
   validateBoard('enemyBoard', data.enemyBoard, data, errors);
@@ -66,13 +78,17 @@ export function validateGameData(data: GameData): string[] {
   data.blocks.forEach((block) => {
     if (!block.description.trim().endsWith('。'))
       errors.push(`block "${block.id}" description must be a complete sentence`);
+    if (!rarities.includes(block.rarity)) errors.push(`block "${block.id}" has invalid rarity "${block.rarity}"`);
+    if (!Number.isFinite(block.shopWeight ?? 1) || (block.shopWeight ?? 1) <= 0) {
+      errors.push(`block "${block.id}" shopWeight must be positive`);
+    }
     if (block.ports.length === 0) errors.push(`block "${block.id}" must have a port`);
     if (new Set(block.ports).size !== block.ports.length) errors.push(`block "${block.id}" has duplicate ports`);
     block.ports.forEach((port) => {
       if (!directions.has(port)) errors.push(`block "${block.id}" has invalid port "${port}"`);
     });
     if (block.effects.length === 0) errors.push(`block "${block.id}" must have an effect`);
-    const active = block.effects.some((effect) => effect.kind !== 'amplify' && effect.kind !== 'haste');
+    const active = block.effects.some((effect) => !['amplify', 'haste', 'charge'].includes(effect.kind));
     if (active && !block.cooldown) errors.push(`active block "${block.id}" must have a cooldown`);
     block.effects.forEach((effect) => {
       if ('amount' in effect && effect.amount <= 0) {
@@ -80,6 +96,9 @@ export function validateGameData(data: GameData): string[] {
       }
       if ('scaling' in effect && effect.scaling && effect.scaling.every <= 0) {
         errors.push(`block "${block.id}" effect "${effect.kind}" scaling every must be positive`);
+      }
+      if (effect.kind === 'release-charge' && effect.perCharge <= 0) {
+        errors.push(`block "${block.id}" charge release must gain power from charge`);
       }
       if ('trigger' in effect && effect.trigger?.kind === 'path-length-at-least' && effect.trigger.amount < 1) {
         errors.push(`block "${block.id}" effect "${effect.kind}" path length must be positive`);
@@ -108,6 +127,22 @@ export function validateGameData(data: GameData): string[] {
     block.buildIds?.forEach((buildId) => {
       if (!buildIds.has(buildId)) errors.push(`block "${block.id}" references unknown build "${buildId}"`);
     });
+  });
+  rarities.slice(1).forEach((rarity, index) => {
+    const previous = rarities[index];
+    const previousWeights = data.blocks
+      .filter((block) => block.rarity === previous)
+      .map((block) => data.rules.rarityWeights[previous] * (block.shopWeight ?? 1));
+    const rarityWeights = data.blocks
+      .filter((block) => block.rarity === rarity)
+      .map((block) => data.rules.rarityWeights[rarity] * (block.shopWeight ?? 1));
+    if (
+      previousWeights.length > 0 &&
+      rarityWeights.length > 0 &&
+      Math.max(...rarityWeights) >= Math.min(...previousWeights)
+    ) {
+      errors.push(`${rarity} nodes must be harder to roll than every ${previous} node`);
+    }
   });
   errors.push(...validateBuildDesign(data.buildDesign, [...blockIds]));
   return errors;

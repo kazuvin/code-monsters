@@ -1,5 +1,6 @@
 export type Team = 'player' | 'enemy';
-export type Rarity = 'common' | 'rare';
+export type Rarity = 'normal' | 'rare' | 'epic' | 'legendary';
+export type RarityWeights = Record<Rarity, number>;
 export type Winner = Team | 'draw' | null;
 export type Direction = 'north' | 'east' | 'south' | 'west';
 export type Rotation = 0 | 1 | 2 | 3;
@@ -30,6 +31,13 @@ export type ActiveEffect =
   | ({ kind: 'shield' } & NumericEffect)
   | ({ kind: 'repair' } & NumericEffect)
   | ({ kind: 'poison' } & NumericEffect)
+  | {
+      kind: 'release-charge';
+      output: 'damage' | 'shield';
+      amount: number;
+      perCharge: number;
+      trigger?: EffectTrigger;
+    }
   | { kind: 'rupture-poison'; fraction: number; damagePerStack: number; trigger?: EffectTrigger };
 
 export type BlockEffect =
@@ -42,7 +50,8 @@ export type BlockEffect =
       trigger?: EffectTrigger;
     }
   | { kind: 'amplify'; amount: number }
-  | { kind: 'haste'; amount: number };
+  | { kind: 'haste'; amount: number }
+  | { kind: 'charge'; amount: number };
 
 export type BlockDefinition = {
   id: string;
@@ -68,12 +77,25 @@ export type BuildPayoffDefinition = {
 
 export type BuildDefinition = {
   id: string;
+  axisId: string;
   title: string;
   placementIdentity: string;
   strength: string;
   risk: string;
   gamePlan: string;
   payoffs: BuildPayoffDefinition[];
+};
+
+export type BuildAxisDefinition = {
+  id: string;
+  title: string;
+  description: string;
+  values: Array<{ id: string; title: string; description: string }>;
+};
+
+export type SkillAxisLink = {
+  axisId: string;
+  valueIds: string[];
 };
 
 export type SkillBuildLink = {
@@ -90,6 +112,7 @@ export type SkillDesignDefinition = {
   blockId?: string;
   scope: SkillDesignScope;
   sharedSynergies: string[];
+  axisLinks: SkillAxisLink[];
   buildLinks: SkillBuildLink[];
 };
 
@@ -101,7 +124,12 @@ export type BuildDesign = {
     minimumOpenSkillsPerBuild: number;
     maximumExclusiveSkillRatio: number;
     minimumPlayableSkillsPerBuild: number;
+    requiredAxisIds: string[];
+    minimumHybridSkillsPerBuild: number;
+    minimumWeaponTypesPerBuild: number;
+    requireSkillDesignForEveryBlock: boolean;
   };
+  axes: BuildAxisDefinition[];
   builds: BuildDefinition[];
   skills: SkillDesignDefinition[];
 };
@@ -139,6 +167,7 @@ export type GameData = {
     retryReward: number;
     rerollCost: number;
     shopSize: number;
+    rarityWeights: RarityWeights;
   };
   units: UnitDefinition[];
   playerUnitId: string;
@@ -178,6 +207,7 @@ export type BattleTraceEvent =
       targetId: string;
       buffStat?: BuffStat;
       mergeMultiplier?: number;
+      charge?: number;
     }
   | {
       id: string;

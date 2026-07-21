@@ -56,7 +56,7 @@ describe('poison build', () => {
     board[2][0] = { blockId: 'poison-needle', rotation: 0 };
     board[2][1] = { blockId: 'cultivation-blade', rotation: 0 };
     board[1][1] = { blockId: 'return-coil', rotation: 0 };
-    board[1][0] = { blockId: 'serpentine-venom', rotation: 0 };
+    board[1][0] = { blockId: 'charge-guard', rotation: 0 };
 
     const result = resolveTick(data, createBattle(data, board, emptyBoard()), 1);
     const player = result.fighters.find((fighter) => fighter.team === 'player')!;
@@ -69,10 +69,10 @@ describe('poison build', () => {
         .map((event) => event.blockId),
     );
 
-    expect(firedBlocks).toEqual(new Set(['poison-needle', 'cultivation-blade', 'return-coil', 'serpentine-venom']));
+    expect(firedBlocks).toEqual(new Set(['poison-needle', 'cultivation-blade', 'return-coil', 'charge-guard']));
     expect(result.skillBuffs.player['1:1']).toEqual({ shield: 3 });
     expect(result.skillBuffs.player['1:0']).toBeUndefined();
-    expect(player.shield).toBe(4);
+    expect(player.shield).toBe(6);
   });
 
   it('fires every powered branch instead of only following one output', () => {
@@ -81,13 +81,13 @@ describe('poison build', () => {
     const board = emptyBoard();
     board[2][0] = { blockId: 'arc-shot', rotation: 0 };
     board[2][1] = { blockId: 'strike', rotation: 0 };
-    board[1][0] = { blockId: 'corrosion-film', rotation: 0 };
+    board[1][0] = { blockId: 'charge-guard', rotation: 0 };
 
     const result = resolveTick(data, createBattle(data, board, emptyBoard()), 1);
     const firedBlocks = result.trace.flatMap((event) => ('blockId' in event ? [event.blockId] : []));
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(firedBlocks).toEqual(['arc-shot', 'corrosion-film', 'strike']);
+    expect(firedBlocks).toEqual(['arc-shot', 'charge-guard', 'strike']);
     expect(enemy.hp).toBe(enemy.maxHp - 4);
     expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
   });
@@ -99,7 +99,7 @@ describe('poison build', () => {
     board[2][0] = { blockId: 'arc-shot', rotation: 0 };
     board[2][1] = { blockId: 'status-relay', rotation: 0 };
     board[2][2] = { blockId: 'poison-needle', rotation: 0 };
-    board[1][0] = { blockId: 'corrosion-film', rotation: 0 };
+    board[1][0] = { blockId: 'charge-guard', rotation: 0 };
     board[1][1] = { blockId: 'strike', rotation: 0 };
     board[1][2] = { blockId: 'repair', rotation: 3 };
 

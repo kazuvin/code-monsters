@@ -1,4 +1,4 @@
-import { analyzeCircuit, cellKey, cloneBoard } from './circuit';
+import { analyzeCircuit, calculateChargeByCell, cellKey, cloneBoard } from './circuit';
 import { buffStatForEffect, buffStatsForBlock, effectScalingBonus, incomingSkillModifiers } from './skill-progress';
 import type {
   BattleState,
@@ -26,6 +26,7 @@ type PlannedActivation = {
   boost: number;
   waveStep: number;
   mergeMultiplier: number;
+  charge: number;
 };
 
 const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player');
@@ -91,11 +92,12 @@ export function createBattle(data: GameData, playerBoard: CircuitBoard, enemyBoa
 }
 
 const hasActivation = (block: BlockDefinition) =>
-  block.effects.some((effect) => effect.kind !== 'amplify' && effect.kind !== 'haste');
+  block.effects.some((effect) => !['amplify', 'haste', 'charge'].includes(effect.kind));
 
 function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tick: number): PlannedActivation[] {
   const definitions = new Map(data.blocks.map((block) => [block.id, block]));
   const analysis = analyzeCircuit(board, data.blocks, data.rules.sourceRow);
+  const chargeByCell = calculateChargeByCell(board, data.blocks, analysis);
   const plans: PlannedActivation[] = [];
 
   board.forEach((row, rowIndex) =>
@@ -120,6 +122,7 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
         boost: modifiers.effectPower,
         waveStep: analysis.waveStep.get(key) ?? 1,
         mergeMultiplier: analysis.mergeCells.has(key) ? data.rules.mergeEffectMultiplier : 1,
+        charge: chargeByCell.get(key) ?? 0,
       });
     }),
   );
@@ -150,6 +153,7 @@ const traceEvent = (
   targetId: string,
   sequence: number,
   buffStat?: Extract<BattleTraceEvent, { blockId: string }>['buffStat'],
+  charge?: number,
 ): BattleTraceEvent => ({
   id: `${tick}-${action.team}-${action.position.row}-${action.position.column}-${sequence}`,
   tick,
@@ -162,6 +166,7 @@ const traceEvent = (
   targetId,
   ...(buffStat ? { buffStat } : {}),
   ...(action.mergeMultiplier > 1 ? { mergeMultiplier: action.mergeMultiplier } : {}),
+  ...(charge === undefined ? {} : { charge }),
 });
 
 const systemTraceEvent = (
@@ -239,8 +244,24 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
       };
 
       for (const effect of plan.block.effects) {
-        if (effect.kind === 'amplify' || effect.kind === 'haste') continue;
+        if (effect.kind === 'amplify' || effect.kind === 'haste' || effect.kind === 'charge') continue;
         if (!triggerMatches(effect.trigger, context)) continue;
+
+        if (effect.kind === 'release-charge') {
+          const value =
+            (effect.amount + plan.charge * effect.perCharge + (context.selfBuffs[effect.output] ?? 0) + plan.boost) *
+            plan.mergeMultiplier;
+          if (effect.output === 'damage') {
+            pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
+            trace.push(
+              traceEvent(tick, plan, 'damage', value, target.instanceId, trace.length, undefined, plan.charge),
+            );
+          } else {
+            actor.shield += value;
+            trace.push(traceEvent(tick, plan, 'shield', value, actor.instanceId, trace.length, undefined, plan.charge));
+          }
+          continue;
+        }
 
         if (effect.kind === 'rupture-poison') {
           const consumed = Math.floor(target.poison * effect.fraction);

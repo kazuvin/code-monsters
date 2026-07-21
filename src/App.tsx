@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { createBattle, createPlayback } from './core/battle';
-import { analyzeCircuit, rotatePorts } from './core/circuit';
+import { analyzeCircuit, calculateChargeByCell, rotatePorts } from './core/circuit';
 import { battleReward } from './core/economy';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
 import { BATTLE_SPEEDS, playbackFrameMs, type BattleSpeed } from './core/playback';
@@ -28,6 +28,7 @@ import type {
   Direction,
   FighterState,
   Rotation,
+  Rarity,
   ShopOffer,
   SkillBuffState,
   Team,
@@ -78,12 +79,24 @@ const BUFF_COPY: Record<BuffStat, { label: string; short: string }> = {
   repair: { label: '回復量', short: '癒' },
   rupture: { label: '破裂威力', short: '裂' },
 };
+const RARITY_COPY: Record<Rarity, { label: string; code: string }> = {
+  normal: { label: 'ノーマル', code: 'N' },
+  rare: { label: 'レア', code: 'R' },
+  epic: { label: 'エピック', code: 'E' },
+  legendary: { label: 'レジェンダリー', code: 'L' },
+};
 
-const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplier = 1) => {
+const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplier = 1, charge = 0) => {
   const progressByEffect = new Map(progress?.effects.map((effect) => [effect.effectIndex, effect]));
   return block.effects
     .map((effect, effectIndex) => {
       const progress = progressByEffect.get(effectIndex);
+      if (effect.kind === 'charge') return `通電するチャージ +${effect.amount}`;
+      if (effect.kind === 'release-charge') {
+        const output = effect.output === 'damage' ? 'ダメージ' : 'シールド';
+        const currentAmount = ((progress?.currentAmount ?? effect.amount) + charge * effect.perCharge) * multiplier;
+        return `チャージ ${charge}を解放・${output} ${currentAmount}`;
+      }
       const amount = 'amount' in effect ? effect.amount : effect.kind === 'rupture-poison' ? effect.damagePerStack : 0;
       const currentAmount = (progress?.currentAmount ?? amount) * multiplier;
       const amountLabel = (label: string) =>
@@ -138,9 +151,11 @@ const BlockVisual = ({
   portFlows?: Partial<Record<Direction, PortFlow>>;
 }) => {
   const ports = rotatePorts(block.ports, rotation);
-  const visualEffect = block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
-    ? 'poison'
-    : block.effects[0]?.kind;
+  const visualEffect = block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
+    ? 'charge'
+    : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
+      ? 'poison'
+      : block.effects[0]?.kind;
   return (
     <span
       className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
@@ -285,6 +300,7 @@ const BattleCircuitSummary = ({
 }) => {
   const poweredCells = new Set(powered);
   const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+  const chargeByCell = calculateChargeByCell(board, GAME_DATA.blocks, analysis);
   const skillEvents = events.filter(
     (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
       event.kind !== 'overload' && event.kind !== 'poison-tick' && event.team === team,
@@ -395,6 +411,9 @@ const BattleCircuitSummary = ({
                     {mergingCells.has(key) && (
                       <b className="block-merge-chip">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
                     )}
+                    {conductingCells.has(key) && (chargeByCell.get(key) ?? 0) > 0 && (
+                      <b className="block-charge-chip">CHG {chargeByCell.get(key)}</b>
+                    )}
                     {badgeLabels.length > 0 && (
                       <span className="block-buff-list" aria-hidden="true">
                         {skillBuffs.stats.slice(0, 2).map(([stat, value]) => (
@@ -430,7 +449,9 @@ export function App() {
   const [coins, setCoins] = useState(GAME_DATA.rules.startingCoins);
   const [run, setRun] = useState(1);
   const [seed, setSeed] = useState(initialSeed);
-  const [shop, setShop] = useState(() => createShop(shopBlocks, initialSeed, GAME_DATA.rules.shopSize));
+  const [shop, setShop] = useState(() =>
+    createShop(shopBlocks, GAME_DATA.rules.rarityWeights, initialSeed, GAME_DATA.rules.shopSize),
+  );
   const [rack, setRack] = useState([...GAME_DATA.startingRack]);
   const [board, setBoard] = useState<CircuitBoard>(() =>
     GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null))),
@@ -724,7 +745,9 @@ export function App() {
     const nextSeed = seed + 1;
     setCoins((current) => current - GAME_DATA.rules.rerollCost);
     setSeed(nextSeed);
-    setShop((current) => rerollShop(shopBlocks, current, nextSeed, GAME_DATA.rules.shopSize));
+    setShop((current) =>
+      rerollShop(shopBlocks, GAME_DATA.rules.rarityWeights, current, nextSeed, GAME_DATA.rules.shopSize),
+    );
     setMessage('ショップを更新');
   };
 
@@ -745,7 +768,7 @@ export function App() {
     const nextSeed = seed + 11;
     setCoins((current) => current + reward);
     setSeed(nextSeed);
-    setShop(advanceShop(shopBlocks, shop, nextSeed, GAME_DATA.rules.shopSize));
+    setShop(advanceShop(shopBlocks, GAME_DATA.rules.rarityWeights, shop, nextSeed, GAME_DATA.rules.shopSize));
     setRun((current) => current + 1);
     setPlayback([]);
     setFrame(0);
@@ -768,6 +791,7 @@ export function App() {
   const detailOwner = detailBattleTeam === 'player' ? player : detailBattleTeam === 'enemy' ? enemy : undefined;
   const detailOpponent = detailBattleTeam === 'player' ? enemy : detailBattleTeam === 'enemy' ? player : undefined;
   const detailAnalysis = analyzeCircuit(detailBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+  const detailChargeByCell = calculateChargeByCell(detailBoard, GAME_DATA.blocks, detailAnalysis);
   const detailModifiers =
     detail?.position && detailCellKey && detailPoweredCells.has(detailCellKey)
       ? incomingSkillModifiers(detailBoard, GAME_DATA.blocks, detailAnalysis, detail.position)
@@ -975,7 +999,9 @@ export function App() {
                       >
                         <BlockVisual block={block} compact />
                         <span>
-                          <small>{block.code}</small>
+                          <small>
+                            {RARITY_COPY[block.rarity].code} · {block.code}
+                          </small>
                           <strong>{block.title}</strong>
                         </span>
                       </button>
@@ -1032,7 +1058,7 @@ export function App() {
             <div className="arena-team-label is-enemy">RIVAL</div>
             {projectileEvents.map((event) => (
               <i
-                className={`battle-projectile team-${event.team} effect-${event.kind === 'poison' ? 'poison' : 'damage'}`}
+                className={`battle-projectile team-${event.team} effect-${event.kind === 'poison' ? 'poison' : event.charge !== undefined ? 'charge' : 'damage'}`}
                 key={event.id}
                 aria-hidden="true"
               />
@@ -1172,10 +1198,27 @@ export function App() {
                 </div>
               )}
               <dl>
+                <div>
+                  <dt>レアリティ</dt>
+                  <dd>{RARITY_COPY[detailBlock.rarity].label}</dd>
+                </div>
+                {detailCellKey && detailPoweredCells.has(detailCellKey) && (
+                  <div>
+                    <dt>チャージ</dt>
+                    <dd>{detailChargeByCell.get(detailCellKey) ?? 0}</dd>
+                  </div>
+                )}
                 {detailBattleTeam && detailProgress && (
                   <div>
                     <dt>現在</dt>
-                    <dd>{effectLabel(detailBlock, detailProgress, detailMergeMultiplier)}</dd>
+                    <dd>
+                      {effectLabel(
+                        detailBlock,
+                        detailProgress,
+                        detailMergeMultiplier,
+                        detailCellKey ? (detailChargeByCell.get(detailCellKey) ?? 0) : 0,
+                      )}
+                    </dd>
                   </div>
                 )}
                 <div>

@@ -73,6 +73,12 @@ if ((await desktop.locator('.arena-fighter').count()) !== 0)
 if ((await desktop.locator('.circuit-cell .block-button').count()) !== 0)
   throw new Error('Player circuit should start empty');
 if ((await desktop.locator('.rack-block').count()) !== 0) throw new Error('Skill rack should start empty');
+const shopRarities = await desktop
+  .locator('.shop-card')
+  .evaluateAll((cards) => cards.map((card) => [...card.classList].find((name) => name.startsWith('rarity-'))));
+if (shopRarities.some((rarity) => !/^rarity-(normal|rare|epic|legendary)$/.test(rarity ?? ''))) {
+  throw new Error(`Shop cards do not expose the four-tier rarity model: ${JSON.stringify(shopRarities)}`);
+}
 
 const lockedOffer = desktop.locator('.shop-card').last();
 const lockedTitle = (await lockedOffer.locator('.shop-block-button strong').textContent())?.trim();
@@ -95,6 +101,9 @@ await desktop.getByRole('dialog').waitFor();
 const offerDescription = (await desktop.locator('.dialog-copy > p').textContent())?.trim();
 if (!offerDescription?.endsWith('。') || offerDescription.length < 18) {
   throw new Error(`Skill description is not a readable sentence: ${offerDescription}`);
+}
+if ((await desktop.getByRole('dialog').getByText('レアリティ', { exact: true }).count()) !== 1) {
+  throw new Error('Skill detail does not show its rarity');
 }
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 
@@ -293,14 +302,9 @@ if (!mobileHealth || mobileHealth.width > 68 || mobileHealth.height > 9)
 if ((await mobile.locator('.battle-circuit-cell.is-activated').count()) === 0) {
   throw new Error('Mobile circuit summary did not show an activated skill');
 }
-if ((await mobile.locator('.battle-projectile.effect-poison').count()) === 0) {
-  throw new Error('Poison skill did not show a distinct projectile animation');
-}
-if ((await mobile.locator('.arena-fighter.team-enemy .poison-impact').count()) === 0) {
-  throw new Error('Poison skill did not show an impact animation on its target');
-}
-if (!(await mobile.locator('.arena-fighter.team-enemy .combat-feedback').textContent())?.includes('毒')) {
-  throw new Error('Poison impact did not explain its status increase');
+await mobile.locator('.battle-circuit-cell .block-charge-chip').first().waitFor({ timeout: 5000 });
+if ((await mobile.locator('.battle-circuit-cell .block-visual.effect-charge').count()) === 0) {
+  throw new Error('Charge did not become visible while current moved through the circuit');
 }
 const mobileMergeSkill = mobile.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]');
 await mobileMergeSkill.waitFor({ timeout: 5000 });

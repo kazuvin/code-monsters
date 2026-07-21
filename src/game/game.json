@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -15,7 +15,8 @@
     "winReward": 4,
     "retryReward": 2,
     "rerollCost": 1,
-    "shopSize": 5
+    "shopSize": 5,
+    "rarityWeights": { "normal": 100, "rare": 45, "epic": 15, "legendary": 4 }
   },
   "units": [
     { "id": "volt", "name": "ヴォルト", "code": "V-01", "maxHp": 216, "color": "#5de7f2" },
@@ -28,33 +29,159 @@
       "requiredRoles": ["starter", "grower", "cycler", "sustain", "payoff"],
       "requiredPayoffRoles": ["grower", "cycler", "payoff"],
       "minimumPayoffsPerBuild": 2,
-      "minimumOpenSkillsPerBuild": 2,
-      "maximumExclusiveSkillRatio": 0.75,
-      "minimumPlayableSkillsPerBuild": 10
+      "minimumOpenSkillsPerBuild": 3,
+      "maximumExclusiveSkillRatio": 0.5,
+      "minimumPlayableSkillsPerBuild": 8,
+      "requiredAxisIds": ["trait", "weapon"],
+      "minimumHybridSkillsPerBuild": 3,
+      "minimumWeaponTypesPerBuild": 4,
+      "requireSkillDesignForEveryBlock": true
     },
+    "axes": [
+      {
+        "id": "trait",
+        "title": "特性",
+        "description": "戦闘中に育て、別の武器へ受け渡せる仕組み",
+        "values": [
+          { "id": "poison", "title": "毒", "description": "毒を残して育てるか、破裂させて使う" },
+          { "id": "charge", "title": "チャージ", "description": "通電経路で蓄え、遠い解放点で使う" }
+        ]
+      },
+      {
+        "id": "weapon",
+        "title": "武器・装置",
+        "description": "特性を運び、攻撃や防御へ変換する手段",
+        "values": [
+          { "id": "blade", "title": "剣", "description": "短い間隔で攻撃しながら次へつなぐ" },
+          { "id": "bow", "title": "弓", "description": "分岐しやすい射撃で複数の経路を作る" },
+          { "id": "cannon", "title": "砲", "description": "終端で蓄積を大きな一撃へ変換する" },
+          { "id": "device", "title": "装置", "description": "特性の育成、循環、維持を支える" }
+        ]
+      }
+    ],
     "builds": [
       {
         "id": "poison",
+        "axisId": "trait",
         "title": "毒",
-        "placementIdentity": "長い経路と循環",
+        "placementIdentity": "毒を持つ武器と循環装置の組み合わせ",
         "strength": "後半の継続成長",
         "risk": "立ち上がりが遅い",
-        "gamePlan": "毒を重ねながら回路を繰り返し通し、戦闘中強化を後半の圧力へ変える",
+        "gamePlan": "剣・弓・砲へ毒を組み込み、毒を残す培養か消費する破裂へつなぐ",
         "payoffs": [
           { "id": "cultivate", "title": "培養", "strategy": "毒を残して育てる" },
           { "id": "burst", "title": "破裂", "strategy": "毒を一気に破裂させる" }
+        ]
+      },
+      {
+        "id": "charge",
+        "axisId": "trait",
+        "title": "チャージ",
+        "placementIdentity": "長い充電経路と遠い解放点",
+        "strength": "完成した経路からの瞬間出力",
+        "risk": "解放点が近いか経路が切れると弱い",
+        "gamePlan": "通電が進むたびにチャージし、砲撃か防壁として終端でまとめて解放する",
+        "payoffs": [
+          { "id": "burst", "title": "一括解放", "strategy": "全チャージを大ダメージへ変える" },
+          { "id": "guard", "title": "防壁解放", "strategy": "全チャージをシールドへ変える" }
         ]
       }
     ],
     "skills": [
       {
+        "id": "strike",
+        "title": "斬撃",
+        "summary": "毒とチャージのどちらからも使える基本の剣技",
+        "status": "playable",
+        "blockId": "strike",
+        "scope": "shared",
+        "sharedSynergies": ["foundation", "blade"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["blade"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["starter", "cycler"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "breaker",
+        "title": "破砕撃",
+        "summary": "毒とチャージのどちらにも火力を足せる重い剣技",
+        "status": "playable",
+        "blockId": "breaker",
+        "scope": "shared",
+        "sharedSynergies": ["foundation", "blade"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["blade"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["starter"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["starter"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "arc-shot",
+        "title": "アーク弾",
+        "summary": "毒とチャージの経路を分岐できる基本の弓技",
+        "status": "playable",
+        "blockId": "arc-shot",
+        "scope": "shared",
+        "sharedSynergies": ["foundation", "bow", "branch"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["bow"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "barrier",
+        "title": "障壁",
+        "summary": "毒とチャージの完成を待つ時間を作る共有装置",
+        "status": "playable",
+        "blockId": "barrier",
+        "scope": "shared",
+        "sharedSynergies": ["foundation", "sustain"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "repair",
+        "title": "修復",
+        "summary": "毒とチャージの長い経路を維持する共有装置",
+        "status": "playable",
+        "blockId": "repair",
+        "scope": "shared",
+        "sharedSynergies": ["foundation", "sustain"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
         "id": "poison-needle",
-        "title": "毒針",
-        "summary": "毒を始動し、既に毒なら自身も育つ",
+        "title": "毒矢",
+        "summary": "弓で毒を始動し、既に毒なら付与量も育つ",
         "status": "playable",
         "blockId": "poison-needle",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
         "buildLinks": [{ "buildId": "poison", "roles": ["starter", "grower"], "payoffIds": ["cultivate", "burst"] }]
       },
       {
@@ -65,37 +192,25 @@
         "blockId": "cultivation-blade",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [{ "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate"] }]
       },
       {
-        "id": "serpentine-venom",
-        "title": "蛇行毒",
-        "summary": "経路を曲げ、長い毒経路ほど自身が育つ",
-        "status": "playable",
-        "blockId": "serpentine-venom",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "buildLinks": [{ "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] }]
-      },
-      {
-        "id": "corrosion-film",
-        "title": "腐食膜",
-        "summary": "毒を与えるたびに防御を得て成長時間を作る",
-        "status": "playable",
-        "blockId": "corrosion-film",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "buildLinks": [{ "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate"] }]
-      },
-      {
         "id": "toxic-reservoir",
-        "title": "毒溜め",
-        "summary": "長い経路で得た毒を維持力へ変える",
+        "title": "毒電池",
+        "summary": "毒とチャージを同時に運び、両ビルドの維持力を作る",
         "status": "playable",
         "blockId": "toxic-reservoir",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "buildLinks": [{ "buildId": "poison", "roles": ["grower", "sustain"], "payoffIds": ["cultivate", "burst"] }]
+        "scope": "shared",
+        "sharedSynergies": ["poison", "charge", "sustain"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["cycler", "sustain"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["grower", "cycler", "sustain"], "payoffIds": ["burst", "guard"] }
+        ]
       },
       {
         "id": "venom-bloom",
@@ -105,16 +220,18 @@
         "blockId": "venom-bloom",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [{ "buildId": "poison", "roles": ["payoff"], "payoffIds": ["cultivate"] }]
       },
       {
         "id": "rupture-stake",
-        "title": "破裂杭",
-        "summary": "毒を減らす代わりに、その量を即時ダメージへ変える",
+        "title": "破裂砲",
+        "summary": "砲撃で毒を減らし、その量を即時ダメージへ変える",
         "status": "playable",
         "blockId": "rupture-stake",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
         "buildLinks": [{ "buildId": "poison", "roles": ["payoff"], "payoffIds": ["burst"] }]
       },
       {
@@ -124,8 +241,15 @@
         "status": "playable",
         "blockId": "status-relay",
         "scope": "shared",
-        "sharedSynergies": ["status-effect", "combat-growth"],
-        "buildLinks": [{ "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] }]
+        "sharedSynergies": ["status-effect", "charge", "combat-growth"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] }
+        ]
       },
       {
         "id": "return-coil",
@@ -134,8 +258,15 @@
         "status": "playable",
         "blockId": "return-coil",
         "scope": "shared",
-        "sharedSynergies": ["cycle", "combat-growth"],
-        "buildLinks": [{ "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] }]
+        "sharedSynergies": ["cycle", "charge", "combat-growth"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] }
+        ]
       },
       {
         "id": "long-route-fang",
@@ -144,8 +275,132 @@
         "status": "playable",
         "blockId": "long-route-fang",
         "scope": "shared",
-        "sharedSynergies": ["long-route", "combat-growth"],
-        "buildLinks": [{ "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] }]
+        "sharedSynergies": ["long-route", "charge", "combat-growth"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["blade"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "amplifier",
+        "title": "増幅術",
+        "summary": "毒とチャージの解放先を直接強化する共有装置",
+        "status": "playable",
+        "blockId": "amplifier",
+        "scope": "shared",
+        "sharedSynergies": ["effect-power", "poison", "charge"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "accelerator",
+        "title": "加速術",
+        "summary": "毒とチャージの決め手を早く回す共有装置",
+        "status": "playable",
+        "blockId": "accelerator",
+        "scope": "shared",
+        "sharedSynergies": ["cooldown", "poison", "charge"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "charge-guard",
+        "title": "蓄電装甲",
+        "summary": "守りながらチャージを先へ渡す毒・チャージ共有装置",
+        "status": "playable",
+        "blockId": "charge-guard",
+        "scope": "shared",
+        "sharedSynergies": ["charge", "sustain"],
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["poison", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["grower", "sustain"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "charge-blade",
+        "title": "充電刃",
+        "summary": "剣で攻撃しながらチャージを増やす",
+        "status": "playable",
+        "blockId": "charge-blade",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "buildLinks": [{ "buildId": "charge", "roles": ["starter", "grower"], "payoffIds": ["burst", "guard"] }]
+      },
+      {
+        "id": "charge-arrow",
+        "title": "充電矢",
+        "summary": "弓で分岐しながらチャージを運ぶ",
+        "status": "playable",
+        "blockId": "charge-arrow",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "buildLinks": [{ "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] }]
+      },
+      {
+        "id": "charge-coil",
+        "title": "充電コイル",
+        "summary": "効果を持たず、通過するチャージを大きく増やす",
+        "status": "playable",
+        "blockId": "charge-coil",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "buildLinks": [{ "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }]
+      },
+      {
+        "id": "rail-cannon",
+        "title": "解放砲",
+        "summary": "遠方で全チャージを大ダメージへ変える",
+        "status": "playable",
+        "blockId": "rail-cannon",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
+        "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
+      },
+      {
+        "id": "charge-bastion",
+        "title": "防壁展開",
+        "summary": "遠方で全チャージをシールドへ変える",
+        "status": "playable",
+        "blockId": "charge-bastion",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "buildLinks": [{ "buildId": "charge", "roles": ["sustain", "payoff"], "payoffIds": ["guard"] }]
+      },
+      {
+        "id": "overcharge-cannon",
+        "title": "超過解放砲",
+        "summary": "長い待ち時間と引き換えにチャージを最大火力へ変える",
+        "status": "playable",
+        "blockId": "overcharge-cannon",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
+        "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
       }
     ]
   },
@@ -157,9 +412,10 @@
       "description": "1拍ごとに、相手へ2ダメージを与える。左右につながる。",
       "glyph": "斬",
       "price": 2,
-      "rarity": "common",
+      "rarity": "normal",
       "shopWeight": 5,
       "ports": ["west", "east"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 1,
       "effects": [{ "kind": "damage", "amount": 2 }]
     },
@@ -170,9 +426,10 @@
       "description": "2拍ごとに、相手へ4ダメージを与える。左と上につながる。",
       "glyph": "破",
       "price": 3,
-      "rarity": "common",
+      "rarity": "normal",
       "shopWeight": 3,
       "ports": ["west", "north"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [{ "kind": "damage", "amount": 4 }]
     },
@@ -186,6 +443,7 @@
       "rarity": "rare",
       "shopWeight": 2,
       "ports": ["west", "north", "east"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [{ "kind": "damage", "amount": 2 }]
     },
@@ -196,9 +454,10 @@
       "description": "2拍ごとに、シールドを2得る。3方向へつながる。",
       "glyph": "盾",
       "price": 2,
-      "rarity": "common",
+      "rarity": "normal",
       "shopWeight": 4,
       "ports": ["west", "north", "east"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [{ "kind": "shield", "amount": 2 }]
     },
@@ -212,21 +471,24 @@
       "rarity": "rare",
       "shopWeight": 2,
       "ports": ["west", "north"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [{ "kind": "repair", "amount": 3 }]
     },
     {
       "id": "rail-cannon",
       "code": "RAIL",
-      "title": "レール砲",
-      "description": "4拍ごとに、相手へ7ダメージを与える。この技で通電は止まる。",
+      "title": "解放砲",
+      "description": "3拍ごとに、基礎2とチャージ1につき3ダメージを与える。この技で通電は止まる。",
       "glyph": "砲",
-      "price": 4,
-      "rarity": "rare",
-      "shopWeight": 2,
+      "price": 5,
+      "rarity": "epic",
+      "shopWeight": 1,
       "ports": ["west"],
-      "cooldown": 4,
-      "effects": [{ "kind": "damage", "amount": 7 }]
+      "rotatable": false,
+      "buildIds": ["charge"],
+      "cooldown": 3,
+      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 2, "perCharge": 3 }]
     },
     {
       "id": "amplifier",
@@ -238,6 +500,7 @@
       "rarity": "rare",
       "shopWeight": 2,
       "ports": ["west", "east"],
+      "buildIds": ["poison", "charge"],
       "effects": [{ "kind": "amplify", "amount": 2 }]
     },
     {
@@ -250,16 +513,17 @@
       "rarity": "rare",
       "shopWeight": 2,
       "ports": ["west", "east", "south"],
+      "buildIds": ["poison", "charge"],
       "effects": [{ "kind": "haste", "amount": 1 }]
     },
     {
       "id": "poison-needle",
       "code": "VENOM",
-      "title": "毒針",
-      "description": "2拍ごとに、1ダメージと毒1を与える。相手がすでに毒なら、この技の毒付与量が1増える。",
+      "title": "毒矢",
+      "description": "2拍ごとに、毒矢で1ダメージと毒1を与える。相手がすでに毒なら、この技の毒付与量が1増える。",
       "glyph": "毒",
       "price": 2,
-      "rarity": "common",
+      "rarity": "normal",
       "shopWeight": 5,
       "ports": ["west", "north", "east"],
       "rotatable": false,
@@ -284,7 +548,7 @@
       "description": "2拍ごとに、相手へ2ダメージを与える。相手が毒なら、この先の技の各効果を1増やす。",
       "glyph": "培",
       "price": 3,
-      "rarity": "common",
+      "rarity": "rare",
       "shopWeight": 4,
       "ports": ["west", "north"],
       "rotatable": false,
@@ -302,67 +566,22 @@
       ]
     },
     {
-      "id": "serpentine-venom",
-      "code": "BEND",
-      "title": "蛇行毒",
-      "description": "3拍ごとに、毒1を与える。電源から3個目以降なら、この技の毒付与量が1増える。",
-      "glyph": "蛇",
-      "price": 2,
-      "rarity": "common",
-      "shopWeight": 4,
-      "ports": ["west", "east", "south"],
-      "rotatable": false,
-      "buildIds": ["poison"],
-      "cooldown": 3,
-      "effects": [
-        { "kind": "poison", "amount": 1 },
-        {
-          "kind": "growth",
-          "amount": 1,
-          "target": "self",
-          "stat": "poison",
-          "trigger": { "kind": "path-length-at-least", "amount": 3 }
-        }
-      ]
-    },
-    {
-      "id": "corrosion-film",
-      "code": "FILM",
-      "title": "腐食膜",
-      "description": "2拍ごとに、シールドを2得る。相手に付いた毒3ごとに、得るシールドが1増える。",
-      "glyph": "膜",
-      "price": 3,
-      "rarity": "common",
-      "shopWeight": 3,
-      "ports": ["south", "east"],
-      "rotatable": false,
-      "buildIds": ["poison"],
-      "cooldown": 2,
-      "effects": [{ "kind": "shield", "amount": 2, "scaling": { "kind": "enemy-poison", "every": 3, "amount": 1 } }]
-    },
-    {
       "id": "toxic-reservoir",
       "code": "TANK",
-      "title": "毒溜め",
-      "description": "3拍ごとに、毒1を与えてシールド1を得る。通電した技2個ごとにシールドが1増え、4個目以降なら発動後に毒付与量が1増える。",
+      "title": "毒電池",
+      "description": "通電にチャージ1を追加する。3拍ごとに、毒1を与えてシールド1を得る。",
       "glyph": "溜",
       "price": 4,
-      "rarity": "rare",
-      "shopWeight": 2,
+      "rarity": "epic",
+      "shopWeight": 1,
       "ports": ["north", "east"],
       "rotatable": false,
-      "buildIds": ["poison"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
+        { "kind": "charge", "amount": 1 },
         { "kind": "poison", "amount": 1 },
-        { "kind": "shield", "amount": 1, "scaling": { "kind": "path-length", "every": 2, "amount": 1 } },
-        {
-          "kind": "growth",
-          "amount": 1,
-          "target": "self",
-          "stat": "poison",
-          "trigger": { "kind": "path-length-at-least", "amount": 4 }
-        }
+        { "kind": "shield", "amount": 1 }
       ]
     },
     {
@@ -372,8 +591,8 @@
       "description": "3拍ごとに、毒1を与える。ほかの技に育てられると、その分だけ一度に与える毒が増える。",
       "glyph": "花",
       "price": 4,
-      "rarity": "rare",
-      "shopWeight": 2,
+      "rarity": "legendary",
+      "shopWeight": 1,
       "ports": ["west", "east"],
       "rotatable": false,
       "buildIds": ["poison"],
@@ -383,12 +602,12 @@
     {
       "id": "rupture-stake",
       "code": "BURST",
-      "title": "破裂杭",
-      "description": "4拍ごとに、相手の毒を半分取り除く。取り除いた毒1につき3ダメージを与える。",
+      "title": "破裂砲",
+      "description": "4拍ごとに、砲撃で相手の毒を半分取り除く。取り除いた毒1につき3ダメージを与える。",
       "glyph": "裂",
       "price": 4,
-      "rarity": "rare",
-      "shopWeight": 2,
+      "rarity": "epic",
+      "shopWeight": 1,
       "ports": ["west"],
       "rotatable": false,
       "buildIds": ["poison"],
@@ -399,16 +618,17 @@
       "id": "status-relay",
       "code": "RELAY",
       "title": "異常伝送",
-      "description": "2拍ごとに、相手へ1ダメージを与える。相手が毒なら、この先の技の各効果を1増やす。",
+      "description": "通電にチャージ1を追加する。2拍ごとに1ダメージを与え、相手が毒ならこの先の技の各効果を1増やす。",
       "glyph": "伝",
       "price": 3,
       "rarity": "rare",
       "shopWeight": 3,
       "ports": ["west", "east"],
       "rotatable": false,
-      "buildIds": ["poison"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
+        { "kind": "charge", "amount": 1 },
         { "kind": "damage", "amount": 1 },
         {
           "kind": "growth",
@@ -423,16 +643,17 @@
       "id": "return-coil",
       "code": "RETURN",
       "title": "帰還コイル",
-      "description": "2拍ごとに、シールドを1得る。回路が一周すると、自身とこの先の技の各効果を1ずつ増やす。",
+      "description": "通電にチャージ1を追加する。2拍ごとにシールド1を得て、回路が一周すると自身とこの先の技の各効果を1ずつ増やす。",
       "glyph": "還",
       "price": 3,
       "rarity": "rare",
       "shopWeight": 2,
       "ports": ["south", "west"],
       "rotatable": false,
-      "buildIds": ["poison"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
+        { "kind": "charge", "amount": 1 },
         { "kind": "shield", "amount": 1 },
         {
           "kind": "growth",
@@ -454,16 +675,17 @@
       "id": "long-route-fang",
       "code": "LONG",
       "title": "長路の牙",
-      "description": "2拍ごとに、相手へ2ダメージを与える。通電した技1個につきダメージが1増え、4個目以降なら発動後にさらに1増える。",
+      "description": "通電にチャージ1を追加する。2拍ごとに2ダメージを与え、通電した技1個につきダメージが1増える。",
       "glyph": "路",
       "price": 3,
       "rarity": "rare",
       "shopWeight": 3,
       "ports": ["north", "east"],
       "rotatable": false,
-      "buildIds": ["poison"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
+        { "kind": "charge", "amount": 1 },
         { "kind": "damage", "amount": 2, "scaling": { "kind": "path-length", "every": 1, "amount": 1 } },
         {
           "kind": "growth",
@@ -473,6 +695,95 @@
           "trigger": { "kind": "path-length-at-least", "amount": 4 }
         }
       ]
+    },
+    {
+      "id": "charge-blade",
+      "code": "CHG-B",
+      "title": "充電刃",
+      "description": "通電にチャージ1を追加する。2拍ごとに、剣で相手へ1ダメージを与える。",
+      "glyph": "充",
+      "price": 2,
+      "rarity": "normal",
+      "shopWeight": 5,
+      "ports": ["west", "east"],
+      "rotatable": false,
+      "buildIds": ["charge"],
+      "cooldown": 2,
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 1 }]
+    },
+    {
+      "id": "charge-arrow",
+      "code": "CHG-A",
+      "title": "充電矢",
+      "description": "通電にチャージ1を追加する。2拍ごとに、弓で相手へ1ダメージを与える。",
+      "glyph": "矢",
+      "price": 3,
+      "rarity": "normal",
+      "shopWeight": 4,
+      "ports": ["west", "north", "east"],
+      "rotatable": false,
+      "buildIds": ["charge"],
+      "cooldown": 2,
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 1 }]
+    },
+    {
+      "id": "charge-coil",
+      "code": "COIL",
+      "title": "充電コイル",
+      "description": "通電にチャージ2を追加し、そのまま先へ渡す。",
+      "glyph": "蓄",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 3,
+      "ports": ["west", "east"],
+      "rotatable": false,
+      "buildIds": ["charge"],
+      "effects": [{ "kind": "charge", "amount": 2 }]
+    },
+    {
+      "id": "charge-guard",
+      "code": "CHG-G",
+      "title": "蓄電装甲",
+      "description": "通電にチャージ1を追加する。2拍ごとに、シールドを2得る。",
+      "glyph": "蓄",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 3,
+      "ports": ["south", "east"],
+      "rotatable": false,
+      "buildIds": ["poison", "charge"],
+      "cooldown": 2,
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "shield", "amount": 2 }]
+    },
+    {
+      "id": "charge-bastion",
+      "code": "BASTION",
+      "title": "防壁展開",
+      "description": "3拍ごとに、基礎1とチャージ1につき2のシールドを得る。この技で通電は止まる。",
+      "glyph": "壁",
+      "price": 4,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west"],
+      "rotatable": false,
+      "buildIds": ["charge"],
+      "cooldown": 3,
+      "effects": [{ "kind": "release-charge", "output": "shield", "amount": 1, "perCharge": 2 }]
+    },
+    {
+      "id": "overcharge-cannon",
+      "code": "OVER",
+      "title": "超過解放砲",
+      "description": "5拍ごとに、基礎3とチャージ1につき5ダメージを与える。この技で通電は止まる。",
+      "glyph": "極",
+      "price": 6,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west"],
+      "rotatable": false,
+      "buildIds": ["charge"],
+      "cooldown": 5,
+      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 3, "perCharge": 5 }]
     }
   ],
   "startingRack": [],
@@ -486,7 +797,7 @@
   "enemyBoard": [
     [null, null, null, null, null],
     [
-      { "blockId": "corrosion-film", "rotation": 0 },
+      { "blockId": "charge-guard", "rotation": 0 },
       { "blockId": "amplifier", "rotation": 0 },
       { "blockId": "repair", "rotation": 3 },
       null,

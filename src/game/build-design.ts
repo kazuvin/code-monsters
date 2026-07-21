@@ -33,10 +33,15 @@ export type BuildMatrixRow = {
   exclusiveSkillRatio: number;
   plannedSkillIds: string[];
   playableSkillIds: string[];
+  axisCoverage: Record<string, string[]>;
+  hybridSkillIds: string[];
 };
 
 const linkFor = (skill: SkillDesignDefinition, buildId: string) =>
   skill.buildLinks.find((link) => link.buildId === buildId);
+
+const axisLinkFor = (skill: SkillDesignDefinition, axisId: string) =>
+  skill.axisLinks.find((link) => link.axisId === axisId);
 
 const skillIdsForRole = (skills: SkillDesignDefinition[], buildId: string, role: BuildRole) =>
   skills.filter((skill) => linkFor(skill, buildId)?.roles.includes(role)).map((skill) => skill.id);
@@ -76,6 +81,21 @@ export function createBuildMatrix(design: BuildDesign): BuildMatrixRow[] {
     });
     const openSkillIds = skills.filter((skill) => isOpenForBuild(design, skill, build.id)).map((skill) => skill.id);
     const exclusiveSkills = skills.filter((skill) => skill.scope === 'exclusive' && skill.buildLinks.length === 1);
+    const axisCoverage = Object.fromEntries(
+      design.axes.map((axis) => [
+        axis.id,
+        [
+          ...new Set(
+            skills
+              .flatMap((skill) => axisLinkFor(skill, axis.id)?.valueIds ?? [])
+              .filter((valueId) => axis.values.some((value) => value.id === valueId)),
+          ),
+        ],
+      ]),
+    );
+    const hybridSkillIds = skills
+      .filter((skill) => (axisLinkFor(skill, build.axisId)?.valueIds.length ?? 0) > 1)
+      .map((skill) => skill.id);
 
     return {
       buildId: build.id,
@@ -91,6 +111,8 @@ export function createBuildMatrix(design: BuildDesign): BuildMatrixRow[] {
       exclusiveSkillRatio: skills.length === 0 ? 1 : exclusiveSkills.length / skills.length,
       plannedSkillIds: skills.filter((skill) => skill.status === 'planned').map((skill) => skill.id),
       playableSkillIds: skills.filter((skill) => skill.status === 'playable').map((skill) => skill.id),
+      axisCoverage,
+      hybridSkillIds,
     };
   });
 }
@@ -108,6 +130,23 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
   const validRoles = new Set(BUILD_ROLES);
   const buildIds = new Set(design.builds.map((build) => build.id));
   const blockIds = new Set(playableBlockIds);
+  const axisIds = new Set(design.axes.map((axis) => axis.id));
+  const axisValues = new Map(design.axes.map((axis) => [axis.id, new Set(axis.values.map((value) => value.id))]));
+
+  pushDuplicateErrors(
+    'build axis',
+    design.axes.map((axis) => axis.id),
+    errors,
+  );
+  design.axes.forEach((axis) => {
+    if (!axis.title.trim()) errors.push(`build axis "${axis.id}" needs a title`);
+    if (!axis.description.trim()) errors.push(`build axis "${axis.id}" needs a description`);
+    pushDuplicateErrors(
+      `build axis "${axis.id}" value`,
+      axis.values.map((value) => value.id),
+      errors,
+    );
+  });
 
   pushDuplicateErrors(
     'build',
@@ -125,6 +164,15 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
   if (design.rules.minimumPlayableSkillsPerBuild < 0) {
     errors.push('minimumPlayableSkillsPerBuild must not be negative');
   }
+  if (design.rules.minimumHybridSkillsPerBuild < 0) {
+    errors.push('minimumHybridSkillsPerBuild must not be negative');
+  }
+  if (design.rules.minimumWeaponTypesPerBuild < 1) {
+    errors.push('minimumWeaponTypesPerBuild must be positive');
+  }
+  design.rules.requiredAxisIds.forEach((axisId) => {
+    if (!axisIds.has(axisId)) errors.push(`requiredAxisIds references unknown axis "${axisId}"`);
+  });
   if (design.rules.maximumExclusiveSkillRatio <= 0 || design.rules.maximumExclusiveSkillRatio >= 1) {
     errors.push('maximumExclusiveSkillRatio must be between 0 and 1');
   }
@@ -142,6 +190,10 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
   });
 
   design.builds.forEach((build) => {
+    if (!axisIds.has(build.axisId)) errors.push(`build "${build.id}" references unknown axis "${build.axisId}"`);
+    if (!axisValues.get(build.axisId)?.has(build.id)) {
+      errors.push(`build "${build.id}" is not a value of axis "${build.axisId}"`);
+    }
     if (!build.placementIdentity.trim()) errors.push(`build "${build.id}" needs a placement identity`);
     if (!build.strength.trim()) errors.push(`build "${build.id}" needs a strength`);
     if (!build.risk.trim()) errors.push(`build "${build.id}" needs a risk`);
@@ -175,11 +227,37 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
     if (skill.blockId && !blockIds.has(skill.blockId)) {
       errors.push(`skill design "${skill.id}" references unknown block "${skill.blockId}"`);
     }
+    pushDuplicateErrors(
+      `skill design "${skill.id}" axis link`,
+      skill.axisLinks.map((link) => link.axisId),
+      errors,
+    );
+    design.rules.requiredAxisIds.forEach((axisId) => {
+      if (!axisLinkFor(skill, axisId)?.valueIds.length) {
+        errors.push(`skill design "${skill.id}" needs axis "${axisId}"`);
+      }
+    });
+    skill.axisLinks.forEach((axisLink) => {
+      const values = axisValues.get(axisLink.axisId);
+      if (!values) {
+        errors.push(`skill design "${skill.id}" references unknown axis "${axisLink.axisId}"`);
+        return;
+      }
+      pushDuplicateErrors(`skill design "${skill.id}" axis "${axisLink.axisId}"`, axisLink.valueIds, errors);
+      axisLink.valueIds.forEach((valueId) => {
+        if (!values.has(valueId)) {
+          errors.push(`skill design "${skill.id}" references unknown axis value "${axisLink.axisId}/${valueId}"`);
+        }
+      });
+    });
     skill.buildLinks.forEach((link) => {
       const build = design.builds.find((candidate) => candidate.id === link.buildId);
       if (!buildIds.has(link.buildId) || !build) {
         errors.push(`skill design "${skill.id}" references unknown build "${link.buildId}"`);
         return;
+      }
+      if (!axisLinkFor(skill, build.axisId)?.valueIds.includes(build.id)) {
+        errors.push(`skill design "${skill.id}" does not tag linked build "${build.axisId}/${build.id}"`);
       }
       link.roles.forEach((role) => {
         if (!validRoles.has(role)) errors.push(`skill design "${skill.id}" contains unknown role "${role}"`);
@@ -192,6 +270,14 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
       });
     });
   });
+
+  if (design.rules.requireSkillDesignForEveryBlock) {
+    blockIds.forEach((blockId) => {
+      const matches = design.skills.filter((skill) => skill.status === 'playable' && skill.blockId === blockId);
+      if (matches.length === 0) errors.push(`block "${blockId}" needs a playable skill design`);
+      if (matches.length > 1) errors.push(`block "${blockId}" has multiple playable skill designs`);
+    });
+  }
 
   createBuildMatrix(design).forEach((row) => {
     row.missingRoles.forEach((role) => errors.push(`build "${row.buildId}" is missing required role "${role}"`));
@@ -223,6 +309,16 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
         `build "${row.buildId}" needs at least ${design.rules.minimumPlayableSkillsPerBuild} playable skills but has ${row.playableSkillIds.length}`,
       );
     }
+    if (row.hybridSkillIds.length < design.rules.minimumHybridSkillsPerBuild) {
+      errors.push(
+        `build "${row.buildId}" needs at least ${design.rules.minimumHybridSkillsPerBuild} hybrid skills but has ${row.hybridSkillIds.length}`,
+      );
+    }
+    if ((row.axisCoverage.weapon?.length ?? 0) < design.rules.minimumWeaponTypesPerBuild) {
+      errors.push(
+        `build "${row.buildId}" needs at least ${design.rules.minimumWeaponTypesPerBuild} weapon types but has ${row.axisCoverage.weapon?.length ?? 0}`,
+      );
+    }
   });
 
   return errors;
@@ -235,6 +331,24 @@ export function renderBuildMatrixMarkdown(design: BuildDesign): string {
     '# ビルド・シナジーマトリクス',
     '',
     '> `src/game/game.json` から生成します。直接編集しないでください。',
+    '',
+    '## ビルド軸',
+    '',
+    '| 軸 | 目的 | 値 |',
+    '| --- | --- | --- |',
+    ...design.axes.map(
+      (axis) =>
+        `| ${axis.title} | ${axis.description} | ${axis.values.map((value) => `${value.title}（\`${value.id}\`）`).join('、')} |`,
+    ),
+    '',
+    '## ノードの組み合わせ',
+    '',
+    '| ノード | 特性 | 武器・装置 |',
+    '| --- | --- | --- |',
+    ...design.skills.map(
+      (skill) =>
+        `| \`${skill.id}\` | ${codeList(axisLinkFor(skill, 'trait')?.valueIds ?? [])} | ${codeList(axisLinkFor(skill, 'weapon')?.valueIds ?? [])} |`,
+    ),
     '',
   ];
 
@@ -274,6 +388,8 @@ export function renderBuildMatrixMarkdown(design: BuildDesign): string {
       '### 開放性と実装状況',
       '',
       `- 開放スキル: ${codeList(row.openSkillIds)}`,
+      `- 複合特性スキル: ${codeList(row.hybridSkillIds)}`,
+      `- 武器・装置の幅: ${codeList(row.axisCoverage.weapon ?? [])}`,
       `- 専用技率: ${Math.round(row.exclusiveSkillRatio * 100)}%（上限 ${Math.round(design.rules.maximumExclusiveSkillRatio * 100)}%）`,
       `- 計画中: ${codeList(row.plannedSkillIds)}`,
       `- 実装済み: ${codeList(row.playableSkillIds)}（最低 ${design.rules.minimumPlayableSkillsPerBuild}）`,

@@ -183,6 +183,37 @@ export function findPoweredCells(board: CircuitBoard, blocks: ConnectionBlock[],
   return analyzeCircuit(board, blocks, sourceRow).poweredCells;
 }
 
+export function calculateChargeByCell(
+  board: CircuitBoard,
+  blocks: BlockDefinition[],
+  analysis: CircuitAnalysis,
+): Map<string, number> {
+  const definitions = new Map(blocks.map((block) => [block.id, block]));
+  const incomingCharge = new Map<string, number>();
+  const outgoingCharge = new Map<string, number>();
+  const orderedCells = [...analysis.poweredCells].sort(
+    (left, right) =>
+      (analysis.waveStep.get(left) ?? 0) - (analysis.waveStep.get(right) ?? 0) || left.localeCompare(right),
+  );
+
+  orderedCells.forEach((key) => {
+    const position = positionForKey(key);
+    const upstreamCharges = (analysis.upstreamCells.get(key) ?? []).map(
+      (upstream) => outgoingCharge.get(cellKey(upstream)) ?? 0,
+    );
+    const incoming = upstreamCharges.length > 0 ? Math.max(...upstreamCharges) : 0;
+    const placed = blockAt(board, position);
+    const block = placed ? definitions.get(placed.blockId) : undefined;
+    const nodeBonus =
+      block?.effects.reduce((total, effect) => total + (effect.kind === 'charge' ? effect.amount : 0), 0) ?? 0;
+
+    incomingCharge.set(key, incoming);
+    outgoingCharge.set(key, incoming + 1 + nodeBonus);
+  });
+
+  return incomingCharge;
+}
+
 export function cloneBoard(board: CircuitBoard): CircuitBoard {
   return board.map((row) => row.map((block) => (block ? { ...block } : null)));
 }
