@@ -53,6 +53,7 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.suddenDeathGrowth <= 1) errors.push('suddenDeathGrowth must be greater than 1');
   if (data.rules.poisonTickSeconds <= 0) errors.push('poisonTickSeconds must be positive');
   if (data.rules.poisonDecay < 0) errors.push('poisonDecay must not be negative');
+  if (data.rules.mergeEffectMultiplier <= 1) errors.push('mergeEffectMultiplier must be greater than 1');
 
   validateBoard('playerBoard', data.playerBoard, data, errors);
   validateBoard('enemyBoard', data.enemyBoard, data, errors);

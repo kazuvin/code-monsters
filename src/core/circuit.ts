@@ -108,13 +108,21 @@ export type CircuitAnalysis = {
   poweredCells: Set<string>;
   routeLength: Map<string, number>;
   cyclicCells: Set<string>;
+  waveStep: Map<string, number>;
+  mergeCells: Set<string>;
 };
 
 export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], sourceRow: number): CircuitAnalysis {
   const source = { row: sourceRow, column: 0 };
   const first = definitionAt(board, blocks, source);
   if (!first || !rotatePorts(first.definition.inputPorts, first.placed.rotation).includes('west')) {
-    return { poweredCells: new Set(), routeLength: new Map(), cyclicCells: new Set() };
+    return {
+      poweredCells: new Set(),
+      routeLength: new Map(),
+      cyclicCells: new Set(),
+      waveStep: new Map(),
+      mergeCells: new Set(),
+    };
   }
 
   const poweredCells = new Set<string>();
@@ -150,7 +158,59 @@ export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], s
     }
   }
 
-  return { poweredCells, routeLength, cyclicCells };
+  const reachableFrom = (start: string) => {
+    const reachable = new Set<string>();
+    const search = [start];
+    while (search.length > 0) {
+      const current = search.shift()!;
+      if (reachable.has(current)) continue;
+      reachable.add(current);
+      const [row, column] = current.split(':').map(Number);
+      connectedOutputs(board, blocks, { row, column })
+        .map(cellKey)
+        .filter((next) => poweredCells.has(next))
+        .forEach((next) => search.push(next));
+    }
+    return reachable;
+  };
+  const reachability = new Map([...poweredCells].map((key) => [key, reachableFrom(key)]));
+  const componentByCell = new Map<string, string>();
+  [...poweredCells].sort().forEach((key) => {
+    if (componentByCell.has(key)) return;
+    const component = [...poweredCells]
+      .filter((candidate) => reachability.get(key)?.has(candidate) && reachability.get(candidate)?.has(key))
+      .sort();
+    const componentId = component[0] ?? key;
+    component.forEach((member) => componentByCell.set(member, componentId));
+  });
+
+  const externalInputs = (key: string) => {
+    const [row, column] = key.split(':').map(Number);
+    return connectedInputs(board, blocks, { row, column }).filter((input) => {
+      const inputKey = cellKey(input);
+      return poweredCells.has(inputKey) && componentByCell.get(inputKey) !== componentByCell.get(key);
+    });
+  };
+  const mergeCells = new Set(
+    [...poweredCells].filter((key) => !cyclicCells.has(key) && externalInputs(key).length >= 2),
+  );
+  const waveStep = new Map(routeLength);
+  for (let pass = 0; pass < poweredCells.size; pass += 1) {
+    let changed = false;
+    [...poweredCells].forEach((key) => {
+      if (cyclicCells.has(key)) return;
+      const inputs = externalInputs(key);
+      if (inputs.length === 0) return;
+      const nextStep = Math.max(...inputs.map((input) => waveStep.get(cellKey(input)) ?? 1)) + 1;
+      if (nextStep > (waveStep.get(key) ?? 1)) {
+        waveStep.set(key, nextStep);
+        changed = true;
+      }
+    });
+    if (!changed) break;
+  }
+
+  return { poweredCells, routeLength, cyclicCells, waveStep, mergeCells };
 }
 
 export function findPoweredCells(board: CircuitBoard, blocks: ConnectionBlock[], sourceRow: number): Set<string> {

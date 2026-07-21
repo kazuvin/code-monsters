@@ -46,6 +46,12 @@ const longTouch = async (page, client, source, destination) => {
   await page.waitForTimeout(100);
 };
 
+const advanceClock = async (page, durationMs, stepMs = 100) => {
+  for (let elapsed = 0; elapsed < durationMs; elapsed += stepMs) {
+    await page.clock.runFor(Math.min(stepMs, durationMs - elapsed));
+  }
+};
+
 const errors = [];
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 desktop.on('pageerror', (error) => errors.push(error.message));
@@ -67,6 +73,21 @@ if ((await desktop.locator('.arena-fighter').count()) !== 0)
 if ((await desktop.locator('.circuit-cell .block-button').count()) !== 0)
   throw new Error('Player circuit should start empty');
 if ((await desktop.locator('.rack-block').count()) !== 0) throw new Error('Skill rack should start empty');
+
+const lockedOffer = desktop.locator('.shop-card').last();
+const lockedTitle = (await lockedOffer.locator('.shop-block-button strong').textContent())?.trim();
+await lockedOffer.locator('.lock-button').click();
+if ((await lockedOffer.locator('.lock-button').getAttribute('aria-pressed')) !== 'true') {
+  throw new Error('Shop lock did not enter its active state');
+}
+await desktop.getByRole('button', { name: 'ショップを更新' }).click();
+const retainedOffer = desktop.locator('.shop-card').last();
+if (
+  (await retainedOffer.locator('.shop-block-button strong').textContent())?.trim() !== lockedTitle ||
+  (await retainedOffer.locator('.lock-button').getAttribute('aria-pressed')) !== 'true'
+) {
+  throw new Error('Locked shop offer was not retained by reroll');
+}
 
 const firstOffer = desktop.locator('.shop-card').first();
 await firstOffer.locator('.shop-block-button').click();
@@ -176,13 +197,16 @@ await enemyBuffedSkill.first().waitFor({ timeout: 5000 });
 await enemyBuffedSkill.first().click();
 await desktop.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
 if (
-  !(await desktop.getByText('毒の付与量', { exact: true }).count()) ||
-  !(await desktop.locator('.battle-buff-values b').textContent())?.includes('+')
+  !(await desktop.getByText('発動間隔', { exact: true }).count()) ||
+  !(await desktop.locator('.battle-buff-values b').textContent())?.includes('-1拍')
 ) {
-  throw new Error('Enemy skill detail does not name its improved stat and amount');
+  throw new Error('Enemy merge skill detail does not show its acceleration');
 }
 if (!(await desktop.getByText('相手の技', { exact: true }).count())) {
   throw new Error('Enemy skill detail does not identify its owner');
+}
+if (!(await desktop.locator('.dialog-merge-rule').textContent())?.includes('×2')) {
+  throw new Error('Enemy merge skill detail does not show its doubled effect');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-buff-detail.png', fullPage: true });
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
@@ -271,6 +295,9 @@ const mobileBuffedSkill = mobile.locator(
 await mobileBuffedSkill.first().waitFor({ timeout: 5000 });
 await mobileBuffedSkill.first().click();
 await mobile.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
+if (!(await mobile.locator('.dialog-merge-rule').textContent())?.includes('×2')) {
+  throw new Error('Mobile merge detail does not show its doubled effect');
+}
 const mobileBuffDialog = await mobile.locator('.block-dialog').boundingBox();
 if (!mobileBuffDialog || mobileBuffDialog.y < 0 || mobileBuffDialog.y + mobileBuffDialog.height > 844) {
   throw new Error(`Mobile buff detail is clipped: ${JSON.stringify(mobileBuffDialog)}`);
@@ -278,6 +305,46 @@ if (!mobileBuffDialog || mobileBuffDialog.y < 0 || mobileBuffDialog.y + mobileBu
 await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-buff-detail.png', fullPage: true });
 await mobile.getByRole('button', { name: '詳細を閉じる' }).click();
 await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-battle.png', fullPage: true });
+
+const pulse = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
+pulse.on('pageerror', (error) => errors.push(error.message));
+pulse.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+await pulse.clock.install();
+await pulse.goto(target, { waitUntil: 'networkidle' });
+await pulse.getByRole('button', { name: /戦闘開始/ }).click();
+await pulse.locator('.battle-screen').waitFor();
+await pulse.clock.runFor(501);
+const firstPulse = await pulse
+  .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
+  .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
+if (JSON.stringify(firstPulse) !== JSON.stringify(['2:0'])) {
+  throw new Error(`First pulse stage is not the source cell: ${JSON.stringify(firstPulse)}`);
+}
+await pulse.clock.runFor(100);
+const parallelPulse = await pulse
+  .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
+  .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
+if (JSON.stringify(parallelPulse) !== JSON.stringify(['1:0', '2:1'])) {
+  throw new Error(`Split pulse did not fire the same depth together: ${JSON.stringify(parallelPulse)}`);
+}
+await pulse.clock.runFor(100);
+await pulse.clock.runFor(100);
+await pulse.clock.runFor(100);
+const mergingPulse = pulse.locator('.battle-circuit-summary.team-enemy .battle-circuit-cell.is-merging');
+if (
+  (await mergingPulse.count()) !== 1 ||
+  !(await mergingPulse.locator('.block-merge-chip').textContent())?.includes('×2')
+) {
+  const pulseState = await pulse
+    .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
+    .evaluateAll((cells) =>
+      cells.map((cell) => ({ key: cell.getAttribute('data-cell-key'), step: cell.getAttribute('data-pulse-step') })),
+    );
+  throw new Error(`Merged pulse did not arrive last with its doubled-effect marker: ${JSON.stringify(pulseState)}`);
+}
+await pulse.screenshot({ path: '/tmp/code-monsters-circuit-pulse-merge.png', fullPage: true });
 
 const overload = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
 overload.on('pageerror', (error) => errors.push(error.message));
@@ -288,7 +355,7 @@ await overload.clock.install();
 await overload.goto(target, { waitUntil: 'networkidle' });
 await overload.getByRole('button', { name: /戦闘開始/ }).click();
 await overload.locator('.battle-screen').waitFor();
-await overload.clock.runFor(20_050);
+await advanceClock(overload, 20_450);
 await overload.getByText('OVERLOAD', { exact: true }).waitFor();
 if ((await overload.locator('.status-overload').count()) !== 2) {
   throw new Error('Overload status is not visible on both fighters');
@@ -297,6 +364,38 @@ if (!(await overload.locator('.battle-counter').textContent())?.includes('DMG 2'
   throw new Error('The first exponential overload pulse is not shown');
 }
 await overload.screenshot({ path: '/tmp/code-monsters-circuit-overload.png', fullPage: true });
+
+const lockedRun = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
+lockedRun.on('pageerror', (error) => errors.push(error.message));
+lockedRun.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+await lockedRun.clock.install();
+await lockedRun.goto(target, { waitUntil: 'networkidle' });
+const coinsBeforeLoss = Number((await lockedRun.locator('.coin-readout b').textContent())?.trim());
+const lockedAcrossRun = lockedRun.locator('.shop-card').last();
+const lockedAcrossRunTitle = (await lockedAcrossRun.locator('.shop-block-button strong').textContent())?.trim();
+await lockedAcrossRun.locator('.lock-button').click();
+await lockedRun.getByRole('button', { name: /戦闘開始/ }).click();
+await lockedRun.locator('.battle-screen').waitFor();
+await advanceClock(lockedRun, 35_000);
+await lockedRun.locator('.result-panel').waitFor();
+if (!(await lockedRun.locator('.result-reward').textContent())?.includes('COIN +2')) {
+  throw new Error('Defeat result does not show its coin reward');
+}
+await lockedRun.screenshot({ path: '/tmp/code-monsters-circuit-loss-reward.png', fullPage: true });
+await lockedRun.getByRole('button', { name: '工房へ戻る' }).click();
+const coinsAfterLoss = Number((await lockedRun.locator('.coin-readout b').textContent())?.trim());
+const retainedAcrossRun = lockedRun.locator('.shop-card').last();
+if (coinsAfterLoss !== coinsBeforeLoss + 2) {
+  throw new Error(`Defeat reward was not granted: ${coinsBeforeLoss} -> ${coinsAfterLoss}`);
+}
+if (
+  (await retainedAcrossRun.locator('.shop-block-button strong').textContent())?.trim() !== lockedAcrossRunTitle ||
+  (await retainedAcrossRun.locator('.lock-button').getAttribute('aria-pressed')) !== 'true'
+) {
+  throw new Error('Locked offer was not retained after returning from battle');
+}
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
 console.log(
@@ -305,7 +404,17 @@ console.log(
       target,
       checks: { ...checks, fighters },
       horizontalOverflow,
-      screenshots: ['desktop', 'battle', 'buff-detail', 'mobile', 'mobile-battle', 'mobile-buff-detail', 'overload'],
+      screenshots: [
+        'desktop',
+        'battle',
+        'buff-detail',
+        'mobile',
+        'mobile-battle',
+        'mobile-buff-detail',
+        'pulse-merge',
+        'overload',
+        'loss-reward',
+      ],
     },
     null,
     2,

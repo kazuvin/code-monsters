@@ -111,4 +111,50 @@ describe('circuit connectivity', () => {
       new Set(['2:0', '2:1', '1:0']),
     );
   });
+
+  it('waits for the longer branch before firing a merge cell', () => {
+    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
+      { id: 'split', inputPorts: ['west'], outputPorts: ['north', 'east'] },
+      { id: 'east', inputPorts: ['west'], outputPorts: ['east'] },
+      { id: 'north-east', inputPorts: ['south'], outputPorts: ['east'] },
+      { id: 'east-east', inputPorts: ['west'], outputPorts: ['east'] },
+      { id: 'down', inputPorts: ['west'], outputPorts: ['south'] },
+      { id: 'merge', inputPorts: ['west', 'north'], outputPorts: ['east'] },
+    ];
+    const board: CircuitBoard = [
+      [null, null, null],
+      [
+        { blockId: 'north-east', rotation: 0 },
+        { blockId: 'east-east', rotation: 0 },
+        { blockId: 'down', rotation: 0 },
+      ],
+      [
+        { blockId: 'split', rotation: 0 },
+        { blockId: 'east', rotation: 0 },
+        { blockId: 'merge', rotation: 0 },
+      ],
+    ];
+
+    const analysis = analyzeCircuit(board, blocks, 2);
+
+    expect(analysis.waveStep.get('2:0')).toBe(1);
+    expect(analysis.waveStep.get('2:1')).toBe(2);
+    expect(analysis.waveStep.get('1:0')).toBe(2);
+    expect(analysis.waveStep.get('1:1')).toBe(3);
+    expect(analysis.waveStep.get('1:2')).toBe(4);
+    expect(analysis.waveStep.get('2:2')).toBe(5);
+    expect(analysis.mergeCells).toEqual(new Set(['2:2']));
+  });
+
+  it('does not treat a returning cycle edge as a merge', () => {
+    const board: CircuitBoard = Array.from({ length: GAME_DATA.rules.boardSize }, () =>
+      Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
+    );
+    board[2][0] = { blockId: 'poison-needle', rotation: 0 };
+    board[2][1] = { blockId: 'cultivation-blade', rotation: 0 };
+    board[1][1] = { blockId: 'return-coil', rotation: 0 };
+    board[1][0] = { blockId: 'serpentine-venom', rotation: 0 };
+
+    expect(analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow).mergeCells).toEqual(new Set());
+  });
 });

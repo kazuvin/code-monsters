@@ -7,9 +7,10 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { createBattle, createPlayback } from './core/battle';
-import { analyzeCircuit, findPoweredCells, rotatePorts } from './core/circuit';
+import { analyzeCircuit, rotatePorts } from './core/circuit';
+import { battleReward } from './core/economy';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
-import { createShop, rerollShop } from './core/shop';
+import { advanceShop, createShop, rerollShop } from './core/shop';
 import {
   incomingSkillModifiers,
   summarizeSkillProgress,
@@ -61,13 +62,13 @@ const BUFF_COPY: Record<BuffStat, { label: string; short: string }> = {
   rupture: { label: '破裂威力', short: '裂' },
 };
 
-const effectLabel = (block: BlockDefinition, progress?: SkillProgress) => {
+const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplier = 1) => {
   const progressByEffect = new Map(progress?.effects.map((effect) => [effect.effectIndex, effect]));
   return block.effects
     .map((effect, effectIndex) => {
       const progress = progressByEffect.get(effectIndex);
       const amount = 'amount' in effect ? effect.amount : effect.kind === 'rupture-poison' ? effect.damagePerStack : 0;
-      const currentAmount = progress?.currentAmount ?? amount;
+      const currentAmount = (progress?.currentAmount ?? amount) * multiplier;
       const amountLabel = (label: string) =>
         progress && currentAmount !== amount ? `${label} ${amount} → ${currentAmount}` : `${label} ${amount}`;
       if (effect.kind === 'damage') return amountLabel('ダメージ');
@@ -227,6 +228,9 @@ const BattleCircuitSummary = ({
   powered,
   events,
   tick,
+  pulseStep,
+  pulseStepCount,
+  pulseCells,
   buffs,
   enemyPoison,
   onSelect,
@@ -237,6 +241,9 @@ const BattleCircuitSummary = ({
   powered: string[];
   events: BattleTraceEvent[];
   tick: number;
+  pulseStep: number;
+  pulseStepCount: number;
+  pulseCells: string[];
   buffs: Record<string, SkillBuffState>;
   enemyPoison: number;
   onSelect: (target: DetailTarget) => void;
@@ -247,7 +254,8 @@ const BattleCircuitSummary = ({
     (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
       event.kind !== 'overload' && event.kind !== 'poison-tick' && event.team === team,
   );
-  const firingCells = new Set(skillEvents.map((event) => `${event.row}:${event.column}`));
+  const firingCells = new Set(pulseCells);
+  const mergingCells = new Set([...analysis.mergeCells].filter((key) => firingCells.has(key)));
   const firingLabels = skillEvents
     .map((event) => blockById.get(event.blockId)?.title)
     .filter((title): title is string => Boolean(title));
@@ -259,7 +267,15 @@ const BattleCircuitSummary = ({
           <small>{team === 'player' ? 'YOUR CIRCUIT' : 'RIVAL CIRCUIT'}</small>
           <strong>{label}</strong>
         </span>
-        <em>{firingLabels.length > 0 ? firingLabels.slice(0, 2).join('・') : `通電 ${poweredCells.size}`}</em>
+        <em>
+          {mergingCells.size > 0
+            ? `MERGE ×${GAME_DATA.rules.mergeEffectMultiplier}`
+            : firingLabels.length > 0
+              ? firingLabels.slice(0, 2).join('・')
+              : pulseStep > 0
+                ? `PULSE ${pulseStep}/${pulseStepCount}`
+                : `通電 ${poweredCells.size}`}
+        </em>
       </header>
       <div className="battle-circuit-map">
         <div
@@ -274,7 +290,13 @@ const BattleCircuitSummary = ({
             row.map((placed, columnIndex) => {
               const key = `${rowIndex}:${columnIndex}`;
               const block = placed ? blockById.get(placed.blockId) : undefined;
-              const stateLabel = firingCells.has(key) ? '発火' : poweredCells.has(key) ? '通電' : '未通電';
+              const stateLabel = mergingCells.has(key)
+                ? `合流 効果${GAME_DATA.rules.mergeEffectMultiplier}倍`
+                : firingCells.has(key)
+                  ? '発火'
+                  : poweredCells.has(key)
+                    ? '通電'
+                    : '未通電';
               if (block && placed) {
                 const position = { row: rowIndex, column: columnIndex };
                 const modifiers = incomingSkillModifiers(board, GAME_DATA.blocks, poweredCells, position);
@@ -292,8 +314,11 @@ const BattleCircuitSummary = ({
                 return (
                   <button
                     type="button"
-                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${firingCells.has(key) ? 'is-firing' : ''}`}
+                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${firingCells.has(key) ? 'is-firing' : ''} ${mergingCells.has(key) ? 'is-merging' : ''}`}
                     key={key}
+                    data-cell-key={key}
+                    data-pulse-step={firingCells.has(key) ? pulseStep : undefined}
+                    data-merge={analysis.mergeCells.has(key) ? 'true' : undefined}
                     aria-label={`${label}の${block.title} ${stateLabel}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
                     aria-haspopup="dialog"
                     onClick={() =>
@@ -306,6 +331,9 @@ const BattleCircuitSummary = ({
                     }
                   >
                     <BlockVisual block={block} rotation={placed.rotation} powered={poweredCells.has(key)} compact />
+                    {mergingCells.has(key) && (
+                      <b className="block-merge-chip">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
+                    )}
                     {badgeLabels.length > 0 && (
                       <span className="block-buff-list" aria-hidden="true">
                         {skillBuffs.stats.slice(0, 2).map(([stat, value]) => (
@@ -355,7 +383,8 @@ export function App() {
   const pendingDrag = useRef<PendingDrag | null>(null);
   const suppressClick = useRef(false);
 
-  const powered = useMemo(() => findPoweredCells(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
+  const circuitAnalysis = useMemo(() => analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
+  const powered = circuitAnalysis.poweredCells;
   const preview = useMemo(() => createBattle(GAME_DATA, board, GAME_DATA.enemyBoard), [board]);
   const battle = playback[frame] ?? preview;
   const fighters = battle.fighters;
@@ -398,9 +427,11 @@ export function App() {
       ),
     [frameEvents],
   );
-  const elapsedSeconds = (battle.tick * GAME_DATA.rules.battleStepMs) / 1000;
+  const elapsedWaves = battle.tick === 0 ? 0 : battle.tick - 1 + battle.pulseStep / Math.max(1, battle.pulseStepCount);
+  const elapsedSeconds = (elapsedWaves * GAME_DATA.rules.battleStepMs) / 1000;
   const battleProgress = Math.min(100, (elapsedSeconds / GAME_DATA.rules.suddenDeathSeconds) * 100);
   const overloaded = battle.overloadLevel > 0;
+  const pulseFrameMs = GAME_DATA.rules.battleStepMs / Math.max(1, battle.pulseStepCount);
 
   useEffect(() => {
     if (phase !== 'battle') return;
@@ -411,9 +442,9 @@ export function App() {
       }, 720);
       return () => window.clearTimeout(timer);
     }
-    const timer = window.setTimeout(() => setFrame((current) => current + 1), GAME_DATA.rules.battleStepMs);
+    const timer = window.setTimeout(() => setFrame((current) => current + 1), pulseFrameMs);
     return () => window.clearTimeout(timer);
-  }, [frame, phase, playback.length]);
+  }, [frame, phase, playback.length, pulseFrameMs]);
 
   useEffect(() => {
     if (!message) return;
@@ -621,11 +652,11 @@ export function App() {
   };
 
   const returnToWorkshop = () => {
-    const reward = battle.winner === 'player' ? GAME_DATA.rules.winReward : GAME_DATA.rules.retryReward;
+    const reward = battleReward(GAME_DATA, battle.winner);
     const nextSeed = seed + 11;
     setCoins((current) => current + reward);
     setSeed(nextSeed);
-    setShop(createShop(shopBlocks, nextSeed, GAME_DATA.rules.shopSize));
+    setShop(advanceShop(shopBlocks, shop, nextSeed, GAME_DATA.rules.shopSize));
     setRun((current) => current + 1);
     setPlayback([]);
     setFrame(0);
@@ -665,6 +696,8 @@ export function App() {
   const detailCooldown = detailBlock?.cooldown
     ? Math.max(1, detailBlock.cooldown - detailModifiers.cooldownReduction)
     : undefined;
+  const detailMergeMultiplier =
+    detailCellKey && detailAnalysis.mergeCells.has(detailCellKey) ? GAME_DATA.rules.mergeEffectMultiplier : 1;
 
   return (
     <main className={`app-shell phase-${phase}`}>
@@ -718,7 +751,7 @@ export function App() {
                         const key = `${rowIndex}:${columnIndex}`;
                         return (
                           <div
-                            className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''}`}
+                            className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''}`}
                             data-circuit-cell
                             data-row={rowIndex}
                             data-column={columnIndex}
@@ -749,6 +782,9 @@ export function App() {
                                 onPointerCancel={cancelHold}
                               >
                                 <BlockVisual block={block} rotation={placed.rotation} powered={powered.has(key)} />
+                                {circuitAnalysis.mergeCells.has(key) && (
+                                  <b className="merge-preview">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
+                                )}
                               </button>
                             ) : (
                               <span className="empty-cell" aria-label="空きマス" />
@@ -821,13 +857,17 @@ export function App() {
                     );
                   const block = blockById.get(offer.blockId)!;
                   return (
-                    <article className={`shop-card rarity-${block.rarity}`} key={offer.id}>
+                    <article
+                      className={`shop-card rarity-${block.rarity} ${offer.locked ? 'is-locked' : ''}`}
+                      key={offer.id}
+                    >
                       <button
                         className={`lock-button ${offer.locked ? 'is-locked' : ''}`}
                         onClick={() => toggleLock(offer.id)}
                         aria-label={`${block.title}を${offer.locked ? 'ロック解除' : 'ロック'}`}
+                        aria-pressed={offer.locked}
                       >
-                        {offer.locked ? 'LOCK' : 'KEEP'}
+                        {offer.locked ? 'LOCKED' : 'LOCK'}
                       </button>
                       <button
                         className="shop-block-button"
@@ -893,6 +933,9 @@ export function App() {
               powered={battle.playerPowered}
               events={frameEvents}
               tick={battle.tick}
+              pulseStep={battle.pulseStep}
+              pulseStepCount={battle.pulseStepCount}
+              pulseCells={battle.activePulse.player}
               buffs={battle.skillBuffs.player}
               enemyPoison={enemy.poison}
               onSelect={openDetail}
@@ -904,6 +947,9 @@ export function App() {
               powered={battle.enemyPowered}
               events={frameEvents}
               tick={battle.tick}
+              pulseStep={battle.pulseStep}
+              pulseStepCount={battle.pulseStepCount}
+              pulseCells={battle.activePulse.enemy}
               buffs={battle.skillBuffs.enemy}
               enemyPoison={player.poison}
               onSelect={openDetail}
@@ -945,6 +991,12 @@ export function App() {
               <small>{detail.location === 'battle' ? `${detailBlock.code} · LIVE` : detailBlock.code}</small>
               <h2 id="block-dialog-title">{detailBlock.title}</h2>
               <p>{detailBlock.description}</p>
+              {detailMergeMultiplier > 1 && (
+                <div className="dialog-merge-rule">
+                  <span>MERGE</span>
+                  合流時、発動効果 ×{detailMergeMultiplier}
+                </div>
+              )}
               {detailBattleTeam && detailProgress && detailVisibleBuffs && detailOwner && (
                 <div
                   className={`battle-buff-panel team-${detailBattleTeam}`}
@@ -995,7 +1047,7 @@ export function App() {
                 {detailBattleTeam && detailProgress && (
                   <div>
                     <dt>現在</dt>
-                    <dd>{effectLabel(detailBlock, detailProgress)}</dd>
+                    <dd>{effectLabel(detailBlock, detailProgress, detailMergeMultiplier)}</dd>
                   </div>
                 )}
                 <div>
@@ -1063,6 +1115,7 @@ export function App() {
                 相手 <b>{enemy.hp}</b>
               </span>
             </div>
+            <p className="result-reward">報酬 COIN +{battleReward(GAME_DATA, battle.winner)}</p>
             <button onClick={returnToWorkshop}>工房へ戻る</button>
           </section>
         </div>

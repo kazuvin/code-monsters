@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -9,6 +9,7 @@
     "suddenDeathGrowth": 2,
     "poisonTickSeconds": 1,
     "poisonDecay": 1,
+    "mergeEffectMultiplier": 2,
     "startingCoins": 8,
     "winReward": 4,
     "retryReward": 2,
@@ -16,8 +17,8 @@
     "shopSize": 5
   },
   "units": [
-    { "id": "volt", "name": "ヴォルト", "code": "V-01", "maxHp": 72, "color": "#5de7f2" },
-    { "id": "rust", "name": "ラスト", "code": "R-09", "maxHp": 72, "color": "#ff786e" }
+    { "id": "volt", "name": "ヴォルト", "code": "V-01", "maxHp": 216, "color": "#5de7f2" },
+    { "id": "rust", "name": "ラスト", "code": "R-09", "maxHp": 216, "color": "#ff786e" }
   ],
   "playerUnitId": "volt",
   "enemyUnitId": "rust",
@@ -194,12 +195,12 @@
       "id": "barrier",
       "code": "GUARD",
       "title": "障壁",
-      "description": "2拍ごとに、シールドを3得る。右の技へ通電する。",
+      "description": "2拍ごとに、シールドを3得る。左か上から通電を受け、右の技へ渡す。",
       "glyph": "盾",
       "price": 2,
       "rarity": "common",
       "shopWeight": 4,
-      "inputPorts": ["west"],
+      "inputPorts": ["west", "north"],
       "outputPorts": ["east"],
       "cooldown": 2,
       "effects": [{ "kind": "shield", "amount": 3 }]
@@ -249,13 +250,13 @@
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "右に直接つないだ技の発動間隔を1拍短くする。発動間隔は1拍より短くならない。",
+      "description": "右か下に直接つないだ技の発動間隔を1拍短くする。発動間隔は1拍より短くならない。",
       "glyph": "速",
       "price": 3,
       "rarity": "rare",
       "shopWeight": 2,
       "inputPorts": ["west"],
-      "outputPorts": ["east"],
+      "outputPorts": ["east", "south"],
       "effects": [{ "kind": "haste", "amount": 1 }]
     },
     {
@@ -501,8 +502,20 @@
   ],
   "enemyBoard": [
     [null, null, null, null, null],
-    [null, null, null, null, null],
-    [{ "blockId": "poison-needle", "rotation": 0 }, { "blockId": "arc-shot", "rotation": 0 }, null, null, null],
+    [
+      { "blockId": "corrosion-film", "rotation": 0 },
+      { "blockId": "amplifier", "rotation": 0 },
+      { "blockId": "accelerator", "rotation": 0 },
+      null,
+      null
+    ],
+    [
+      { "blockId": "arc-shot", "rotation": 0 },
+      { "blockId": "status-relay", "rotation": 0 },
+      { "blockId": "barrier", "rotation": 0 },
+      null,
+      null
+    ],
     [null, null, null, null, null],
     [null, null, null, null, null]
   ]

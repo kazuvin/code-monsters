@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { analyzeCircuit } from '../core/circuit';
 import { GAME_DATA, validateGameData } from './game-data';
 
 describe('game data', () => {
@@ -13,6 +14,25 @@ describe('game data', () => {
     expect(GAME_DATA.startingRack).toEqual([]);
     expect(GAME_DATA.playerBoard.flat().every((cell) => cell === null)).toBe(true);
     expect(GAME_DATA.blocks.flatMap((block) => block.effects.map((effect) => effect.kind))).not.toContain('wire');
+  });
+
+  it('gives both fighters enough health for long poison battles', () => {
+    expect(GAME_DATA.units.map((unit) => unit.maxHp)).toEqual([216, 216]);
+    expect(GAME_DATA.rules.retryReward).toBeGreaterThan(0);
+  });
+
+  it('starts the rival with a readable split and merge circuit', () => {
+    const analysis = analyzeCircuit(GAME_DATA.enemyBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+
+    expect(analysis.waveStep.get('2:0')).toBe(1);
+    expect(
+      [...analysis.waveStep]
+        .filter(([, step]) => step === 2)
+        .map(([key]) => key)
+        .sort(),
+    ).toEqual(['1:0', '2:1']);
+    expect(analysis.waveStep.get('2:2')).toBe(5);
+    expect(analysis.mergeCells).toEqual(new Set(['2:2']));
   });
 
   it('implements all ten poison designs as fixed-direction playable skills', () => {

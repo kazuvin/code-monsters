@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createShop, rerollShop } from './shop';
+import { advanceShop, createShop, rerollShop } from './shop';
 import type { BlockDefinition } from './types';
 
 const blocks: BlockDefinition[] = Array.from({ length: 7 }, (_, index) => ({
@@ -28,5 +28,13 @@ describe('shop', () => {
 
     expect(next[1]).toEqual(current[1]);
     expect(new Set(next.map((offer) => offer.blockId)).size).toBe(5);
+  });
+
+  it('keeps locked offers when advancing to the next run', () => {
+    const current = createShop(blocks, 12, 5).map((offer, index) => ({ ...offer, locked: index === 1 }));
+    const next = advanceShop(blocks, current, 23, 5);
+
+    expect(next[1]).toEqual(current[1]);
+    expect(next.filter((offer) => offer.locked)).toHaveLength(1);
   });
 });

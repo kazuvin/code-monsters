@@ -133,6 +133,7 @@ export type GameData = {
     suddenDeathGrowth: number;
     poisonTickSeconds: number;
     poisonDecay: number;
+    mergeEffectMultiplier: number;
     startingCoins: number;
     winReward: number;
     retryReward: number;
@@ -176,6 +177,7 @@ export type BattleTraceEvent =
       value: number;
       targetId: string;
       buffStat?: BuffStat;
+      mergeMultiplier?: number;
     }
   | {
       id: string;
@@ -194,6 +196,9 @@ export type BattleState = {
   playerPowered: string[];
   enemyPowered: string[];
   skillBuffs: Record<Team, Record<string, SkillBuffState>>;
+  activePulse: Record<Team, string[]>;
+  pulseStep: number;
+  pulseStepCount: number;
   trace: BattleTraceEvent[];
   overloadLevel: number;
   overloadDamage: number;

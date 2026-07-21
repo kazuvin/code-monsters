@@ -90,6 +90,30 @@ describe('poison build', () => {
     expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
   });
 
+  it('doubles active effects when two branches merge in the same wave', () => {
+    const data = structuredClone(GAME_DATA);
+    data.rules.poisonTickSeconds = 100;
+    const board = emptyBoard();
+    board[2][0] = { blockId: 'arc-shot', rotation: 0 };
+    board[2][1] = { blockId: 'status-relay', rotation: 0 };
+    board[2][2] = { blockId: 'poison-needle', rotation: 0 };
+    board[1][0] = { blockId: 'corrosion-film', rotation: 0 };
+    board[1][1] = { blockId: 'strike', rotation: 0 };
+    board[1][2] = { blockId: 'serpentine-venom', rotation: 0 };
+
+    const result = resolveTick(data, createBattle(data, board, emptyBoard()), 1);
+    const needleEvents = result.trace.filter(
+      (event) => 'blockId' in event && event.blockId === 'poison-needle' && event.kind !== 'growth',
+    );
+
+    expect(needleEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'damage', value: 2, mergeMultiplier: 2 }),
+        expect.objectContaining({ kind: 'poison', value: 2, mergeMultiplier: 2 }),
+      ]),
+    );
+  });
+
   it('ruptures half of the stored poison for immediate damage', () => {
     const data = structuredClone(GAME_DATA);
     data.rules.poisonTickSeconds = 100;

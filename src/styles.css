@@ -346,6 +346,11 @@ button:focus-visible {
   background-color: #0d303b;
 }
 
+.circuit-cell.is-merge {
+  border-color: rgb(255 200 87 / 82%);
+  box-shadow: inset 0 0 0 2px rgb(255 200 87 / 16%);
+}
+
 .empty-cell {
   display: block;
   width: 100%;
@@ -378,6 +383,20 @@ button:focus-visible {
   height: calc(100% - 6px);
   padding: 0;
   touch-action: none;
+}
+
+.merge-preview {
+  position: absolute;
+  z-index: 8;
+  top: -1px;
+  right: -1px;
+  padding: 2px 3px;
+  border: 1px solid var(--amber);
+  color: #fff0b2;
+  background: #5a3a12;
+  font-size: 7px;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .block-button:hover .block-visual,
@@ -757,7 +776,14 @@ button:focus-visible {
 }
 
 .lock-button.is-locked {
+  border: 1px solid var(--amber);
   color: var(--amber);
+  background: #35270d;
+}
+
+.shop-card.is-locked {
+  border-color: var(--amber);
+  box-shadow: inset 0 0 0 1px rgb(255 200 87 / 28%);
 }
 
 .buy-button {
@@ -888,6 +914,25 @@ button:focus-visible {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.dialog-merge-rule {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -5px 0 12px;
+  padding: 5px 7px;
+  border-left: 3px solid var(--amber);
+  color: #fff0b2;
+  background: #2c250f;
+  font-size: 9px;
+}
+
+.dialog-merge-rule span {
+  color: var(--amber);
+  font:
+    600 8px / 1 "Pixelify Sans",
+    monospace;
 }
 
 .battle-buff-panel {
@@ -1509,6 +1554,14 @@ button:focus-visible {
   color: var(--amber);
   font:
     600 26px / 1 "Pixelify Sans",
+    monospace;
+}
+
+.result-reward {
+  margin: -7px 0 17px;
+  color: var(--amber);
+  font:
+    600 13px / 1 "Pixelify Sans",
     monospace;
 }
 
@@ -2317,13 +2370,40 @@ button:focus-visible {
   border-color: var(--paper);
   background: var(--coral);
   box-shadow: 0 0 12px rgb(255 120 110 / 85%);
-  animation: circuit-fire 560ms steps(3) both;
+  animation: circuit-fire 180ms steps(3) both;
 }
 
 .battle-circuit-cell.is-firing .block-core {
   border-color: var(--paper);
   color: var(--ink);
   background: var(--amber);
+}
+
+.battle-circuit-cell.is-firing .block-port {
+  animation: circuit-current 180ms steps(3) both;
+}
+
+.battle-circuit-cell.is-merging .block-visual {
+  border-color: #fff0b2;
+  background: #8a5418;
+  box-shadow:
+    0 0 0 2px var(--amber),
+    0 0 18px rgb(255 200 87 / 90%);
+}
+
+.block-merge-chip {
+  position: absolute;
+  z-index: 9;
+  top: -3px;
+  left: -3px;
+  min-width: 18px;
+  padding: 2px 3px;
+  border: 1px solid #fff0b2;
+  color: #171006;
+  background: var(--amber);
+  font-size: 6px;
+  line-height: 1;
+  box-shadow: 2px 2px 0 #4a2c0d;
 }
 
 @keyframes circuit-arrival {
@@ -2345,6 +2425,20 @@ button:focus-visible {
   }
   45% {
     transform: scale(1.16);
+  }
+}
+
+@keyframes circuit-current {
+  0% {
+    filter: brightness(0.8);
+  }
+  45% {
+    background: var(--paper);
+    box-shadow: 0 0 10px var(--cyan);
+    filter: brightness(2);
+  }
+  100% {
+    filter: brightness(1);
   }
 }
 

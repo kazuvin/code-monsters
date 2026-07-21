@@ -16,6 +16,7 @@ const testData = (): GameData => ({
     suddenDeathGrowth: 2,
     poisonTickSeconds: 1,
     poisonDecay: 1,
+    mergeEffectMultiplier: 2,
     startingCoins: 7,
     winReward: 4,
     retryReward: 1,
@@ -135,6 +136,19 @@ describe('1vs1 circuit battle', () => {
 
     expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(9);
     expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
+  });
+
+  it('plays one frame per circuit depth while parallel cells share a frame', () => {
+    const data = testData();
+    const frames = createPlayback(data, route('guard', 'strike'), emptyBoard()).filter((frame) => frame.tick === 1);
+
+    expect(frames).toHaveLength(2);
+    expect(frames.map((frame) => frame.pulseStep)).toEqual([1, 2]);
+    expect(frames.map((frame) => frame.activePulse.player)).toEqual([['1:0'], ['1:1']]);
+    expect(frames.every((frame) => frame.pulseStepCount === 2)).toBe(true);
+    expect(frames[0].fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
+    expect(frames[0].fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(12);
+    expect(frames[1].fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(9);
   });
 
   it('boosts a directly connected skill with a powered amplifier', () => {

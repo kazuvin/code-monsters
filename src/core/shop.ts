@@ -38,3 +38,7 @@ export function rerollShop(blocks: BlockDefinition[], current: ShopOffer[], seed
     return { id: `${seed}-${slot}-${block.id}`, slot, blockId: block.id, locked: false };
   });
 }
+
+export function advanceShop(blocks: BlockDefinition[], current: ShopOffer[], seed: number, size: number): ShopOffer[] {
+  return rerollShop(blocks, current, seed, size);
+}

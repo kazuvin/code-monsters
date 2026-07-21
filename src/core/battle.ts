@@ -24,6 +24,8 @@ type PlannedActivation = {
   inputs: CellPosition[];
   outputs: CellPosition[];
   boost: number;
+  waveStep: number;
+  mergeMultiplier: number;
 };
 
 const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player');
@@ -78,6 +80,9 @@ export function createBattle(data: GameData, playerBoard: CircuitBoard, enemyBoa
     playerPowered: [...playerAnalysis.poweredCells],
     enemyPowered: [...enemyAnalysis.poweredCells],
     skillBuffs: { player: {}, enemy: {} },
+    activePulse: { player: [], enemy: [] },
+    pulseStep: 0,
+    pulseStepCount: 0,
     trace: [],
     overloadLevel: 0,
     overloadDamage: 0,
@@ -113,13 +118,15 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
         inputs,
         outputs: connectedOutputs(board, data.blocks, position),
         boost: modifiers.effectPower,
+        waveStep: analysis.waveStep.get(key) ?? 1,
+        mergeMultiplier: analysis.mergeCells.has(key) ? data.rules.mergeEffectMultiplier : 1,
       });
     }),
   );
 
   return plans.sort(
     (left, right) =>
-      left.pathLength - right.pathLength ||
+      left.waveStep - right.waveStep ||
       left.position.row - right.position.row ||
       left.position.column - right.position.column,
   );
@@ -154,6 +161,7 @@ const traceEvent = (
   value,
   targetId,
   ...(buffStat ? { buffStat } : {}),
+  ...(action.mergeMultiplier > 1 && kind !== 'growth' ? { mergeMultiplier: action.mergeMultiplier } : {}),
 });
 
 const systemTraceEvent = (
@@ -176,7 +184,7 @@ const numericAmount = (
   context: { selfBuffs: SkillBuffState; enemyPoison: number },
 ) => {
   const buffStat = buffStatForEffect(effect);
-  return (
+  const amount =
     effect.amount +
     ('scaling' in effect
       ? effectScalingBonus(effect.scaling, {
@@ -184,8 +192,8 @@ const numericAmount = (
           pathLength: action.pathLength,
         })
       : 0) +
-    (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0)
-  );
+    (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0);
+  return buffStat ? amount * action.mergeMultiplier : amount;
 };
 
 const cloneSkillBuffs = (buffs: BattleState['skillBuffs']): BattleState['skillBuffs'] => ({
@@ -193,140 +201,185 @@ const cloneSkillBuffs = (buffs: BattleState['skillBuffs']): BattleState['skillBu
   enemy: Object.fromEntries(Object.entries(buffs.enemy).map(([key, value]) => [key, { ...value }])),
 });
 
-export function resolveTick(data: GameData, state: BattleState, tick: number): BattleState {
-  if (state.winner) return state;
+export function resolveWave(data: GameData, state: BattleState, tick: number): BattleState[] {
+  if (state.winner) return [state];
   const fighters = state.fighters.map((fighter) => ({ ...fighter }));
   const skillBuffs = cloneSkillBuffs(state.skillBuffs);
+  const playerAnalysis = analyzeCircuit(state.playerBoard, data.blocks, data.rules.sourceRow);
+  const enemyAnalysis = analyzeCircuit(state.enemyBoard, data.blocks, data.rules.sourceRow);
   const plans = [
     ...plannedActivations(data, state.playerBoard, 'player', tick),
     ...plannedActivations(data, state.enemyBoard, 'enemy', tick),
   ];
   const trace = [...state.trace];
-  const pendingDamage = new Map<Team, number>();
   const fighter = (team: Team) => fighters.find((candidate) => candidate.team === team)!;
+  const pulseStepCount = Math.max(1, ...playerAnalysis.waveStep.values(), ...enemyAnalysis.waveStep.values());
+  const frames: BattleState[] = [];
 
-  plans.sort(
-    (left, right) =>
-      left.pathLength - right.pathLength ||
-      left.team.localeCompare(right.team) ||
-      left.position.row - right.position.row ||
-      left.position.column - right.position.column,
-  );
+  for (let pulseStep = 1; pulseStep <= pulseStepCount; pulseStep += 1) {
+    const pendingDamage = new Map<Team, number>();
+    const stagePlans = plans
+      .filter((plan) => plan.waveStep === pulseStep)
+      .sort(
+        (left, right) =>
+          left.team.localeCompare(right.team) ||
+          left.position.row - right.position.row ||
+          left.position.column - right.position.column,
+      );
 
-  for (const plan of plans) {
-    const actor = fighter(plan.team);
-    const target = fighter(otherTeam(plan.team));
-    const planKey = cellKey(plan.position);
-    const context = {
-      enemyPoison: target.poison,
-      pathLength: plan.pathLength,
-      inCycle: plan.inCycle,
-      selfBuffs: skillBuffs[plan.team][planKey] ?? {},
-    };
+    for (const plan of stagePlans) {
+      const actor = fighter(plan.team);
+      const target = fighter(otherTeam(plan.team));
+      const planKey = cellKey(plan.position);
+      const context = {
+        enemyPoison: target.poison,
+        pathLength: plan.pathLength,
+        inCycle: plan.inCycle,
+        selfBuffs: skillBuffs[plan.team][planKey] ?? {},
+      };
 
-    for (const effect of plan.block.effects) {
-      if (effect.kind === 'amplify' || effect.kind === 'haste') continue;
-      if (!triggerMatches(effect.trigger, context)) continue;
+      for (const effect of plan.block.effects) {
+        if (effect.kind === 'amplify' || effect.kind === 'haste') continue;
+        if (!triggerMatches(effect.trigger, context)) continue;
 
-      if (effect.kind === 'rupture-poison') {
-        const consumed = Math.floor(target.poison * effect.fraction);
-        if (consumed === 0) continue;
-        target.poison -= consumed;
-        const damagePerStack = effect.damagePerStack + (context.selfBuffs.rupture ?? 0) + plan.boost;
-        const value = consumed * damagePerStack;
-        pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
-        trace.push(traceEvent(tick, plan, 'rupture', value, target.instanceId, trace.length));
-        continue;
-      }
+        if (effect.kind === 'rupture-poison') {
+          const consumed = Math.floor(target.poison * effect.fraction);
+          if (consumed === 0) continue;
+          target.poison -= consumed;
+          const damagePerStack = effect.damagePerStack + (context.selfBuffs.rupture ?? 0) + plan.boost;
+          const value = consumed * damagePerStack * plan.mergeMultiplier;
+          pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
+          trace.push(traceEvent(tick, plan, 'rupture', value, target.instanceId, trace.length));
+          continue;
+        }
 
-      const amount = numericAmount(effect, plan, context);
-      if (effect.kind === 'damage') {
-        pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + amount);
-        trace.push(traceEvent(tick, plan, 'damage', amount, target.instanceId, trace.length));
-      }
-      if (effect.kind === 'shield') {
-        actor.shield += amount;
-        trace.push(traceEvent(tick, plan, 'shield', amount, actor.instanceId, trace.length));
-      }
-      if (effect.kind === 'repair') {
-        const previousHp = actor.hp;
-        actor.hp = Math.min(actor.maxHp, actor.hp + amount);
-        trace.push(traceEvent(tick, plan, 'repair', actor.hp - previousHp, actor.instanceId, trace.length));
-      }
-      if (effect.kind === 'poison') {
-        target.poison += amount;
-        trace.push(traceEvent(tick, plan, 'poison', amount, target.instanceId, trace.length));
-      }
-      if (effect.kind === 'growth') {
-        const targets =
-          effect.target === 'self' ? [plan.position] : effect.target === 'inputs' ? plan.inputs : plan.outputs;
-        targets.forEach((position) => {
-          const targetKey = cellKey(position);
-          const targetPlaced = (plan.team === 'player' ? state.playerBoard : state.enemyBoard)[position.row][
-            position.column
-          ];
-          const targetBlock = targetPlaced ? data.blocks.find((block) => block.id === targetPlaced.blockId) : undefined;
-          if (!targetBlock) return;
-          const stats = effect.stat === 'all' ? buffStatsForBlock(targetBlock) : [effect.stat];
-          stats.forEach((stat) => {
-            const current = skillBuffs[plan.team][targetKey] ?? {};
-            skillBuffs[plan.team][targetKey] = { ...current, [stat]: (current[stat] ?? 0) + amount };
-            trace.push(traceEvent(tick, plan, 'growth', amount, `${plan.team}:${targetKey}`, trace.length, stat));
+        const amount = numericAmount(effect, plan, context);
+        if (effect.kind === 'damage') {
+          pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + amount);
+          trace.push(traceEvent(tick, plan, 'damage', amount, target.instanceId, trace.length));
+        }
+        if (effect.kind === 'shield') {
+          actor.shield += amount;
+          trace.push(traceEvent(tick, plan, 'shield', amount, actor.instanceId, trace.length));
+        }
+        if (effect.kind === 'repair') {
+          const previousHp = actor.hp;
+          actor.hp = Math.min(actor.maxHp, actor.hp + amount);
+          trace.push(traceEvent(tick, plan, 'repair', actor.hp - previousHp, actor.instanceId, trace.length));
+        }
+        if (effect.kind === 'poison') {
+          target.poison += amount;
+          trace.push(traceEvent(tick, plan, 'poison', amount, target.instanceId, trace.length));
+        }
+        if (effect.kind === 'growth') {
+          const targets =
+            effect.target === 'self' ? [plan.position] : effect.target === 'inputs' ? plan.inputs : plan.outputs;
+          targets.forEach((position) => {
+            const targetKey = cellKey(position);
+            const targetPlaced = (plan.team === 'player' ? state.playerBoard : state.enemyBoard)[position.row][
+              position.column
+            ];
+            const targetBlock = targetPlaced
+              ? data.blocks.find((block) => block.id === targetPlaced.blockId)
+              : undefined;
+            if (!targetBlock) return;
+            const stats = effect.stat === 'all' ? buffStatsForBlock(targetBlock) : [effect.stat];
+            stats.forEach((stat) => {
+              const current = skillBuffs[plan.team][targetKey] ?? {};
+              skillBuffs[plan.team][targetKey] = { ...current, [stat]: (current[stat] ?? 0) + amount };
+              trace.push(traceEvent(tick, plan, 'growth', amount, `${plan.team}:${targetKey}`, trace.length, stat));
+            });
           });
-        });
+        }
       }
     }
-  }
 
-  for (const [team, amount] of pendingDamage) {
-    const target = fighter(team);
-    const blocked = Math.min(target.shield, amount);
-    target.shield -= blocked;
-    target.hp = Math.max(0, target.hp - (amount - blocked));
-  }
+    for (const [team, amount] of pendingDamage) {
+      const target = fighter(team);
+      const blocked = Math.min(target.shield, amount);
+      target.shield -= blocked;
+      target.hp = Math.max(0, target.hp - (amount - blocked));
+    }
 
-  let winner = winnerOf(fighters);
-  const poisonTickInterval = Math.max(1, Math.ceil((data.rules.poisonTickSeconds * 1000) / data.rules.battleStepMs));
-  if (!winner && tick % poisonTickInterval === 0) {
-    fighters.forEach((target) => {
-      if (target.poison <= 0 || target.hp <= 0) return;
-      const applied = Math.min(target.hp, target.poison);
-      target.hp = Math.max(0, target.hp - target.poison);
-      trace.push(systemTraceEvent(tick, target, 'poison-tick', applied));
-      target.poison = Math.max(0, target.poison - data.rules.poisonDecay);
+    const finalStep = pulseStep === pulseStepCount;
+    let winner: Winner = null;
+    let overloadLevel = state.overloadLevel;
+    let overloadDamage = 0;
+    if (finalStep) {
+      winner = winnerOf(fighters);
+      const poisonTickInterval = Math.max(
+        1,
+        Math.ceil((data.rules.poisonTickSeconds * 1000) / data.rules.battleStepMs),
+      );
+      if (!winner && tick % poisonTickInterval === 0) {
+        fighters.forEach((target) => {
+          if (target.poison <= 0 || target.hp <= 0) return;
+          const applied = Math.min(target.hp, target.poison);
+          target.hp = Math.max(0, target.hp - target.poison);
+          trace.push(systemTraceEvent(tick, target, 'poison-tick', applied));
+          target.poison = Math.max(0, target.poison - data.rules.poisonDecay);
+        });
+        winner = winnerOf(fighters);
+      }
+
+      overloadLevel = overloadLevelAtTick(data, tick);
+      overloadDamage = winner ? 0 : overloadDamageAtTick(data, tick);
+      if (!winner && overloadDamage > 0) {
+        const healthBeforeOverload = new Map(fighters.map((target) => [target.team, target.hp]));
+        for (const target of fighters) {
+          const applied = Math.min(target.hp, overloadDamage);
+          target.hp = Math.max(0, target.hp - overloadDamage);
+          trace.push(systemTraceEvent(tick, target, 'overload', applied));
+        }
+
+        winner = winnerOf(fighters);
+        if (winner === 'draw') {
+          const playerHp = healthBeforeOverload.get('player') ?? 0;
+          const enemyHp = healthBeforeOverload.get('enemy') ?? 0;
+          if (playerHp !== enemyHp) winner = playerHp > enemyHp ? 'player' : 'enemy';
+        }
+      }
+    }
+
+    const activePulse = {
+      player: [...playerAnalysis.waveStep]
+        .filter(([, step]) => step === pulseStep)
+        .map(([key]) => key)
+        .sort(),
+      enemy: [...enemyAnalysis.waveStep]
+        .filter(([, step]) => step === pulseStep)
+        .map(([key]) => key)
+        .sort(),
+    };
+    frames.push({
+      ...state,
+      tick,
+      fighters: fighters.map((target) => ({ ...target })),
+      skillBuffs: cloneSkillBuffs(skillBuffs),
+      activePulse,
+      pulseStep,
+      pulseStepCount,
+      trace: [...trace],
+      overloadLevel,
+      overloadDamage,
+      winner,
     });
-    winner = winnerOf(fighters);
   }
 
-  const overloadLevel = overloadLevelAtTick(data, tick);
-  const overloadDamage = overloadDamageAtTick(data, tick);
-  if (winner || overloadDamage === 0) {
-    return { ...state, tick, fighters, skillBuffs, trace, overloadLevel, overloadDamage: 0, winner };
-  }
+  return frames;
+}
 
-  const healthBeforeOverload = new Map(fighters.map((target) => [target.team, target.hp]));
-  for (const target of fighters) {
-    const applied = Math.min(target.hp, overloadDamage);
-    target.hp = Math.max(0, target.hp - overloadDamage);
-    trace.push(systemTraceEvent(tick, target, 'overload', applied));
-  }
-
-  winner = winnerOf(fighters);
-  if (winner === 'draw') {
-    const playerHp = healthBeforeOverload.get('player') ?? 0;
-    const enemyHp = healthBeforeOverload.get('enemy') ?? 0;
-    if (playerHp !== enemyHp) winner = playerHp > enemyHp ? 'player' : 'enemy';
-  }
-
-  return { ...state, tick, fighters, skillBuffs, trace, overloadLevel, overloadDamage, winner };
+export function resolveTick(data: GameData, state: BattleState, tick: number): BattleState {
+  return resolveWave(data, state, tick).at(-1)!;
 }
 
 export function createPlayback(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState[] {
   let state = createBattle(data, playerBoard, enemyBoard);
   const frames = [state];
   for (let tick = 1; !state.winner; tick += 1) {
-    state = resolveTick(data, state, tick);
-    frames.push(state);
+    const waveFrames = resolveWave(data, state, tick);
+    frames.push(...waveFrames);
+    state = waveFrames.at(-1)!;
   }
   return frames;
 }
