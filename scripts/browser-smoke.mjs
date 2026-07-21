@@ -165,6 +165,21 @@ await desktop.waitForTimeout(900);
 if ((await desktop.locator('.battle-circuit-cell.is-firing').count()) === 0) {
   throw new Error('Circuit summary did not show a firing skill');
 }
+const playerBattleSkill = desktop.locator('.battle-circuit-summary.team-player .battle-circuit-skill').first();
+await playerBattleSkill.click();
+await desktop.locator('.battle-growth-panel[data-growth-team="player"]').waitFor();
+if (!(await desktop.locator('.battle-growth-value').textContent())?.includes('+')) {
+  throw new Error('Player skill detail does not show its combat growth');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-circuit-growth-detail.png', fullPage: true });
+await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
+const enemyBattleSkill = desktop.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill').first();
+await enemyBattleSkill.click();
+await desktop.locator('.battle-growth-panel[data-growth-team="enemy"]').waitFor();
+if (!(await desktop.getByText('相手の技', { exact: true }).count())) {
+  throw new Error('Enemy skill detail does not identify its owner');
+}
+await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-battle.png', fullPage: true });
 
 const mobile = await browser.newPage({
@@ -244,6 +259,14 @@ if (!mobileHealth || mobileHealth.width > 68 || mobileHealth.height > 9)
 if ((await mobile.locator('.battle-circuit-cell.is-firing').count()) === 0) {
   throw new Error('Mobile circuit summary did not show a firing skill');
 }
+await mobile.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill').first().click();
+await mobile.locator('.battle-growth-panel[data-growth-team="enemy"]').waitFor();
+const mobileGrowthDialog = await mobile.locator('.block-dialog').boundingBox();
+if (!mobileGrowthDialog || mobileGrowthDialog.y < 0 || mobileGrowthDialog.y + mobileGrowthDialog.height > 844) {
+  throw new Error(`Mobile growth detail is clipped: ${JSON.stringify(mobileGrowthDialog)}`);
+}
+await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-growth-detail.png', fullPage: true });
+await mobile.getByRole('button', { name: '詳細を閉じる' }).click();
 await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-battle.png', fullPage: true });
 
 const overload = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
@@ -272,7 +295,15 @@ console.log(
       target,
       checks: { ...checks, fighters },
       horizontalOverflow,
-      screenshots: ['desktop', 'battle', 'mobile', 'mobile-battle', 'overload'],
+      screenshots: [
+        'desktop',
+        'battle',
+        'growth-detail',
+        'mobile',
+        'mobile-battle',
+        'mobile-growth-detail',
+        'overload',
+      ],
     },
     null,
     2,

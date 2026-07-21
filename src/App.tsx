@@ -10,6 +10,7 @@ import { createBattle, createPlayback } from './core/battle';
 import { findPoweredCells, rotatePorts } from './core/circuit';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
 import { createShop, rerollShop } from './core/shop';
+import { summarizeSkillGrowth } from './core/skill-progress';
 import type {
   BattleState,
   BattleTraceEvent,
@@ -20,6 +21,7 @@ import type {
   FighterState,
   Rotation,
   ShopOffer,
+  Team,
 } from './core/types';
 import { GAME_DATA } from './game/game-data';
 
@@ -27,7 +29,8 @@ type Phase = 'build' | 'battle' | 'result';
 type DetailTarget = {
   blockId: string;
   position?: CellPosition;
-  location: 'board' | 'rack' | 'shop';
+  location: 'board' | 'rack' | 'shop' | 'battle';
+  team?: Team;
 };
 type DragOrigin = { kind: 'board'; position: CellPosition } | { kind: 'rack'; blockId: string };
 type DragState = {
@@ -44,13 +47,21 @@ const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
 
-const effectLabel = (block: BlockDefinition) => {
+const effectLabel = (block: BlockDefinition, growth = 0) => {
+  const progressByEffect = new Map(
+    summarizeSkillGrowth(block, growth).effects.map((effect) => [effect.effectIndex, effect]),
+  );
   return block.effects
-    .map((effect) => {
-      if (effect.kind === 'damage') return `ダメージ ${effect.amount}`;
-      if (effect.kind === 'shield') return `シールド ${effect.amount}`;
-      if (effect.kind === 'repair') return `回復 ${effect.amount}`;
-      if (effect.kind === 'poison') return `毒 ${effect.amount}`;
+    .map((effect, effectIndex) => {
+      const progress = progressByEffect.get(effectIndex);
+      const amount = 'amount' in effect ? effect.amount : 0;
+      const currentAmount = progress?.currentAmount ?? amount;
+      const amountLabel = (label: string) =>
+        progress && progress.growthBonus > 0 ? `${label} ${amount} → ${currentAmount}` : `${label} ${amount}`;
+      if (effect.kind === 'damage') return amountLabel('ダメージ');
+      if (effect.kind === 'shield') return amountLabel('シールド');
+      if (effect.kind === 'repair') return amountLabel('回復');
+      if (effect.kind === 'poison') return amountLabel('毒');
       if (effect.kind === 'rupture-poison') return `毒を半減・1毒につき${effect.damagePerStack}ダメージ`;
       if (effect.kind === 'growth') {
         const target = effect.target === 'self' ? '自身' : effect.target === 'inputs' ? '前の技' : '次の技';
@@ -189,6 +200,7 @@ const BattleCircuitSummary = ({
   events,
   tick,
   growth,
+  onSelect,
 }: {
   team: 'player' | 'enemy';
   label: string;
@@ -197,6 +209,7 @@ const BattleCircuitSummary = ({
   events: BattleTraceEvent[];
   tick: number;
   growth: Record<string, number>;
+  onSelect: (target: DetailTarget) => void;
 }) => {
   const poweredCells = new Set(powered);
   const skillEvents = events.filter(
@@ -230,23 +243,36 @@ const BattleCircuitSummary = ({
             row.map((placed, columnIndex) => {
               const key = `${rowIndex}:${columnIndex}`;
               const block = placed ? blockById.get(placed.blockId) : undefined;
+              const growthValue = growth[key] ?? 0;
+              const stateLabel = firingCells.has(key) ? '発火' : poweredCells.has(key) ? '通電' : '未通電';
+              if (block && placed) {
+                return (
+                  <button
+                    type="button"
+                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${firingCells.has(key) ? 'is-firing' : ''}`}
+                    key={key}
+                    aria-label={`${label}の${block.title} ${stateLabel} 育った量 +${growthValue}`}
+                    aria-haspopup="dialog"
+                    onClick={() =>
+                      onSelect({
+                        blockId: block.id,
+                        position: { row: rowIndex, column: columnIndex },
+                        location: 'battle',
+                        team,
+                      })
+                    }
+                  >
+                    <BlockVisual block={block} rotation={placed.rotation} powered={poweredCells.has(key)} compact />
+                    {growthValue > 0 && <b className="block-growth">+{growthValue}</b>}
+                  </button>
+                );
+              }
               return (
                 <span
                   className={`battle-circuit-cell ${poweredCells.has(key) ? 'is-powered' : ''} ${firingCells.has(key) ? 'is-firing' : ''}`}
                   key={key}
-                  aria-label={
-                    block
-                      ? `${block.title}${firingCells.has(key) ? ' 発火' : poweredCells.has(key) ? ' 通電' : ' 未通電'}`
-                      : '空き'
-                  }
-                >
-                  {block && placed && (
-                    <>
-                      <BlockVisual block={block} rotation={placed.rotation} powered={poweredCells.has(key)} compact />
-                      {(growth[key] ?? 0) > 0 && <b className="block-growth">+{growth[key]}</b>}
-                    </>
-                  )}
-                </span>
+                  aria-label="空き"
+                />
               );
             }),
           )}
@@ -325,7 +351,10 @@ export function App() {
   useEffect(() => {
     if (phase !== 'battle') return;
     if (frame >= playback.length - 1) {
-      const timer = window.setTimeout(() => setPhase('result'), 720);
+      const timer = window.setTimeout(() => {
+        setDetail(null);
+        setPhase('result');
+      }, 720);
       return () => window.clearTimeout(timer);
     }
     const timer = window.setTimeout(() => setFrame((current) => current + 1), GAME_DATA.rules.battleStepMs);
@@ -551,7 +580,21 @@ export function App() {
   };
 
   const detailBlock = detail ? blockById.get(detail.blockId) : undefined;
-  const detailPlaced = detail?.position ? board[detail.position.row]?.[detail.position.column] : undefined;
+  const detailBattleTeam = detail?.location === 'battle' ? detail.team : undefined;
+  const detailBoard =
+    detailBattleTeam === 'player' ? battle.playerBoard : detailBattleTeam === 'enemy' ? battle.enemyBoard : board;
+  const detailPoweredCells =
+    detailBattleTeam === 'player'
+      ? new Set(battle.playerPowered)
+      : detailBattleTeam === 'enemy'
+        ? new Set(battle.enemyPowered)
+        : powered;
+  const detailPlaced = detail?.position ? detailBoard[detail.position.row]?.[detail.position.column] : undefined;
+  const detailCellKey = detail?.position ? `${detail.position.row}:${detail.position.column}` : undefined;
+  const detailGrowth =
+    detailBattleTeam && detailCellKey ? (battle.skillGrowth[detailBattleTeam][detailCellKey] ?? 0) : 0;
+  const detailGrowthProgress = detailBlock ? summarizeSkillGrowth(detailBlock, detailGrowth) : undefined;
+  const detailOwner = detailBattleTeam === 'player' ? player : detailBattleTeam === 'enemy' ? enemy : undefined;
 
   return (
     <main className={`app-shell phase-${phase}`}>
@@ -781,6 +824,7 @@ export function App() {
               events={frameEvents}
               tick={battle.tick}
               growth={battle.skillGrowth.player}
+              onSelect={openDetail}
             />
             <BattleCircuitSummary
               team="enemy"
@@ -790,6 +834,7 @@ export function App() {
               events={frameEvents}
               tick={battle.tick}
               growth={battle.skillGrowth.enemy}
+              onSelect={openDetail}
             />
           </div>
 
@@ -821,17 +866,50 @@ export function App() {
               <BlockVisual
                 block={detailBlock}
                 rotation={detailPlaced?.rotation ?? 0}
-                powered={Boolean(detail.position && powered.has(`${detail.position.row}:${detail.position.column}`))}
+                powered={Boolean(detailCellKey && detailPoweredCells.has(detailCellKey))}
               />
             </div>
             <div className="dialog-copy">
-              <small>{detailBlock.code}</small>
+              <small>{detail.location === 'battle' ? `${detailBlock.code} · LIVE` : detailBlock.code}</small>
               <h2 id="block-dialog-title">{detailBlock.title}</h2>
               <p>{detailBlock.description}</p>
+              {detailBattleTeam && detailGrowthProgress && detailOwner && (
+                <div
+                  className={`battle-growth-panel team-${detailBattleTeam}`}
+                  data-growth-team={detailBattleTeam}
+                  aria-label={`${detailBlock.title}の戦闘中の成長 ${detailGrowthProgress.growth}`}
+                >
+                  <header>
+                    <span>
+                      <small>{detailBattleTeam === 'player' ? 'YOUR SKILL' : 'RIVAL SKILL'}</small>
+                      <b>{detailBattleTeam === 'player' ? '自分の技' : '相手の技'}</b>
+                    </span>
+                    <strong>
+                      <small>育った量</small>
+                      <b className="battle-growth-value">+{detailGrowthProgress.growth}</b>
+                    </strong>
+                  </header>
+                  <div className="battle-growth-meter" aria-hidden="true">
+                    {Array.from({ length: 8 }, (_, index) => (
+                      <i className={index < Math.min(8, detailGrowthProgress.growth) ? 'is-active' : ''} key={index} />
+                    ))}
+                  </div>
+                  <footer>
+                    <span>{detailOwner.name}</span>
+                    <em>
+                      {detailGrowthProgress.nextGrowthAt === null
+                        ? detailGrowthProgress.growth > 0
+                          ? '成長を蓄積中'
+                          : 'まだ成長なし'
+                        : `次の効果上昇まで ${detailGrowthProgress.nextGrowthAt - detailGrowthProgress.growth}`}
+                    </em>
+                  </footer>
+                </div>
+              )}
               <dl>
                 <div>
                   <dt>効果</dt>
-                  <dd>{effectLabel(detailBlock)}</dd>
+                  <dd>{effectLabel(detailBlock, detailGrowth)}</dd>
                 </div>
                 <div>
                   <dt>動作</dt>

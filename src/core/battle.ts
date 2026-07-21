@@ -1,4 +1,5 @@
 import { analyzeCircuit, cellKey, cloneBoard, connectedInputs, connectedOutputs } from './circuit';
+import { effectScalingBonus } from './skill-progress';
 import type {
   BattleState,
   BattleTraceEvent,
@@ -6,7 +7,6 @@ import type {
   BlockEffect,
   CellPosition,
   CircuitBoard,
-  EffectScaling,
   EffectTrigger,
   FighterState,
   GameData,
@@ -142,20 +142,6 @@ const triggerMatches = (
   return context.inCycle;
 };
 
-const scaledBonus = (
-  scaling: EffectScaling | undefined,
-  context: { selfGrowth: number; enemyPoison: number; pathLength: number },
-) => {
-  if (!scaling) return 0;
-  const source =
-    scaling.kind === 'self-growth'
-      ? context.selfGrowth
-      : scaling.kind === 'enemy-poison'
-        ? context.enemyPoison
-        : context.pathLength;
-  return Math.floor(source / scaling.every) * scaling.amount;
-};
-
 const traceEvent = (
   tick: number,
   action: PlannedActivation,
@@ -196,7 +182,7 @@ const numericAmount = (
 ) =>
   effect.amount +
   ('scaling' in effect
-    ? scaledBonus(effect.scaling, {
+    ? effectScalingBonus(effect.scaling, {
         selfGrowth: context.selfGrowth,
         enemyPoison: context.enemyPoison,
         pathLength: action.pathLength,

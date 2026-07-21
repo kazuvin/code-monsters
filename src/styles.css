@@ -832,9 +832,11 @@ button:focus-visible {
   position: relative;
   display: grid;
   width: min(520px, 100%);
+  max-height: calc(100dvh - 40px);
   grid-template-columns: 150px minmax(0, 1fr);
   gap: 22px;
   padding: 28px;
+  overflow: auto;
   border: 3px solid var(--line-bright);
   background: #0a222d;
   box-shadow:
@@ -886,6 +888,92 @@ button:focus-visible {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.battle-growth-panel {
+  --growth-accent: var(--cyan);
+  margin: 0 0 12px;
+  padding: 8px 9px 7px;
+  border: 1px solid #315b6c;
+  border-left: 4px solid var(--growth-accent);
+  background: #071a22;
+  box-shadow: inset 0 0 0 2px #041219;
+}
+
+.battle-growth-panel.team-enemy {
+  --growth-accent: var(--coral);
+  border-color: #765050;
+}
+
+.battle-growth-panel > header,
+.battle-growth-panel > footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.battle-growth-panel > header > span,
+.battle-growth-panel > header > strong {
+  display: grid;
+}
+
+.battle-growth-panel > header small {
+  color: var(--growth-accent);
+  font-size: 6px;
+  letter-spacing: 0.08em;
+}
+
+.battle-growth-panel > header span b {
+  margin-top: 2px;
+  color: var(--paper);
+  font-size: 10px;
+}
+
+.battle-growth-panel > header strong {
+  justify-items: end;
+}
+
+.battle-growth-panel > header strong small {
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.battle-growth-value {
+  color: #b7ff7a;
+  font:
+    600 23px / 0.8 "Pixelify Sans",
+    monospace;
+  text-shadow: 2px 2px 0 #173b2c;
+}
+
+.battle-growth-meter {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  height: 7px;
+  margin: 7px 0 5px;
+}
+
+.battle-growth-meter i {
+  border: 1px solid #274a58;
+  background: #0d2934;
+}
+
+.battle-growth-meter i.is-active {
+  border-color: #8bd450;
+  background: #8bd450;
+  box-shadow: 0 0 4px rgb(139 212 80 / 60%);
+}
+
+.battle-growth-panel > footer {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.battle-growth-panel > footer em {
+  color: #b7ff7a;
+  font-style: normal;
 }
 
 .dialog-copy dl {
@@ -2108,6 +2196,29 @@ button:focus-visible {
   min-height: 0;
   border: 1px solid #163b48;
   background: #09232c;
+}
+
+.battle-circuit-skill {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.battle-circuit-skill:hover,
+.battle-circuit-skill:focus-visible {
+  z-index: 8;
+  border-color: var(--paper);
+  outline: 1px solid var(--cyan);
+  outline-offset: 1px;
+}
+
+.team-enemy .battle-circuit-skill:hover,
+.team-enemy .battle-circuit-skill:focus-visible {
+  outline-color: var(--coral);
 }
 
 .battle-circuit-cell .block-visual {
