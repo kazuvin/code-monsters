@@ -1,39 +1,64 @@
-import type { ProgramBoard } from './types';
+import { cloneBoard, rotateBlock } from './circuit';
+import type { CellPosition, CircuitBoard } from './types';
 
-type SlotPosition = { lane: number; slot: number };
+const samePosition = (left: CellPosition, right: CellPosition) =>
+  left.row === right.row && left.column === right.column;
 
-const count = (values: string[], id: string) => values.filter((value) => value === id).length;
-const usedCount = (program: ProgramBoard, id: string) => program.flat().filter((value) => value === id).length;
+export function placeBlockFromRack(
+  rack: string[],
+  board: CircuitBoard,
+  blockId: string,
+  position: CellPosition,
+): { board: CircuitBoard; rack: string[] } {
+  const rackIndex = rack.indexOf(blockId);
+  const current = board[position.row]?.[position.column];
+  if (
+    rackIndex < 0 ||
+    current?.fixed ||
+    !board[position.row] ||
+    position.column < 0 ||
+    position.column >= board.length
+  ) {
+    return { board, rack };
+  }
 
-export function availableCopies(inventory: string[], program: ProgramBoard, commandId: string): number {
-  return Math.max(0, count(inventory, commandId) - usedCount(program, commandId));
+  const nextBoard = cloneBoard(board);
+  nextBoard[position.row][position.column] = { blockId, rotation: 0 };
+  const nextRack = rack.filter((_, index) => index !== rackIndex);
+  if (current) nextRack.push(current.blockId);
+  return { board: nextBoard, rack: nextRack };
 }
 
-export function equipCommand(
-  inventory: string[],
-  program: ProgramBoard,
-  position: { lane: number; slot: number },
-  commandId: string,
-): ProgramBoard {
-  const current = program[position.lane]?.[position.slot];
-  if (current === commandId) return program;
-  if (availableCopies(inventory, program, commandId) <= 0) return program;
-  return program.map((row, lane) =>
-    lane === position.lane ? row.map((value, slot) => (slot === position.slot ? commandId : value)) : [...row],
-  );
+export function moveBlock(board: CircuitBoard, from: CellPosition, to: CellPosition): CircuitBoard {
+  if (samePosition(from, to)) return board;
+  const source = board[from.row]?.[from.column];
+  const destination = board[to.row]?.[to.column];
+  if (!source || source.fixed || destination?.fixed || !board[to.row] || to.column < 0 || to.column >= board.length) {
+    return board;
+  }
+
+  const next = cloneBoard(board);
+  next[from.row][from.column] = destination ? { ...destination } : null;
+  next[to.row][to.column] = { ...source };
+  return next;
 }
 
-export function swapCommands(program: ProgramBoard, from: SlotPosition, to: SlotPosition): ProgramBoard {
-  if (from.lane === to.lane && from.slot === to.slot) return program;
-  const fromCommand = program[from.lane]?.[from.slot];
-  const toCommand = program[to.lane]?.[to.slot];
-  if (fromCommand === undefined || toCommand === undefined) return program;
+export function rotateBoardBlock(board: CircuitBoard, position: CellPosition): CircuitBoard {
+  const current = board[position.row]?.[position.column];
+  if (!current || current.fixed) return board;
+  const next = cloneBoard(board);
+  next[position.row][position.column] = rotateBlock(current);
+  return next;
+}
 
-  return program.map((row, lane) =>
-    row.map((commandId, slot) => {
-      if (lane === from.lane && slot === from.slot) return toCommand;
-      if (lane === to.lane && slot === to.slot) return fromCommand;
-      return commandId;
-    }),
-  );
+export function removeBlockToRack(
+  rack: string[],
+  board: CircuitBoard,
+  position: CellPosition,
+): { board: CircuitBoard; rack: string[] } {
+  const current = board[position.row]?.[position.column];
+  if (!current || current.fixed) return { board, rack };
+  const next = cloneBoard(board);
+  next[position.row][position.column] = null;
+  return { board: next, rack: [...rack, current.blockId] };
 }

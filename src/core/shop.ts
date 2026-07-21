@@ -1,45 +1,40 @@
-import type { CommandDefinition, ShopOffer } from './types';
+import type { BlockDefinition, ShopOffer } from './types';
 
 const randomUnit = (seed: number) => {
   const value = Math.sin(seed * 9301 + 49297) * 233280;
   return value - Math.floor(value);
 };
 
-const pickWeighted = (commands: CommandDefinition[], seed: number) => {
-  const total = commands.reduce((sum, command) => sum + (command.shopWeight ?? 1), 0);
+const pickWeighted = (blocks: BlockDefinition[], seed: number) => {
+  const total = blocks.reduce((sum, block) => sum + (block.shopWeight ?? 1), 0);
   let cursor = randomUnit(seed) * total;
-  for (const command of commands) {
-    cursor -= command.shopWeight ?? 1;
-    if (cursor <= 0) return command;
+  for (const block of blocks) {
+    cursor -= block.shopWeight ?? 1;
+    if (cursor <= 0) return block;
   }
-  return commands[commands.length - 1];
+  return blocks[blocks.length - 1];
 };
 
-export function createShop(commands: CommandDefinition[], seed: number, size: number): ShopOffer[] {
-  if (commands.length < size) throw new Error('Shop size exceeds the command pool');
+export function createShop(blocks: BlockDefinition[], seed: number, size: number): ShopOffer[] {
+  if (blocks.length < size) throw new Error('Shop size exceeds the block pool');
   const used = new Set<string>();
   return Array.from({ length: size }, (_, slot) => {
-    const candidates = commands.filter((command) => !used.has(command.id));
-    const command = pickWeighted(candidates, seed * 17 + slot * 31 + 7);
-    used.add(command.id);
-    return { id: `${seed}-${slot}-${command.id}`, slot, commandId: command.id, locked: false };
+    const candidates = blocks.filter((block) => !used.has(block.id));
+    const block = pickWeighted(candidates, seed * 17 + slot * 31 + 7);
+    used.add(block.id);
+    return { id: `${seed}-${slot}-${block.id}`, slot, blockId: block.id, locked: false };
   });
 }
 
-export function rerollShop(
-  commands: CommandDefinition[],
-  current: ShopOffer[],
-  seed: number,
-  size: number,
-): ShopOffer[] {
+export function rerollShop(blocks: BlockDefinition[], current: ShopOffer[], seed: number, size: number): ShopOffer[] {
   const retained = new Map(current.filter((offer) => offer.locked).map((offer) => [offer.slot, offer]));
-  const used = new Set([...retained.values()].map((offer) => offer.commandId));
+  const used = new Set([...retained.values()].map((offer) => offer.blockId));
   return Array.from({ length: size }, (_, slot) => {
     const locked = retained.get(slot);
     if (locked) return locked;
-    const candidates = commands.filter((command) => !used.has(command.id));
-    const command = pickWeighted(candidates, seed * 17 + slot * 31 + 7);
-    used.add(command.id);
-    return { id: `${seed}-${slot}-${command.id}`, slot, commandId: command.id, locked: false };
+    const candidates = blocks.filter((block) => !used.has(block.id));
+    const block = pickWeighted(candidates, seed * 17 + slot * 31 + 7);
+    used.add(block.id);
+    return { id: `${seed}-${slot}-${block.id}`, slot, blockId: block.id, locked: false };
   });
 }

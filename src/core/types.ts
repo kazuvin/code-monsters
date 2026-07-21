@@ -1,25 +1,32 @@
 export type Team = 'player' | 'enemy';
 export type Rarity = 'common' | 'rare';
 export type Winner = Team | 'draw' | null;
+export type Direction = 'north' | 'east' | 'south' | 'west';
+export type Rotation = 0 | 1 | 2 | 3;
 
-export type CommandEffect =
+export type ActiveEffect =
   | { kind: 'damage'; amount: number }
   | { kind: 'shield'; amount: number }
-  | { kind: 'charge'; amount: number }
-  | { kind: 'burst'; baseDamage: number; damagePerPower: number }
-  | { kind: 'repeatPrevious' }
-  | { kind: 'sharePower'; amount: number }
-  | { kind: 'healLowest'; amount: number };
+  | { kind: 'repair'; amount: number };
 
-export type CommandDefinition = {
+export type BlockEffect =
+  | ActiveEffect
+  | { kind: 'amplify'; amount: number }
+  | { kind: 'haste'; amount: number }
+  | { kind: 'wire' };
+
+export type BlockDefinition = {
   id: string;
   code: string;
   title: string;
   description: string;
+  glyph: string;
   price: number;
   rarity: Rarity;
   shopWeight?: number;
-  effect: CommandEffect;
+  ports: Direction[];
+  effect: BlockEffect;
+  cooldown?: number;
 };
 
 export type UnitDefinition = {
@@ -30,27 +37,36 @@ export type UnitDefinition = {
   color: string;
 };
 
-export type ProgramBoard = Array<Array<string | null>>;
+export type PlacedBlock = {
+  blockId: string;
+  rotation: Rotation;
+  fixed?: boolean;
+};
+
+export type CircuitBoard = Array<Array<PlacedBlock | null>>;
 
 export type GameData = {
   schemaVersion: number;
   rules: {
-    lanes: number;
-    programSlots: number;
-    maxRounds: number;
-    stackLimit: number;
+    boardSize: number;
+    sourceRow: number;
+    battleTicks: number;
     startingCoins: number;
-    winReward?: number;
-    retryReward?: number;
+    winReward: number;
+    retryReward: number;
     rerollCost: number;
     shopSize: number;
   };
   units: UnitDefinition[];
-  commands: CommandDefinition[];
-  startingInventory: string[];
-  playerProgram: ProgramBoard;
-  enemyProgram: ProgramBoard;
+  playerUnitId: string;
+  enemyUnitId: string;
+  blocks: BlockDefinition[];
+  startingRack: string[];
+  playerBoard: CircuitBoard;
+  enemyBoard: CircuitBoard;
 };
+
+export type CellPosition = { row: number; column: number };
 
 export type FighterState = {
   instanceId: string;
@@ -59,35 +75,30 @@ export type FighterState = {
   code: string;
   color: string;
   team: Team;
-  lane: number;
   hp: number;
   maxHp: number;
   shield: number;
-  power: number;
 };
-
-export type TraceKind = 'execute' | 'repeat' | 'damage' | 'shield' | 'charge' | 'share' | 'heal' | 'stackOverflow';
 
 export type BattleTraceEvent = {
   id: string;
-  round: number;
-  slot: number;
+  tick: number;
   team: Team;
-  lane: number;
-  actorId: string;
-  kind: TraceKind;
-  commandId: string;
-  depth: number;
-  value?: number;
-  targetId?: string;
+  kind: ActiveEffect['kind'];
+  blockId: string;
+  row: number;
+  column: number;
+  value: number;
+  targetId: string;
 };
 
 export type BattleState = {
-  round: number;
-  currentSlot: number;
+  tick: number;
   fighters: FighterState[];
-  playerProgram: ProgramBoard;
-  enemyProgram: ProgramBoard;
+  playerBoard: CircuitBoard;
+  enemyBoard: CircuitBoard;
+  playerPowered: string[];
+  enemyPowered: string[];
   trace: BattleTraceEvent[];
   winner: Winner;
 };
@@ -95,6 +106,6 @@ export type BattleState = {
 export type ShopOffer = {
   id: string;
   slot: number;
-  commandId: string;
+  blockId: string;
   locked: boolean;
 };

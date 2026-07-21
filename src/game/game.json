@@ -1,115 +1,198 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rules": {
-    "lanes": 3,
-    "programSlots": 4,
-    "maxRounds": 4,
-    "stackLimit": 2,
-    "startingCoins": 7,
+    "boardSize": 5,
+    "sourceRow": 2,
+    "battleTicks": 8,
+    "startingCoins": 8,
     "winReward": 4,
-    "retryReward": 1,
+    "retryReward": 2,
     "rerollCost": 1,
     "shopSize": 5
   },
   "units": [
-    { "id": "volt", "name": "ヴォルト", "code": "V-01", "maxHp": 15, "color": "#5de7f2" },
-    { "id": "bastion", "name": "バスティオン", "code": "B-07", "maxHp": 19, "color": "#ffd36a" },
-    { "id": "relay", "name": "リレイ", "code": "R-11", "maxHp": 13, "color": "#ff786e" }
+    { "id": "volt", "name": "ヴォルト", "code": "V-01", "maxHp": 42, "color": "#5de7f2" },
+    { "id": "rust", "name": "ラスト", "code": "R-09", "maxHp": 42, "color": "#ff786e" }
   ],
-  "commands": [
+  "playerUnitId": "volt",
+  "enemyUnitId": "rust",
+  "blocks": [
     {
-      "id": "strike",
-      "code": "HIT",
-      "title": "攻撃",
-      "description": "正面へ3ダメージ",
+      "id": "core-hub",
+      "code": "HUB",
+      "title": "コアハブ",
+      "description": "電源を3方向へ通す固定ブロック",
+      "glyph": "+",
+      "price": 0,
+      "rarity": "common",
+      "shopWeight": 0,
+      "ports": ["west", "north", "east", "south"],
+      "effect": { "kind": "wire" }
+    },
+    {
+      "id": "trace",
+      "code": "LINE",
+      "title": "直結線",
+      "description": "まっすぐ電流を通す",
+      "glyph": "─",
+      "price": 1,
+      "rarity": "common",
+      "shopWeight": 5,
+      "ports": ["west", "east"],
+      "effect": { "kind": "wire" }
+    },
+    {
+      "id": "elbow",
+      "code": "TURN",
+      "title": "曲線路",
+      "description": "電流を直角に曲げる",
+      "glyph": "└",
+      "price": 1,
+      "rarity": "common",
+      "shopWeight": 5,
+      "ports": ["west", "north"],
+      "effect": { "kind": "wire" }
+    },
+    {
+      "id": "fork",
+      "code": "FORK",
+      "title": "分岐路",
+      "description": "電流を3方向へ通す",
+      "glyph": "┬",
       "price": 2,
       "rarity": "common",
       "shopWeight": 4,
+      "ports": ["west", "north", "east"],
+      "effect": { "kind": "wire" }
+    },
+    {
+      "id": "strike",
+      "code": "SLASH",
+      "title": "斬撃",
+      "description": "毎拍2ダメージ。電流を先へ通す",
+      "glyph": "斬",
+      "price": 2,
+      "rarity": "common",
+      "shopWeight": 5,
+      "ports": ["west", "east"],
+      "cooldown": 1,
+      "effect": { "kind": "damage", "amount": 2 }
+    },
+    {
+      "id": "breaker",
+      "code": "BREAK",
+      "title": "破砕撃",
+      "description": "2拍ごとに4ダメージ。電流を曲げる",
+      "glyph": "破",
+      "price": 3,
+      "rarity": "common",
+      "shopWeight": 3,
+      "ports": ["west", "north"],
+      "cooldown": 2,
+      "effect": { "kind": "damage", "amount": 4 }
+    },
+    {
+      "id": "arc-shot",
+      "code": "ARC",
+      "title": "アーク弾",
+      "description": "2拍ごとに3ダメージ。電流を分岐する",
+      "glyph": "弧",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "ports": ["west", "north", "east"],
+      "cooldown": 2,
       "effect": { "kind": "damage", "amount": 3 }
     },
     {
-      "id": "guard",
-      "code": "GRD",
-      "title": "守る",
-      "description": "シールドを3得る",
+      "id": "barrier",
+      "code": "GUARD",
+      "title": "障壁",
+      "description": "2拍ごとにシールドを3得る",
+      "glyph": "盾",
       "price": 2,
       "rarity": "common",
       "shopWeight": 4,
+      "ports": ["west", "east"],
+      "cooldown": 2,
       "effect": { "kind": "shield", "amount": 3 }
     },
     {
-      "id": "charge",
-      "code": "PWR",
-      "title": "ためる",
-      "description": "パワーを1ためる",
-      "price": 2,
-      "rarity": "common",
-      "shopWeight": 4,
-      "effect": { "kind": "charge", "amount": 1 }
-    },
-    {
-      "id": "burst",
-      "code": "BST",
-      "title": "放つ",
-      "description": "パワーを全部ダメージへ",
-      "price": 3,
-      "rarity": "rare",
-      "shopWeight": 2,
-      "effect": { "kind": "burst", "baseDamage": 2, "damagePerPower": 2 }
-    },
-    {
-      "id": "loop",
-      "code": "RPT",
-      "title": "もう一度",
-      "description": "ひとつ前を再実行",
-      "price": 3,
-      "rarity": "rare",
-      "shopWeight": 2,
-      "effect": { "kind": "repeatPrevious" }
-    },
-    {
-      "id": "link",
-      "code": "LNK",
-      "title": "わける",
-      "description": "次の仲間へパワーを1渡す",
-      "price": 2,
-      "rarity": "common",
-      "shopWeight": 3,
-      "effect": { "kind": "sharePower", "amount": 1 }
-    },
-    {
       "id": "repair",
-      "code": "FIX",
-      "title": "直す",
-      "description": "弱った仲間を3回復",
+      "code": "REPAIR",
+      "title": "修復",
+      "description": "3拍ごとにHPを3回復。電流を曲げる",
+      "glyph": "修",
       "price": 3,
       "rarity": "rare",
       "shopWeight": 2,
-      "effect": { "kind": "healLowest", "amount": 3 }
+      "ports": ["west", "north"],
+      "cooldown": 3,
+      "effect": { "kind": "repair", "amount": 3 }
+    },
+    {
+      "id": "rail-cannon",
+      "code": "RAIL",
+      "title": "レール砲",
+      "description": "4拍ごとに7ダメージ。終端専用",
+      "glyph": "砲",
+      "price": 4,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "ports": ["west"],
+      "cooldown": 4,
+      "effect": { "kind": "damage", "amount": 7 }
+    },
+    {
+      "id": "amplifier",
+      "code": "AMP",
+      "title": "増幅器",
+      "description": "直結した技の効果を2増やす",
+      "glyph": "増",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "ports": ["west", "east"],
+      "effect": { "kind": "amplify", "amount": 2 }
+    },
+    {
+      "id": "accelerator",
+      "code": "FAST",
+      "title": "加速器",
+      "description": "直結した技の発動間隔を1拍縮める",
+      "glyph": "速",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "ports": ["west", "east"],
+      "effect": { "kind": "haste", "amount": 1 }
     }
   ],
-  "startingInventory": [
-    "strike",
-    "strike",
-    "strike",
-    "guard",
-    "guard",
-    "charge",
-    "charge",
-    "burst",
-    "loop",
-    "loop",
-    "link",
-    "repair"
+  "startingRack": ["trace", "elbow", "amplifier", "accelerator", "repair", "breaker"],
+  "playerBoard": [
+    [null, null, null, null, null],
+    [null, null, { "blockId": "elbow", "rotation": 2 }, { "blockId": "barrier", "rotation": 0 }, null],
+    [
+      { "blockId": "core-hub", "rotation": 0, "fixed": true },
+      { "blockId": "strike", "rotation": 0 },
+      { "blockId": "fork", "rotation": 0 },
+      { "blockId": "rail-cannon", "rotation": 0 },
+      null
+    ],
+    [{ "blockId": "repair", "rotation": 0 }, null, null, null, null],
+    [null, null, null, null, null]
   ],
-  "playerProgram": [
-    ["charge", "strike", "loop", "burst"],
-    ["guard", "strike", "loop", "guard"],
-    ["charge", "link", "repair", "strike"]
-  ],
-  "enemyProgram": [
-    ["strike", "charge", "burst", "strike"],
-    ["guard", "strike", "guard", "strike"],
-    ["charge", "link", "strike", "repair"]
+  "enemyBoard": [
+    [null, null, null, null, null],
+    [null, null, { "blockId": "elbow", "rotation": 2 }, { "blockId": "barrier", "rotation": 0 }, null],
+    [
+      { "blockId": "core-hub", "rotation": 0, "fixed": true },
+      { "blockId": "trace", "rotation": 0 },
+      { "blockId": "arc-shot", "rotation": 0 },
+      { "blockId": "rail-cannon", "rotation": 0 },
+      null
+    ],
+    [{ "blockId": "breaker", "rotation": 0 }, null, null, null, null],
+    [null, null, null, null, null]
   ]
 }

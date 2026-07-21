@@ -1,262 +1,189 @@
+import { cellKey, cloneBoard, connectedNeighbors, findPoweredCells } from './circuit';
 import type {
+  ActiveEffect,
   BattleState,
   BattleTraceEvent,
-  CommandDefinition,
+  BlockDefinition,
+  CellPosition,
+  CircuitBoard,
   FighterState,
   GameData,
-  ProgramBoard,
   Team,
   Winner,
 } from './types';
 
-type PlannedCommand = {
-  actorId: string;
-  command: CommandDefinition;
-  depth: number;
+type PlannedAction = {
+  team: Team;
+  block: BlockDefinition;
+  position: CellPosition;
+  effect: ActiveEffect;
+  amount: number;
 };
 
 const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player');
-const cloneBoard = (board: ProgramBoard): ProgramBoard => board.map((row) => [...row]);
 
 const winnerOf = (fighters: FighterState[]): Winner => {
-  const playerAlive = fighters.some((fighter) => fighter.team === 'player' && fighter.hp > 0);
-  const enemyAlive = fighters.some((fighter) => fighter.team === 'enemy' && fighter.hp > 0);
-  if (!playerAlive && !enemyAlive) return 'draw';
-  if (!playerAlive) return 'enemy';
-  if (!enemyAlive) return 'player';
+  const player = fighters.find((fighter) => fighter.team === 'player');
+  const enemy = fighters.find((fighter) => fighter.team === 'enemy');
+  if (!player || !enemy) return null;
+  if (player.hp <= 0 && enemy.hp <= 0) return 'draw';
+  if (player.hp <= 0) return 'enemy';
+  if (enemy.hp <= 0) return 'player';
   return null;
 };
 
-const fighterId = (team: Team, unitId: string) => `${team}-${unitId}`;
+const timedWinner = (fighters: FighterState[]): Winner => {
+  const player = fighters.find((fighter) => fighter.team === 'player');
+  const enemy = fighters.find((fighter) => fighter.team === 'enemy');
+  if (!player || !enemy || player.hp === enemy.hp) return 'draw';
+  return player.hp > enemy.hp ? 'player' : 'enemy';
+};
 
-export function createBattle(data: GameData, playerProgram: ProgramBoard, enemyProgram: ProgramBoard): BattleState {
-  const fighters = (['player', 'enemy'] as const).flatMap((team) =>
-    data.units.map(
-      (unit, lane): FighterState => ({
-        instanceId: fighterId(team, unit.id),
-        unitId: unit.id,
-        name: unit.name,
-        code: unit.code,
-        color: unit.color,
-        team,
-        lane,
-        hp: unit.maxHp,
-        maxHp: unit.maxHp,
-        shield: 0,
-        power: 0,
-      }),
-    ),
-  );
+const fighterFor = (data: GameData, team: Team): FighterState => {
+  const unitId = team === 'player' ? data.playerUnitId : data.enemyUnitId;
+  const unit = data.units.find((candidate) => candidate.id === unitId);
+  if (!unit) throw new Error(`Missing ${team} unit "${unitId}"`);
   return {
-    round: 1,
-    currentSlot: -1,
-    fighters,
-    playerProgram: cloneBoard(playerProgram),
-    enemyProgram: cloneBoard(enemyProgram),
+    instanceId: `${team}-${unit.id}`,
+    unitId: unit.id,
+    name: unit.name,
+    code: unit.code,
+    color: unit.color,
+    team,
+    hp: unit.maxHp,
+    maxHp: unit.maxHp,
+    shield: 0,
+  };
+};
+
+export function createBattle(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState {
+  return {
+    tick: 0,
+    fighters: [fighterFor(data, 'player'), fighterFor(data, 'enemy')],
+    playerBoard: cloneBoard(playerBoard),
+    enemyBoard: cloneBoard(enemyBoard),
+    playerPowered: [...findPoweredCells(playerBoard, data.blocks, data.rules.sourceRow)],
+    enemyPowered: [...findPoweredCells(enemyBoard, data.blocks, data.rules.sourceRow)],
     trace: [],
     winner: null,
   };
 }
 
-const commandMap = (data: GameData) => new Map(data.commands.map((command) => [command.id, command]));
-
-const selectOpponent = (fighters: FighterState[], actor: FighterState) =>
-  fighters
-    .filter((fighter) => fighter.team === otherTeam(actor.team) && fighter.hp > 0)
-    .sort(
-      (left, right) => Math.abs(left.lane - actor.lane) - Math.abs(right.lane - actor.lane) || left.lane - right.lane,
-    )[0];
-
-const lowestAlly = (fighters: FighterState[], actor: FighterState) =>
-  fighters
-    .filter((fighter) => fighter.team === actor.team && fighter.hp > 0)
-    .sort((left, right) => left.hp / left.maxHp - right.hp / right.maxHp || left.lane - right.lane)[0];
-
-const nextAlly = (fighters: FighterState[], actor: FighterState) => {
-  const allies = fighters
-    .filter((fighter) => fighter.team === actor.team && fighter.hp > 0 && fighter.instanceId !== actor.instanceId)
-    .sort((left, right) => ((left.lane - actor.lane + 3) % 3) - ((right.lane - actor.lane + 3) % 3));
-  return allies[0];
+const activeEffect = (block: BlockDefinition): ActiveEffect | null => {
+  if (block.effect.kind === 'damage' || block.effect.kind === 'shield' || block.effect.kind === 'repair') {
+    return block.effect;
+  }
+  return null;
 };
 
-const traceEvent = (
-  state: BattleState,
-  actor: FighterState,
-  slot: number,
-  kind: BattleTraceEvent['kind'],
-  commandId: string,
-  depth: number,
-  extras: Pick<BattleTraceEvent, 'value' | 'targetId'> = {},
-): BattleTraceEvent => ({
-  id: `${state.round}-${slot}-${actor.instanceId}-${kind}-${state.trace.length}`,
-  round: state.round,
-  slot,
-  team: actor.team,
-  lane: actor.lane,
-  actorId: actor.instanceId,
-  kind,
-  commandId,
-  depth,
-  ...extras,
-});
-
-function expandCommand(
+function plannedActions(
   data: GameData,
-  state: BattleState,
-  actor: FighterState,
-  board: ProgramBoard,
-  slot: number,
-  depth: number,
-  commands: Map<string, CommandDefinition>,
-  trace: BattleTraceEvent[],
-): PlannedCommand | null {
-  const commandId = board[actor.lane]?.[slot];
-  if (!commandId) return null;
-  const command = commands.get(commandId);
-  if (!command) return null;
-  if (command.effect.kind !== 'repeatPrevious') return { actorId: actor.instanceId, command, depth };
+  board: CircuitBoard,
+  powered: Set<string>,
+  team: Team,
+  tick: number,
+): PlannedAction[] {
+  const definitions = new Map(data.blocks.map((block) => [block.id, block]));
+  const plans: PlannedAction[] = [];
 
-  trace.push(traceEvent(state, actor, slot, 'repeat', command.id, depth));
-  if (slot <= 0) return null;
-  if (depth >= data.rules.stackLimit) {
-    trace.push(traceEvent(state, actor, slot, 'stackOverflow', command.id, depth));
-    return null;
-  }
-  return expandCommand(data, state, actor, board, slot - 1, depth + 1, commands, trace);
+  board.forEach((row, rowIndex) =>
+    row.forEach((placed, columnIndex) => {
+      const position = { row: rowIndex, column: columnIndex };
+      if (!placed || !powered.has(cellKey(position))) return;
+      const block = definitions.get(placed.blockId);
+      if (!block) return;
+      const effect = activeEffect(block);
+      if (!effect) return;
+
+      const modifiers = connectedNeighbors(board, data.blocks, position)
+        .filter((neighbor) => powered.has(cellKey(neighbor)))
+        .map((neighbor) => board[neighbor.row][neighbor.column])
+        .map((neighbor) => (neighbor ? definitions.get(neighbor.blockId) : undefined))
+        .filter((neighbor): neighbor is BlockDefinition => Boolean(neighbor));
+      const haste = modifiers.reduce(
+        (sum, modifier) => sum + (modifier.effect.kind === 'haste' ? modifier.effect.amount : 0),
+        0,
+      );
+      const boost = modifiers.reduce(
+        (sum, modifier) => sum + (modifier.effect.kind === 'amplify' ? modifier.effect.amount : 0),
+        0,
+      );
+      const cooldown = Math.max(1, (block.cooldown ?? 1) - haste);
+      if ((tick - 1) % cooldown !== 0) return;
+      plans.push({ team, block, position, effect, amount: effect.amount + boost });
+    }),
+  );
+  return plans;
 }
 
-export function resolveBeat(data: GameData, state: BattleState, slot: number): BattleState {
+const traceEvent = (state: BattleState, action: PlannedAction, targetId: string): BattleTraceEvent => ({
+  id: `${state.tick + 1}-${action.team}-${action.position.row}-${action.position.column}-${state.trace.length}`,
+  tick: state.tick + 1,
+  team: action.team,
+  kind: action.effect.kind,
+  blockId: action.block.id,
+  row: action.position.row,
+  column: action.position.column,
+  value: action.amount,
+  targetId,
+});
+
+export function resolveTick(data: GameData, state: BattleState, tick: number): BattleState {
   if (state.winner) return state;
   const fighters = state.fighters.map((fighter) => ({ ...fighter }));
-  const snapshot = state.fighters.map((fighter) => ({ ...fighter }));
-  const commands = commandMap(data);
+  const poweredByTeam = {
+    player: new Set(state.playerPowered),
+    enemy: new Set(state.enemyPowered),
+  };
+  const plans = [
+    ...plannedActions(data, state.playerBoard, poweredByTeam.player, 'player', tick),
+    ...plannedActions(data, state.enemyBoard, poweredByTeam.enemy, 'enemy', tick),
+  ];
   const trace = [...state.trace];
-  const planned: PlannedCommand[] = [];
+  const fighter = (team: Team) => fighters.find((candidate) => candidate.team === team)!;
 
-  for (const actor of snapshot.filter((fighter) => fighter.hp > 0)) {
-    const board = actor.team === 'player' ? state.playerProgram : state.enemyProgram;
-    const command = expandCommand(data, state, actor, board, slot, 0, commands, trace);
-    if (command) planned.push(command);
-  }
-
-  const findLive = (id: string) => fighters.find((fighter) => fighter.instanceId === id);
-  const findSnapshot = (id: string) => snapshot.find((fighter) => fighter.instanceId === id);
-
-  for (const plan of planned) {
-    const actor = findLive(plan.actorId);
-    const before = findSnapshot(plan.actorId);
-    if (!actor || !before || actor.hp <= 0) continue;
-    trace.push(traceEvent(state, before, slot, 'execute', plan.command.id, plan.depth));
-    const effect = plan.command.effect;
-    if (effect.kind === 'shield') {
-      actor.shield += effect.amount;
-      trace.push(traceEvent(state, before, slot, 'shield', plan.command.id, plan.depth, { value: effect.amount }));
-    } else if (effect.kind === 'charge') {
-      actor.power += effect.amount;
-      trace.push(traceEvent(state, before, slot, 'charge', plan.command.id, plan.depth, { value: effect.amount }));
-    } else if (effect.kind === 'sharePower') {
-      const targetBefore = nextAlly(snapshot, before);
-      const target = targetBefore ? findLive(targetBefore.instanceId) : undefined;
-      const amount = Math.min(effect.amount, before.power);
-      if (target && amount > 0) {
-        actor.power = Math.max(0, actor.power - amount);
-        target.power += amount;
-        trace.push(
-          traceEvent(state, before, slot, 'share', plan.command.id, plan.depth, {
-            value: amount,
-            targetId: target.instanceId,
-          }),
-        );
-      }
-    } else if (effect.kind === 'healLowest') {
-      const targetBefore = lowestAlly(snapshot, before);
-      const target = targetBefore ? findLive(targetBefore.instanceId) : undefined;
-      if (target) {
-        const amount = Math.min(effect.amount, target.maxHp - target.hp);
-        target.hp += amount;
-        trace.push(
-          traceEvent(state, before, slot, 'heal', plan.command.id, plan.depth, {
-            value: amount,
-            targetId: target.instanceId,
-          }),
-        );
-      }
+  for (const plan of plans.filter((action) => action.effect.kind !== 'damage')) {
+    const actor = fighter(plan.team);
+    let appliedAmount = plan.amount;
+    if (plan.effect.kind === 'shield') actor.shield += plan.amount;
+    if (plan.effect.kind === 'repair') {
+      const previousHp = actor.hp;
+      actor.hp = Math.min(actor.maxHp, actor.hp + plan.amount);
+      appliedAmount = actor.hp - previousHp;
     }
+    trace.push(traceEvent({ ...state, tick: tick - 1 }, { ...plan, amount: appliedAmount }, actor.instanceId));
   }
 
-  const damageByTarget = new Map<string, number>();
-  const damageEvents: Array<{
-    actor: FighterState;
-    target: FighterState;
-    command: CommandDefinition;
-    depth: number;
-    amount: number;
-  }> = [];
-  for (const plan of planned) {
-    const actor = findSnapshot(plan.actorId);
-    if (!actor || actor.hp <= 0) continue;
-    const effect = plan.command.effect;
-    if (effect.kind !== 'damage' && effect.kind !== 'burst') continue;
-    const target = selectOpponent(snapshot, actor);
-    if (!target) continue;
-    const amount = effect.kind === 'damage' ? effect.amount : effect.baseDamage + actor.power * effect.damagePerPower;
-    damageByTarget.set(target.instanceId, (damageByTarget.get(target.instanceId) ?? 0) + amount);
-    damageEvents.push({ actor, target, command: plan.command, depth: plan.depth, amount });
-    if (effect.kind === 'burst') {
-      const liveActor = findLive(actor.instanceId);
-      if (liveActor) liveActor.power = 0;
-    }
+  const damage = new Map<Team, number>();
+  for (const plan of plans.filter((action) => action.effect.kind === 'damage')) {
+    const targetTeam = otherTeam(plan.team);
+    damage.set(targetTeam, (damage.get(targetTeam) ?? 0) + plan.amount);
+    trace.push(traceEvent({ ...state, tick: tick - 1 }, plan, fighter(targetTeam).instanceId));
   }
-
-  for (const [targetId, amount] of damageByTarget) {
-    const target = findLive(targetId);
-    if (!target) continue;
+  for (const [team, amount] of damage) {
+    const target = fighter(team);
     const blocked = Math.min(target.shield, amount);
     target.shield -= blocked;
     target.hp = Math.max(0, target.hp - (amount - blocked));
   }
-  for (const event of damageEvents) {
-    trace.push(
-      traceEvent(state, event.actor, slot, 'damage', event.command.id, event.depth, {
-        value: event.amount,
-        targetId: event.target.instanceId,
-      }),
-    );
-  }
 
-  return {
-    ...state,
-    currentSlot: slot,
-    fighters,
-    trace,
-    winner: winnerOf(fighters),
-  };
+  return { ...state, tick, fighters, trace, winner: winnerOf(fighters) };
 }
 
-export function createPlayback(data: GameData, playerProgram: ProgramBoard, enemyProgram: ProgramBoard): BattleState[] {
-  let state = createBattle(data, playerProgram, enemyProgram);
+export function createPlayback(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState[] {
+  let state = createBattle(data, playerBoard, enemyBoard);
   const frames = [state];
-  for (let round = 1; round <= data.rules.maxRounds && !state.winner; round += 1) {
-    state = { ...state, round };
-    for (let slot = 0; slot < data.rules.programSlots && !state.winner; slot += 1) {
-      state = resolveBeat(data, state, slot);
-      frames.push(state);
-    }
+  for (let tick = 1; tick <= data.rules.battleTicks && !state.winner; tick += 1) {
+    state = resolveTick(data, state, tick);
+    frames.push(state);
   }
   if (!state.winner) {
-    const playerHp = state.fighters
-      .filter((fighter) => fighter.team === 'player')
-      .reduce((sum, fighter) => sum + fighter.hp, 0);
-    const enemyHp = state.fighters
-      .filter((fighter) => fighter.team === 'enemy')
-      .reduce((sum, fighter) => sum + fighter.hp, 0);
-    const winner: Winner = playerHp === enemyHp ? 'draw' : playerHp > enemyHp ? 'player' : 'enemy';
-    state = { ...state, winner };
+    state = { ...state, winner: timedWinner(state.fighters) };
     frames[frames.length - 1] = state;
   }
   return frames;
 }
 
-export function runBattle(data: GameData, playerProgram: ProgramBoard, enemyProgram: ProgramBoard): BattleState {
-  return createPlayback(data, playerProgram, enemyProgram).at(-1)!;
+export function runBattle(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState {
+  return createPlayback(data, playerBoard, enemyBoard).at(-1)!;
 }

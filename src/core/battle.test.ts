@@ -1,111 +1,159 @@
 import { describe, expect, it } from 'vitest';
-import { createBattle, resolveBeat, runBattle } from './battle';
-import type { GameData, ProgramBoard } from './types';
+import { createBattle, resolveTick, runBattle } from './battle';
+import type { CircuitBoard, GameData } from './types';
 
-const testData: GameData = {
-  schemaVersion: 1,
+const emptyBoard = (size = 3): CircuitBoard =>
+  Array.from({ length: size }, () => Array.from({ length: size }, () => null));
+
+const testData = (): GameData => ({
+  schemaVersion: 2,
   rules: {
-    lanes: 3,
-    programSlots: 4,
-    maxRounds: 1,
-    stackLimit: 2,
+    boardSize: 3,
+    sourceRow: 1,
+    battleTicks: 3,
     startingCoins: 7,
     winReward: 4,
     retryReward: 1,
     rerollCost: 1,
-    shopSize: 5,
+    shopSize: 3,
   },
   units: [
-    { id: 'volt', name: 'ヴォルト', code: 'V-01', maxHp: 12, color: '#62e8ff' },
-    { id: 'bastion', name: 'バスティオン', code: 'B-07', maxHp: 14, color: '#ffd36a' },
-    { id: 'relay', name: 'リレイ', code: 'R-11', maxHp: 10, color: '#ff7b72' },
+    { id: 'player-bot', name: 'プレイヤー', code: 'P-01', maxHp: 12, color: '#5de7f2' },
+    { id: 'enemy-bot', name: 'ライバル', code: 'R-01', maxHp: 12, color: '#ff786e' },
   ],
-  commands: [
+  playerUnitId: 'player-bot',
+  enemyUnitId: 'enemy-bot',
+  blocks: [
+    {
+      id: 'hub',
+      code: 'HUB',
+      title: 'ハブ',
+      description: '',
+      glyph: '+',
+      price: 1,
+      rarity: 'common',
+      ports: ['west', 'north', 'east', 'south'],
+      effect: { kind: 'wire' },
+    },
     {
       id: 'strike',
       code: 'HIT',
-      title: '攻撃',
-      description: '正面の相手へ3ダメージ',
+      title: '斬撃',
+      description: '',
+      glyph: '斬',
       price: 2,
       rarity: 'common',
+      ports: ['west', 'east'],
+      cooldown: 1,
       effect: { kind: 'damage', amount: 3 },
     },
     {
       id: 'guard',
       code: 'GRD',
-      title: '守る',
-      description: 'シールドを3得る',
+      title: '装甲',
+      description: '',
+      glyph: '盾',
       price: 2,
       rarity: 'common',
-      effect: { kind: 'shield', amount: 3 },
+      ports: ['west', 'east'],
+      cooldown: 2,
+      effect: { kind: 'shield', amount: 2 },
     },
     {
-      id: 'loop',
-      code: 'RPT',
-      title: 'もう一度',
-      description: 'ひとつ前の命令をもう一度動かす',
-      price: 3,
-      rarity: 'rare',
-      effect: { kind: 'repeatPrevious' },
+      id: 'repair',
+      code: 'FIX',
+      title: '修復',
+      description: '',
+      glyph: '修',
+      price: 2,
+      rarity: 'common',
+      ports: ['west', 'east'],
+      cooldown: 1,
+      effect: { kind: 'repair', amount: 3 },
+    },
+    {
+      id: 'amp',
+      code: 'AMP',
+      title: '増幅',
+      description: '',
+      glyph: '増',
+      price: 2,
+      rarity: 'common',
+      ports: ['west', 'east'],
+      effect: { kind: 'amplify', amount: 2 },
+    },
+    {
+      id: 'haste',
+      code: 'SPD',
+      title: '加速',
+      description: '',
+      glyph: '速',
+      price: 2,
+      rarity: 'common',
+      ports: ['west', 'east'],
+      effect: { kind: 'haste', amount: 1 },
     },
   ],
-  startingInventory: ['strike', 'guard', 'loop'],
-  playerProgram: [
-    ['strike', null, null, null],
-    [null, null, null, null],
-    [null, null, null, null],
-  ],
-  enemyProgram: [
-    ['strike', null, null, null],
-    [null, null, null, null],
-    [null, null, null, null],
-  ],
+  startingRack: [],
+  playerBoard: emptyBoard(),
+  enemyBoard: emptyBoard(),
+});
+
+const route = (...blockIds: string[]): CircuitBoard => {
+  const board = emptyBoard();
+  blockIds.forEach((blockId, column) => {
+    board[1][column] = { blockId, rotation: 0, fixed: column === 0 };
+  });
+  return board;
 };
 
-const emptyBoard = (): ProgramBoard => Array.from({ length: 3 }, () => Array.from({ length: 4 }, () => null));
+describe('1vs1 circuit battle', () => {
+  it('activates powered skills on their own cooldowns', () => {
+    const data = testData();
+    const state = createBattle(data, route('hub', 'guard'), route('hub'));
+    const tick1 = resolveTick(data, state, 1);
+    const tick2 = resolveTick(data, tick1, 2);
 
-describe('battle core', () => {
-  it('resolves attacks from the same beat simultaneously', () => {
-    const data = structuredClone(testData);
+    expect(tick1.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
+    expect(tick2.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
+  });
+
+  it('lets a powered skill pass the circuit to the next skill', () => {
+    const data = testData();
+    const result = resolveTick(data, createBattle(data, route('hub', 'guard', 'strike'), route('hub')), 1);
+
+    expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(9);
+    expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
+  });
+
+  it('boosts a directly connected skill with a powered amplifier', () => {
+    const data = testData();
+    const result = resolveTick(data, createBattle(data, route('hub', 'amp', 'strike'), route('hub')), 1);
+
+    expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(7);
+  });
+
+  it('reports only the health that a repair actually restores', () => {
+    const data = testData();
+    const result = resolveTick(data, createBattle(data, route('hub', 'repair'), route('hub', 'strike')), 1);
+
+    expect(result.trace.find((event) => event.kind === 'repair')?.value).toBe(0);
+  });
+
+  it('resolves lethal attacks simultaneously', () => {
+    const data = testData();
     data.units = data.units.map((unit) => ({ ...unit, maxHp: 3 }));
-    const player = emptyBoard();
-    const enemy = emptyBoard();
-    for (let lane = 0; lane < 3; lane += 1) {
-      player[lane][0] = 'strike';
-      enemy[lane][0] = 'strike';
-    }
-    const state = createBattle(data, player, enemy);
+    const result = resolveTick(data, createBattle(data, route('hub', 'strike'), route('hub', 'strike')), 1);
 
-    const next = resolveBeat(data, state, 0);
-
-    expect(next.fighters.every((fighter) => fighter.hp === 0)).toBe(true);
-    expect(next.winner).toBe('draw');
+    expect(result.winner).toBe('draw');
+    expect(result.fighters.every((fighter) => fighter.hp === 0)).toBe(true);
   });
 
-  it('repeats the previous command recursively within the stack limit', () => {
-    const player = emptyBoard();
-    player[0] = ['strike', 'loop', 'loop', 'loop'];
-    const enemy = emptyBoard();
-    const result = runBattle(testData, player, enemy);
-    const enemyVolt = result.fighters.find((fighter) => fighter.team === 'enemy' && fighter.lane === 0);
+  it('finishes a timed battle by remaining health', () => {
+    const data = testData();
+    const result = runBattle(data, route('hub', 'strike'), route('hub'));
 
-    expect(enemyVolt?.hp).toBe(3);
-    expect(result.trace.filter((event) => event.kind === 'execute' && event.commandId === 'strike')).toHaveLength(3);
-    expect(result.trace.some((event) => event.kind === 'stackOverflow')).toBe(true);
-  });
-
-  it('falls back to the next living lane when the opposing lane is empty', () => {
-    const player = emptyBoard();
-    player[0][0] = 'strike';
-    const enemy = emptyBoard();
-    const state = createBattle(testData, player, enemy);
-    state.fighters = state.fighters.map((fighter) =>
-      fighter.team === 'enemy' && fighter.lane === 0 ? { ...fighter, hp: 0 } : fighter,
-    );
-
-    const next = resolveBeat(testData, state, 0);
-    const fallback = next.fighters.find((fighter) => fighter.team === 'enemy' && fighter.lane === 1);
-
-    expect(fallback?.hp).toBe(11);
+    expect(result.winner).toBe('player');
+    expect(result.tick).toBe(3);
   });
 });
