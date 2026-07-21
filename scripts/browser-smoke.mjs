@@ -71,6 +71,10 @@ if ((await desktop.locator('.rack-block').count()) !== 0) throw new Error('Skill
 const firstOffer = desktop.locator('.shop-card').first();
 await firstOffer.locator('.shop-block-button').click();
 await desktop.getByRole('dialog').waitFor();
+const offerDescription = (await desktop.locator('.dialog-copy > p').textContent())?.trim();
+if (!offerDescription?.endsWith('。') || offerDescription.length < 18) {
+  throw new Error(`Skill description is not a readable sentence: ${offerDescription}`);
+}
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 
 const coinsBefore = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
@@ -165,20 +169,22 @@ await desktop.waitForTimeout(900);
 if ((await desktop.locator('.battle-circuit-cell.is-firing').count()) === 0) {
   throw new Error('Circuit summary did not show a firing skill');
 }
-const playerBattleSkill = desktop.locator('.battle-circuit-summary.team-player .battle-circuit-skill').first();
-await playerBattleSkill.click();
-await desktop.locator('.battle-growth-panel[data-growth-team="player"]').waitFor();
-if (!(await desktop.locator('.battle-growth-value').textContent())?.includes('+')) {
-  throw new Error('Player skill detail does not show its combat growth');
+const enemyBuffedSkill = desktop.locator(
+  '.battle-circuit-summary.team-enemy .battle-circuit-skill:has(.block-buff-chip)',
+);
+await enemyBuffedSkill.first().waitFor({ timeout: 5000 });
+await enemyBuffedSkill.first().click();
+await desktop.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
+if (
+  !(await desktop.getByText('毒の付与量', { exact: true }).count()) ||
+  !(await desktop.locator('.battle-buff-values b').textContent())?.includes('+')
+) {
+  throw new Error('Enemy skill detail does not name its improved stat and amount');
 }
-await desktop.screenshot({ path: '/tmp/code-monsters-circuit-growth-detail.png', fullPage: true });
-await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
-const enemyBattleSkill = desktop.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill').first();
-await enemyBattleSkill.click();
-await desktop.locator('.battle-growth-panel[data-growth-team="enemy"]').waitFor();
 if (!(await desktop.getByText('相手の技', { exact: true }).count())) {
   throw new Error('Enemy skill detail does not identify its owner');
 }
+await desktop.screenshot({ path: '/tmp/code-monsters-circuit-buff-detail.png', fullPage: true });
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-battle.png', fullPage: true });
 
@@ -259,13 +265,17 @@ if (!mobileHealth || mobileHealth.width > 68 || mobileHealth.height > 9)
 if ((await mobile.locator('.battle-circuit-cell.is-firing').count()) === 0) {
   throw new Error('Mobile circuit summary did not show a firing skill');
 }
-await mobile.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill').first().click();
-await mobile.locator('.battle-growth-panel[data-growth-team="enemy"]').waitFor();
-const mobileGrowthDialog = await mobile.locator('.block-dialog').boundingBox();
-if (!mobileGrowthDialog || mobileGrowthDialog.y < 0 || mobileGrowthDialog.y + mobileGrowthDialog.height > 844) {
-  throw new Error(`Mobile growth detail is clipped: ${JSON.stringify(mobileGrowthDialog)}`);
+const mobileBuffedSkill = mobile.locator(
+  '.battle-circuit-summary.team-enemy .battle-circuit-skill:has(.block-buff-chip)',
+);
+await mobileBuffedSkill.first().waitFor({ timeout: 5000 });
+await mobileBuffedSkill.first().click();
+await mobile.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
+const mobileBuffDialog = await mobile.locator('.block-dialog').boundingBox();
+if (!mobileBuffDialog || mobileBuffDialog.y < 0 || mobileBuffDialog.y + mobileBuffDialog.height > 844) {
+  throw new Error(`Mobile buff detail is clipped: ${JSON.stringify(mobileBuffDialog)}`);
 }
-await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-growth-detail.png', fullPage: true });
+await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-buff-detail.png', fullPage: true });
 await mobile.getByRole('button', { name: '詳細を閉じる' }).click();
 await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-battle.png', fullPage: true });
 
@@ -295,15 +305,7 @@ console.log(
       target,
       checks: { ...checks, fighters },
       horizontalOverflow,
-      screenshots: [
-        'desktop',
-        'battle',
-        'growth-detail',
-        'mobile',
-        'mobile-battle',
-        'mobile-growth-detail',
-        'overload',
-      ],
+      screenshots: ['desktop', 'battle', 'buff-detail', 'mobile', 'mobile-battle', 'mobile-buff-detail', 'overload'],
     },
     null,
     2,

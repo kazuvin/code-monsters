@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeCircuit, findPoweredCells, rotatePorts } from './circuit';
 import type { CircuitBoard, Direction } from './types';
+import { GAME_DATA } from '../game/game-data';
 
 describe('circuit connectivity', () => {
   it('rotates block ports clockwise', () => {
@@ -81,5 +82,33 @@ describe('circuit connectivity', () => {
     expect(analysis.routeLength.get('1:0')).toBe(1);
     expect(analysis.routeLength.get('1:1')).toBe(4);
     expect(analysis.cyclicCells).toEqual(new Set(['1:0', '0:0', '0:1', '1:1']));
+  });
+
+  it('can build a reachable cycle from the playable poison skills', () => {
+    const board: CircuitBoard = Array.from({ length: GAME_DATA.rules.boardSize }, () =>
+      Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
+    );
+    board[2][0] = { blockId: 'poison-needle', rotation: 0 };
+    board[2][1] = { blockId: 'cultivation-blade', rotation: 0 };
+    board[1][1] = { blockId: 'return-coil', rotation: 0 };
+    board[1][0] = { blockId: 'serpentine-venom', rotation: 0 };
+
+    const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+
+    expect(analysis.poweredCells).toEqual(new Set(['2:0', '2:1', '1:1', '1:0']));
+    expect(analysis.cyclicCells).toEqual(new Set(['2:0', '2:1', '1:1', '1:0']));
+  });
+
+  it('powers both branches when each output faces a matching input', () => {
+    const board: CircuitBoard = Array.from({ length: GAME_DATA.rules.boardSize }, () =>
+      Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
+    );
+    board[2][0] = { blockId: 'arc-shot', rotation: 0 };
+    board[2][1] = { blockId: 'strike', rotation: 0 };
+    board[1][0] = { blockId: 'corrosion-film', rotation: 0 };
+
+    expect(findPoweredCells(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow)).toEqual(
+      new Set(['2:0', '2:1', '1:0']),
+    );
   });
 });

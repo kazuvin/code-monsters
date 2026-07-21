@@ -1,5 +1,5 @@
 import { analyzeCircuit, cellKey, cloneBoard, connectedInputs, connectedOutputs } from './circuit';
-import { effectScalingBonus } from './skill-progress';
+import { buffStatForEffect, buffStatsForBlock, effectScalingBonus, incomingSkillModifiers } from './skill-progress';
 import type {
   BattleState,
   BattleTraceEvent,
@@ -10,6 +10,7 @@ import type {
   EffectTrigger,
   FighterState,
   GameData,
+  SkillBuffState,
   Team,
   Winner,
 } from './types';
@@ -76,16 +77,13 @@ export function createBattle(data: GameData, playerBoard: CircuitBoard, enemyBoa
     enemyBoard: cloneBoard(enemyBoard),
     playerPowered: [...playerAnalysis.poweredCells],
     enemyPowered: [...enemyAnalysis.poweredCells],
-    skillGrowth: { player: {}, enemy: {} },
+    skillBuffs: { player: {}, enemy: {} },
     trace: [],
     overloadLevel: 0,
     overloadDamage: 0,
     winner: null,
   };
 }
-
-const modifierAmount = (block: BlockDefinition, kind: 'amplify' | 'haste') =>
-  block.effects.reduce((sum, effect) => sum + (effect.kind === kind ? effect.amount : 0), 0);
 
 const hasActivation = (block: BlockDefinition) =>
   block.effects.some((effect) => effect.kind !== 'amplify' && effect.kind !== 'haste');
@@ -103,13 +101,8 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
       const block = definitions.get(placed.blockId);
       if (!block || !hasActivation(block)) return;
       const inputs = connectedInputs(board, data.blocks, position);
-      const inputBlocks = inputs
-        .filter((input) => analysis.poweredCells.has(cellKey(input)))
-        .map((input) => board[input.row][input.column])
-        .map((input) => (input ? definitions.get(input.blockId) : undefined))
-        .filter((input): input is BlockDefinition => Boolean(input));
-      const haste = inputBlocks.reduce((sum, input) => sum + modifierAmount(input, 'haste'), 0);
-      const cooldown = Math.max(1, (block.cooldown ?? 1) - haste);
+      const modifiers = incomingSkillModifiers(board, data.blocks, analysis.poweredCells, position);
+      const cooldown = Math.max(1, (block.cooldown ?? 1) - modifiers.cooldownReduction);
       if ((tick - 1) % cooldown !== 0) return;
       plans.push({
         team,
@@ -119,7 +112,7 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
         inCycle: analysis.cyclicCells.has(key),
         inputs,
         outputs: connectedOutputs(board, data.blocks, position),
-        boost: inputBlocks.reduce((sum, input) => sum + modifierAmount(input, 'amplify'), 0),
+        boost: modifiers.effectPower,
       });
     }),
   );
@@ -149,6 +142,7 @@ const traceEvent = (
   value: number,
   targetId: string,
   sequence: number,
+  buffStat?: Extract<BattleTraceEvent, { blockId: string }>['buffStat'],
 ): BattleTraceEvent => ({
   id: `${tick}-${action.team}-${action.position.row}-${action.position.column}-${sequence}`,
   tick,
@@ -159,6 +153,7 @@ const traceEvent = (
   column: action.position.column,
   value,
   targetId,
+  ...(buffStat ? { buffStat } : {}),
 });
 
 const systemTraceEvent = (
@@ -178,25 +173,30 @@ const systemTraceEvent = (
 const numericAmount = (
   effect: Extract<BlockEffect, { amount: number }>,
   action: PlannedActivation,
-  context: { selfGrowth: number; enemyPoison: number },
-) =>
-  effect.amount +
-  ('scaling' in effect
-    ? effectScalingBonus(effect.scaling, {
-        selfGrowth: context.selfGrowth,
-        enemyPoison: context.enemyPoison,
-        pathLength: action.pathLength,
-      })
-    : 0) +
-  (effect.kind === 'growth' ? 0 : action.boost);
+  context: { selfBuffs: SkillBuffState; enemyPoison: number },
+) => {
+  const buffStat = buffStatForEffect(effect);
+  return (
+    effect.amount +
+    ('scaling' in effect
+      ? effectScalingBonus(effect.scaling, {
+          enemyPoison: context.enemyPoison,
+          pathLength: action.pathLength,
+        })
+      : 0) +
+    (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0)
+  );
+};
+
+const cloneSkillBuffs = (buffs: BattleState['skillBuffs']): BattleState['skillBuffs'] => ({
+  player: Object.fromEntries(Object.entries(buffs.player).map(([key, value]) => [key, { ...value }])),
+  enemy: Object.fromEntries(Object.entries(buffs.enemy).map(([key, value]) => [key, { ...value }])),
+});
 
 export function resolveTick(data: GameData, state: BattleState, tick: number): BattleState {
   if (state.winner) return state;
   const fighters = state.fighters.map((fighter) => ({ ...fighter }));
-  const skillGrowth = {
-    player: { ...state.skillGrowth.player },
-    enemy: { ...state.skillGrowth.enemy },
-  };
+  const skillBuffs = cloneSkillBuffs(state.skillBuffs);
   const plans = [
     ...plannedActivations(data, state.playerBoard, 'player', tick),
     ...plannedActivations(data, state.enemyBoard, 'enemy', tick),
@@ -221,7 +221,7 @@ export function resolveTick(data: GameData, state: BattleState, tick: number): B
       enemyPoison: target.poison,
       pathLength: plan.pathLength,
       inCycle: plan.inCycle,
-      selfGrowth: skillGrowth[plan.team][planKey] ?? 0,
+      selfBuffs: skillBuffs[plan.team][planKey] ?? {},
     };
 
     for (const effect of plan.block.effects) {
@@ -232,7 +232,8 @@ export function resolveTick(data: GameData, state: BattleState, tick: number): B
         const consumed = Math.floor(target.poison * effect.fraction);
         if (consumed === 0) continue;
         target.poison -= consumed;
-        const value = consumed * effect.damagePerStack;
+        const damagePerStack = effect.damagePerStack + (context.selfBuffs.rupture ?? 0) + plan.boost;
+        const value = consumed * damagePerStack;
         pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
         trace.push(traceEvent(tick, plan, 'rupture', value, target.instanceId, trace.length));
         continue;
@@ -261,8 +262,17 @@ export function resolveTick(data: GameData, state: BattleState, tick: number): B
           effect.target === 'self' ? [plan.position] : effect.target === 'inputs' ? plan.inputs : plan.outputs;
         targets.forEach((position) => {
           const targetKey = cellKey(position);
-          skillGrowth[plan.team][targetKey] = (skillGrowth[plan.team][targetKey] ?? 0) + amount;
-          trace.push(traceEvent(tick, plan, 'growth', amount, `${plan.team}:${targetKey}`, trace.length));
+          const targetPlaced = (plan.team === 'player' ? state.playerBoard : state.enemyBoard)[position.row][
+            position.column
+          ];
+          const targetBlock = targetPlaced ? data.blocks.find((block) => block.id === targetPlaced.blockId) : undefined;
+          if (!targetBlock) return;
+          const stats = effect.stat === 'all' ? buffStatsForBlock(targetBlock) : [effect.stat];
+          stats.forEach((stat) => {
+            const current = skillBuffs[plan.team][targetKey] ?? {};
+            skillBuffs[plan.team][targetKey] = { ...current, [stat]: (current[stat] ?? 0) + amount };
+            trace.push(traceEvent(tick, plan, 'growth', amount, `${plan.team}:${targetKey}`, trace.length, stat));
+          });
         });
       }
     }
@@ -291,7 +301,7 @@ export function resolveTick(data: GameData, state: BattleState, tick: number): B
   const overloadLevel = overloadLevelAtTick(data, tick);
   const overloadDamage = overloadDamageAtTick(data, tick);
   if (winner || overloadDamage === 0) {
-    return { ...state, tick, fighters, skillGrowth, trace, overloadLevel, overloadDamage: 0, winner };
+    return { ...state, tick, fighters, skillBuffs, trace, overloadLevel, overloadDamage: 0, winner };
   }
 
   const healthBeforeOverload = new Map(fighters.map((target) => [target.team, target.hp]));
@@ -308,7 +318,7 @@ export function resolveTick(data: GameData, state: BattleState, tick: number): B
     if (playerHp !== enemyHp) winner = playerHp > enemyHp ? 'player' : 'enemy';
   }
 
-  return { ...state, tick, fighters, skillGrowth, trace, overloadLevel, overloadDamage, winner };
+  return { ...state, tick, fighters, skillBuffs, trace, overloadLevel, overloadDamage, winner };
 }
 
 export function createPlayback(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState[] {

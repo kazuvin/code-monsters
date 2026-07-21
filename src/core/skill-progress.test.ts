@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeSkillGrowth } from './skill-progress';
-import type { BlockDefinition } from './types';
+import { buffStatsForBlock, incomingSkillModifiers, summarizeSkillProgress } from './skill-progress';
+import type { BlockDefinition, CircuitBoard } from './types';
 
 const block = (effects: BlockDefinition['effects']): BlockDefinition => ({
   id: 'test-skill',
   code: 'TEST',
   title: 'テスト技',
-  description: 'テスト用',
+  description: 'テスト用。',
   glyph: '試',
   price: 1,
   rarity: 'common',
@@ -16,30 +16,63 @@ const block = (effects: BlockDefinition['effects']): BlockDefinition => ({
   cooldown: 1,
 });
 
-describe('skill growth progress', () => {
-  it('shows the current effect and next milestone for self-growth scaling', () => {
-    const result = summarizeSkillGrowth(
-      block([{ kind: 'poison', amount: 1, scaling: { kind: 'self-growth', every: 2, amount: 1 } }]),
-      5,
+describe('skill progress', () => {
+  it('reports exactly which effects were buffed and their current values', () => {
+    const result = summarizeSkillProgress(
+      block([
+        { kind: 'damage', amount: 2 },
+        { kind: 'poison', amount: 1 },
+      ]),
+      { poison: 3 },
+      { effectPower: 2, cooldownReduction: 0 },
     );
 
-    expect(result).toEqual({
-      growth: 5,
-      nextGrowthAt: 6,
-      effects: [{ effectIndex: 0, baseAmount: 1, growthBonus: 2, currentAmount: 3 }],
+    expect(result.effects).toEqual([
+      {
+        effectIndex: 0,
+        stat: 'damage',
+        baseAmount: 2,
+        battleBuff: 0,
+        circuitBoost: 2,
+        scalingBonus: 0,
+        currentAmount: 4,
+      },
+      {
+        effectIndex: 1,
+        stat: 'poison',
+        baseAmount: 1,
+        battleBuff: 3,
+        circuitBoost: 2,
+        scalingBonus: 0,
+        currentAmount: 6,
+      },
+    ]);
+  });
+
+  it('includes rupture damage per stack as a buffable effect', () => {
+    const skill = block([{ kind: 'rupture-poison', fraction: 0.5, damagePerStack: 3 }]);
+
+    expect(buffStatsForBlock(skill)).toEqual(['rupture']);
+    expect(summarizeSkillProgress(skill, { rupture: 1 }).effects[0]?.currentAmount).toBe(4);
+  });
+
+  it('reads amplifier and accelerator effects only from powered connected inputs', () => {
+    const blocks = [
+      { ...block([{ kind: 'amplify', amount: 2 }]), id: 'amp' },
+      { ...block([{ kind: 'haste', amount: 1 }]), id: 'fast' },
+      { ...block([{ kind: 'damage', amount: 2 }]), id: 'strike', inputPorts: ['west', 'north'] as const },
+    ] satisfies BlockDefinition[];
+    const board: CircuitBoard = [
+      [null, { blockId: 'fast', rotation: 0 }],
+      [
+        { blockId: 'amp', rotation: 0 },
+        { blockId: 'strike', rotation: 0 },
+      ],
+    ];
+
+    expect(incomingSkillModifiers(board, blocks, new Set(['1:0', '1:1']), { row: 1, column: 1 })).toEqual({
+      effectPower: 2,
+      cooldownReduction: 0,
     });
-  });
-
-  it('keeps accumulated growth visible when a skill does not convert it yet', () => {
-    const result = summarizeSkillGrowth(block([{ kind: 'damage', amount: 2 }]), 4);
-
-    expect(result).toEqual({ growth: 4, nextGrowthAt: null, effects: [] });
-  });
-
-  it('normalizes missing or invalid growth to zero', () => {
-    const skill = block([{ kind: 'shield', amount: 2, scaling: { kind: 'self-growth', every: 3, amount: 2 } }]);
-
-    expect(summarizeSkillGrowth(skill, Number.NaN).growth).toBe(0);
-    expect(summarizeSkillGrowth(skill, -2).growth).toBe(0);
   });
 });

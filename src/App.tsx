@@ -7,20 +7,27 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { createBattle, createPlayback } from './core/battle';
-import { findPoweredCells, rotatePorts } from './core/circuit';
+import { analyzeCircuit, findPoweredCells, rotatePorts } from './core/circuit';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
 import { createShop, rerollShop } from './core/shop';
-import { summarizeSkillGrowth } from './core/skill-progress';
+import {
+  incomingSkillModifiers,
+  summarizeSkillProgress,
+  type SkillModifiers,
+  type SkillProgress,
+} from './core/skill-progress';
 import type {
   BattleState,
   BattleTraceEvent,
   BlockDefinition,
+  BuffStat,
   CellPosition,
   CircuitBoard,
   Direction,
   FighterState,
   Rotation,
   ShopOffer,
+  SkillBuffState,
   Team,
 } from './core/types';
 import { GAME_DATA } from './game/game-data';
@@ -46,31 +53,52 @@ const initialSeed = 73;
 const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
+const BUFF_COPY: Record<BuffStat, { label: string; short: string }> = {
+  damage: { label: 'ダメージ量', short: '攻' },
+  poison: { label: '毒の付与量', short: '毒' },
+  shield: { label: 'シールド量', short: '盾' },
+  repair: { label: '回復量', short: '癒' },
+  rupture: { label: '破裂威力', short: '裂' },
+};
 
-const effectLabel = (block: BlockDefinition, growth = 0) => {
-  const progressByEffect = new Map(
-    summarizeSkillGrowth(block, growth).effects.map((effect) => [effect.effectIndex, effect]),
-  );
+const effectLabel = (block: BlockDefinition, progress?: SkillProgress) => {
+  const progressByEffect = new Map(progress?.effects.map((effect) => [effect.effectIndex, effect]));
   return block.effects
     .map((effect, effectIndex) => {
       const progress = progressByEffect.get(effectIndex);
-      const amount = 'amount' in effect ? effect.amount : 0;
+      const amount = 'amount' in effect ? effect.amount : effect.kind === 'rupture-poison' ? effect.damagePerStack : 0;
       const currentAmount = progress?.currentAmount ?? amount;
       const amountLabel = (label: string) =>
-        progress && progress.growthBonus > 0 ? `${label} ${amount} → ${currentAmount}` : `${label} ${amount}`;
+        progress && currentAmount !== amount ? `${label} ${amount} → ${currentAmount}` : `${label} ${amount}`;
       if (effect.kind === 'damage') return amountLabel('ダメージ');
       if (effect.kind === 'shield') return amountLabel('シールド');
       if (effect.kind === 'repair') return amountLabel('回復');
       if (effect.kind === 'poison') return amountLabel('毒');
-      if (effect.kind === 'rupture-poison') return `毒を半減・1毒につき${effect.damagePerStack}ダメージ`;
+      if (effect.kind === 'rupture-poison') return `毒を半分消費・1毒につき${currentAmount}ダメージ`;
       if (effect.kind === 'growth') {
         const target = effect.target === 'self' ? '自身' : effect.target === 'inputs' ? '前の技' : '次の技';
-        return `${target}を強化 +${effect.amount}`;
+        const stat = effect.stat === 'all' ? '発動効果' : BUFF_COPY[effect.stat].label;
+        return `${target}の${stat}を戦闘中 +${effect.amount}`;
       }
-      if (effect.kind === 'amplify') return `次の技の効果 +${effect.amount}`;
-      return `次の技の発動間隔 -${effect.amount}`;
+      if (effect.kind === 'amplify') return `接続先の発動効果を +${effect.amount}`;
+      return `接続先の発動間隔を ${effect.amount}拍短縮`;
     })
     .join(' / ');
+};
+
+const visibleBuffs = (block: BlockDefinition, progress: SkillProgress, modifiers: SkillModifiers) => {
+  const stats = new Map<BuffStat, { battle: number; circuit: number }>();
+  progress.effects.forEach((effect) => {
+    const current = stats.get(effect.stat) ?? { battle: 0, circuit: 0 };
+    stats.set(effect.stat, {
+      battle: Math.max(current.battle, effect.battleBuff),
+      circuit: Math.max(current.circuit, effect.circuitBoost),
+    });
+  });
+  return {
+    stats: [...stats.entries()].filter(([, value]) => value.battle + value.circuit > 0),
+    cooldownReduction: block.cooldown ? block.cooldown - Math.max(1, block.cooldown - modifiers.cooldownReduction) : 0,
+  };
 };
 
 const cooldownLabel = (block: BlockDefinition) => {
@@ -199,7 +227,8 @@ const BattleCircuitSummary = ({
   powered,
   events,
   tick,
-  growth,
+  buffs,
+  enemyPoison,
   onSelect,
 }: {
   team: 'player' | 'enemy';
@@ -208,10 +237,12 @@ const BattleCircuitSummary = ({
   powered: string[];
   events: BattleTraceEvent[];
   tick: number;
-  growth: Record<string, number>;
+  buffs: Record<string, SkillBuffState>;
+  enemyPoison: number;
   onSelect: (target: DetailTarget) => void;
 }) => {
   const poweredCells = new Set(powered);
+  const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
   const skillEvents = events.filter(
     (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
       event.kind !== 'overload' && event.kind !== 'poison-tick' && event.team === team,
@@ -243,15 +274,27 @@ const BattleCircuitSummary = ({
             row.map((placed, columnIndex) => {
               const key = `${rowIndex}:${columnIndex}`;
               const block = placed ? blockById.get(placed.blockId) : undefined;
-              const growthValue = growth[key] ?? 0;
               const stateLabel = firingCells.has(key) ? '発火' : poweredCells.has(key) ? '通電' : '未通電';
               if (block && placed) {
+                const position = { row: rowIndex, column: columnIndex };
+                const modifiers = incomingSkillModifiers(board, GAME_DATA.blocks, poweredCells, position);
+                const progress = summarizeSkillProgress(block, buffs[key], modifiers, {
+                  enemyPoison,
+                  pathLength: analysis.routeLength.get(key) ?? 0,
+                });
+                const skillBuffs = visibleBuffs(block, progress, modifiers);
+                const badgeLabels = [
+                  ...skillBuffs.stats.map(
+                    ([stat, value]) => `${BUFF_COPY[stat].label} +${value.battle + value.circuit}`,
+                  ),
+                  ...(skillBuffs.cooldownReduction > 0 ? [`発動間隔 -${skillBuffs.cooldownReduction}拍`] : []),
+                ];
                 return (
                   <button
                     type="button"
                     className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${firingCells.has(key) ? 'is-firing' : ''}`}
                     key={key}
-                    aria-label={`${label}の${block.title} ${stateLabel} 育った量 +${growthValue}`}
+                    aria-label={`${label}の${block.title} ${stateLabel}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
                     aria-haspopup="dialog"
                     onClick={() =>
                       onSelect({
@@ -263,7 +306,18 @@ const BattleCircuitSummary = ({
                     }
                   >
                     <BlockVisual block={block} rotation={placed.rotation} powered={poweredCells.has(key)} compact />
-                    {growthValue > 0 && <b className="block-growth">+{growthValue}</b>}
+                    {badgeLabels.length > 0 && (
+                      <span className="block-buff-list" aria-hidden="true">
+                        {skillBuffs.stats.slice(0, 2).map(([stat, value]) => (
+                          <b className={`block-buff-chip stat-${stat}`} key={stat}>
+                            {BUFF_COPY[stat].short}+{value.battle + value.circuit}
+                          </b>
+                        ))}
+                        {skillBuffs.cooldownReduction > 0 && (
+                          <b className="block-buff-chip stat-haste">速-{skillBuffs.cooldownReduction}</b>
+                        )}
+                      </span>
+                    )}
                   </button>
                 );
               }
@@ -591,10 +645,26 @@ export function App() {
         : powered;
   const detailPlaced = detail?.position ? detailBoard[detail.position.row]?.[detail.position.column] : undefined;
   const detailCellKey = detail?.position ? `${detail.position.row}:${detail.position.column}` : undefined;
-  const detailGrowth =
-    detailBattleTeam && detailCellKey ? (battle.skillGrowth[detailBattleTeam][detailCellKey] ?? 0) : 0;
-  const detailGrowthProgress = detailBlock ? summarizeSkillGrowth(detailBlock, detailGrowth) : undefined;
   const detailOwner = detailBattleTeam === 'player' ? player : detailBattleTeam === 'enemy' ? enemy : undefined;
+  const detailOpponent = detailBattleTeam === 'player' ? enemy : detailBattleTeam === 'enemy' ? player : undefined;
+  const detailAnalysis = analyzeCircuit(detailBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+  const detailModifiers =
+    detail?.position && detailCellKey && detailPoweredCells.has(detailCellKey)
+      ? incomingSkillModifiers(detailBoard, GAME_DATA.blocks, detailPoweredCells, detail.position)
+      : { effectPower: 0, cooldownReduction: 0 };
+  const detailBuffs =
+    detailBattleTeam && detailCellKey ? (battle.skillBuffs[detailBattleTeam][detailCellKey] ?? {}) : {};
+  const detailProgress = detailBlock
+    ? summarizeSkillProgress(detailBlock, detailBuffs, detailModifiers, {
+        enemyPoison: detailOpponent?.poison ?? 0,
+        pathLength: detailCellKey ? (detailAnalysis.routeLength.get(detailCellKey) ?? 0) : 0,
+      })
+    : undefined;
+  const detailVisibleBuffs =
+    detailBlock && detailProgress ? visibleBuffs(detailBlock, detailProgress, detailModifiers) : undefined;
+  const detailCooldown = detailBlock?.cooldown
+    ? Math.max(1, detailBlock.cooldown - detailModifiers.cooldownReduction)
+    : undefined;
 
   return (
     <main className={`app-shell phase-${phase}`}>
@@ -823,7 +893,8 @@ export function App() {
               powered={battle.playerPowered}
               events={frameEvents}
               tick={battle.tick}
-              growth={battle.skillGrowth.player}
+              buffs={battle.skillBuffs.player}
+              enemyPoison={enemy.poison}
               onSelect={openDetail}
             />
             <BattleCircuitSummary
@@ -833,7 +904,8 @@ export function App() {
               powered={battle.enemyPowered}
               events={frameEvents}
               tick={battle.tick}
-              growth={battle.skillGrowth.enemy}
+              buffs={battle.skillBuffs.enemy}
+              enemyPoison={player.poison}
               onSelect={openDetail}
             />
           </div>
@@ -873,47 +945,68 @@ export function App() {
               <small>{detail.location === 'battle' ? `${detailBlock.code} · LIVE` : detailBlock.code}</small>
               <h2 id="block-dialog-title">{detailBlock.title}</h2>
               <p>{detailBlock.description}</p>
-              {detailBattleTeam && detailGrowthProgress && detailOwner && (
+              {detailBattleTeam && detailProgress && detailVisibleBuffs && detailOwner && (
                 <div
-                  className={`battle-growth-panel team-${detailBattleTeam}`}
-                  data-growth-team={detailBattleTeam}
-                  aria-label={`${detailBlock.title}の戦闘中の成長 ${detailGrowthProgress.growth}`}
+                  className={`battle-buff-panel team-${detailBattleTeam}`}
+                  data-buff-team={detailBattleTeam}
+                  aria-label={`${detailBlock.title}の戦闘中の強化`}
                 >
                   <header>
                     <span>
                       <small>{detailBattleTeam === 'player' ? 'YOUR SKILL' : 'RIVAL SKILL'}</small>
                       <b>{detailBattleTeam === 'player' ? '自分の技' : '相手の技'}</b>
                     </span>
-                    <strong>
-                      <small>育った量</small>
-                      <b className="battle-growth-value">+{detailGrowthProgress.growth}</b>
-                    </strong>
+                    <strong>戦闘中の強化</strong>
                   </header>
-                  <div className="battle-growth-meter" aria-hidden="true">
-                    {Array.from({ length: 8 }, (_, index) => (
-                      <i className={index < Math.min(8, detailGrowthProgress.growth) ? 'is-active' : ''} key={index} />
-                    ))}
-                  </div>
+                  {detailVisibleBuffs.stats.length > 0 || detailVisibleBuffs.cooldownReduction > 0 ? (
+                    <ul className="battle-buff-values">
+                      {detailVisibleBuffs.stats.map(([stat, value]) => (
+                        <li key={stat}>
+                          <span>{BUFF_COPY[stat].label}</span>
+                          <b>+{value.battle + value.circuit}</b>
+                          <small>
+                            {[
+                              value.battle > 0 ? `成長 +${value.battle}` : '',
+                              value.circuit > 0 ? `増幅 +${value.circuit}` : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' / ')}
+                          </small>
+                        </li>
+                      ))}
+                      {detailVisibleBuffs.cooldownReduction > 0 && (
+                        <li>
+                          <span>発動間隔</span>
+                          <b>-{detailVisibleBuffs.cooldownReduction}拍</b>
+                          <small>加速回路</small>
+                        </li>
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="battle-buff-empty">この技への強化はまだありません。</p>
+                  )}
                   <footer>
                     <span>{detailOwner.name}</span>
-                    <em>
-                      {detailGrowthProgress.nextGrowthAt === null
-                        ? detailGrowthProgress.growth > 0
-                          ? '成長を蓄積中'
-                          : 'まだ成長なし'
-                        : `次の効果上昇まで ${detailGrowthProgress.nextGrowthAt - detailGrowthProgress.growth}`}
-                    </em>
+                    <em>{detailCooldown ? `${detailCooldown}拍ごとに発動` : '通電中ずっと作用'}</em>
                   </footer>
                 </div>
               )}
               <dl>
-                <div>
-                  <dt>効果</dt>
-                  <dd>{effectLabel(detailBlock, detailGrowth)}</dd>
-                </div>
+                {detailBattleTeam && detailProgress && (
+                  <div>
+                    <dt>現在</dt>
+                    <dd>{effectLabel(detailBlock, detailProgress)}</dd>
+                  </div>
+                )}
                 <div>
                   <dt>動作</dt>
-                  <dd>{cooldownLabel(detailBlock)}</dd>
+                  <dd>
+                    {detailCooldown
+                      ? detailCooldown === 1
+                        ? '毎拍'
+                        : `${detailCooldown}拍ごと`
+                      : cooldownLabel(detailBlock)}
+                  </dd>
                 </div>
                 <div>
                   <dt>入力</dt>

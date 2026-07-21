@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -152,7 +152,7 @@
       "id": "strike",
       "code": "SLASH",
       "title": "斬撃",
-      "description": "毎拍2ダメージ。右へ次の技をつなぐ",
+      "description": "1拍ごとに、相手へ2ダメージを与える。右の技へ通電する。",
       "glyph": "斬",
       "price": 2,
       "rarity": "common",
@@ -166,7 +166,7 @@
       "id": "breaker",
       "code": "BREAK",
       "title": "破砕撃",
-      "description": "2拍ごとに4ダメージ。上へ次の技をつなぐ",
+      "description": "2拍ごとに、相手へ4ダメージを与える。上の技へ通電する。",
       "glyph": "破",
       "price": 3,
       "rarity": "common",
@@ -180,7 +180,7 @@
       "id": "arc-shot",
       "code": "ARC",
       "title": "アーク弾",
-      "description": "2拍ごとに3ダメージ。上と右へ技を分岐する",
+      "description": "2拍ごとに、相手へ3ダメージを与える。通電を上と右の2方向へ分ける。",
       "glyph": "弧",
       "price": 3,
       "rarity": "rare",
@@ -194,7 +194,7 @@
       "id": "barrier",
       "code": "GUARD",
       "title": "障壁",
-      "description": "2拍ごとにシールドを3得る。右へ技をつなぐ",
+      "description": "2拍ごとに、シールドを3得る。右の技へ通電する。",
       "glyph": "盾",
       "price": 2,
       "rarity": "common",
@@ -208,7 +208,7 @@
       "id": "repair",
       "code": "REPAIR",
       "title": "修復",
-      "description": "3拍ごとにHPを3回復。上へ技をつなぐ",
+      "description": "3拍ごとに、失ったHPを3回復する。上の技へ通電する。",
       "glyph": "修",
       "price": 3,
       "rarity": "rare",
@@ -222,7 +222,7 @@
       "id": "rail-cannon",
       "code": "RAIL",
       "title": "レール砲",
-      "description": "4拍ごとに7ダメージ。つないだ先で放つ",
+      "description": "4拍ごとに、相手へ7ダメージを与える。この技で通電は止まる。",
       "glyph": "砲",
       "price": 4,
       "rarity": "rare",
@@ -236,7 +236,7 @@
       "id": "amplifier",
       "code": "AMP",
       "title": "増幅術",
-      "description": "直結した技の効果を2増やし、右へつなぐ",
+      "description": "右に直接つないだ技が発動すると、その技のダメージ・毒・シールド・回復・破裂威力を2増やす。",
       "glyph": "増",
       "price": 3,
       "rarity": "rare",
@@ -249,7 +249,7 @@
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "直結した技の発動間隔を1拍縮め、右へつなぐ",
+      "description": "右に直接つないだ技の発動間隔を1拍短くする。発動間隔は1拍より短くならない。",
       "glyph": "速",
       "price": 3,
       "rarity": "rare",
@@ -262,12 +262,12 @@
       "id": "poison-needle",
       "code": "VENOM",
       "title": "毒針",
-      "description": "毒を始動。すでに毒なら自身が育つ",
+      "description": "1拍ごとに、1ダメージと毒1を与える。相手がすでに毒なら、発動後にこの技の毒付与量が1増える。",
       "glyph": "毒",
       "price": 2,
       "rarity": "common",
       "shopWeight": 5,
-      "inputPorts": ["west"],
+      "inputPorts": ["west", "north"],
       "outputPorts": ["east"],
       "rotatable": false,
       "buildIds": ["poison"],
@@ -275,14 +275,20 @@
       "effects": [
         { "kind": "damage", "amount": 1 },
         { "kind": "poison", "amount": 1 },
-        { "kind": "growth", "amount": 1, "target": "self", "trigger": { "kind": "enemy-poisoned" } }
+        {
+          "kind": "growth",
+          "amount": 1,
+          "target": "self",
+          "stat": "poison",
+          "trigger": { "kind": "enemy-poisoned" }
+        }
       ]
     },
     {
       "id": "cultivation-blade",
       "code": "CULT",
       "title": "培養刃",
-      "description": "毒状態なら、次の技を戦闘中強化",
+      "description": "2拍ごとに、相手へ2ダメージを与える。相手が毒なら、上に直接つないだ技のダメージ・毒・シールド・回復・破裂威力をそれぞれ1増やす。",
       "glyph": "培",
       "price": 3,
       "rarity": "common",
@@ -294,19 +300,25 @@
       "cooldown": 2,
       "effects": [
         { "kind": "damage", "amount": 2 },
-        { "kind": "growth", "amount": 1, "target": "outputs", "trigger": { "kind": "enemy-poisoned" } }
+        {
+          "kind": "growth",
+          "amount": 1,
+          "target": "outputs",
+          "stat": "all",
+          "trigger": { "kind": "enemy-poisoned" }
+        }
       ]
     },
     {
       "id": "serpentine-venom",
       "code": "BEND",
       "title": "蛇行毒",
-      "description": "経路を下へ曲げ、長い経路で育つ",
+      "description": "2拍ごとに、毒1を与える。電源から3個目以降に置くと、発動後にこの技の毒付与量が1増える。",
       "glyph": "蛇",
       "price": 2,
       "rarity": "common",
       "shopWeight": 4,
-      "inputPorts": ["west"],
+      "inputPorts": ["west", "east"],
       "outputPorts": ["south"],
       "rotatable": false,
       "buildIds": ["poison"],
@@ -317,6 +329,7 @@
           "kind": "growth",
           "amount": 1,
           "target": "self",
+          "stat": "poison",
           "trigger": { "kind": "path-length-at-least", "amount": 3 }
         }
       ]
@@ -325,7 +338,7 @@
       "id": "corrosion-film",
       "code": "FILM",
       "title": "腐食膜",
-      "description": "相手の毒が多いほど防護を得る",
+      "description": "2拍ごとに、シールドを2得る。相手に付いた毒3ごとに、得るシールドが1増える。",
       "glyph": "膜",
       "price": 3,
       "rarity": "common",
@@ -341,7 +354,7 @@
       "id": "toxic-reservoir",
       "code": "TANK",
       "title": "毒溜め",
-      "description": "長い経路を毒と防護へ変える",
+      "description": "3拍ごとに、毒1を与えてシールド1を得る。通電した技2個ごとにシールドが1増え、4個目以降なら発動後に毒付与量が1増える。",
       "glyph": "溜",
       "price": 4,
       "rarity": "rare",
@@ -358,6 +371,7 @@
           "kind": "growth",
           "amount": 1,
           "target": "self",
+          "stat": "poison",
           "trigger": { "kind": "path-length-at-least", "amount": 4 }
         }
       ]
@@ -366,7 +380,7 @@
       "id": "venom-bloom",
       "code": "BLOOM",
       "title": "猛毒花",
-      "description": "毒を残し、戦闘中強化で毒を増やす",
+      "description": "3拍ごとに、毒1を与える。ほかの技に育てられると、その分だけ一度に与える毒が増える。",
       "glyph": "花",
       "price": 4,
       "rarity": "rare",
@@ -376,13 +390,13 @@
       "rotatable": false,
       "buildIds": ["poison"],
       "cooldown": 3,
-      "effects": [{ "kind": "poison", "amount": 1, "scaling": { "kind": "self-growth", "every": 2, "amount": 1 } }]
+      "effects": [{ "kind": "poison", "amount": 1 }]
     },
     {
       "id": "rupture-stake",
       "code": "BURST",
       "title": "破裂杭",
-      "description": "毒を半分失わせ、1毒につき3ダメージ",
+      "description": "4拍ごとに、相手の毒を半分取り除く。取り除いた毒1につき3ダメージを与える。",
       "glyph": "裂",
       "price": 4,
       "rarity": "rare",
@@ -398,7 +412,7 @@
       "id": "status-relay",
       "code": "RELAY",
       "title": "異常伝送",
-      "description": "毒状態なら、出力先を戦闘中強化",
+      "description": "2拍ごとに、相手へ1ダメージを与える。相手が毒なら、右に直接つないだ技のダメージ・毒・シールド・回復・破裂威力をそれぞれ1増やす。",
       "glyph": "伝",
       "price": 3,
       "rarity": "rare",
@@ -410,14 +424,20 @@
       "cooldown": 2,
       "effects": [
         { "kind": "damage", "amount": 1 },
-        { "kind": "growth", "amount": 1, "target": "outputs", "trigger": { "kind": "enemy-poisoned" } }
+        {
+          "kind": "growth",
+          "amount": 1,
+          "target": "outputs",
+          "stat": "all",
+          "trigger": { "kind": "enemy-poisoned" }
+        }
       ]
     },
     {
       "id": "return-coil",
       "code": "RETURN",
       "title": "帰還コイル",
-      "description": "循環していると、自身と戻り先が育つ",
+      "description": "2拍ごとに、シールドを1得る。回路が一周してこの技へ戻ると、自身のシールドと左に直接つないだ技の各効果が1ずつ増える。",
       "glyph": "還",
       "price": 3,
       "rarity": "rare",
@@ -429,15 +449,27 @@
       "cooldown": 2,
       "effects": [
         { "kind": "shield", "amount": 1 },
-        { "kind": "growth", "amount": 1, "target": "self", "trigger": { "kind": "in-cycle" } },
-        { "kind": "growth", "amount": 1, "target": "outputs", "trigger": { "kind": "in-cycle" } }
+        {
+          "kind": "growth",
+          "amount": 1,
+          "target": "self",
+          "stat": "shield",
+          "trigger": { "kind": "in-cycle" }
+        },
+        {
+          "kind": "growth",
+          "amount": 1,
+          "target": "outputs",
+          "stat": "all",
+          "trigger": { "kind": "in-cycle" }
+        }
       ]
     },
     {
       "id": "long-route-fang",
       "code": "LONG",
       "title": "長路の牙",
-      "description": "通った技が多いほど強くなる",
+      "description": "2拍ごとに、相手へ2ダメージを与える。通電した技1個につきダメージが1増え、4個目以降なら発動後にさらに1増える。",
       "glyph": "路",
       "price": 3,
       "rarity": "rare",
@@ -453,6 +485,7 @@
           "kind": "growth",
           "amount": 1,
           "target": "self",
+          "stat": "damage",
           "trigger": { "kind": "path-length-at-least", "amount": 4 }
         }
       ]
@@ -469,7 +502,7 @@
   "enemyBoard": [
     [null, null, null, null, null],
     [null, null, null, null, null],
-    [{ "blockId": "barrier", "rotation": 0 }, { "blockId": "arc-shot", "rotation": 0 }, null, null, null],
+    [{ "blockId": "poison-needle", "rotation": 0 }, { "blockId": "arc-shot", "rotation": 0 }, null, null, null],
     [null, null, null, null, null],
     [null, null, null, null, null]
   ]

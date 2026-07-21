@@ -1,4 +1,5 @@
 import rawGameData from './game.json';
+import { buffStatsForBlock } from '../core/skill-progress';
 import type { CircuitBoard, GameData } from '../core/types';
 import { validateBuildDesign } from './build-design';
 
@@ -23,6 +24,7 @@ const validateBoard = (name: string, board: CircuitBoard, data: GameData, errors
 
 export function validateGameData(data: GameData): string[] {
   const errors: string[] = [];
+  const opposite = { north: 'south', east: 'west', south: 'north', west: 'east' } as const;
   const unique = (label: string, ids: string[]) => {
     const seen = new Set<string>();
     for (const id of ids) {
@@ -59,8 +61,16 @@ export function validateGameData(data: GameData): string[] {
     if (!blockIds.has(blockId)) errors.push(`startingRack[${index}] references unknown block "${blockId}"`);
   });
   const buildIds = new Set(data.buildDesign.builds.map((build) => build.id));
+  const inputDirections = new Set(data.blocks.flatMap((block) => block.inputPorts));
   data.blocks.forEach((block) => {
+    if (!block.description.trim().endsWith('。'))
+      errors.push(`block "${block.id}" description must be a complete sentence`);
     if (block.inputPorts.length + block.outputPorts.length === 0) errors.push(`block "${block.id}" must have a port`);
+    block.outputPorts.forEach((output) => {
+      if (!inputDirections.has(opposite[output])) {
+        errors.push(`block "${block.id}" output "${output}" has no compatible receiver`);
+      }
+    });
     if (block.effects.length === 0) errors.push(`block "${block.id}" must have an effect`);
     const active = block.effects.some((effect) => effect.kind !== 'amplify' && effect.kind !== 'haste');
     if (active && !block.cooldown) errors.push(`active block "${block.id}" must have a cooldown`);
@@ -73,6 +83,20 @@ export function validateGameData(data: GameData): string[] {
       }
       if ('trigger' in effect && effect.trigger?.kind === 'path-length-at-least' && effect.trigger.amount < 1) {
         errors.push(`block "${block.id}" effect "${effect.kind}" path length must be positive`);
+      }
+      if (
+        effect.kind === 'growth' &&
+        !['all', 'damage', 'poison', 'shield', 'repair', 'rupture'].includes(effect.stat)
+      ) {
+        errors.push(`block "${block.id}" growth stat is invalid`);
+      }
+      if (
+        effect.kind === 'growth' &&
+        effect.target === 'self' &&
+        effect.stat !== 'all' &&
+        !buffStatsForBlock(block).includes(effect.stat)
+      ) {
+        errors.push(`block "${block.id}" cannot grow its missing "${effect.stat}" effect`);
       }
       if (effect.kind === 'rupture-poison') {
         if (effect.fraction <= 0 || effect.fraction > 1) {

@@ -6,6 +6,9 @@ export type Rotation = 0 | 1 | 2 | 3;
 export type BuildRole = 'starter' | 'grower' | 'cycler' | 'sustain' | 'payoff';
 export type SkillDesignStatus = 'planned' | 'playable';
 export type SkillDesignScope = 'exclusive' | 'shared';
+export type BuffStat = 'damage' | 'poison' | 'shield' | 'repair' | 'rupture';
+export type BuffTarget = BuffStat | 'all';
+export type SkillBuffState = Partial<Record<BuffStat, number>>;
 
 export type EffectTrigger =
   | { kind: 'enemy-poisoned' }
@@ -13,7 +16,6 @@ export type EffectTrigger =
   | { kind: 'in-cycle' };
 
 export type EffectScaling =
-  | { kind: 'self-growth'; every: number; amount: number }
   | { kind: 'enemy-poison'; every: number; amount: number }
   | { kind: 'path-length'; every: number; amount: number };
 
@@ -32,7 +34,13 @@ export type ActiveEffect =
 
 export type BlockEffect =
   | ActiveEffect
-  | { kind: 'growth'; amount: number; target: 'self' | 'inputs' | 'outputs'; trigger?: EffectTrigger }
+  | {
+      kind: 'growth';
+      amount: number;
+      target: 'self' | 'inputs' | 'outputs';
+      stat: BuffTarget;
+      trigger?: EffectTrigger;
+    }
   | { kind: 'amplify'; amount: number }
   | { kind: 'haste'; amount: number };
 
@@ -167,6 +175,7 @@ export type BattleTraceEvent =
       column: number;
       value: number;
       targetId: string;
+      buffStat?: BuffStat;
     }
   | {
       id: string;
@@ -184,7 +193,7 @@ export type BattleState = {
   enemyBoard: CircuitBoard;
   playerPowered: string[];
   enemyPowered: string[];
-  skillGrowth: Record<Team, Record<string, number>>;
+  skillBuffs: Record<Team, Record<string, SkillBuffState>>;
   trace: BattleTraceEvent[];
   overloadLevel: number;
   overloadDamage: number;

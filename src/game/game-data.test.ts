@@ -30,6 +30,26 @@ describe('game data', () => {
     );
   });
 
+  it('has at least one playable receiver for every output direction', () => {
+    const opposite = { north: 'south', east: 'west', south: 'north', west: 'east' } as const;
+    const inputDirections = new Set(GAME_DATA.blocks.flatMap((block) => block.inputPorts));
+
+    GAME_DATA.blocks.forEach((block) => {
+      block.outputPorts.forEach((output) => {
+        expect(inputDirections.has(opposite[output]), `${block.id} output ${output} has no receiver`).toBe(true);
+      });
+    });
+  });
+
+  it('describes every skill as readable sentences instead of vague parameter fragments', () => {
+    const vagueFragments = ['自身が育つ', '戦闘中強化', '強くなる', '効果を2増やし'];
+
+    GAME_DATA.blocks.forEach((block) => {
+      expect(block.description.endsWith('。'), `${block.id} needs a complete sentence`).toBe(true);
+      vagueFragments.forEach((fragment) => expect(block.description).not.toContain(fragment));
+    });
+  });
+
   it('rejects an unknown block in a circuit', () => {
     const invalid = structuredClone(GAME_DATA);
     invalid.enemyBoard[0][0] = { blockId: 'missing-block', rotation: 0 };
@@ -46,11 +66,23 @@ describe('game data', () => {
 
   it('rejects an effect scaling interval that cannot progress', () => {
     const invalid = structuredClone(GAME_DATA);
-    const bloom = invalid.blocks.find((block) => block.id === 'venom-bloom')!;
-    const poison = bloom.effects.find((effect) => effect.kind === 'poison');
-    if (!poison || poison.kind !== 'poison' || !poison.scaling) throw new Error('missing poison scaling fixture');
-    poison.scaling.every = 0;
+    const film = invalid.blocks.find((block) => block.id === 'corrosion-film')!;
+    const shield = film.effects.find((effect) => effect.kind === 'shield');
+    if (!shield || shield.kind !== 'shield' || !shield.scaling) throw new Error('missing shield scaling fixture');
+    shield.scaling.every = 0;
 
-    expect(validateGameData(invalid)).toContain('block "venom-bloom" effect "poison" scaling every must be positive');
+    expect(validateGameData(invalid)).toContain(
+      'block "corrosion-film" effect "shield" scaling every must be positive',
+    );
+  });
+
+  it('rejects self growth that cannot improve one of the skill effects', () => {
+    const invalid = structuredClone(GAME_DATA);
+    const needle = invalid.blocks.find((block) => block.id === 'poison-needle')!;
+    const growth = needle.effects.find((effect) => effect.kind === 'growth');
+    if (!growth || growth.kind !== 'growth') throw new Error('missing growth fixture');
+    growth.stat = 'shield';
+
+    expect(validateGameData(invalid)).toContain('block "poison-needle" cannot grow its missing "shield" effect');
   });
 });
