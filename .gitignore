@@ -16,3 +16,6 @@ __pycache__/
 *.pyc
 *.egg-info/
 game-assets/runs/
+reports/balance/latest.csv
+reports/balance/latest.json
+reports/balance/latest.md

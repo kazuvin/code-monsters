@@ -1,0 +1,835 @@
+import { createBattle, resolveTick } from './battle';
+import { createBattleReport } from './battle-report';
+import { analyzeCircuit, cloneBoard, rotatePorts } from './circuit';
+import { generateEnemyBuild, type EnemyBuild } from './enemy-builder';
+import type { BattleState, BlockDefinition, CircuitBoard, GameData, Rarity, Rotation, Team, Winner } from './types';
+
+export type BalanceSignal =
+  | 'counterfactual-overpowered'
+  | 'counterfactual-underpowered'
+  | 'matched-overrepresented'
+  | 'matched-underrepresented'
+  | 'reported-output-high'
+  | 'reported-output-low'
+  | 'ablation-impact-high'
+  | 'ablation-impact-low';
+
+export type BalanceSimulationOptions = {
+  battles?: number;
+  runs?: number[];
+  seed?: number;
+  skillTrials?: number;
+  skillIds?: string[];
+  minimumSamples?: number;
+  minimumCounterfactualSamples?: number;
+  winRateLiftThreshold?: number;
+  efficiencyZScoreThreshold?: number;
+};
+
+export type ResolvedBalanceSimulationConfig = {
+  battles: number;
+  runs: number[];
+  seed: number;
+  skillTrials: number;
+  skillIds: string[];
+  minimumSamples: number;
+  minimumCounterfactualSamples: number;
+  winRateLiftThreshold: number;
+  efficiencyZScoreThreshold: number;
+};
+
+export type ConfidenceInterval = { lower: number; upper: number };
+
+export type SkillCounterfactualReport = {
+  samples: number;
+  scoreLift: number | null;
+  scoreLift95: ConfidenceInterval | null;
+  reportedDamageDelta: number | null;
+  reportedDefenseDelta: number | null;
+  battleTicksDelta: number | null;
+};
+
+export type SkillBalanceReport = {
+  blockId: string;
+  code: string;
+  title: string;
+  rarity: Rarity;
+  price: number;
+  appearances: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number | null;
+  scoreRate: number | null;
+  winRate95: ConfidenceInterval | null;
+  matchedSamples: number;
+  matchedScoreLift: number | null;
+  averageTicks: number | null;
+  activationsPerBattle: number | null;
+  reportedDamagePerBattle: number | null;
+  poisonAppliedPerBattle: number | null;
+  reportedShieldPerBattle: number | null;
+  effectiveRepairPerBattle: number | null;
+  reportedOutputPerActivation: number | null;
+  averageTeamDamageWhenPresent: number | null;
+  efficiencyZScore: number | null;
+  counterfactual: SkillCounterfactualReport;
+  ablation: SkillCounterfactualReport;
+  ablationImpactZScore: number | null;
+  signals: BalanceSignal[];
+  suspectedOutlier: boolean;
+};
+
+export type RunBalanceReport = {
+  run: number;
+  battles: number;
+  playerWins: number;
+  enemyWins: number;
+  draws: number;
+  averageTicks: number;
+};
+
+export type TraitMatchupReport = {
+  playerTrait: EnemyBuild['traitId'];
+  enemyTrait: EnemyBuild['traitId'];
+  battles: number;
+  playerWins: number;
+  enemyWins: number;
+  draws: number;
+  playerScoreRate: number;
+  averageTicks: number;
+};
+
+export type BalanceSimulationResult = {
+  simulationVersion: 1;
+  gameSchemaVersion: number;
+  config: ResolvedBalanceSimulationConfig;
+  summary: {
+    tournamentBattles: number;
+    benchmarkBattles: number;
+    totalBattles: number;
+    sideSwappedPairs: number;
+    teamSamples: number;
+    playerWins: number;
+    enemyWins: number;
+    draws: number;
+    playerWinRate: number;
+    enemyWinRate: number;
+    drawRate: number;
+    sideBias: number;
+    averageTicks: number;
+  };
+  byRun: RunBalanceReport[];
+  traitMatchups: TraitMatchupReport[];
+  skills: SkillBalanceReport[];
+  methodology: {
+    tournament: string;
+    counterfactual: string;
+    ablation: string;
+    limitations: string[];
+  };
+};
+
+export type BalanceComparison = {
+  compatible: boolean;
+  summary: {
+    averageTicksDelta: number;
+    sideBiasDelta: number;
+  };
+  newSuspectedOutliers: string[];
+  resolvedSuspectedOutliers: string[];
+  skills: Array<{
+    blockId: string;
+    scoreRateDelta: number | null;
+    matchedScoreLiftDelta: number | null;
+    counterfactualScoreLiftDelta: number | null;
+    ablationScoreLiftDelta: number | null;
+  }>;
+};
+
+type TournamentObservation = {
+  run: number;
+  traitId: EnemyBuild['traitId'];
+  skillIds: string[];
+  score: number;
+};
+
+type MutableSkillReport = {
+  appearances: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  totalTicks: number;
+  activations: number;
+  reportedDamage: number;
+  poisonApplied: number;
+  reportedShield: number;
+  effectiveRepair: number;
+  totalTeamDamage: number;
+};
+
+type MutableRunReport = Omit<RunBalanceReport, 'averageTicks'> & { totalTicks: number };
+type MutableTraitMatchup = Omit<TraitMatchupReport, 'playerScoreRate' | 'averageTicks'> & { totalTicks: number };
+type CounterfactualSample = {
+  scoreDelta: number;
+  reportedDamageDelta: number;
+  reportedDefenseDelta: number;
+  battleTicksDelta: number;
+};
+
+const DEFAULT_OPTIONS: ResolvedBalanceSimulationConfig = {
+  battles: 1000,
+  runs: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  seed: 20260721,
+  skillTrials: 12,
+  skillIds: [],
+  minimumSamples: 100,
+  minimumCounterfactualSamples: 8,
+  winRateLiftThreshold: 0.08,
+  efficiencyZScoreThreshold: 2,
+};
+
+const round = (value: number, digits = 6) => Number(value.toFixed(digits));
+const mean = (values: number[]) =>
+  values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : 0;
+const outcomeScore = (winner: Winner, team: Team) => (winner === 'draw' ? 0.5 : winner === team ? 1 : 0);
+const blockIdsOn = (board: CircuitBoard) => [
+  ...new Set(board.flatMap((row) => row.flatMap((cell) => (cell ? [cell.blockId] : [])))),
+];
+
+const resolveOptions = (data: GameData, options: BalanceSimulationOptions): ResolvedBalanceSimulationConfig => {
+  const playableIds = data.buildDesign.skills.flatMap((skill) =>
+    skill.status === 'playable' && skill.blockId ? [skill.blockId] : [],
+  );
+  const config = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+    runs: options.runs ? [...options.runs] : [...DEFAULT_OPTIONS.runs],
+    skillIds: options.skillIds ? [...new Set(options.skillIds)] : [...playableIds],
+  };
+  if (!Number.isInteger(config.battles) || config.battles <= 0) throw new Error('battles must be a positive integer');
+  if (config.runs.length === 0 || config.runs.some((run) => !Number.isInteger(run) || run <= 0)) {
+    throw new Error('runs must contain positive integers');
+  }
+  if (!Number.isInteger(config.seed)) throw new Error('seed must be an integer');
+  if (!Number.isInteger(config.skillTrials) || config.skillTrials < 0) {
+    throw new Error('skillTrials must be a non-negative integer');
+  }
+  if (!Number.isInteger(config.minimumSamples) || config.minimumSamples <= 0) {
+    throw new Error('minimumSamples must be a positive integer');
+  }
+  if (!Number.isInteger(config.minimumCounterfactualSamples) || config.minimumCounterfactualSamples <= 0) {
+    throw new Error('minimumCounterfactualSamples must be a positive integer');
+  }
+  const unknownIds = config.skillIds.filter((id) => !playableIds.includes(id));
+  if (unknownIds.length > 0) throw new Error(`Unknown playable skill ids: ${unknownIds.join(', ')}`);
+  return config;
+};
+
+const runHeadlessBattle = (data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState => {
+  let state = createBattle(data, playerBoard, enemyBoard);
+  for (let tick = 1; !state.winner; tick += 1) {
+    if (tick > 10_000) throw new Error('Battle exceeded the 10,000 tick simulation guard');
+    state = resolveTick(data, state, tick);
+  }
+  return state;
+};
+
+const wilsonInterval = (successes: number, samples: number): ConfidenceInterval | null => {
+  if (samples === 0) return null;
+  const z = 1.96;
+  const proportion = successes / samples;
+  const denominator = 1 + (z * z) / samples;
+  const center = (proportion + (z * z) / (2 * samples)) / denominator;
+  const margin =
+    (z * Math.sqrt((proportion * (1 - proportion)) / samples + (z * z) / (4 * samples * samples))) / denominator;
+  return { lower: round(Math.max(0, center - margin)), upper: round(Math.min(1, center + margin)) };
+};
+
+const meanInterval = (values: number[]): ConfidenceInterval | null => {
+  if (values.length === 0) return null;
+  const average = mean(values);
+  if (values.length === 1) return { lower: round(average), upper: round(average) };
+  const variance = values.reduce((total, value) => total + (value - average) ** 2, 0) / (values.length - 1);
+  const margin = 1.96 * Math.sqrt(variance / values.length);
+  return { lower: round(average - margin), upper: round(average + margin) };
+};
+
+const portSignature = (block: BlockDefinition, rotation: Rotation) =>
+  [...rotatePorts(block.ports, rotation)].sort().join(',');
+
+const replacementFor = (data: GameData, base: EnemyBuild, targetBlock: BlockDefinition): CircuitBoard | null => {
+  if (blockIdsOn(base.board).includes(targetBlock.id)) return null;
+  const targetDesign = data.buildDesign.skills.find((skill) => skill.blockId === targetBlock.id);
+  const targetLink = targetDesign?.buildLinks.find((link) => link.buildId === base.traitId);
+  if (!targetDesign || !targetLink) return null;
+  const blocksById = new Map(data.blocks.map((block) => [block.id, block]));
+  const designsByBlockId = new Map(
+    data.buildDesign.skills.flatMap((skill) => (skill.blockId ? [[skill.blockId, skill] as const] : [])),
+  );
+  const rotations: Rotation[] = [0, 1, 2, 3];
+
+  for (let row = 0; row < base.board.length; row += 1) {
+    for (let column = 0; column < base.board[row].length; column += 1) {
+      const placed = base.board[row][column];
+      const reference = placed ? blocksById.get(placed.blockId) : undefined;
+      const referenceDesign = reference ? designsByBlockId.get(reference.id) : undefined;
+      const referenceLink = referenceDesign?.buildLinks.find((link) => link.buildId === base.traitId);
+      if (!placed || !reference || !referenceLink || reference.id === targetBlock.id) continue;
+      if (reference.rarity !== targetBlock.rarity) continue;
+      if (!referenceLink.roles.some((role) => targetLink.roles.includes(role))) continue;
+      const signature = portSignature(reference, placed.rotation);
+      const targetRotation = rotations.find((rotation) => portSignature(targetBlock, rotation) === signature);
+      if (targetRotation === undefined) continue;
+
+      const candidate = cloneBoard(base.board);
+      candidate[row][column] = { blockId: targetBlock.id, rotation: targetRotation };
+      if (analyzeCircuit(candidate, data.blocks, data.rules.sourceRow).poweredCells.size === base.nodeCount) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+};
+
+const boardOutcome = (state: BattleState, team: Team) => outcomeScore(state.winner, team);
+
+const boardOutput = (data: GameData, state: BattleState, team: Team) => {
+  const totals = createBattleReport(data, state.trace)[team].totals;
+  return {
+    damage: totals.totalDamage,
+    defense: totals.shield + totals.repair,
+  };
+};
+
+const counterfactualSample = (
+  data: GameData,
+  targetBoard: CircuitBoard,
+  baselineBoard: CircuitBoard,
+  opponentBoard: CircuitBoard,
+): CounterfactualSample => {
+  const baselinePlayer = runHeadlessBattle(data, baselineBoard, opponentBoard);
+  const targetPlayer = runHeadlessBattle(data, targetBoard, opponentBoard);
+  const baselineEnemy = runHeadlessBattle(data, opponentBoard, baselineBoard);
+  const targetEnemy = runHeadlessBattle(data, opponentBoard, targetBoard);
+  const baselinePlayerOutput = boardOutput(data, baselinePlayer, 'player');
+  const targetPlayerOutput = boardOutput(data, targetPlayer, 'player');
+  const baselineEnemyOutput = boardOutput(data, baselineEnemy, 'enemy');
+  const targetEnemyOutput = boardOutput(data, targetEnemy, 'enemy');
+
+  return {
+    scoreDelta: round(
+      (boardOutcome(targetPlayer, 'player') -
+        boardOutcome(baselinePlayer, 'player') +
+        boardOutcome(targetEnemy, 'enemy') -
+        boardOutcome(baselineEnemy, 'enemy')) /
+        2,
+    ),
+    reportedDamageDelta: round(
+      (targetPlayerOutput.damage -
+        baselinePlayerOutput.damage +
+        targetEnemyOutput.damage -
+        baselineEnemyOutput.damage) /
+        2,
+    ),
+    reportedDefenseDelta: round(
+      (targetPlayerOutput.defense -
+        baselinePlayerOutput.defense +
+        targetEnemyOutput.defense -
+        baselineEnemyOutput.defense) /
+        2,
+    ),
+    battleTicksDelta: round((targetPlayer.tick - baselinePlayer.tick + targetEnemy.tick - baselineEnemy.tick) / 2),
+  };
+};
+
+const ablationSample = (
+  data: GameData,
+  ablatedData: GameData,
+  board: CircuitBoard,
+  opponentBoard: CircuitBoard,
+): CounterfactualSample => {
+  const activePlayer = runHeadlessBattle(data, board, opponentBoard);
+  const ablatedPlayer = runHeadlessBattle(ablatedData, board, opponentBoard);
+  const activeEnemy = runHeadlessBattle(data, opponentBoard, board);
+  const ablatedEnemy = runHeadlessBattle(ablatedData, opponentBoard, board);
+  const activePlayerOutput = boardOutput(data, activePlayer, 'player');
+  const ablatedPlayerOutput = boardOutput(ablatedData, ablatedPlayer, 'player');
+  const activeEnemyOutput = boardOutput(data, activeEnemy, 'enemy');
+  const ablatedEnemyOutput = boardOutput(ablatedData, ablatedEnemy, 'enemy');
+
+  return {
+    scoreDelta: round(
+      (boardOutcome(activePlayer, 'player') -
+        boardOutcome(ablatedPlayer, 'player') +
+        boardOutcome(activeEnemy, 'enemy') -
+        boardOutcome(ablatedEnemy, 'enemy')) /
+        2,
+    ),
+    reportedDamageDelta: round(
+      (activePlayerOutput.damage - ablatedPlayerOutput.damage + activeEnemyOutput.damage - ablatedEnemyOutput.damage) /
+        2,
+    ),
+    reportedDefenseDelta: round(
+      (activePlayerOutput.defense -
+        ablatedPlayerOutput.defense +
+        activeEnemyOutput.defense -
+        ablatedEnemyOutput.defense) /
+        2,
+    ),
+    battleTicksDelta: round((activePlayer.tick - ablatedPlayer.tick + activeEnemy.tick - ablatedEnemy.tick) / 2),
+  };
+};
+
+const counterfactualsFor = (
+  data: GameData,
+  config: ResolvedBalanceSimulationConfig,
+): {
+  bySkill: Map<string, CounterfactualSample[]>;
+  ablationBySkill: Map<string, CounterfactualSample[]>;
+  battles: number;
+} => {
+  const bySkill = new Map<string, CounterfactualSample[]>();
+  const ablationBySkill = new Map<string, CounterfactualSample[]>();
+  if (config.skillTrials === 0) return { bySkill, ablationBySkill, battles: 0 };
+  const blockById = new Map(data.blocks.map((block) => [block.id, block]));
+
+  config.skillIds.forEach((blockId, skillIndex) => {
+    const target = blockById.get(blockId);
+    const design = data.buildDesign.skills.find((skill) => skill.blockId === blockId);
+    const traits =
+      design?.buildLinks.flatMap((link) =>
+        link.buildId === 'poison' || link.buildId === 'charge' ? [link.buildId] : [],
+      ) ?? [];
+    if (!target || traits.length === 0) return;
+    const samples: CounterfactualSample[] = [];
+    const maxAttempts = Math.max(config.skillTrials * 250, 250);
+    for (let attempt = 0; attempt < maxAttempts && samples.length < config.skillTrials; attempt += 1) {
+      const run = config.runs[(skillIndex + attempt) % config.runs.length];
+      const trait = traits[attempt % traits.length];
+      const baseSeed = config.seed + 1_000_003 + skillIndex * 100_003 + attempt * 97;
+      const base = generateEnemyBuild(data, run, baseSeed);
+      if (base.traitId !== trait) continue;
+      const targetBoard = replacementFor(data, base, target);
+      if (!targetBoard) continue;
+      const opponent = generateEnemyBuild(data, run, baseSeed + 43);
+      samples.push(counterfactualSample(data, targetBoard, base.board, opponent.board));
+    }
+    bySkill.set(blockId, samples);
+
+    const ablatedData: GameData = {
+      ...data,
+      blocks: data.blocks.map((block) =>
+        block.id === blockId ? { ...block, effects: [], cooldown: undefined } : block,
+      ),
+    };
+    const ablationSamples: CounterfactualSample[] = [];
+    for (let attempt = 0; attempt < maxAttempts && ablationSamples.length < config.skillTrials; attempt += 1) {
+      const run = config.runs[(skillIndex + attempt) % config.runs.length];
+      const baseSeed = config.seed + 2_000_003 + skillIndex * 100_019 + attempt * 101;
+      const base = generateEnemyBuild(data, run, baseSeed);
+      if (!blockIdsOn(base.board).includes(blockId)) continue;
+      const opponent = generateEnemyBuild(data, run, baseSeed + 47);
+      if (blockIdsOn(opponent.board).includes(blockId)) continue;
+      ablationSamples.push(ablationSample(data, ablatedData, base.board, opponent.board));
+    }
+    ablationBySkill.set(blockId, ablationSamples);
+  });
+
+  return {
+    bySkill,
+    ablationBySkill,
+    battles: [...bySkill.values(), ...ablationBySkill.values()].reduce(
+      (total, samples) => total + samples.length * 4,
+      0,
+    ),
+  };
+};
+
+const matchedLifts = (observations: TournamentObservation[]) => {
+  type Stratum = { count: number; totalScore: number; bySkill: Map<string, { count: number; totalScore: number }> };
+  const strata = new Map<string, Stratum>();
+  observations.forEach((observation) => {
+    const key = `${observation.run}:${observation.traitId}`;
+    const stratum = strata.get(key) ?? { count: 0, totalScore: 0, bySkill: new Map() };
+    stratum.count += 1;
+    stratum.totalScore += observation.score;
+    observation.skillIds.forEach((blockId) => {
+      const skill = stratum.bySkill.get(blockId) ?? { count: 0, totalScore: 0 };
+      skill.count += 1;
+      skill.totalScore += observation.score;
+      stratum.bySkill.set(blockId, skill);
+    });
+    strata.set(key, stratum);
+  });
+
+  const result = new Map<string, { samples: number; liftTotal: number }>();
+  strata.forEach((stratum) => {
+    stratum.bySkill.forEach((skill, blockId) => {
+      const withoutCount = stratum.count - skill.count;
+      if (skill.count === 0 || withoutCount === 0) return;
+      const withScore = skill.totalScore / skill.count;
+      const withoutScore = (stratum.totalScore - skill.totalScore) / withoutCount;
+      const current = result.get(blockId) ?? { samples: 0, liftTotal: 0 };
+      current.samples += skill.count;
+      current.liftTotal += (withScore - withoutScore) * skill.count;
+      result.set(blockId, current);
+    });
+  });
+  return new Map(
+    [...result].map(([blockId, value]) => [
+      blockId,
+      { samples: value.samples, lift: round(value.liftTotal / value.samples) },
+    ]),
+  );
+};
+
+const emptySkillReport = (): MutableSkillReport => ({
+  appearances: 0,
+  wins: 0,
+  losses: 0,
+  draws: 0,
+  totalTicks: 0,
+  activations: 0,
+  reportedDamage: 0,
+  poisonApplied: 0,
+  reportedShield: 0,
+  effectiveRepair: 0,
+  totalTeamDamage: 0,
+});
+
+const counterfactualReport = (samples: CounterfactualSample[]): SkillCounterfactualReport => ({
+  samples: samples.length,
+  scoreLift: samples.length > 0 ? round(mean(samples.map((sample) => sample.scoreDelta))) : null,
+  scoreLift95: meanInterval(samples.map((sample) => sample.scoreDelta)),
+  reportedDamageDelta: samples.length > 0 ? round(mean(samples.map((sample) => sample.reportedDamageDelta))) : null,
+  reportedDefenseDelta: samples.length > 0 ? round(mean(samples.map((sample) => sample.reportedDefenseDelta))) : null,
+  battleTicksDelta: samples.length > 0 ? round(mean(samples.map((sample) => sample.battleTicksDelta))) : null,
+});
+
+export function runBalanceSimulation(data: GameData, options: BalanceSimulationOptions = {}): BalanceSimulationResult {
+  const config = resolveOptions(data, options);
+  const playableBlocks = data.buildDesign.skills.flatMap((skill) => {
+    if (skill.status !== 'playable' || !skill.blockId) return [];
+    const block = data.blocks.find((candidate) => candidate.id === skill.blockId);
+    return block ? [block] : [];
+  });
+  const mutableSkills = new Map(playableBlocks.map((block) => [block.id, emptySkillReport()]));
+  const observations: TournamentObservation[] = [];
+  const byRun = new Map<number, MutableRunReport>();
+  const traitMatchups = new Map<string, MutableTraitMatchup>();
+  let playerWins = 0;
+  let enemyWins = 0;
+  let draws = 0;
+  let totalTicks = 0;
+  let tournamentBattles = 0;
+
+  const recordBattle = (state: BattleState, run: number, playerBuild: EnemyBuild, enemyBuild: EnemyBuild) => {
+    tournamentBattles += 1;
+    totalTicks += state.tick;
+    if (state.winner === 'player') playerWins += 1;
+    else if (state.winner === 'enemy') enemyWins += 1;
+    else draws += 1;
+
+    const runReport = byRun.get(run) ?? {
+      run,
+      battles: 0,
+      playerWins: 0,
+      enemyWins: 0,
+      draws: 0,
+      totalTicks: 0,
+    };
+    runReport.battles += 1;
+    runReport.totalTicks += state.tick;
+    if (state.winner === 'player') runReport.playerWins += 1;
+    else if (state.winner === 'enemy') runReport.enemyWins += 1;
+    else runReport.draws += 1;
+    byRun.set(run, runReport);
+
+    const matchupKey = `${playerBuild.traitId}:${enemyBuild.traitId}`;
+    const matchup = traitMatchups.get(matchupKey) ?? {
+      playerTrait: playerBuild.traitId,
+      enemyTrait: enemyBuild.traitId,
+      battles: 0,
+      playerWins: 0,
+      enemyWins: 0,
+      draws: 0,
+      totalTicks: 0,
+    };
+    matchup.battles += 1;
+    matchup.totalTicks += state.tick;
+    if (state.winner === 'player') matchup.playerWins += 1;
+    else if (state.winner === 'enemy') matchup.enemyWins += 1;
+    else matchup.draws += 1;
+    traitMatchups.set(matchupKey, matchup);
+
+    const report = createBattleReport(data, state.trace);
+    const builds: Record<Team, EnemyBuild> = { player: playerBuild, enemy: enemyBuild };
+    (['player', 'enemy'] as Team[]).forEach((team) => {
+      const skillIds = blockIdsOn(builds[team].board);
+      const score = outcomeScore(state.winner, team);
+      observations.push({ run, traitId: builds[team].traitId, skillIds, score });
+      const reportBySkill = new Map(report[team].skills.map((skill) => [skill.blockId, skill]));
+      skillIds.forEach((blockId) => {
+        const aggregate = mutableSkills.get(blockId);
+        if (!aggregate) return;
+        const skill = reportBySkill.get(blockId);
+        aggregate.appearances += 1;
+        aggregate.totalTicks += state.tick;
+        aggregate.totalTeamDamage += report[team].totals.totalDamage;
+        if (state.winner === 'draw') aggregate.draws += 1;
+        else if (state.winner === team) aggregate.wins += 1;
+        else aggregate.losses += 1;
+        if (skill) {
+          aggregate.activations += skill.activations;
+          aggregate.reportedDamage += skill.damage;
+          aggregate.poisonApplied += skill.poisonApplied;
+          aggregate.reportedShield += skill.shield;
+          aggregate.effectiveRepair += skill.repair;
+        }
+      });
+    });
+  };
+
+  const pairs = Math.ceil(config.battles / 2);
+  for (let pairIndex = 0; pairIndex < pairs; pairIndex += 1) {
+    const run = config.runs[pairIndex % config.runs.length];
+    const pairSeed = config.seed + pairIndex * 10_007;
+    const left = generateEnemyBuild(data, run, pairSeed + 17);
+    const right = generateEnemyBuild(data, run, pairSeed + 53);
+    recordBattle(runHeadlessBattle(data, left.board, right.board), run, left, right);
+    if (tournamentBattles < config.battles) {
+      recordBattle(runHeadlessBattle(data, right.board, left.board), run, right, left);
+    }
+  }
+
+  const matched = matchedLifts(observations);
+  const counterfactuals = counterfactualsFor(data, config);
+  const skills: SkillBalanceReport[] = playableBlocks.map((block) => {
+    const aggregate = mutableSkills.get(block.id)!;
+    const matchedResult = matched.get(block.id);
+    const counterfactual = counterfactualReport(counterfactuals.bySkill.get(block.id) ?? []);
+    const ablation = counterfactualReport(counterfactuals.ablationBySkill.get(block.id) ?? []);
+    const reportedOutput =
+      aggregate.reportedDamage + aggregate.poisonApplied + aggregate.reportedShield + aggregate.effectiveRepair;
+    return {
+      blockId: block.id,
+      code: block.code,
+      title: block.title,
+      rarity: block.rarity,
+      price: block.price,
+      appearances: aggregate.appearances,
+      wins: aggregate.wins,
+      losses: aggregate.losses,
+      draws: aggregate.draws,
+      winRate: aggregate.appearances > 0 ? round(aggregate.wins / aggregate.appearances) : null,
+      scoreRate:
+        aggregate.appearances > 0 ? round((aggregate.wins + aggregate.draws * 0.5) / aggregate.appearances) : null,
+      winRate95: wilsonInterval(aggregate.wins, aggregate.appearances),
+      matchedSamples: matchedResult?.samples ?? 0,
+      matchedScoreLift: matchedResult?.lift ?? null,
+      averageTicks: aggregate.appearances > 0 ? round(aggregate.totalTicks / aggregate.appearances) : null,
+      activationsPerBattle: aggregate.appearances > 0 ? round(aggregate.activations / aggregate.appearances) : null,
+      reportedDamagePerBattle:
+        aggregate.appearances > 0 ? round(aggregate.reportedDamage / aggregate.appearances) : null,
+      poisonAppliedPerBattle: aggregate.appearances > 0 ? round(aggregate.poisonApplied / aggregate.appearances) : null,
+      reportedShieldPerBattle:
+        aggregate.appearances > 0 ? round(aggregate.reportedShield / aggregate.appearances) : null,
+      effectiveRepairPerBattle:
+        aggregate.appearances > 0 ? round(aggregate.effectiveRepair / aggregate.appearances) : null,
+      reportedOutputPerActivation: aggregate.activations > 0 ? round(reportedOutput / aggregate.activations) : null,
+      averageTeamDamageWhenPresent:
+        aggregate.appearances > 0 ? round(aggregate.totalTeamDamage / aggregate.appearances) : null,
+      efficiencyZScore: null,
+      counterfactual,
+      ablation,
+      ablationImpactZScore: null,
+      signals: [],
+      suspectedOutlier: false,
+    };
+  });
+
+  (['common', 'rare', 'epic', 'legendary'] as Rarity[]).forEach((rarity) => {
+    const comparable = skills.filter(
+      (skill) =>
+        skill.rarity === rarity &&
+        skill.appearances >= config.minimumSamples &&
+        skill.reportedOutputPerActivation !== null,
+    );
+    if (comparable.length < 2) return;
+    const average = mean(comparable.map((skill) => skill.reportedOutputPerActivation!));
+    const standardDeviation = Math.sqrt(
+      mean(comparable.map((skill) => (skill.reportedOutputPerActivation! - average) ** 2)),
+    );
+    comparable.forEach((skill) => {
+      skill.efficiencyZScore =
+        standardDeviation > 0 ? round((skill.reportedOutputPerActivation! - average) / standardDeviation) : 0;
+    });
+  });
+
+  (['common', 'rare', 'epic', 'legendary'] as Rarity[]).forEach((rarity) => {
+    const comparable = skills.filter(
+      (skill) =>
+        skill.rarity === rarity &&
+        skill.ablation.samples >= config.minimumCounterfactualSamples &&
+        skill.ablation.scoreLift !== null,
+    );
+    if (comparable.length < 2) return;
+    const average = mean(comparable.map((skill) => skill.ablation.scoreLift!));
+    const standardDeviation = Math.sqrt(mean(comparable.map((skill) => (skill.ablation.scoreLift! - average) ** 2)));
+    comparable.forEach((skill) => {
+      skill.ablationImpactZScore =
+        standardDeviation > 0 ? round((skill.ablation.scoreLift! - average) / standardDeviation) : 0;
+    });
+  });
+
+  skills.forEach((skill) => {
+    const signals: BalanceSignal[] = [];
+    if (skill.matchedSamples >= config.minimumSamples && skill.matchedScoreLift !== null) {
+      if (skill.matchedScoreLift >= config.winRateLiftThreshold) signals.push('matched-overrepresented');
+      if (skill.matchedScoreLift <= -config.winRateLiftThreshold) signals.push('matched-underrepresented');
+    }
+    if (
+      skill.counterfactual.samples >= config.minimumCounterfactualSamples &&
+      skill.counterfactual.scoreLift !== null &&
+      skill.counterfactual.scoreLift95
+    ) {
+      if (skill.counterfactual.scoreLift >= config.winRateLiftThreshold && skill.counterfactual.scoreLift95.lower > 0) {
+        signals.push('counterfactual-overpowered');
+      }
+      if (
+        skill.counterfactual.scoreLift <= -config.winRateLiftThreshold &&
+        skill.counterfactual.scoreLift95.upper < 0
+      ) {
+        signals.push('counterfactual-underpowered');
+      }
+    }
+    if (skill.efficiencyZScore !== null) {
+      if (skill.efficiencyZScore >= config.efficiencyZScoreThreshold) signals.push('reported-output-high');
+      if (skill.efficiencyZScore <= -config.efficiencyZScoreThreshold) signals.push('reported-output-low');
+    }
+    if (skill.ablationImpactZScore !== null) {
+      if (skill.ablationImpactZScore >= config.efficiencyZScoreThreshold) signals.push('ablation-impact-high');
+      if (skill.ablationImpactZScore <= -config.efficiencyZScoreThreshold) signals.push('ablation-impact-low');
+    }
+    skill.signals = signals;
+    const counterfactualSignal = signals.some((signal) => signal.startsWith('counterfactual-'));
+    const alignedHigh =
+      signals.includes('matched-overrepresented') &&
+      (signals.includes('reported-output-high') || signals.includes('ablation-impact-high'));
+    const alignedLow =
+      signals.includes('matched-underrepresented') &&
+      (signals.includes('reported-output-low') || signals.includes('ablation-impact-low'));
+    skill.suspectedOutlier = counterfactualSignal || alignedHigh || alignedLow;
+  });
+
+  skills.sort(
+    (left, right) =>
+      Number(right.suspectedOutlier) - Number(left.suspectedOutlier) ||
+      Math.abs(right.counterfactual.scoreLift ?? right.matchedScoreLift ?? 0) -
+        Math.abs(left.counterfactual.scoreLift ?? left.matchedScoreLift ?? 0) ||
+      left.blockId.localeCompare(right.blockId),
+  );
+
+  const totalBattles = tournamentBattles + counterfactuals.battles;
+  return {
+    simulationVersion: 1,
+    gameSchemaVersion: data.schemaVersion,
+    config,
+    summary: {
+      tournamentBattles,
+      benchmarkBattles: counterfactuals.battles,
+      totalBattles,
+      sideSwappedPairs: Math.floor(config.battles / 2),
+      teamSamples: tournamentBattles * 2,
+      playerWins,
+      enemyWins,
+      draws,
+      playerWinRate: round(playerWins / tournamentBattles),
+      enemyWinRate: round(enemyWins / tournamentBattles),
+      drawRate: round(draws / tournamentBattles),
+      sideBias: round((playerWins - enemyWins) / tournamentBattles),
+      averageTicks: round(totalTicks / tournamentBattles),
+    },
+    byRun: [...byRun.values()]
+      .map(({ totalTicks: runTicks, ...report }) => ({
+        ...report,
+        averageTicks: round(runTicks / report.battles),
+      }))
+      .sort((left, right) => left.run - right.run),
+    traitMatchups: [...traitMatchups.values()]
+      .map(({ totalTicks: matchupTicks, ...report }) => ({
+        ...report,
+        playerScoreRate: round((report.playerWins + report.draws * 0.5) / report.battles),
+        averageTicks: round(matchupTicks / report.battles),
+      }))
+      .sort(
+        (left, right) =>
+          left.playerTrait.localeCompare(right.playerTrait) || left.enemyTrait.localeCompare(right.enemyTrait),
+      ),
+    skills,
+    methodology: {
+      tournament:
+        'Each generated matchup is replayed with boards swapped between player and enemy sides. Runs and seeds are fixed by config.',
+      counterfactual:
+        'A skill replaces a same-rarity, overlapping-role node with an identical rotated port signature, then baseline and replacement boards fight the same opponent on both sides.',
+      ablation:
+        'The same generated board is replayed with the target skill effects disabled while ports remain unchanged, using an opponent that does not contain that skill.',
+      limitations: [
+        'Generated builds use the rival generator fixed layout and do not model shop purchases, rerolls, coins, or fusion decisions.',
+        'Per-skill damage is reported trace output before shield absorption and overkill; repair is capped effective healing.',
+        'Poison tick damage is team-attributed rather than source-skill-attributed.',
+        'Passive support is evaluated primarily through matched and counterfactual outcome lift rather than direct trace output.',
+      ],
+    },
+  };
+}
+
+const nullableDelta = (current: number | null, baseline: number | null) =>
+  current === null || baseline === null ? null : round(current - baseline);
+
+export function compareBalanceResults(
+  current: BalanceSimulationResult,
+  baseline: BalanceSimulationResult,
+): BalanceComparison {
+  const comparableConfig = (config: ResolvedBalanceSimulationConfig) => ({
+    battles: config.battles,
+    runs: config.runs,
+    seed: config.seed,
+    skillTrials: config.skillTrials,
+    skillIds: config.skillIds,
+  });
+  const compatible =
+    JSON.stringify(comparableConfig(current.config)) === JSON.stringify(comparableConfig(baseline.config));
+  const baselineById = new Map(baseline.skills.map((skill) => [skill.blockId, skill]));
+  const currentById = new Map(current.skills.map((skill) => [skill.blockId, skill]));
+  const skills = current.skills.flatMap((skill) => {
+    const previous = baselineById.get(skill.blockId);
+    if (!previous) return [];
+    return [
+      {
+        blockId: skill.blockId,
+        scoreRateDelta: nullableDelta(skill.scoreRate, previous.scoreRate),
+        matchedScoreLiftDelta: nullableDelta(skill.matchedScoreLift, previous.matchedScoreLift),
+        counterfactualScoreLiftDelta: nullableDelta(skill.counterfactual.scoreLift, previous.counterfactual.scoreLift),
+        ablationScoreLiftDelta: nullableDelta(skill.ablation.scoreLift, previous.ablation.scoreLift),
+      },
+    ];
+  });
+  return {
+    compatible,
+    summary: {
+      averageTicksDelta: round(current.summary.averageTicks - baseline.summary.averageTicks),
+      sideBiasDelta: round(current.summary.sideBias - baseline.summary.sideBias),
+    },
+    newSuspectedOutliers: current.skills
+      .filter((skill) => skill.suspectedOutlier && !baselineById.get(skill.blockId)?.suspectedOutlier)
+      .map((skill) => skill.blockId)
+      .sort(),
+    resolvedSuspectedOutliers: baseline.skills
+      .filter((skill) => skill.suspectedOutlier && !currentById.get(skill.blockId)?.suspectedOutlier)
+      .map((skill) => skill.blockId)
+      .sort(),
+    skills,
+  };
+}

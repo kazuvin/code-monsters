@@ -1,0 +1,1530 @@
+{
+  "simulationVersion": 1,
+  "gameSchemaVersion": 14,
+  "config": {
+    "battles": 1000,
+    "runs": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    "seed": 20260721,
+    "skillTrials": 12,
+    "skillIds": [
+      "strike",
+      "breaker",
+      "arc-shot",
+      "barrier",
+      "repair",
+      "poison-needle",
+      "cultivation-blade",
+      "toxic-reservoir",
+      "venom-bloom",
+      "rupture-stake",
+      "status-relay",
+      "return-coil",
+      "long-route-fang",
+      "amplifier",
+      "accelerator",
+      "charge-guard",
+      "charge-blade",
+      "charge-arrow",
+      "charge-coil",
+      "discharge-bow",
+      "rail-cannon",
+      "charge-bastion",
+      "venom-orbit",
+      "sealed-junction",
+      "charge-line-lance",
+      "overcharge-cannon"
+    ],
+    "minimumSamples": 100,
+    "minimumCounterfactualSamples": 8,
+    "winRateLiftThreshold": 0.08,
+    "efficiencyZScoreThreshold": 2
+  },
+  "summary": {
+    "tournamentBattles": 1000,
+    "benchmarkBattles": 1920,
+    "totalBattles": 2920,
+    "sideSwappedPairs": 500,
+    "teamSamples": 2000,
+    "playerWins": 388,
+    "enemyWins": 388,
+    "draws": 224,
+    "playerWinRate": 0.388,
+    "enemyWinRate": 0.388,
+    "drawRate": 0.224,
+    "sideBias": 0,
+    "averageTicks": 4.618
+  },
+  "byRun": [
+    {
+      "run": 1,
+      "battles": 112,
+      "playerWins": 54,
+      "enemyWins": 54,
+      "draws": 4,
+      "averageTicks": 9.821429
+    },
+    {
+      "run": 2,
+      "battles": 112,
+      "playerWins": 51,
+      "enemyWins": 51,
+      "draws": 10,
+      "averageTicks": 8.678571
+    },
+    {
+      "run": 3,
+      "battles": 112,
+      "playerWins": 47,
+      "enemyWins": 47,
+      "draws": 18,
+      "averageTicks": 4.178571
+    },
+    {
+      "run": 4,
+      "battles": 112,
+      "playerWins": 48,
+      "enemyWins": 48,
+      "draws": 16,
+      "averageTicks": 4.071429
+    },
+    {
+      "run": 5,
+      "battles": 112,
+      "playerWins": 43,
+      "enemyWins": 43,
+      "draws": 26,
+      "averageTicks": 2.696429
+    },
+    {
+      "run": 6,
+      "battles": 110,
+      "playerWins": 38,
+      "enemyWins": 38,
+      "draws": 34,
+      "averageTicks": 2.745455
+    },
+    {
+      "run": 7,
+      "battles": 110,
+      "playerWins": 35,
+      "enemyWins": 35,
+      "draws": 40,
+      "averageTicks": 2.527273
+    },
+    {
+      "run": 8,
+      "battles": 110,
+      "playerWins": 39,
+      "enemyWins": 39,
+      "draws": 32,
+      "averageTicks": 3.381818
+    },
+    {
+      "run": 9,
+      "battles": 110,
+      "playerWins": 33,
+      "enemyWins": 33,
+      "draws": 44,
+      "averageTicks": 3.345455
+    }
+  ],
+  "traitMatchups": [
+    {
+      "playerTrait": "charge",
+      "enemyTrait": "charge",
+      "battles": 238,
+      "playerWins": 103,
+      "enemyWins": 103,
+      "draws": 32,
+      "playerScoreRate": 0.5,
+      "averageTicks": 10.058824
+    },
+    {
+      "playerTrait": "charge",
+      "enemyTrait": "poison",
+      "battles": 251,
+      "playerWins": 37,
+      "enemyWins": 185,
+      "draws": 29,
+      "playerScoreRate": 0.205179,
+      "averageTicks": 3.003984
+    },
+    {
+      "playerTrait": "poison",
+      "enemyTrait": "charge",
+      "battles": 251,
+      "playerWins": 185,
+      "enemyWins": 37,
+      "draws": 29,
+      "playerScoreRate": 0.794821,
+      "averageTicks": 3.003984
+    },
+    {
+      "playerTrait": "poison",
+      "enemyTrait": "poison",
+      "battles": 260,
+      "playerWins": 63,
+      "enemyWins": 63,
+      "draws": 134,
+      "playerScoreRate": 0.5,
+      "averageTicks": 2.753846
+    }
+  ],
+  "skills": [
+    {
+      "blockId": "rupture-stake",
+      "code": "BURST",
+      "title": "破裂砲",
+      "rarity": "epic",
+      "price": 14,
+      "appearances": 898,
+      "wins": 448,
+      "losses": 132,
+      "draws": 318,
+      "winRate": 0.498886,
+      "scoreRate": 0.675947,
+      "winRate95": {
+        "lower": 0.466258,
+        "upper": 0.531524
+      },
+      "matchedSamples": 344,
+      "matchedScoreLift": 0.335109,
+      "averageTicks": 2.273942,
+      "activationsPerBattle": 1.935412,
+      "reportedDamagePerBattle": 15634.512249,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 8078.131185,
+      "averageTeamDamageWhenPresent": 16675.2049,
+      "efficiencyZScore": 1.965026,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.625,
+        "scoreLift95": {
+          "lower": 0.351913,
+          "upper": 0.898087
+        },
+        "reportedDamageDelta": 10777.5,
+        "reportedDefenseDelta": -534.166667,
+        "battleTicksDelta": -2.25
+      },
+      "ablationImpactZScore": 1.67517,
+      "signals": ["matched-overrepresented"],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "rail-cannon",
+      "code": "RAIL",
+      "title": "解放砲",
+      "rarity": "epic",
+      "price": 14,
+      "appearances": 418,
+      "wins": 140,
+      "losses": 208,
+      "draws": 70,
+      "winRate": 0.334928,
+      "scoreRate": 0.41866,
+      "winRate95": {
+        "lower": 0.291367,
+        "upper": 0.381496
+      },
+      "matchedSamples": 418,
+      "matchedScoreLift": 0.135543,
+      "averageTicks": 3.933014,
+      "activationsPerBattle": 2.129187,
+      "reportedDamagePerBattle": 3557.703349,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 1670.921348,
+      "averageTeamDamageWhenPresent": 7128.325359,
+      "efficiencyZScore": -0.254209,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": 0.25,
+        "scoreLift95": {
+          "lower": -0.005894,
+          "upper": 0.505894
+        },
+        "reportedDamageDelta": 369.583333,
+        "reportedDefenseDelta": -5012.5,
+        "battleTicksDelta": -3.5
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.5,
+        "scoreLift95": {
+          "lower": 0.230264,
+          "upper": 0.769736
+        },
+        "reportedDamageDelta": 2291.25,
+        "reportedDefenseDelta": -1417.5,
+        "battleTicksDelta": -5.666667
+      },
+      "ablationImpactZScore": 1.106244,
+      "signals": ["matched-overrepresented"],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "charge-coil",
+      "code": "COIL",
+      "title": "充電コイル",
+      "rarity": "rare",
+      "price": 7,
+      "appearances": 388,
+      "wins": 120,
+      "losses": 202,
+      "draws": 66,
+      "winRate": 0.309278,
+      "scoreRate": 0.39433,
+      "winRate95": {
+        "lower": 0.265346,
+        "upper": 0.356951
+      },
+      "matchedSamples": 388,
+      "matchedScoreLift": 0.105449,
+      "averageTicks": 4.716495,
+      "activationsPerBattle": 0,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": null,
+      "averageTeamDamageWhenPresent": 7274.871134,
+      "efficiencyZScore": null,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": 0.166667,
+        "scoreLift95": {
+          "lower": -0.017598,
+          "upper": 0.350932
+        },
+        "reportedDamageDelta": -25.416667,
+        "reportedDefenseDelta": 541.666667,
+        "battleTicksDelta": -0.583333
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.25,
+        "scoreLift95": {
+          "lower": 0.024323,
+          "upper": 0.475677
+        },
+        "reportedDamageDelta": 1231.666667,
+        "reportedDefenseDelta": 2884.166667,
+        "battleTicksDelta": -0.083333
+      },
+      "ablationImpactZScore": 1.419905,
+      "signals": ["matched-overrepresented"],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "charge-guard",
+      "code": "CHG-G",
+      "title": "蓄電装甲",
+      "rarity": "rare",
+      "price": 8,
+      "appearances": 106,
+      "wins": 46,
+      "losses": 42,
+      "draws": 18,
+      "winRate": 0.433962,
+      "scoreRate": 0.518868,
+      "winRate95": {
+        "lower": 0.343556,
+        "upper": 0.528988
+      },
+      "matchedSamples": 106,
+      "matchedScoreLift": 0.183624,
+      "averageTicks": 8.773585,
+      "activationsPerBattle": 5.056604,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 1162.264151,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 229.850746,
+      "averageTeamDamageWhenPresent": 7947.641509,
+      "efficiencyZScore": -0.442287,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": -0.166667,
+        "scoreLift95": {
+          "lower": -0.350932,
+          "upper": 0.017598
+        },
+        "reportedDamageDelta": 374.166667,
+        "reportedDefenseDelta": 1814.583333,
+        "battleTicksDelta": 0.583333
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.166667,
+        "scoreLift95": {
+          "lower": -0.017598,
+          "upper": 0.350932
+        },
+        "reportedDamageDelta": 406.666667,
+        "reportedDefenseDelta": 1469.166667,
+        "battleTicksDelta": -0.083333
+      },
+      "ablationImpactZScore": 0.170392,
+      "signals": ["matched-overrepresented"],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "overcharge-cannon",
+      "code": "OVER",
+      "title": "超過解放砲",
+      "rarity": "legendary",
+      "price": 22,
+      "appearances": 206,
+      "wins": 68,
+      "losses": 78,
+      "draws": 60,
+      "winRate": 0.330097,
+      "scoreRate": 0.475728,
+      "winRate95": {
+        "lower": 0.269505,
+        "upper": 0.39691
+      },
+      "matchedSamples": 206,
+      "matchedScoreLift": 0.160385,
+      "averageTicks": 4.019417,
+      "activationsPerBattle": 1.563107,
+      "reportedDamagePerBattle": 4708.980583,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 3012.57764,
+      "averageTeamDamageWhenPresent": 8360.970874,
+      "efficiencyZScore": 1.400494,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.458333,
+        "scoreLift95": {
+          "lower": 0.203627,
+          "upper": 0.71304
+        },
+        "reportedDamageDelta": 2815.833333,
+        "reportedDefenseDelta": -307.916667,
+        "battleTicksDelta": -1.75
+      },
+      "ablationImpactZScore": 1.414214,
+      "signals": ["matched-overrepresented"],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "venom-orbit",
+      "code": "ORBIT",
+      "title": "輪毒術",
+      "rarity": "epic",
+      "price": 14,
+      "appearances": 436,
+      "wins": 200,
+      "losses": 30,
+      "draws": 206,
+      "winRate": 0.458716,
+      "scoreRate": 0.694954,
+      "winRate95": {
+        "lower": 0.412506,
+        "upper": 0.505646
+      },
+      "matchedSamples": 436,
+      "matchedScoreLift": 0.137853,
+      "averageTicks": 1.188073,
+      "activationsPerBattle": 1.348624,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 643.944954,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 477.482993,
+      "averageTeamDamageWhenPresent": 22703.954128,
+      "efficiencyZScore": -0.667575,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.125,
+        "scoreLift95": {
+          "lower": -0.002947,
+          "upper": 0.252947
+        },
+        "reportedDamageDelta": 16650.833333,
+        "reportedDefenseDelta": -283.333333,
+        "battleTicksDelta": -1.5
+      },
+      "ablationImpactZScore": -0.600532,
+      "signals": ["matched-overrepresented"],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "amplifier",
+      "code": "AMP",
+      "title": "増幅術",
+      "rarity": "rare",
+      "price": 8,
+      "appearances": 802,
+      "wins": 300,
+      "losses": 292,
+      "draws": 210,
+      "winRate": 0.374065,
+      "scoreRate": 0.504988,
+      "winRate95": {
+        "lower": 0.34125,
+        "upper": 0.40808
+      },
+      "matchedSamples": 802,
+      "matchedScoreLift": -0.024157,
+      "averageTicks": 3.608479,
+      "activationsPerBattle": 0,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": null,
+      "averageTeamDamageWhenPresent": 13226.670823,
+      "efficiencyZScore": null,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": -0.125,
+        "scoreLift95": {
+          "lower": -0.300846,
+          "upper": 0.050846
+        },
+        "reportedDamageDelta": 1644.583333,
+        "reportedDefenseDelta": -1122.083333,
+        "battleTicksDelta": 0.416667
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.041667,
+        "scoreLift95": {
+          "lower": -0.04,
+          "upper": 0.123333
+        },
+        "reportedDamageDelta": 1303.666667,
+        "reportedDefenseDelta": -154.166667,
+        "battleTicksDelta": -0.333333
+      },
+      "ablationImpactZScore": -1.703886,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "arc-shot",
+      "code": "ARC",
+      "title": "アーク弾",
+      "rarity": "rare",
+      "price": 7,
+      "appearances": 1386,
+      "wins": 544,
+      "losses": 520,
+      "draws": 322,
+      "winRate": 0.392496,
+      "scoreRate": 0.508658,
+      "winRate95": {
+        "lower": 0.367119,
+        "upper": 0.418468
+      },
+      "matchedSamples": 1386,
+      "matchedScoreLift": 0.030187,
+      "averageTicks": 4.041847,
+      "activationsPerBattle": 3.55267,
+      "reportedDamagePerBattle": 928.297258,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 261.295695,
+      "averageTeamDamageWhenPresent": 11191.002886,
+      "efficiencyZScore": -0.305313,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": -0.125,
+        "scoreLift95": {
+          "lower": -0.37,
+          "upper": 0.12
+        },
+        "reportedDamageDelta": -1411,
+        "reportedDefenseDelta": -123.333333,
+        "battleTicksDelta": 0.166667
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.25,
+        "scoreLift95": {
+          "lower": 0.024323,
+          "upper": 0.475677
+        },
+        "reportedDamageDelta": 215.833333,
+        "reportedDefenseDelta": -781.666667,
+        "battleTicksDelta": -1
+      },
+      "ablationImpactZScore": 1.419905,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "toxic-reservoir",
+      "code": "TANK",
+      "title": "毒電池",
+      "rarity": "epic",
+      "price": 13,
+      "appearances": 94,
+      "wins": 44,
+      "losses": 22,
+      "draws": 28,
+      "winRate": 0.468085,
+      "scoreRate": 0.617021,
+      "winRate95": {
+        "lower": 0.370457,
+        "upper": 0.568219
+      },
+      "matchedSamples": 94,
+      "matchedScoreLift": 0.124953,
+      "averageTicks": 2.851064,
+      "activationsPerBattle": 1.489362,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 197.446809,
+      "reportedShieldPerBattle": 346.382979,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 365.142857,
+      "averageTeamDamageWhenPresent": 12766.510638,
+      "efficiencyZScore": null,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.125,
+        "scoreLift95": {
+          "lower": -0.002947,
+          "upper": 0.252947
+        },
+        "reportedDamageDelta": 5132.666667,
+        "reportedDefenseDelta": 326.25,
+        "battleTicksDelta": -0.166667
+      },
+      "ablationImpactZScore": -0.600532,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "discharge-bow",
+      "code": "SPARK",
+      "title": "放電弓",
+      "rarity": "rare",
+      "price": 9,
+      "appearances": 648,
+      "wins": 164,
+      "losses": 410,
+      "draws": 74,
+      "winRate": 0.253086,
+      "scoreRate": 0.310185,
+      "winRate95": {
+        "lower": 0.221132,
+        "upper": 0.287951
+      },
+      "matchedSamples": 648,
+      "matchedScoreLift": -0.117623,
+      "averageTicks": 5.802469,
+      "activationsPerBattle": 3.126543,
+      "reportedDamagePerBattle": 2785.29321,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 890.853899,
+      "averageTeamDamageWhenPresent": 6911.280864,
+      "efficiencyZScore": 2.437042,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.166667,
+        "scoreLift95": {
+          "lower": -0.053572,
+          "upper": 0.386905
+        },
+        "reportedDamageDelta": 3692.083333,
+        "reportedDefenseDelta": -413.333333,
+        "battleTicksDelta": -0.5
+      },
+      "ablationImpactZScore": 0.170392,
+      "signals": ["matched-underrepresented", "reported-output-high"],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "accelerator",
+      "code": "FAST",
+      "title": "加速術",
+      "rarity": "rare",
+      "price": 8,
+      "appearances": 1424,
+      "wins": 530,
+      "losses": 552,
+      "draws": 342,
+      "winRate": 0.372191,
+      "scoreRate": 0.492275,
+      "winRate95": {
+        "lower": 0.347459,
+        "upper": 0.397611
+      },
+      "matchedSamples": 1424,
+      "matchedScoreLift": -0.042575,
+      "averageTicks": 4.227528,
+      "activationsPerBattle": 0,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": null,
+      "averageTeamDamageWhenPresent": 11614.106742,
+      "efficiencyZScore": null,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": -0.083333,
+        "scoreLift95": {
+          "lower": -0.246667,
+          "upper": 0.08
+        },
+        "reportedDamageDelta": 315.5,
+        "reportedDefenseDelta": 183.333333,
+        "battleTicksDelta": 0.25
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.166667,
+        "scoreLift95": {
+          "lower": -0.017598,
+          "upper": 0.350932
+        },
+        "reportedDamageDelta": 300.416667,
+        "reportedDefenseDelta": 255.833333,
+        "battleTicksDelta": -0.833333
+      },
+      "ablationImpactZScore": 0.170392,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "breaker",
+      "code": "BREAK",
+      "title": "破砕撃",
+      "rarity": "common",
+      "price": 5,
+      "appearances": 318,
+      "wins": 120,
+      "losses": 146,
+      "draws": 52,
+      "winRate": 0.377358,
+      "scoreRate": 0.459119,
+      "winRate95": {
+        "lower": 0.325844,
+        "upper": 0.431801
+      },
+      "matchedSamples": 318,
+      "matchedScoreLift": -0.072036,
+      "averageTicks": 6.735849,
+      "activationsPerBattle": 4.056604,
+      "reportedDamagePerBattle": 660.125786,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 162.728682,
+      "averageTeamDamageWhenPresent": 10586.232704,
+      "efficiencyZScore": 0.826382,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0,
+        "scoreLift95": {
+          "lower": 0,
+          "upper": 0
+        },
+        "reportedDamageDelta": 167.916667,
+        "reportedDefenseDelta": 0,
+        "battleTicksDelta": -0.083333
+      },
+      "ablationImpactZScore": -1.19208,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "charge-line-lance",
+      "code": "LANCE",
+      "title": "雷路槍",
+      "rarity": "legendary",
+      "price": 21,
+      "appearances": 188,
+      "wins": 36,
+      "losses": 116,
+      "draws": 36,
+      "winRate": 0.191489,
+      "scoreRate": 0.287234,
+      "winRate95": {
+        "lower": 0.141645,
+        "upper": 0.253689
+      },
+      "matchedSamples": 188,
+      "matchedScoreLift": -0.067517,
+      "averageTicks": 6.085106,
+      "activationsPerBattle": 2.946809,
+      "reportedDamagePerBattle": 2019.62766,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 685.361011,
+      "averageTeamDamageWhenPresent": 7285.212766,
+      "efficiencyZScore": -0.530061,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.291667,
+        "scoreLift95": {
+          "lower": 0.03696,
+          "upper": 0.546373
+        },
+        "reportedDamageDelta": 2869.166667,
+        "reportedDefenseDelta": -835,
+        "battleTicksDelta": -0.583333
+      },
+      "ablationImpactZScore": -0.707107,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "venom-bloom",
+      "code": "BLOOM",
+      "title": "猛毒花",
+      "rarity": "legendary",
+      "price": 20,
+      "appearances": 774,
+      "wins": 356,
+      "losses": 130,
+      "draws": 288,
+      "winRate": 0.459948,
+      "scoreRate": 0.645995,
+      "winRate95": {
+        "lower": 0.42512,
+        "upper": 0.495172
+      },
+      "matchedSamples": 220,
+      "matchedScoreLift": -0.048459,
+      "averageTicks": 2.338501,
+      "activationsPerBattle": 1.627907,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 447.764858,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 275.055556,
+      "averageTeamDamageWhenPresent": 16613.196382,
+      "efficiencyZScore": -0.870432,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.291667,
+        "scoreLift95": {
+          "lower": 0.03696,
+          "upper": 0.546373
+        },
+        "reportedDamageDelta": -869.833333,
+        "reportedDefenseDelta": -1645.833333,
+        "battleTicksDelta": -3.583333
+      },
+      "ablationImpactZScore": -0.707107,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "charge-blade",
+      "code": "CHG-B",
+      "title": "充電刃",
+      "rarity": "common",
+      "price": 4,
+      "appearances": 476,
+      "wins": 138,
+      "losses": 280,
+      "draws": 58,
+      "winRate": 0.289916,
+      "scoreRate": 0.35084,
+      "winRate95": {
+        "lower": 0.250966,
+        "upper": 0.33223
+      },
+      "matchedSamples": 476,
+      "matchedScoreLift": 0.011789,
+      "averageTicks": 5.97479,
+      "activationsPerBattle": 4.130252,
+      "reportedDamagePerBattle": 375.672269,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 90.956256,
+      "averageTeamDamageWhenPresent": 7080.273109,
+      "efficiencyZScore": -0.708667,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": 0.041667,
+        "scoreLift95": {
+          "lower": -0.04,
+          "upper": 0.123333
+        },
+        "reportedDamageDelta": 229.583333,
+        "reportedDefenseDelta": -0.833333,
+        "battleTicksDelta": -0.166667
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.125,
+        "scoreLift95": {
+          "lower": -0.050846,
+          "upper": 0.300846
+        },
+        "reportedDamageDelta": 607.083333,
+        "reportedDefenseDelta": -12.5,
+        "battleTicksDelta": -0.083333
+      },
+      "ablationImpactZScore": 1.19208,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "long-route-fang",
+      "code": "LONG",
+      "title": "長路の牙",
+      "rarity": "rare",
+      "price": 8,
+      "appearances": 206,
+      "wins": 78,
+      "losses": 74,
+      "draws": 54,
+      "winRate": 0.378641,
+      "scoreRate": 0.509709,
+      "winRate95": {
+        "lower": 0.315196,
+        "upper": 0.446529
+      },
+      "matchedSamples": 206,
+      "matchedScoreLift": 0.016117,
+      "averageTicks": 4.815534,
+      "activationsPerBattle": 2.951456,
+      "reportedDamagePerBattle": 1336.213592,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 452.730263,
+      "averageTeamDamageWhenPresent": 13699.873786,
+      "efficiencyZScore": 0.528576,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": 0.041667,
+        "scoreLift95": {
+          "lower": -0.04,
+          "upper": 0.123333
+        },
+        "reportedDamageDelta": -2145.416667,
+        "reportedDefenseDelta": -2885.833333,
+        "battleTicksDelta": -3.333333
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.125,
+        "scoreLift95": {
+          "lower": -0.050846,
+          "upper": 0.300846
+        },
+        "reportedDamageDelta": 998.083333,
+        "reportedDefenseDelta": -110,
+        "battleTicksDelta": -0.5
+      },
+      "ablationImpactZScore": -0.454372,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "repair",
+      "code": "REPAIR",
+      "title": "修復",
+      "rarity": "rare",
+      "price": 7,
+      "appearances": 212,
+      "wins": 86,
+      "losses": 82,
+      "draws": 44,
+      "winRate": 0.40566,
+      "scoreRate": 0.509434,
+      "winRate95": {
+        "lower": 0.341811,
+        "upper": 0.472868
+      },
+      "matchedSamples": 212,
+      "matchedScoreLift": 0.009064,
+      "averageTicks": 5.45283,
+      "activationsPerBattle": 2.40566,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 440.707547,
+      "reportedOutputPerActivation": 183.196078,
+      "averageTeamDamageWhenPresent": 10301.726415,
+      "efficiencyZScore": -0.645514,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": -0.041667,
+        "scoreLift95": {
+          "lower": -0.123333,
+          "upper": 0.04
+        },
+        "reportedDamageDelta": 1526.25,
+        "reportedDefenseDelta": 833.75,
+        "battleTicksDelta": 1.416667
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.125,
+        "scoreLift95": {
+          "lower": -0.050846,
+          "upper": 0.300846
+        },
+        "reportedDamageDelta": 0,
+        "reportedDefenseDelta": 468.333333,
+        "battleTicksDelta": 0
+      },
+      "ablationImpactZScore": -0.454372,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "return-coil",
+      "code": "RETURN",
+      "title": "帰還コイル",
+      "rarity": "rare",
+      "price": 8,
+      "appearances": 212,
+      "wins": 84,
+      "losses": 88,
+      "draws": 40,
+      "winRate": 0.396226,
+      "scoreRate": 0.490566,
+      "winRate95": {
+        "lower": 0.332795,
+        "upper": 0.463352
+      },
+      "matchedSamples": 212,
+      "matchedScoreLift": 0.01286,
+      "averageTicks": 5.40566,
+      "activationsPerBattle": 3.132075,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 933.443396,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 298.027108,
+      "averageTeamDamageWhenPresent": 9059.150943,
+      "efficiencyZScore": -0.145311,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": -0.041667,
+        "scoreLift95": {
+          "lower": -0.123333,
+          "upper": 0.04
+        },
+        "reportedDamageDelta": 893,
+        "reportedDefenseDelta": 1154.166667,
+        "battleTicksDelta": 0.5
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.208333,
+        "scoreLift95": {
+          "lower": 0.019197,
+          "upper": 0.397469
+        },
+        "reportedDamageDelta": 3097.75,
+        "reportedDefenseDelta": 2166.25,
+        "battleTicksDelta": 0.416667
+      },
+      "ablationImpactZScore": 0.795141,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "strike",
+      "code": "SLASH",
+      "title": "斬撃",
+      "rarity": "common",
+      "price": 4,
+      "appearances": 984,
+      "wins": 362,
+      "losses": 392,
+      "draws": 230,
+      "winRate": 0.367886,
+      "scoreRate": 0.484756,
+      "winRate95": {
+        "lower": 0.338323,
+        "upper": 0.398477
+      },
+      "matchedSamples": 984,
+      "matchedScoreLift": -0.049823,
+      "averageTicks": 4.292683,
+      "activationsPerBattle": 5.060976,
+      "reportedDamagePerBattle": 421.544715,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 83.293173,
+      "averageTeamDamageWhenPresent": 11095.619919,
+      "efficiencyZScore": -0.872563,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": -0.041667,
+        "scoreLift95": {
+          "lower": -0.123333,
+          "upper": 0.04
+        },
+        "reportedDamageDelta": -695.833333,
+        "reportedDefenseDelta": -404.166667,
+        "battleTicksDelta": -0.166667
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0,
+        "scoreLift95": {
+          "lower": 0,
+          "upper": 0
+        },
+        "reportedDamageDelta": -1188,
+        "reportedDefenseDelta": -610,
+        "battleTicksDelta": -1.25
+      },
+      "ablationImpactZScore": -1.19208,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "barrier",
+      "code": "GUARD",
+      "title": "障壁",
+      "rarity": "common",
+      "price": 4,
+      "appearances": 1614,
+      "wins": 614,
+      "losses": 634,
+      "draws": 366,
+      "winRate": 0.380421,
+      "scoreRate": 0.493804,
+      "winRate95": {
+        "lower": 0.357046,
+        "upper": 0.404364
+      },
+      "matchedSamples": 1614,
+      "matchedScoreLift": -0.020169,
+      "averageTicks": 4.861214,
+      "activationsPerBattle": 4.526642,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 945.98513,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 208.981659,
+      "averageTeamDamageWhenPresent": 11377.415118,
+      "efficiencyZScore": 1.815628,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.041667,
+        "scoreLift95": {
+          "lower": -0.04,
+          "upper": 0.123333
+        },
+        "reportedDamageDelta": 356.75,
+        "reportedDefenseDelta": 580.416667,
+        "battleTicksDelta": 0.333333
+      },
+      "ablationImpactZScore": -0.397354,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "sealed-junction",
+      "code": "SEAL",
+      "title": "封環結界",
+      "rarity": "epic",
+      "price": 13,
+      "appearances": 830,
+      "wins": 290,
+      "losses": 318,
+      "draws": 222,
+      "winRate": 0.349398,
+      "scoreRate": 0.483133,
+      "winRate95": {
+        "lower": 0.317722,
+        "upper": 0.382461
+      },
+      "matchedSamples": 830,
+      "matchedScoreLift": -0.016195,
+      "averageTicks": 3.518072,
+      "activationsPerBattle": 2.436145,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 746.506024,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 306.429278,
+      "averageTeamDamageWhenPresent": 12540.496386,
+      "efficiencyZScore": -0.726822,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.083333,
+        "scoreLift95": {
+          "lower": -0.026786,
+          "upper": 0.193453
+        },
+        "reportedDamageDelta": 37.916667,
+        "reportedDefenseDelta": 343.333333,
+        "battleTicksDelta": 0.166667
+      },
+      "ablationImpactZScore": -0.790175,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "charge-arrow",
+      "code": "CHG-A",
+      "title": "充電矢",
+      "rarity": "common",
+      "price": 5,
+      "appearances": 978,
+      "wins": 280,
+      "losses": 576,
+      "draws": 122,
+      "winRate": 0.286299,
+      "scoreRate": 0.348671,
+      "winRate95": {
+        "lower": 0.258847,
+        "upper": 0.315422
+      },
+      "matchedSamples": 0,
+      "matchedScoreLift": null,
+      "averageTicks": 6.437628,
+      "activationsPerBattle": 6.141104,
+      "reportedDamagePerBattle": 520.245399,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 84.715285,
+      "averageTeamDamageWhenPresent": 7088.977505,
+      "efficiencyZScore": -0.842148,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.125,
+        "scoreLift95": {
+          "lower": -0.050846,
+          "upper": 0.300846
+        },
+        "reportedDamageDelta": 1398.75,
+        "reportedDefenseDelta": 657.5,
+        "battleTicksDelta": 0
+      },
+      "ablationImpactZScore": 1.19208,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "charge-bastion",
+      "code": "BASTION",
+      "title": "防壁展開",
+      "rarity": "epic",
+      "price": 14,
+      "appearances": 450,
+      "wins": 118,
+      "losses": 292,
+      "draws": 40,
+      "winRate": 0.262222,
+      "scoreRate": 0.306667,
+      "winRate95": {
+        "lower": 0.223718,
+        "upper": 0.304752
+      },
+      "matchedSamples": 450,
+      "matchedScoreLift": -0.061667,
+      "averageTicks": 7.417778,
+      "activationsPerBattle": 3.524444,
+      "reportedDamagePerBattle": 0,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 5256.044444,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 1491.311475,
+      "averageTeamDamageWhenPresent": 7331.022222,
+      "efficiencyZScore": -0.31642,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": 0,
+        "scoreLift95": {
+          "lower": -0.241259,
+          "upper": 0.241259
+        },
+        "reportedDamageDelta": 728.333333,
+        "reportedDefenseDelta": 5784.166667,
+        "battleTicksDelta": 4.166667
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.083333,
+        "scoreLift95": {
+          "lower": -0.08,
+          "upper": 0.246667
+        },
+        "reportedDamageDelta": 877.083333,
+        "reportedDefenseDelta": 8143.75,
+        "battleTicksDelta": 3.833333
+      },
+      "ablationImpactZScore": -0.790175,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "cultivation-blade",
+      "code": "CULT",
+      "title": "培養刃",
+      "rarity": "rare",
+      "price": 8,
+      "appearances": 104,
+      "wins": 58,
+      "losses": 18,
+      "draws": 28,
+      "winRate": 0.557692,
+      "scoreRate": 0.692308,
+      "winRate95": {
+        "lower": 0.461875,
+        "upper": 0.649399
+      },
+      "matchedSamples": 104,
+      "matchedScoreLift": 0.048794,
+      "averageTicks": 3.384615,
+      "activationsPerBattle": 2.076923,
+      "reportedDamagePerBattle": 412.307692,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 198.518519,
+      "averageTeamDamageWhenPresent": 15083.346154,
+      "efficiencyZScore": -0.57877,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": 0,
+        "scoreLift95": {
+          "lower": 0,
+          "upper": 0
+        },
+        "reportedDamageDelta": -84,
+        "reportedDefenseDelta": 0,
+        "battleTicksDelta": 0
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.041667,
+        "scoreLift95": {
+          "lower": -0.04,
+          "upper": 0.123333
+        },
+        "reportedDamageDelta": 21.916667,
+        "reportedDefenseDelta": 222.083333,
+        "battleTicksDelta": -0.333333
+      },
+      "ablationImpactZScore": -1.703886,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "poison-needle",
+      "code": "VENOM",
+      "title": "毒矢",
+      "rarity": "common",
+      "price": 5,
+      "appearances": 1022,
+      "wins": 496,
+      "losses": 200,
+      "draws": 326,
+      "winRate": 0.485323,
+      "scoreRate": 0.644814,
+      "winRate95": {
+        "lower": 0.454793,
+        "upper": 0.515962
+      },
+      "matchedSamples": 0,
+      "matchedScoreLift": null,
+      "averageTicks": 2.876712,
+      "activationsPerBattle": 3.268102,
+      "reportedDamagePerBattle": 183.277886,
+      "poisonAppliedPerBattle": 188.855186,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 113.868263,
+      "averageTeamDamageWhenPresent": 15271.383562,
+      "efficiencyZScore": -0.218632,
+      "counterfactual": {
+        "samples": 0,
+        "scoreLift": null,
+        "scoreLift95": null,
+        "reportedDamageDelta": null,
+        "reportedDefenseDelta": null,
+        "battleTicksDelta": null
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.083333,
+        "scoreLift95": {
+          "lower": -0.08,
+          "upper": 0.246667
+        },
+        "reportedDamageDelta": 2357.083333,
+        "reportedDefenseDelta": -292.916667,
+        "battleTicksDelta": -1.083333
+      },
+      "ablationImpactZScore": 0.397354,
+      "signals": [],
+      "suspectedOutlier": false
+    },
+    {
+      "blockId": "status-relay",
+      "code": "RELAY",
+      "title": "異常伝送",
+      "rarity": "rare",
+      "price": 8,
+      "appearances": 812,
+      "wins": 332,
+      "losses": 264,
+      "draws": 216,
+      "winRate": 0.408867,
+      "scoreRate": 0.541872,
+      "winRate95": {
+        "lower": 0.375558,
+        "upper": 0.443034
+      },
+      "matchedSamples": 812,
+      "matchedScoreLift": 0.050717,
+      "averageTicks": 3.906404,
+      "activationsPerBattle": 2.906404,
+      "reportedDamagePerBattle": 397.05665,
+      "poisonAppliedPerBattle": 0,
+      "reportedShieldPerBattle": 0,
+      "effectiveRepairPerBattle": 0,
+      "reportedOutputPerActivation": 136.614407,
+      "averageTeamDamageWhenPresent": 12303.859606,
+      "efficiencyZScore": -0.848424,
+      "counterfactual": {
+        "samples": 12,
+        "scoreLift": 0,
+        "scoreLift95": {
+          "lower": 0,
+          "upper": 0
+        },
+        "reportedDamageDelta": -274.5,
+        "reportedDefenseDelta": -110.833333,
+        "battleTicksDelta": 0
+      },
+      "ablation": {
+        "samples": 12,
+        "scoreLift": 0.166667,
+        "scoreLift95": {
+          "lower": -0.053572,
+          "upper": 0.386905
+        },
+        "reportedDamageDelta": 2135.333333,
+        "reportedDefenseDelta": -206.666667,
+        "battleTicksDelta": -0.583333
+      },
+      "ablationImpactZScore": 0.170392,
+      "signals": [],
+      "suspectedOutlier": false
+    }
+  ],
+  "methodology": {
+    "tournament": "Each generated matchup is replayed with boards swapped between player and enemy sides. Runs and seeds are fixed by config.",
+    "counterfactual": "A skill replaces a same-rarity, overlapping-role node with an identical rotated port signature, then baseline and replacement boards fight the same opponent on both sides.",
+    "ablation": "The same generated board is replayed with the target skill effects disabled while ports remain unchanged, using an opponent that does not contain that skill.",
+    "limitations": [
+      "Generated builds use the rival generator fixed layout and do not model shop purchases, rerolls, coins, or fusion decisions.",
+      "Per-skill damage is reported trace output before shield absorption and overkill; repair is capped effective healing.",
+      "Poison tick damage is team-attributed rather than source-skill-attributed.",
+      "Passive support is evaluated primarily through matched and counterfactual outcome lift rather than direct trace output."
+    ]
+  },
+  "generatedAt": "2026-07-21T15:03:14.351Z",
+  "elapsedMs": 4575
+}
