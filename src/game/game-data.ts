@@ -48,6 +48,7 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.sourceRow < 0 || data.rules.sourceRow >= data.rules.boardSize)
     errors.push('sourceRow is outside the board');
   if (data.rules.battleStepMs <= 0) errors.push('battleStepMs must be positive');
+  if (data.rules.pulseAnimationMs < 300) errors.push('pulseAnimationMs must be at least 300');
   if (data.rules.suddenDeathSeconds <= 0) errors.push('suddenDeathSeconds must be positive');
   if (data.rules.suddenDeathBaseDamage <= 0) errors.push('suddenDeathBaseDamage must be positive');
   if (data.rules.suddenDeathGrowth <= 1) errors.push('suddenDeathGrowth must be greater than 1');

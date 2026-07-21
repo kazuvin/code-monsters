@@ -192,9 +192,12 @@ if (!desktopHealth || desktopHealth.width > 90 || desktopHealth.height > 12)
   throw new Error('Desktop health display is too prominent');
 await desktop.getByText('TIME', { exact: true }).waitFor();
 if ((await desktop.locator('.battle-time-rail').count()) !== 1) throw new Error('Timed overload rail is missing');
-await desktop.waitForTimeout(900);
-if ((await desktop.locator('.battle-circuit-cell.is-firing').count()) === 0) {
-  throw new Error('Circuit summary did not show a firing skill');
+await desktop.waitForTimeout(600);
+if ((await desktop.locator('.battle-circuit-cell.is-activated').count()) === 0) {
+  throw new Error('Circuit summary did not show an activated skill');
+}
+if ((await desktop.locator('.battle-circuit-cell .block-port.is-conducting').count()) === 0) {
+  throw new Error('Circuit summary did not show current moving along an edge');
 }
 const enemyMergeSkill = desktop.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]');
 await enemyMergeSkill.waitFor({ timeout: 5000 });
@@ -273,7 +276,7 @@ const horizontalOverflow = await mobile.evaluate(() => document.documentElement.
 if (horizontalOverflow > 1) throw new Error(`Mobile page overflows horizontally by ${horizontalOverflow}px`);
 await mobile.getByRole('button', { name: /戦闘開始/ }).click();
 await mobile.locator('.battle-screen').waitFor();
-await mobile.waitForTimeout(900);
+await mobile.waitForTimeout(600);
 const mobileStage = await mobile.locator('.battle-stage').boundingBox();
 if (!mobileStage || Math.abs(mobileStage.width / mobileStage.height - battleBackgroundRatio) > 0.03) {
   throw new Error(`Mobile battle background is not displayed at its full image ratio: ${JSON.stringify(mobileStage)}`);
@@ -287,8 +290,17 @@ const mobileHealth = await mobile.locator('.unit-health').first().boundingBox();
 if (!mobileUnitVisual || mobileUnitVisual.height > 52) throw new Error('Mobile battle character is too prominent');
 if (!mobileHealth || mobileHealth.width > 68 || mobileHealth.height > 9)
   throw new Error('Mobile health display is too prominent');
-if ((await mobile.locator('.battle-circuit-cell.is-firing').count()) === 0) {
-  throw new Error('Mobile circuit summary did not show a firing skill');
+if ((await mobile.locator('.battle-circuit-cell.is-activated').count()) === 0) {
+  throw new Error('Mobile circuit summary did not show an activated skill');
+}
+if ((await mobile.locator('.battle-projectile.effect-poison').count()) === 0) {
+  throw new Error('Poison skill did not show a distinct projectile animation');
+}
+if ((await mobile.locator('.arena-fighter.team-enemy .poison-impact').count()) === 0) {
+  throw new Error('Poison skill did not show an impact animation on its target');
+}
+if (!(await mobile.locator('.arena-fighter.team-enemy .combat-feedback').textContent())?.includes('毒')) {
+  throw new Error('Poison impact did not explain its status increase');
 }
 const mobileMergeSkill = mobile.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]');
 await mobileMergeSkill.waitFor({ timeout: 5000 });
@@ -314,23 +326,55 @@ await pulse.clock.install();
 await pulse.goto(target, { waitUntil: 'networkidle' });
 await pulse.getByRole('button', { name: /戦闘開始/ }).click();
 await pulse.locator('.battle-screen').waitFor();
-await pulse.clock.runFor(501);
+if ((await pulse.getByRole('group', { name: '戦闘速度' }).getByRole('button').count()) !== 3) {
+  throw new Error('Battle speed controls do not offer 1x, 2x, and 3x');
+}
+if ((await pulse.getByRole('button', { name: '1倍' }).getAttribute('aria-pressed')) !== 'true') {
+  throw new Error('Battle does not start at the readable 1x speed');
+}
+await pulse.clock.runFor(481);
 const firstPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
   .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
 if (JSON.stringify(firstPulse) !== JSON.stringify(['2:0'])) {
   throw new Error(`First pulse stage is not the source cell: ${JSON.stringify(firstPulse)}`);
 }
-await pulse.clock.runFor(100);
+if (
+  (await pulse.locator('.battle-circuit-summary.team-enemy [data-cell-key="2:0"][data-activated="true"]').count()) !== 1
+) {
+  throw new Error('The source skill did not light when it activated');
+}
+if ((await pulse.locator('.battle-circuit-summary.team-enemy .block-port.is-conducting').count()) === 0) {
+  throw new Error('The first pulse did not animate current on its input edge');
+}
+if (
+  (await pulse.locator('.battle-projectile.team-enemy.effect-damage').count()) === 0 ||
+  !(await pulse.locator('.arena-fighter.team-player .combat-feedback').textContent())?.includes('HP')
+) {
+  throw new Error('Damage did not show its projectile and impact value');
+}
+await pulse.getByRole('button', { name: '3倍' }).click();
+if ((await pulse.locator('.battle-screen').getAttribute('data-battle-speed')) !== '3') {
+  throw new Error('Battle speed did not switch to 3x');
+}
+await pulse.clock.runFor(159);
+const pulseBeforeFastFrame = await pulse
+  .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
+  .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
+if (JSON.stringify(pulseBeforeFastFrame) !== JSON.stringify(['2:0'])) {
+  throw new Error('The 3x speed advanced before one scaled frame elapsed');
+}
+await pulse.clock.runFor(2);
 const parallelPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
   .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
 if (JSON.stringify(parallelPulse) !== JSON.stringify(['1:0', '2:1'])) {
   throw new Error(`Split pulse did not fire the same depth together: ${JSON.stringify(parallelPulse)}`);
 }
-await pulse.clock.runFor(100);
-await pulse.clock.runFor(100);
-await pulse.clock.runFor(100);
+await pulse.getByRole('button', { name: '1倍' }).click();
+await pulse.clock.runFor(480);
+await pulse.clock.runFor(480);
+await pulse.clock.runFor(480);
 const mergingPulse = pulse.locator('.battle-circuit-summary.team-enemy .battle-circuit-cell.is-merging');
 if (
   (await mergingPulse.count()) !== 1 ||
@@ -344,6 +388,15 @@ if (
   throw new Error(`Merged pulse did not arrive last with its doubled-effect marker: ${JSON.stringify(pulseState)}`);
 }
 await pulse.screenshot({ path: '/tmp/code-monsters-circuit-pulse-merge.png', fullPage: true });
+await pulse.clock.runFor(480);
+const cooldownSource = pulse.locator('.battle-circuit-summary.team-enemy [data-cell-key="2:0"]');
+if (
+  (await cooldownSource.getAttribute('data-pulse-step')) !== '1' ||
+  (await cooldownSource.getAttribute('data-conducting')) !== 'true' ||
+  (await cooldownSource.getAttribute('data-activated')) !== null
+) {
+  throw new Error('A cooldown skill did not conduct current without lighting as activated');
+}
 
 const overload = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
 overload.on('pageerror', (error) => errors.push(error.message));
@@ -354,7 +407,8 @@ await overload.clock.install();
 await overload.goto(target, { waitUntil: 'networkidle' });
 await overload.getByRole('button', { name: /戦闘開始/ }).click();
 await overload.locator('.battle-screen').waitFor();
-await advanceClock(overload, 20_450);
+await overload.getByRole('button', { name: '3倍' }).click();
+await advanceClock(overload, 32_005, 160);
 await overload.getByText('OVERLOAD', { exact: true }).waitFor();
 if ((await overload.locator('.status-overload').count()) !== 2) {
   throw new Error('Overload status is not visible on both fighters');
@@ -377,7 +431,8 @@ const lockedAcrossRunTitle = (await lockedAcrossRun.locator('.shop-block-button 
 await lockedAcrossRun.locator('.lock-button').click();
 await lockedRun.getByRole('button', { name: /戦闘開始/ }).click();
 await lockedRun.locator('.battle-screen').waitFor();
-await advanceClock(lockedRun, 35_000);
+await lockedRun.getByRole('button', { name: '3倍' }).click();
+await advanceClock(lockedRun, 50_000, 160);
 await lockedRun.locator('.result-panel').waitFor();
 if (!(await lockedRun.locator('.result-reward').textContent())?.includes('COIN +2')) {
   throw new Error('Defeat result does not show its coin reward');

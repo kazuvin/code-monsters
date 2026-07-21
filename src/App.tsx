@@ -10,6 +10,7 @@ import { createBattle, createPlayback } from './core/battle';
 import { analyzeCircuit, rotatePorts } from './core/circuit';
 import { battleReward } from './core/economy';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
+import { BATTLE_SPEEDS, playbackFrameMs, type BattleSpeed } from './core/playback';
 import { advanceShop, createShop, rerollShop } from './core/shop';
 import {
   incomingSkillModifiers,
@@ -47,6 +48,22 @@ type DragState = {
   rotation: Rotation;
   x: number;
   y: number;
+};
+
+type PortFlow = 'in' | 'out';
+
+type FighterFeedback = {
+  damage: number;
+  poison: number;
+  shield: number;
+  repair: number;
+};
+
+const directionBetween = (from: CellPosition, to: CellPosition): Direction => {
+  if (to.row < from.row) return 'north';
+  if (to.row > from.row) return 'south';
+  if (to.column < from.column) return 'west';
+  return 'east';
 };
 type PendingDrag = DragState & { pointerId: number; startX: number; startY: number; started: boolean };
 
@@ -112,11 +129,13 @@ const BlockVisual = ({
   rotation = 0,
   powered = false,
   compact = false,
+  portFlows,
 }: {
   block: BlockDefinition;
   rotation?: Rotation;
   powered?: boolean;
   compact?: boolean;
+  portFlows?: Partial<Record<Direction, PortFlow>>;
 }) => {
   const ports = rotatePorts(block.ports, rotation);
   const visualEffect = block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
@@ -128,7 +147,10 @@ const BlockVisual = ({
       aria-hidden="true"
     >
       {ports.map((port) => (
-        <i className={`block-port port-${port}`} key={port} />
+        <i
+          className={`block-port port-${port} ${portFlows?.[port] ? `is-conducting flow-${portFlows[port]}` : ''}`}
+          key={port}
+        />
       ))}
       <span className="block-core">
         <b>{block.glyph}</b>
@@ -159,19 +181,36 @@ const ArenaFighter = ({
   acting,
   hit,
   overloaded,
+  feedback,
 }: {
   fighter: FighterState;
   acting: boolean;
   hit: boolean;
   overloaded: boolean;
+  feedback: FighterFeedback;
 }) => (
   <article
-    className={`arena-fighter team-${fighter.team} ${fighter.hp <= 0 ? 'is-down' : ''} ${acting ? 'is-acting' : ''} ${hit ? 'is-hit' : ''}`}
+    className={`arena-fighter team-${fighter.team} ${fighter.hp <= 0 ? 'is-down' : ''} ${acting ? 'is-acting' : ''} ${hit ? 'is-hit' : ''} ${feedback.poison > 0 ? 'is-poisoned-now' : ''} ${feedback.shield > 0 ? 'is-shielded-now' : ''} ${feedback.repair > 0 ? 'is-repaired-now' : ''}`}
     style={{ '--robot-color': fighter.color } as CSSProperties}
   >
     <div className="arena-unit-visual">
       <RobotSprite fighter={fighter} />
+      {feedback.poison > 0 && (
+        <span className="poison-impact" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+      )}
     </div>
+    {(feedback.damage > 0 || feedback.poison > 0 || feedback.shield > 0 || feedback.repair > 0) && (
+      <div className="combat-feedback" aria-live="polite">
+        {feedback.damage > 0 && <b className="feedback-damage">-{feedback.damage} HP</b>}
+        {feedback.poison > 0 && <b className="feedback-poison">毒 +{feedback.poison}</b>}
+        {feedback.shield > 0 && <b className="feedback-shield">防護 +{feedback.shield}</b>}
+        {feedback.repair > 0 && <b className="feedback-repair">回復 +{feedback.repair}</b>}
+      </div>
+    )}
     <div className="arena-unit-copy">
       <small>{fighter.code}</small>
       <strong>{fighter.name}</strong>
@@ -250,8 +289,24 @@ const BattleCircuitSummary = ({
     (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
       event.kind !== 'overload' && event.kind !== 'poison-tick' && event.team === team,
   );
-  const firingCells = new Set(pulseCells);
-  const mergingCells = new Set([...analysis.mergeCells].filter((key) => firingCells.has(key)));
+  const conductingCells = new Set(pulseCells);
+  const activatedCells = new Set(skillEvents.map((event) => `${event.row}:${event.column}`));
+  const mergingCells = new Set([...analysis.mergeCells].filter((key) => activatedCells.has(key)));
+  const portFlowsByCell = new Map<string, Partial<Record<Direction, PortFlow>>>();
+  const setPortFlow = (key: string, direction: Direction, flow: PortFlow) => {
+    const current = portFlowsByCell.get(key) ?? {};
+    portFlowsByCell.set(key, { ...current, [direction]: flow });
+  };
+  for (const targetKey of conductingCells) {
+    const [row, column] = targetKey.split(':').map(Number);
+    const target = { row, column };
+    if (row === GAME_DATA.rules.sourceRow && column === 0) setPortFlow(targetKey, 'west', 'in');
+    for (const upstream of analysis.upstreamCells.get(targetKey) ?? []) {
+      const upstreamKey = `${upstream.row}:${upstream.column}`;
+      setPortFlow(targetKey, directionBetween(target, upstream), 'in');
+      setPortFlow(upstreamKey, directionBetween(upstream, target), 'out');
+    }
+  }
   const firingLabels = skillEvents
     .map((event) => blockById.get(event.blockId)?.title)
     .filter((title): title is string => Boolean(title));
@@ -275,7 +330,7 @@ const BattleCircuitSummary = ({
       </header>
       <div className="battle-circuit-map">
         <div
-          className="battle-circuit-source"
+          className={`battle-circuit-source ${conductingCells.has(`${GAME_DATA.rules.sourceRow}:0`) ? 'is-conducting' : ''}`}
           style={{ '--source-row': GAME_DATA.rules.sourceRow + 1 } as CSSProperties}
           aria-hidden="true"
         >
@@ -288,11 +343,13 @@ const BattleCircuitSummary = ({
               const block = placed ? blockById.get(placed.blockId) : undefined;
               const stateLabel = mergingCells.has(key)
                 ? `合流 効果${GAME_DATA.rules.mergeEffectMultiplier}倍`
-                : firingCells.has(key)
-                  ? '発火'
-                  : poweredCells.has(key)
-                    ? '通電'
-                    : '未通電';
+                : activatedCells.has(key)
+                  ? '発動'
+                  : conductingCells.has(key)
+                    ? '通電中・待機'
+                    : poweredCells.has(key)
+                      ? '接続済み'
+                      : '未通電';
               if (block && placed) {
                 const position = { row: rowIndex, column: columnIndex };
                 const modifiers = incomingSkillModifiers(board, GAME_DATA.blocks, analysis, position);
@@ -310,10 +367,12 @@ const BattleCircuitSummary = ({
                 return (
                   <button
                     type="button"
-                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${firingCells.has(key) ? 'is-firing' : ''} ${mergingCells.has(key) ? 'is-merging' : ''}`}
+                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${portFlowsByCell.has(key) ? 'is-conducting' : ''} ${activatedCells.has(key) ? 'is-activated' : ''} ${mergingCells.has(key) ? 'is-merging' : ''}`}
                     key={key}
                     data-cell-key={key}
-                    data-pulse-step={firingCells.has(key) ? pulseStep : undefined}
+                    data-pulse-step={conductingCells.has(key) ? pulseStep : undefined}
+                    data-conducting={portFlowsByCell.has(key) ? 'true' : undefined}
+                    data-activated={activatedCells.has(key) ? 'true' : undefined}
                     data-merge={analysis.mergeCells.has(key) ? 'true' : undefined}
                     aria-label={`${label}の${block.title} ${stateLabel}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
                     aria-haspopup="dialog"
@@ -326,7 +385,13 @@ const BattleCircuitSummary = ({
                       })
                     }
                   >
-                    <BlockVisual block={block} rotation={placed.rotation} powered={poweredCells.has(key)} compact />
+                    <BlockVisual
+                      block={block}
+                      rotation={placed.rotation}
+                      powered={poweredCells.has(key)}
+                      compact
+                      portFlows={portFlowsByCell.get(key)}
+                    />
                     {mergingCells.has(key) && (
                       <b className="block-merge-chip">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
                     )}
@@ -347,7 +412,7 @@ const BattleCircuitSummary = ({
               }
               return (
                 <span
-                  className={`battle-circuit-cell ${poweredCells.has(key) ? 'is-powered' : ''} ${firingCells.has(key) ? 'is-firing' : ''}`}
+                  className={`battle-circuit-cell ${poweredCells.has(key) ? 'is-powered' : ''}`}
                   key={key}
                   aria-label="空き"
                 />
@@ -374,6 +439,7 @@ export function App() {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [playback, setPlayback] = useState<BattleState[]>([]);
   const [frame, setFrame] = useState(0);
+  const [battleSpeed, setBattleSpeed] = useState<BattleSpeed>(1);
   const [message, setMessage] = useState('ショップで技を選ぶ');
   const holdTimer = useRef<number | null>(null);
   const pendingDrag = useRef<PendingDrag | null>(null);
@@ -399,7 +465,12 @@ export function App() {
     return battle.trace.slice(previousCount);
   }, [battle.trace, frame, playback]);
   const actingTeams = useMemo(
-    () => new Set(frameEvents.filter((event) => event.kind !== 'overload').map((event) => event.team)),
+    () =>
+      new Set(
+        frameEvents
+          .filter((event) => event.kind === 'damage' || event.kind === 'poison' || event.kind === 'rupture')
+          .map((event) => event.team),
+      ),
     [frameEvents],
   );
   const hitTeams = useMemo(
@@ -423,11 +494,33 @@ export function App() {
       ),
     [frameEvents],
   );
+  const fighterFeedback = useMemo(() => {
+    const feedback: Record<Team, FighterFeedback> = {
+      player: { damage: 0, poison: 0, shield: 0, repair: 0 },
+      enemy: { damage: 0, poison: 0, shield: 0, repair: 0 },
+    };
+    for (const event of frameEvents) {
+      if (event.kind === 'overload' || event.kind === 'poison-tick') {
+        feedback[event.team].damage += event.value;
+        continue;
+      }
+      const targetTeam = event.team === 'player' ? 'enemy' : 'player';
+      if (event.kind === 'damage' || event.kind === 'rupture') feedback[targetTeam].damage += event.value;
+      if (event.kind === 'poison') feedback[targetTeam].poison += event.value;
+      if (event.kind === 'shield') feedback[event.team].shield += event.value;
+      if (event.kind === 'repair') feedback[event.team].repair += event.value;
+    }
+    return feedback;
+  }, [frameEvents]);
+  const projectileEvents = frameEvents.filter(
+    (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
+      event.kind === 'damage' || event.kind === 'poison' || event.kind === 'rupture',
+  );
   const elapsedWaves = battle.tick === 0 ? 0 : battle.tick - 1 + battle.pulseStep / Math.max(1, battle.pulseStepCount);
   const elapsedSeconds = (elapsedWaves * GAME_DATA.rules.battleStepMs) / 1000;
   const battleProgress = Math.min(100, (elapsedSeconds / GAME_DATA.rules.suddenDeathSeconds) * 100);
   const overloaded = battle.overloadLevel > 0;
-  const pulseFrameMs = GAME_DATA.rules.battleStepMs / Math.max(1, battle.pulseStepCount);
+  const pulseFrameMs = playbackFrameMs(GAME_DATA, battleSpeed);
 
   useEffect(() => {
     if (phase !== 'battle') return;
@@ -435,12 +528,12 @@ export function App() {
       const timer = window.setTimeout(() => {
         setDetail(null);
         setPhase('result');
-      }, 720);
+      }, 720 / battleSpeed);
       return () => window.clearTimeout(timer);
     }
     const timer = window.setTimeout(() => setFrame((current) => current + 1), pulseFrameMs);
     return () => window.clearTimeout(timer);
-  }, [frame, phase, playback.length, pulseFrameMs]);
+  }, [battleSpeed, frame, phase, playback.length, pulseFrameMs]);
 
   useEffect(() => {
     if (!message) return;
@@ -901,33 +994,62 @@ export function App() {
           </div>
         </>
       ) : (
-        <section className="battle-screen" aria-label="1対1バトル画面">
+        <section
+          className="battle-screen"
+          aria-label="1対1バトル画面"
+          data-battle-speed={battleSpeed}
+          style={{ '--battle-motion-scale': 1 / battleSpeed } as CSSProperties}
+        >
           <header className="battle-hud">
             <div>
               <small>CODE MONSTERS</small>
               <h1>BATTLE RUN {String(run).padStart(2, '0')}</h1>
             </div>
-            <div className={`battle-counter ${overloaded ? 'is-overload' : ''}`}>
-              <span>{overloaded ? 'OVERLOAD' : 'TIME'}</span>
-              <b>{elapsedSeconds.toFixed(1)}</b>
-              <i>{overloaded ? `DMG ${battle.overloadDamage}` : `/ ${GAME_DATA.rules.suddenDeathSeconds}s`}</i>
+            <div className="battle-hud-tools">
+              <div className="battle-speed" role="group" aria-label="戦闘速度">
+                {BATTLE_SPEEDS.map((speed) => (
+                  <button
+                    type="button"
+                    key={speed}
+                    aria-label={`${speed}倍`}
+                    aria-pressed={battleSpeed === speed}
+                    onClick={() => setBattleSpeed(speed)}
+                  >
+                    {speed}×
+                  </button>
+                ))}
+              </div>
+              <div className={`battle-counter ${overloaded ? 'is-overload' : ''}`}>
+                <span>{overloaded ? 'OVERLOAD' : 'TIME'}</span>
+                <b>{elapsedSeconds.toFixed(1)}</b>
+                <i>{overloaded ? `DMG ${battle.overloadDamage}` : `/ ${GAME_DATA.rules.suddenDeathSeconds}s`}</i>
+              </div>
             </div>
           </header>
 
           <div className="battle-stage">
             <div className="arena-team-label is-player">YOUR UNIT</div>
             <div className="arena-team-label is-enemy">RIVAL</div>
+            {projectileEvents.map((event) => (
+              <i
+                className={`battle-projectile team-${event.team} effect-${event.kind === 'poison' ? 'poison' : 'damage'}`}
+                key={event.id}
+                aria-hidden="true"
+              />
+            ))}
             <ArenaFighter
               fighter={player}
               acting={actingTeams.has('player')}
               hit={hitTeams.has('player')}
               overloaded={overloaded}
+              feedback={fighterFeedback.player}
             />
             <ArenaFighter
               fighter={enemy}
               acting={actingTeams.has('enemy')}
               hit={hitTeams.has('enemy')}
               overloaded={overloaded}
+              feedback={fighterFeedback.enemy}
             />
           </div>
 

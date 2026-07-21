@@ -4,6 +4,7 @@
     "boardSize": 5,
     "sourceRow": 2,
     "battleStepMs": 500,
+    "pulseAnimationMs": 480,
     "suddenDeathSeconds": 20,
     "suddenDeathBaseDamage": 2,
     "suddenDeathGrowth": 2,

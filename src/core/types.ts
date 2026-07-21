@@ -127,6 +127,7 @@ export type GameData = {
     boardSize: number;
     sourceRow: number;
     battleStepMs: number;
+    pulseAnimationMs: number;
     suddenDeathSeconds: number;
     suddenDeathBaseDamage: number;
     suddenDeathGrowth: number;

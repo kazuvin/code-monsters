@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBattle, createPlayback, resolveTick, runBattle } from './battle';
+import { createBattle, createPlayback, resolveTick, resolveWave, runBattle } from './battle';
 import type { CircuitBoard, GameData } from './types';
 
 const emptyBoard = (size = 3): CircuitBoard =>
@@ -11,6 +11,7 @@ const testData = (): GameData => ({
     boardSize: 3,
     sourceRow: 1,
     battleStepMs: 1000,
+    pulseAnimationMs: 480,
     suddenDeathSeconds: 4,
     suddenDeathBaseDamage: 2,
     suddenDeathGrowth: 2,
@@ -144,6 +145,20 @@ describe('1vs1 circuit battle', () => {
     expect(frames[0].fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
     expect(frames[0].fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(12);
     expect(frames[1].fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(9);
+  });
+
+  it('conducts through a cooldown skill without reporting a node activation', () => {
+    const data = testData();
+    const tick1 = resolveTick(data, createBattle(data, route('guard', 'strike'), emptyBoard()), 1);
+    const traceLength = tick1.trace.length;
+    const tick2Frames = resolveWave(data, tick1, 2);
+
+    expect(tick2Frames[0].activePulse.player).toEqual(['1:0']);
+    expect(tick2Frames[0].trace).toHaveLength(traceLength);
+    expect(tick2Frames[1].activePulse.player).toEqual(['1:1']);
+    expect(tick2Frames[1].trace.slice(traceLength)).toEqual([
+      expect.objectContaining({ blockId: 'strike', kind: 'damage' }),
+    ]);
   });
 
   it('boosts a directly connected skill with a powered amplifier', () => {

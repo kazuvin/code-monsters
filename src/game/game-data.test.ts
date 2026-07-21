@@ -21,6 +21,10 @@ describe('game data', () => {
     expect(GAME_DATA.rules.retryReward).toBeGreaterThan(0);
   });
 
+  it('keeps the base circuit pulse slow enough to read', () => {
+    expect(GAME_DATA.rules.pulseAnimationMs).toBeGreaterThanOrEqual(300);
+  });
+
   it('starts the rival with a readable split and merge circuit', () => {
     const analysis = analyzeCircuit(GAME_DATA.enemyBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
 
