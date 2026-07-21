@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 11,
+  "schemaVersion": 12,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -430,7 +430,7 @@
       "id": "strike",
       "code": "SLASH",
       "title": "斬撃",
-      "description": "1拍ごとに、相手へ70ダメージを与える。2本のエッジを持つ。",
+      "description": "通電にチャージ1を追加する。1拍ごとに、相手へ70ダメージを与える。2本のエッジを持つ。",
       "glyph": "斬",
       "price": 4,
       "rarity": "common",
@@ -438,13 +438,13 @@
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 1,
-      "effects": [{ "kind": "damage", "amount": 70 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 70 }]
     },
     {
       "id": "breaker",
       "code": "BREAK",
       "title": "破砕撃",
-      "description": "2拍ごとに、相手へ160ダメージを与える。2本のエッジを持つ。",
+      "description": "通電にチャージ1を追加する。2拍ごとに、相手へ160ダメージを与える。2本のエッジを持つ。",
       "glyph": "破",
       "price": 5,
       "rarity": "common",
@@ -452,13 +452,13 @@
       "ports": ["west", "north"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "damage", "amount": 160 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 160 }]
     },
     {
       "id": "arc-shot",
       "code": "ARC",
       "title": "アーク弾",
-      "description": "2拍ごとに、相手へ190ダメージを与える。3本のエッジを持つ。",
+      "description": "通電にチャージ1を追加する。2拍ごとに、相手へ190ダメージを与える。3本のエッジを持つ。",
       "glyph": "弧",
       "price": 7,
       "rarity": "rare",
@@ -466,13 +466,13 @@
       "ports": ["west", "north", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "damage", "amount": 190 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 190 }]
     },
     {
       "id": "barrier",
       "code": "GUARD",
       "title": "障壁",
-      "description": "2拍ごとに、シールドを130得る。3本のエッジを持つ。",
+      "description": "通電にチャージ1を追加する。2拍ごとに、シールドを130得る。3本のエッジを持つ。",
       "glyph": "盾",
       "price": 4,
       "rarity": "common",
@@ -480,13 +480,13 @@
       "ports": ["west", "north", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "shield", "amount": 130 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "shield", "amount": 130 }]
     },
     {
       "id": "repair",
       "code": "REPAIR",
       "title": "修復",
-      "description": "3拍ごとに、失ったHPを260回復する。2本のエッジを持つ。",
+      "description": "通電にチャージ1を追加する。3拍ごとに、失ったHPを260回復する。2本のエッジを持つ。",
       "glyph": "修",
       "price": 7,
       "rarity": "rare",
@@ -494,7 +494,7 @@
       "ports": ["west", "north"],
       "buildIds": ["poison", "charge"],
       "cooldown": 3,
-      "effects": [{ "kind": "repair", "amount": 260 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "repair", "amount": 260 }]
     },
     {
       "id": "rail-cannon",
@@ -515,27 +515,27 @@
       "id": "amplifier",
       "code": "AMP",
       "title": "増幅術",
-      "description": "この先に直接つながった技のダメージ・毒・シールド・回復・破裂威力を55増やす。",
+      "description": "通電にチャージ1を追加する。この先に直接つながった技のダメージ・毒・シールド・回復・破裂威力を55増やす。",
       "glyph": "増",
       "price": 8,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
-      "effects": [{ "kind": "amplify", "amount": 55 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "amplify", "amount": 55 }]
     },
     {
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "この先に直接つながった技の発動間隔を1拍短くする。3本のエッジを持つ代わりに価格が高い。",
+      "description": "通電にチャージ1を追加する。この先に直接つながった技の発動間隔を1拍短くする。3本のエッジを持つ代わりに価格が高い。",
       "glyph": "速",
       "price": 8,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "east", "south"],
       "buildIds": ["poison", "charge"],
-      "effects": [{ "kind": "haste", "amount": 1 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "haste", "amount": 1 }]
     },
     {
       "id": "poison-needle",

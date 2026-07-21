@@ -24,6 +24,7 @@
 - Keep `minimumPlayableSkillsPerBuild` at `0` while build design is exploratory; raise it deliberately when playable coverage should become a release gate.
 - Run `pnpm design:matrix` after build-design changes and review `docs/build-synergy-matrix.md`. Run `pnpm design:matrix:check` to detect stale output and invalid coverage.
 - Treat charge as a transient value carried by one circuit pulse, not a persistent energy meter. Only nodes with an explicit `charge` effect add charge; ordinary traversed nodes merely carry the incoming total, and release nodes convert it into their output.
+- Every playable node tagged with the charge trait must define either a `charge` effect or a `release-charge` effect; reject mismatches in game-data validation.
 - Keep node price bands strictly separated by rarity, and make higher-rarity nodes meaningfully stronger through output, multi-effects, or payoff efficiency.
 - Give rare, epic, and legendary tiers one or two charge-release nodes each so the build has finishers before its rarest rolls appear.
 - Define the four node rarities and their progressively lower base shop weights in `src/game/game.json`; individual `shopWeight` values may tune nodes only within that rarity baseline.

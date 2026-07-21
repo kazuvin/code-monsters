@@ -75,6 +75,11 @@ export function validateGameData(data: GameData): string[] {
     if (!blockIds.has(blockId)) errors.push(`startingRack[${index}] references unknown block "${blockId}"`);
   });
   const buildIds = new Set(data.buildDesign.builds.map((build) => build.id));
+  const chargeBlockIds = new Set(
+    data.buildDesign.skills
+      .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.includes('charge'))
+      .flatMap((skill) => (skill.blockId ? [skill.blockId] : [])),
+  );
   const traitAxis = data.buildDesign.axes.find((axis) => axis.id === 'trait');
   traitAxis?.values.forEach((value) => {
     if (!value.color || !/^#[0-9a-f]{6}$/i.test(value.color)) {
@@ -94,6 +99,12 @@ export function validateGameData(data: GameData): string[] {
       if (!directions.has(port)) errors.push(`block "${block.id}" has invalid port "${port}"`);
     });
     if (block.effects.length === 0) errors.push(`block "${block.id}" must have an effect`);
+    if (
+      chargeBlockIds.has(block.id) &&
+      !block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
+    ) {
+      errors.push(`block "${block.id}" is tagged with charge but has no charge or release effect`);
+    }
     const active = block.effects.some((effect) => !['amplify', 'haste', 'charge'].includes(effect.kind));
     if (active && !block.cooldown) errors.push(`active block "${block.id}" must have a cooldown`);
     block.effects.forEach((effect) => {

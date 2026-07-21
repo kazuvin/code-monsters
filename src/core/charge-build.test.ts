@@ -31,10 +31,22 @@ describe('charge build', () => {
     expect(release).toMatchObject({ kind: 'damage', value: 220, charge: 0 });
   });
 
-  it('does not gain charge merely by traversing nodes without a charge effect', () => {
+  it('gains charge from shared nodes shown with the charge trait', () => {
     const board = emptyBoard();
     board[GAME_DATA.rules.sourceRow][0] = { blockId: 'strike', rotation: 0 };
     board[GAME_DATA.rules.sourceRow][1] = { blockId: 'arc-shot', rotation: 0 };
+    board[GAME_DATA.rules.sourceRow][2] = { blockId: 'rail-cannon', rotation: 0 };
+
+    const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
+    const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
+
+    expect(release).toMatchObject({ kind: 'damage', value: 1420, charge: 2 });
+  });
+
+  it('does not gain charge while traversing poison-only nodes', () => {
+    const board = emptyBoard();
+    board[GAME_DATA.rules.sourceRow][0] = { blockId: 'poison-needle', rotation: 0 };
+    board[GAME_DATA.rules.sourceRow][1] = { blockId: 'venom-bloom', rotation: 0 };
     board[GAME_DATA.rules.sourceRow][2] = { blockId: 'rail-cannon', rotation: 0 };
 
     const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);

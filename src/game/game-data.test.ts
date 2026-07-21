@@ -89,6 +89,20 @@ describe('game data', () => {
     expect(releaseCount('legendary')).toBe(1);
   });
 
+  it('gives every charge-trait node an explicit charge or release effect', () => {
+    const chargeBlocks = GAME_DATA.buildDesign.skills
+      .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.includes('charge'))
+      .map((skill) => GAME_DATA.blocks.find((block) => block.id === skill.blockId)!);
+
+    expect(
+      chargeBlocks
+        .filter(
+          (block) => !block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge'),
+        )
+        .map((block) => block.id),
+    ).toEqual([]);
+  });
+
   it('defines a presentation color for every trait axis value', () => {
     const trait = GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'trait');
 
@@ -225,6 +239,16 @@ describe('game data', () => {
     invalid.buildDesign.skills = invalid.buildDesign.skills.filter((skill) => skill.blockId !== 'overcharge-cannon');
 
     expect(validateGameData(invalid)).toContain('legendary rarity needs one or two charge release nodes');
+  });
+
+  it('rejects a charge-trait node without a charge or release effect', () => {
+    const invalid = structuredClone(GAME_DATA);
+    const strike = invalid.blocks.find((block) => block.id === 'strike')!;
+    strike.effects = strike.effects.filter((effect) => effect.kind !== 'charge');
+
+    expect(validateGameData(invalid)).toContain(
+      'block "strike" is tagged with charge but has no charge or release effect',
+    );
   });
 
   it('rejects an effect scaling interval that cannot progress', () => {

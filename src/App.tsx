@@ -7,7 +7,9 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { createBattle, createPlayback } from './core/battle';
+import { createBattleReport, type BattleReport, type TeamBattleReport } from './core/battle-report';
 import { analyzeCircuit, calculateChargeByCell, rotatePorts } from './core/circuit';
+import { damageTierFor, type DamageTier } from './core/combat-presentation';
 import { battleReward } from './core/economy';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
 import { BATTLE_SPEEDS, playbackFrameMs, type BattleSpeed } from './core/playback';
@@ -94,6 +96,7 @@ const RARITY_COPY: Record<Rarity, { label: string; code: string; color: string; 
 };
 const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 const WEAPON_MARK: Record<string, string> = { blade: '剣', bow: '弓', cannon: '砲', device: '機' };
+const DAMAGE_TIER_COPY: Record<DamageTier, string> = { small: 'HIT', medium: 'HEAVY', large: 'BREAK' };
 
 const axisValuesForBlock = (blockId: string, axisId: string) => {
   const valueIds = skillDesignByBlockId.get(blockId)?.axisLinks.find((link) => link.axisId === axisId)?.valueIds ?? [];
@@ -346,79 +349,225 @@ const ArenaFighter = ({
   hit,
   overloaded,
   feedback,
+  feedbackKey,
 }: {
   fighter: FighterState;
   acting: boolean;
   hit: boolean;
   overloaded: boolean;
   feedback: FighterFeedback;
-}) => (
-  <article
-    className={`arena-fighter team-${fighter.team} ${fighter.hp <= 0 ? 'is-down' : ''} ${acting ? 'is-acting' : ''} ${hit ? 'is-hit' : ''} ${feedback.poison > 0 ? 'is-poisoned-now' : ''} ${feedback.shield > 0 ? 'is-shielded-now' : ''} ${feedback.repair > 0 ? 'is-repaired-now' : ''}`}
-    style={{ '--robot-color': fighter.color } as CSSProperties}
-  >
-    <div className="arena-unit-visual">
-      <RobotSprite fighter={fighter} />
-      {feedback.poison > 0 && (
-        <span className="poison-impact" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </span>
-      )}
-    </div>
-    {(feedback.damage > 0 || feedback.poison > 0 || feedback.shield > 0 || feedback.repair > 0) && (
-      <div className="combat-feedback" aria-live="polite">
-        {feedback.damage > 0 && <b className="feedback-damage">-{feedback.damage} HP</b>}
-        {feedback.poison > 0 && <b className="feedback-poison">毒 +{feedback.poison}</b>}
-        {feedback.shield > 0 && <b className="feedback-shield">防護 +{feedback.shield}</b>}
-        {feedback.repair > 0 && <b className="feedback-repair">回復 +{feedback.repair}</b>}
+  feedbackKey: string;
+}) => {
+  const damageTier = feedback.damage > 0 ? damageTierFor(feedback.damage, fighter.maxHp) : null;
+  return (
+    <article
+      className={`arena-fighter team-${fighter.team} ${fighter.hp <= 0 ? 'is-down' : ''} ${acting ? 'is-acting' : ''} ${hit ? 'is-hit' : ''} ${damageTier ? `damage-${damageTier}` : ''} ${feedback.poison > 0 ? 'is-poisoned-now' : ''} ${feedback.shield > 0 ? 'is-shielded-now' : ''} ${feedback.repair > 0 ? 'is-repaired-now' : ''}`}
+      style={{ '--robot-color': fighter.color } as CSSProperties}
+      data-damage-tier={damageTier ?? undefined}
+    >
+      <div className="arena-unit-visual">
+        <RobotSprite fighter={fighter} />
+        {feedback.poison > 0 && (
+          <span className="poison-impact" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+        )}
       </div>
-    )}
-    <div className="arena-unit-copy">
-      <small>{fighter.code}</small>
-      <strong>{fighter.name}</strong>
+      {(feedback.damage > 0 || feedback.poison > 0 || feedback.shield > 0 || feedback.repair > 0) && (
+        <div
+          className={`combat-feedback ${damageTier ? `damage-${damageTier}` : ''}`}
+          key={feedbackKey}
+          aria-live="polite"
+        >
+          {feedback.damage > 0 && damageTier && (
+            <b className="feedback-damage" aria-label={`${feedback.damage}ダメージ`}>
+              <small>{DAMAGE_TIER_COPY[damageTier]}</small>
+              <strong>-{feedback.damage}</strong>
+              <i>HP</i>
+            </b>
+          )}
+          {feedback.poison > 0 && <b className="feedback-poison">毒 +{feedback.poison}</b>}
+          {feedback.shield > 0 && <b className="feedback-shield">防護 +{feedback.shield}</b>}
+          {feedback.repair > 0 && <b className="feedback-repair">回復 +{feedback.repair}</b>}
+        </div>
+      )}
+      <div className="arena-unit-copy">
+        <small>{fighter.code}</small>
+        <strong>{fighter.name}</strong>
+      </div>
+      <div className="unit-health" aria-label={`${fighter.name} HP ${fighter.hp} / ${fighter.maxHp}`}>
+        <span>
+          <i style={{ width: `${Math.max(0, (fighter.hp / fighter.maxHp) * 100)}%` }} />
+        </span>
+        <b>{fighter.hp}</b>
+      </div>
+      <div className="unit-status-list" aria-label={`${fighter.name}の状態`}>
+        {fighter.shield > 0 && (
+          <span className="unit-status status-shield">
+            <i>▣</i>防護 {fighter.shield}
+          </span>
+        )}
+        {fighter.poison > 0 && (
+          <span className="unit-status status-poison">
+            <i>◆</i>毒 {fighter.poison}
+          </span>
+        )}
+        {fighter.hp / fighter.maxHp <= 0.5 && fighter.hp > 0 && (
+          <span className="unit-status status-damage">
+            <i>!</i>損傷
+          </span>
+        )}
+        {hit && (
+          <span className="unit-status status-hit">
+            <i>×</i>被弾
+          </span>
+        )}
+        {acting && !hit && (
+          <span className="unit-status status-active">
+            <i>▶</i>起動
+          </span>
+        )}
+        {overloaded && (
+          <span className="unit-status status-overload">
+            <i>⚠</i>過負荷
+          </span>
+        )}
+      </div>
+    </article>
+  );
+};
+
+const metricValue = (value: number) => (value > 0 ? value.toLocaleString('ja-JP') : '—');
+
+const BattleReportDialog = ({
+  report,
+  team,
+  run,
+  player,
+  enemy,
+  onTeam,
+  onClose,
+}: {
+  report: BattleReport;
+  team: Team;
+  run: number;
+  player: FighterState;
+  enemy: FighterState;
+  onTeam: (team: Team) => void;
+  onClose: () => void;
+}) => {
+  const selected: TeamBattleReport = report[team];
+  const labels: Record<Team, { side: string; fighter: FighterState }> = {
+    player: { side: '自分', fighter: player },
+    enemy: { side: '相手', fighter: enemy },
+  };
+  return (
+    <div className="report-backdrop">
+      <section className="battle-report-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-report-title">
+        <button className="report-close" type="button" aria-label="戦闘レポートを閉じる" onClick={onClose}>
+          ×
+        </button>
+        <header className="report-head">
+          <small>AFTER ACTION / RUN {String(run).padStart(2, '0')}</small>
+          <h2 id="battle-report-title">戦闘レポート</h2>
+          <p>技の出力と毒による継続ダメージを記録。</p>
+        </header>
+        <nav className="report-tabs" role="tablist" aria-label="レポート対象">
+          {(['player', 'enemy'] as Team[]).map((candidate) => (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={team === candidate}
+              key={candidate}
+              onClick={() => onTeam(candidate)}
+            >
+              <small>{labels[candidate].side}</small>
+              <b>{labels[candidate].fighter.name}</b>
+            </button>
+          ))}
+        </nav>
+        <section className="report-summary" aria-label={`${labels[team].side}の戦闘集計`}>
+          <article className="is-total">
+            <small>総ダメージ</small>
+            <b>{selected.totals.totalDamage.toLocaleString('ja-JP')}</b>
+          </article>
+          <article>
+            <small>技ダメージ</small>
+            <b>{metricValue(selected.totals.skillDamage)}</b>
+          </article>
+          <article className="is-poison">
+            <small>毒ダメージ</small>
+            <b>{metricValue(selected.totals.poisonDamage)}</b>
+          </article>
+          <article className="is-poison">
+            <small>毒付与</small>
+            <b>{metricValue(selected.totals.poisonApplied)}</b>
+          </article>
+          <article>
+            <small>防護</small>
+            <b>{metricValue(selected.totals.shield)}</b>
+          </article>
+          <article>
+            <small>回復</small>
+            <b>{metricValue(selected.totals.repair)}</b>
+          </article>
+        </section>
+        <section className="report-ledger" aria-label={`${labels[team].side}の技別記録`}>
+          <header>
+            <span>技別記録</span>
+            <small>{selected.skills.length} SKILLS</small>
+          </header>
+          {selected.skills.length === 0 ? (
+            <p className="report-empty">発動した技はありません。</p>
+          ) : (
+            selected.skills.map((skill) => (
+              <article
+                className="report-skill-row"
+                key={skill.blockId}
+                style={{ '--rarity-color': RARITY_COPY[skill.rarity].color } as CSSProperties}
+              >
+                <div className="report-skill-name">
+                  <i>{skill.glyph}</i>
+                  <span>
+                    <small>{skill.code}</small>
+                    <strong>{skill.title}</strong>
+                  </span>
+                </div>
+                <div className="report-skill-metrics">
+                  <span>
+                    <small>発動</small>
+                    <b>{skill.activations}</b>
+                  </span>
+                  <span>
+                    <small>技DMG</small>
+                    <b>{metricValue(skill.damage)}</b>
+                  </span>
+                  <span>
+                    <small>毒付与</small>
+                    <b>{metricValue(skill.poisonApplied)}</b>
+                  </span>
+                  <span>
+                    <small>防護</small>
+                    <b>{metricValue(skill.shield)}</b>
+                  </span>
+                  <span>
+                    <small>回復</small>
+                    <b>{metricValue(skill.repair)}</b>
+                  </span>
+                </div>
+              </article>
+            ))
+          )}
+        </section>
+        <footer className="report-note">
+          <b>POISON DMG</b> 毒ダメージは付与後に実際に発生した継続ダメージです。
+        </footer>
+      </section>
     </div>
-    <div className="unit-health" aria-label={`${fighter.name} HP ${fighter.hp} / ${fighter.maxHp}`}>
-      <span>
-        <i style={{ width: `${Math.max(0, (fighter.hp / fighter.maxHp) * 100)}%` }} />
-      </span>
-      <b>{fighter.hp}</b>
-    </div>
-    <div className="unit-status-list" aria-label={`${fighter.name}の状態`}>
-      {fighter.shield > 0 && (
-        <span className="unit-status status-shield">
-          <i>▣</i>防護 {fighter.shield}
-        </span>
-      )}
-      {fighter.poison > 0 && (
-        <span className="unit-status status-poison">
-          <i>◆</i>毒 {fighter.poison}
-        </span>
-      )}
-      {fighter.hp / fighter.maxHp <= 0.5 && fighter.hp > 0 && (
-        <span className="unit-status status-damage">
-          <i>!</i>損傷
-        </span>
-      )}
-      {hit && (
-        <span className="unit-status status-hit">
-          <i>×</i>被弾
-        </span>
-      )}
-      {acting && !hit && (
-        <span className="unit-status status-active">
-          <i>▶</i>起動
-        </span>
-      )}
-      {overloaded && (
-        <span className="unit-status status-overload">
-          <i>⚠</i>過負荷
-        </span>
-      )}
-    </div>
-  </article>
-);
+  );
+};
 
 const BattleCircuitSummary = ({
   team,
@@ -614,6 +763,8 @@ export function App() {
   const [playback, setPlayback] = useState<BattleState[]>([]);
   const [frame, setFrame] = useState(0);
   const [battleSpeed, setBattleSpeed] = useState<BattleSpeed>(1);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportTeam, setReportTeam] = useState<Team>('player');
   const [message, setMessage] = useState('ショップで技を選ぶ');
   const holdTimer = useRef<number | null>(null);
   const pendingDrag = useRef<PendingDrag | null>(null);
@@ -626,6 +777,7 @@ export function App() {
   const fighters = battle.fighters;
   const player = fighters.find((fighter) => fighter.team === 'player')!;
   const enemy = fighters.find((fighter) => fighter.team === 'enemy')!;
+  const battleReport = useMemo(() => createBattleReport(GAME_DATA, battle.trace), [battle.trace]);
   const rackGroups = useMemo(() => {
     const groups = new Map<string, { block: BlockDefinition; placed: PlacedBlock; count: number }>();
     rack.forEach((placed) => {
@@ -708,6 +860,7 @@ export function App() {
     (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
       event.kind === 'damage' || event.kind === 'poison' || event.kind === 'rupture',
   );
+  const feedbackKey = frameEvents.map((event) => event.id).join('|');
   const elapsedWaves = battle.tick === 0 ? 0 : battle.tick - 1 + battle.pulseStep / Math.max(1, battle.pulseStepCount);
   const elapsedSeconds = (elapsedWaves * GAME_DATA.rules.battleStepMs) / 1000;
   const battleProgress = Math.min(100, (elapsedSeconds / GAME_DATA.rules.suddenDeathSeconds) * 100);
@@ -732,6 +885,15 @@ export function App() {
     const timer = window.setTimeout(() => setMessage(''), 1800);
     return () => window.clearTimeout(timer);
   }, [message]);
+
+  useEffect(() => {
+    if (!reportOpen) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setReportOpen(false);
+    };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [reportOpen]);
 
   useEffect(() => {
     document.body.classList.toggle('is-dragging', Boolean(dragging));
@@ -928,6 +1090,7 @@ export function App() {
   const startBattle = () => {
     const next = createPlayback(GAME_DATA, board, GAME_DATA.enemyBoard);
     setDetail(null);
+    setReportOpen(false);
     setPlayback(next);
     setFrame(0);
     setPhase('battle');
@@ -942,6 +1105,7 @@ export function App() {
     setShop(advanceShop(shopBlocks, GAME_DATA.rules.rarityWeights, shop, nextSeed, GAME_DATA.rules.shopSize));
     setRun((current) => current + 1);
     setPlayback([]);
+    setReportOpen(false);
     setFrame(0);
     setPhase('build');
     setMessage(`コイン +${reward}`);
@@ -1260,19 +1424,26 @@ export function App() {
           <div className="battle-stage">
             <div className="arena-team-label is-player">YOUR UNIT</div>
             <div className="arena-team-label is-enemy">RIVAL</div>
-            {projectileEvents.map((event) => (
-              <i
-                className={`battle-projectile team-${event.team} effect-${event.kind === 'poison' ? 'poison' : event.charge !== undefined ? 'charge' : 'damage'}`}
-                key={event.id}
-                aria-hidden="true"
-              />
-            ))}
+            {projectileEvents.map((event) => {
+              const targetMaxHp = event.team === 'player' ? enemy.maxHp : player.maxHp;
+              const damageTier =
+                event.kind === 'damage' || event.kind === 'rupture' ? damageTierFor(event.value, targetMaxHp) : null;
+              return (
+                <i
+                  className={`battle-projectile team-${event.team} effect-${event.kind === 'poison' ? 'poison' : event.charge !== undefined ? 'charge' : 'damage'} ${damageTier ? `damage-${damageTier}` : ''}`}
+                  data-damage-tier={damageTier ?? undefined}
+                  key={event.id}
+                  aria-hidden="true"
+                />
+              );
+            })}
             <ArenaFighter
               fighter={player}
               acting={actingTeams.has('player')}
               hit={hitTeams.has('player')}
               overloaded={overloaded}
               feedback={fighterFeedback.player}
+              feedbackKey={`player:${feedbackKey}`}
             />
             <ArenaFighter
               fighter={enemy}
@@ -1280,6 +1451,7 @@ export function App() {
               hit={hitTeams.has('enemy')}
               overloaded={overloaded}
               feedback={fighterFeedback.enemy}
+              feedbackKey={`enemy:${feedbackKey}`}
             />
           </div>
 
@@ -1503,9 +1675,32 @@ export function App() {
               </span>
             </div>
             <p className="result-reward">報酬 COIN +{battleReward(GAME_DATA, battle.winner)}</p>
-            <button onClick={returnToWorkshop}>工房へ戻る</button>
+            <div className="result-actions">
+              <button
+                className="is-report"
+                onClick={() => {
+                  setReportTeam('player');
+                  setReportOpen(true);
+                }}
+              >
+                戦闘レポート
+              </button>
+              <button onClick={returnToWorkshop}>工房へ戻る</button>
+            </div>
           </section>
         </div>
+      )}
+
+      {phase === 'result' && reportOpen && (
+        <BattleReportDialog
+          report={battleReport}
+          team={reportTeam}
+          run={run}
+          player={player}
+          enemy={enemy}
+          onTeam={setReportTeam}
+          onClose={() => setReportOpen(false)}
+        />
       )}
     </main>
   );

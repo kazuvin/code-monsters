@@ -468,6 +468,12 @@ if (
 ) {
   throw new Error('Damage did not show its projectile and impact value');
 }
+if (
+  (await pulse.locator('.arena-fighter.team-player[data-damage-tier="medium"] .feedback-damage').count()) !== 1 ||
+  !(await pulse.locator('.arena-fighter.team-player .feedback-damage').textContent())?.includes('HEAVY')
+) {
+  throw new Error('Medium damage did not use its stronger animated impact tier');
+}
 await pulse.clock.runFor(480);
 const parallelPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
@@ -550,6 +556,14 @@ if (!(await overload.locator('.battle-counter').textContent())?.includes('DMG 25
   throw new Error('The first exponential overload pulse is not shown');
 }
 await overload.screenshot({ path: '/tmp/code-monsters-circuit-overload.png', fullPage: true });
+await advanceClock(overload, 960, 160);
+await overload.locator('.arena-fighter.damage-large .feedback-damage').first().waitFor();
+if (
+  !(await overload.locator('.arena-fighter.damage-large .feedback-damage').first().textContent())?.includes('BREAK')
+) {
+  throw new Error('Large damage did not use its maximum-impact BREAK treatment');
+}
+await overload.screenshot({ path: '/tmp/code-monsters-circuit-large-damage.png', fullPage: true });
 
 const lockedRun = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
 lockedRun.on('pageerror', (error) => errors.push(error.message));
@@ -570,6 +584,34 @@ await lockedRun.locator('.result-panel').waitFor();
 if (!(await lockedRun.locator('.result-reward').textContent())?.includes('COIN +8')) {
   throw new Error('Defeat result does not show its coin reward');
 }
+await lockedRun.getByRole('button', { name: '戦闘レポート' }).click();
+await lockedRun.locator('.battle-report-dialog').waitFor();
+if (
+  (await lockedRun.getByText('総ダメージ', { exact: true }).count()) !== 1 ||
+  (await lockedRun.getByText('毒ダメージ', { exact: true }).count()) !== 1 ||
+  (await lockedRun.getByText('毒付与', { exact: true }).count()) !== 1
+) {
+  throw new Error('Battle report is missing damage or poison metrics');
+}
+const enemyReportTab = lockedRun.getByRole('tab', { name: /相手/ });
+await enemyReportTab.click();
+if ((await enemyReportTab.getAttribute('aria-selected')) !== 'true') {
+  throw new Error('Battle report did not switch to the opponent log');
+}
+if ((await lockedRun.locator('.report-skill-row').count()) === 0) {
+  throw new Error('Opponent battle report does not list activated skills');
+}
+await lockedRun.screenshot({ path: '/tmp/code-monsters-battle-report-desktop.png', fullPage: true });
+await lockedRun.setViewportSize({ width: 390, height: 844 });
+const mobileReportBounds = await lockedRun.locator('.battle-report-dialog').boundingBox();
+if (!mobileReportBounds || mobileReportBounds.y < 0 || mobileReportBounds.y + mobileReportBounds.height > 844) {
+  throw new Error(`Mobile battle report is clipped: ${JSON.stringify(mobileReportBounds)}`);
+}
+const reportOverflow = await lockedRun.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+if (reportOverflow > 1) throw new Error(`Mobile battle report overflows horizontally by ${reportOverflow}px`);
+await lockedRun.screenshot({ path: '/tmp/code-monsters-battle-report-mobile.png', fullPage: true });
+await lockedRun.setViewportSize({ width: 960, height: 900 });
+await lockedRun.getByRole('button', { name: '戦闘レポートを閉じる' }).click();
 await lockedRun.screenshot({ path: '/tmp/code-monsters-circuit-loss-reward.png', fullPage: true });
 await lockedRun.getByRole('button', { name: '工房へ戻る' }).click();
 const coinsAfterLoss = Number((await lockedRun.locator('.coin-readout b').textContent())?.trim());
@@ -602,6 +644,9 @@ console.log(
         'mobile-buff-detail',
         'pulse-merge',
         'overload',
+        'large-damage',
+        'battle-report-desktop',
+        'battle-report-mobile',
         'loss-reward',
       ],
     },
