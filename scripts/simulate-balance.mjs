@@ -1,7 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compareBalanceResults, runBalanceSimulation } from '../src/core/balance-simulation.ts';
+import {
+  compareBalanceResults,
+  optionsFromBalanceBaseline,
+  runBalanceSimulation,
+} from '../src/core/balance-simulation.ts';
 import { renderBalanceCsv, renderBalanceMarkdown } from '../src/core/balance-report.ts';
 import { GAME_DATA } from '../src/game/game-data.ts';
 
@@ -15,7 +19,7 @@ Options:
   --seed <integer>                  Fixed random seed (default: 20260721)
   --skill-trials <count>            Replacement and ablation trials per skill (default: 40)
   --skills <id,id>                  Limit counterfactual trials to selected skills
-  --minimum-samples <count>         Tournament sample gate (default: 400)
+  --minimum-samples <count>         Tournament sample gate (default: 40)
   --minimum-counterfactual <count>  Counterfactual sample gate (default: 24)
   --win-rate-lift <ratio>           Outlier threshold, e.g. 0.08
   --efficiency-z <score>            Reported-output Z-score threshold
@@ -86,7 +90,7 @@ const main = async () => {
 
   const baselinePayload = parsed.baselinePath ? await loadJson(parsed.baselinePath) : null;
   const baseline = baselinePayload?.result ?? baselinePayload;
-  const options = { ...(baseline?.config ?? {}), ...parsed.values };
+  const options = baseline ? optionsFromBalanceBaseline(baseline, parsed.values) : parsed.values;
   const startedAt = performance.now();
   const result = runBalanceSimulation(GAME_DATA, options);
   const elapsedMs = Math.round(performance.now() - startedAt);

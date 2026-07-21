@@ -297,8 +297,8 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
           const consumed = Math.floor(target.poison * effect.fraction);
           if (consumed === 0) continue;
           target.poison -= consumed;
-          const damagePerStack = effect.damagePerStack + (context.selfBuffs.rupture ?? 0) + plan.boost;
-          const value = consumed * damagePerStack * plan.mergeMultiplier;
+          const value =
+            (consumed * effect.damagePerStack + (context.selfBuffs.rupture ?? 0) + plan.boost) * plan.mergeMultiplier;
           pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
           trace.push(traceEvent(tick, plan, 'rupture', value, target.instanceId, trace.length));
           continue;

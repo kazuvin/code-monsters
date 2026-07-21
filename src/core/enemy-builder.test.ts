@@ -66,17 +66,42 @@ describe('enemy build generator', () => {
         build.board.flatMap((row) => row.flatMap((placed) => (placed ? [placed.blockId] : []))),
       );
       const designs = GAME_DATA.buildDesign.skills.filter((skill) => skill.blockId && placedIds.has(skill.blockId));
-      const buildLinks = designs.flatMap((skill) => skill.buildLinks.filter((link) => link.buildId === build.traitId));
+      const buildLinks = designs.flatMap((skill) => skill.buildLinks.filter((link) => link.buildId === build.buildId));
 
       designs.forEach((skill) => {
         const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
         expect(
-          traits.some((trait) => trait === 'neutral' || trait === build.traitId),
+          traits.some((trait) => trait === 'neutral' || trait === build.buildId),
           skill.id,
         ).toBe(true);
       });
       expect(buildLinks.some((link) => link.roles.includes('starter'))).toBe(true);
       expect(buildLinks.some((link) => link.roles.includes('payoff'))).toBe(true);
     });
+  });
+
+  it('discovers a newly declared build and can require one of its playable skills', () => {
+    const data = structuredClone(GAME_DATA);
+    const charge = data.buildDesign.builds.find((build) => build.id === 'charge')!;
+    data.buildDesign.axes
+      .find((axis) => axis.id === charge.axisId)!
+      .values.push({ id: 'spark', title: '火花', description: '自動検出テスト用', color: '#ff9f43' });
+    data.buildDesign.builds.push({ ...charge, id: 'spark', title: '火花' });
+    data.buildDesign.skills.forEach((skill) => {
+      const chargeLink = skill.buildLinks.find((link) => link.buildId === 'charge');
+      if (!chargeLink) return;
+      skill.buildLinks.push({ ...chargeLink, buildId: 'spark' });
+      const trait = skill.axisLinks.find((link) => link.axisId === charge.axisId);
+      if (trait?.valueIds.includes('charge')) trait.valueIds.push('spark');
+    });
+
+    const build = generateEnemyBuild(data, 9, 73, {
+      buildId: 'spark',
+      requiredBlockId: 'overcharge-cannon',
+    });
+
+    expect(build.buildId).toBe('spark');
+    expect(build.board.flat().some((cell) => cell?.blockId === 'overcharge-cannon')).toBe(true);
+    expect(build.totalCost).toBeLessThanOrEqual(build.budget);
   });
 });

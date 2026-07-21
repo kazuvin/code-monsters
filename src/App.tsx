@@ -846,7 +846,7 @@ export function App() {
     () => generateEnemyBuild(GAME_DATA, run, enemySeed, { budget: earnedCoins }),
     [earnedCoins, run, enemySeed],
   );
-  const enemyTrait = axisById.get('trait')?.values.find((value) => value.id === enemyBuild.traitId);
+  const enemyBuildDesign = GAME_DATA.buildDesign.builds.find((build) => build.id === enemyBuild.buildId);
   const preview = useMemo(
     () =>
       createBattle(GAME_DATA, board, enemyBuild.board, {
@@ -1608,7 +1608,7 @@ export function App() {
             <div className="battle-hud-tools">
               <div className="rival-readout">
                 <small>RIVAL LV.{String(level).padStart(2, '0')}</small>
-                <b>{enemyTrait?.title ?? enemyBuild.traitId}</b>
+                <b>{enemyBuildDesign?.title ?? enemyBuild.buildId}</b>
                 <i>
                   {enemyBuild.nodeCount} NODE · {enemyBuild.totalCost}/{enemyBuild.budget} COIN
                 </i>

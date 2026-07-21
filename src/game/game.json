@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 15,
+  "schemaVersion": 16,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -256,7 +256,7 @@
       {
         "id": "venom-bloom",
         "title": "猛毒花",
-        "summary": "毒を消さず、戦闘中強化に応じて毒を増やす",
+        "summary": "毒を消さず、相手に蓄積した毒を養分として付与量を増やす",
         "status": "playable",
         "blockId": "venom-bloom",
         "scope": "exclusive",
@@ -582,7 +582,7 @@
       "id": "amplifier",
       "code": "AMP",
       "title": "増幅術",
-      "description": "この先に直接つながった技のダメージ・毒・シールド・回復・破裂威力を55増やす。",
+      "description": "この先に直接つながった技のダメージ・毒・シールド・回復・破裂の合計威力を55増やす。",
       "glyph": "増",
       "price": 8,
       "rarity": "rare",
@@ -595,7 +595,7 @@
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "3つの接続部がすべて繋がると、この先の技の発動間隔を1拍短くし、各効果を110増やす。",
+      "description": "3つの接続部がすべて繋がると、この先の技の発動間隔を1拍短くし、各効果と破裂の合計威力を110増やす。",
       "glyph": "速",
       "price": 8,
       "rarity": "rare",
@@ -679,7 +679,7 @@
       "id": "venom-bloom",
       "code": "BLOOM",
       "title": "猛毒花",
-      "description": "3拍ごとに、毒260を与える。ほかの技に育てられると、その分だけ一度に与える毒が増える。",
+      "description": "3拍ごとに毒240を与え、相手が持つ毒250ごとに付与する毒を80増やす。毒は消費しない。",
       "glyph": "花",
       "price": 20,
       "rarity": "legendary",
@@ -688,13 +688,15 @@
       "rotatable": false,
       "buildIds": ["poison"],
       "cooldown": 3,
-      "effects": [{ "kind": "poison", "amount": 260 }]
+      "effects": [
+        { "kind": "poison", "amount": 240, "scaling": { "kind": "enemy-poison", "every": 250, "amount": 80 } }
+      ]
     },
     {
       "id": "rupture-stake",
       "code": "BURST",
       "title": "破裂砲",
-      "description": "4拍ごとに、砲撃で相手の毒を50%取り除く。取り除いた毒1につき6ダメージを与える。",
+      "description": "4拍ごとに、砲撃で相手の毒を35%取り除く。取り除いた毒1につき8ダメージを与える。",
       "glyph": "裂",
       "price": 14,
       "rarity": "epic",
@@ -703,7 +705,7 @@
       "rotatable": false,
       "buildIds": ["poison"],
       "cooldown": 4,
-      "effects": [{ "kind": "rupture-poison", "fraction": 0.5, "damagePerStack": 6 }]
+      "effects": [{ "kind": "rupture-poison", "fraction": 0.35, "damagePerStack": 8 }]
     },
     {
       "id": "status-relay",
@@ -936,7 +938,7 @@
       "id": "overcharge-cannon",
       "code": "OVER",
       "title": "超過解放砲",
-      "description": "5拍ごとに、基礎500とチャージ1につき1100ダメージを与える。この技で通電は止まる。",
+      "description": "5拍ごとに、基礎300とチャージ1につき650ダメージを与える。この技で通電は止まる。",
       "glyph": "極",
       "price": 22,
       "rarity": "legendary",
@@ -945,7 +947,7 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 5,
-      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 500, "perCharge": 1100 }]
+      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 300, "perCharge": 650 }]
     }
   ],
   "startingRack": [],

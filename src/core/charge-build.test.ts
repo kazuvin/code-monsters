@@ -92,6 +92,6 @@ describe('charge build', () => {
 
     expect(releaseValue('discharge-bow')).toMatchObject({ kind: 'damage', value: 2120, charge: 5 });
     expect(releaseValue('rail-cannon')).toMatchObject({ kind: 'damage', value: 2470, charge: 5 });
-    expect(releaseValue('overcharge-cannon')).toMatchObject({ kind: 'damage', value: 6000, charge: 5 });
+    expect(releaseValue('overcharge-cannon')).toMatchObject({ kind: 'damage', value: 3550, charge: 5 });
   });
 });

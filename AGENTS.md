@@ -27,9 +27,12 @@
 - Treat charge as a transient value carried by one circuit pulse, not a persistent energy meter. Only nodes with an explicit `charge` effect add charge; ordinary traversed nodes merely carry the incoming total, and release nodes convert it into their output.
 - Every playable node tagged with the charge trait must define either a `charge` effect or a `release-charge` effect; reject mismatches in game-data validation.
 - Generate the rival circuit deterministically from the run and seed. Each run must add configured board pressure until the board cap, continue scaling rival health after the cap, and include a starter plus payoff for one real trait with optional neutral support.
+- Keep rival and balance-simulation build discovery data-driven from `buildDesign.builds`; never add a hard-coded build ID union or list in core code. A new build must be an axis value, have playable starter and payoff coverage, and generate a powered board within the available budget.
 - Keep node price bands strictly separated by rarity, and make higher-rarity nodes meaningfully stronger through output, multi-effects, or payoff efficiency.
 - Give rare, epic, and legendary tiers one or two charge-release nodes each so the build has finishers before its rarest rolls appear.
 - Define the four node rarities and their progressively lower base shop weights in `src/game/game.json`; individual `shopWeight` values may tune nodes only within that rarity baseline.
+- Every playable skill must be included by the default balance run without an explicit `--skills` list. Baseline comparison must reject added or removed playable skills and builds instead of silently inheriting an old catalog.
+- Add a deterministic ceiling test for every payoff that multiplies an accumulated resource or combines with amplification, haste, merge, or fusion. The random tournament measures average generated boards and does not replace a hand-authored high-synergy regression test.
 - Generate a fresh random seed for every normal shop arrival while keeping seeded core functions and the browser fixture deterministic. Unowned offers must still expose a west connector.
 - Fuse exactly three normal copies across the board and rack into one starred copy. Apply fusion tuning from `rules.skillFusion`, preserve one board placement when possible, and grant one choice from three unique skills of the fused rarity.
 
@@ -39,6 +42,7 @@
 - Keep focused tests beside `src/core/` and game-data validation in `src/game/`.
 - Run `pnpm format` after supported source or config edits.
 - Run `pnpm verify` before declaring changes complete.
+- After gameplay tuning, run `pnpm balance:check`, a focused higher-trial simulation for changed skills, and one different validation seed before updating `reports/balance/baseline.*`.
 - For UI or interaction changes, also run `pnpm test:browser` against a local server and inspect the desktop and mobile screenshots.
 
 ## Product and presentation

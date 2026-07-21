@@ -2,7 +2,17 @@ import { createBattle, resolveTick } from './battle';
 import { createBattleReport } from './battle-report';
 import { analyzeCircuit, cloneBoard, rotatePorts } from './circuit';
 import { generateEnemyBuild, type EnemyBuild } from './enemy-builder';
-import type { BattleState, BlockDefinition, CircuitBoard, GameData, Rarity, Rotation, Team, Winner } from './types';
+import type {
+  BattleState,
+  BlockDefinition,
+  CircuitBoard,
+  GameData,
+  PlacementPatternId,
+  Rarity,
+  Rotation,
+  Team,
+  Winner,
+} from './types';
 
 export type BalanceSignal =
   | 'counterfactual-overpowered'
@@ -12,7 +22,9 @@ export type BalanceSignal =
   | 'reported-output-high'
   | 'reported-output-low'
   | 'ablation-impact-high'
-  | 'ablation-impact-low';
+  | 'ablation-impact-low'
+  | 'ablation-rarity-high'
+  | 'ablation-rarity-low';
 
 export type BalanceSimulationOptions = {
   battles?: number;
@@ -32,6 +44,7 @@ export type ResolvedBalanceSimulationConfig = {
   seed: number;
   skillTrials: number;
   skillIds: string[];
+  buildIds: string[];
   minimumSamples: number;
   minimumCounterfactualSamples: number;
   winRateLiftThreshold: number;
@@ -63,7 +76,9 @@ export type SkillBalanceReport = {
   scoreRate: number | null;
   winRate95: ConfidenceInterval | null;
   matchedSamples: number;
+  matchedControlSamples: number;
   matchedScoreLift: number | null;
+  placementPatternId: PlacementPatternId;
   averageTicks: number | null;
   activationsPerBattle: number | null;
   reportedDamagePerBattle: number | null;
@@ -76,6 +91,7 @@ export type SkillBalanceReport = {
   counterfactual: SkillCounterfactualReport;
   ablation: SkillCounterfactualReport;
   ablationImpactZScore: number | null;
+  ablationRarityDelta: number | null;
   signals: BalanceSignal[];
   suspectedOutlier: boolean;
 };
@@ -93,9 +109,9 @@ export type RunBalanceReport = {
   averageNodes: number;
 };
 
-export type TraitMatchupReport = {
-  playerTrait: EnemyBuild['traitId'];
-  enemyTrait: EnemyBuild['traitId'];
+export type BuildMatchupReport = {
+  playerBuild: string;
+  enemyBuild: string;
   battles: number;
   playerWins: number;
   enemyWins: number;
@@ -105,7 +121,7 @@ export type TraitMatchupReport = {
 };
 
 export type BalanceSimulationResult = {
-  simulationVersion: 2;
+  simulationVersion: 3;
   gameSchemaVersion: number;
   config: ResolvedBalanceSimulationConfig;
   summary: {
@@ -124,7 +140,7 @@ export type BalanceSimulationResult = {
     averageTicks: number;
   };
   byRun: RunBalanceReport[];
-  traitMatchups: TraitMatchupReport[];
+  buildMatchups: BuildMatchupReport[];
   skills: SkillBalanceReport[];
   methodology: {
     tournament: string;
@@ -153,7 +169,7 @@ export type BalanceComparison = {
 
 type TournamentObservation = {
   run: number;
-  traitId: EnemyBuild['traitId'];
+  buildId: string;
   skillIds: string[];
   score: number;
 };
@@ -177,7 +193,7 @@ type MutableRunReport = Omit<RunBalanceReport, 'averageTicks' | 'averageBuildCos
   totalBuildCost: number;
   totalNodes: number;
 };
-type MutableTraitMatchup = Omit<TraitMatchupReport, 'playerScoreRate' | 'averageTicks'> & { totalTicks: number };
+type MutableBuildMatchup = Omit<BuildMatchupReport, 'playerScoreRate' | 'averageTicks'> & { totalTicks: number };
 type CounterfactualSample = {
   scoreDelta: number;
   reportedDamageDelta: number;
@@ -191,7 +207,8 @@ const DEFAULT_OPTIONS: ResolvedBalanceSimulationConfig = {
   seed: 20260721,
   skillTrials: 40,
   skillIds: [],
-  minimumSamples: 400,
+  buildIds: [],
+  minimumSamples: 40,
   minimumCounterfactualSamples: 24,
   winRateLiftThreshold: 0.08,
   efficiencyZScoreThreshold: 2,
@@ -200,6 +217,12 @@ const DEFAULT_OPTIONS: ResolvedBalanceSimulationConfig = {
 const round = (value: number, digits = 6) => Number(value.toFixed(digits));
 const mean = (values: number[]) =>
   values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : 0;
+const median = (values: number[]) => {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+};
 const outcomeScore = (winner: Winner, team: Team) => (winner === 'draw' ? 0.5 : winner === team ? 1 : 0);
 const blockIdsOn = (board: CircuitBoard) => [
   ...new Set(board.flatMap((row) => row.flatMap((cell) => (cell ? [cell.blockId] : [])))),
@@ -214,6 +237,7 @@ const resolveOptions = (data: GameData, options: BalanceSimulationOptions): Reso
     ...options,
     runs: options.runs ? [...options.runs] : [...DEFAULT_OPTIONS.runs],
     skillIds: options.skillIds ? [...new Set(options.skillIds)] : [...playableIds],
+    buildIds: data.buildDesign.builds.map((build) => build.id),
   };
   if (!Number.isInteger(config.battles) || config.battles <= 0) throw new Error('battles must be a positive integer');
   if (config.runs.length === 0 || config.runs.some((run) => !Number.isInteger(run) || run <= 0)) {
@@ -277,7 +301,7 @@ const portSignature = (block: BlockDefinition, rotation: Rotation) =>
 const replacementFor = (data: GameData, base: EnemyBuild, targetBlock: BlockDefinition): CircuitBoard | null => {
   if (blockIdsOn(base.board).includes(targetBlock.id)) return null;
   const targetDesign = data.buildDesign.skills.find((skill) => skill.blockId === targetBlock.id);
-  const targetLink = targetDesign?.buildLinks.find((link) => link.buildId === base.traitId);
+  const targetLink = targetDesign?.buildLinks.find((link) => link.buildId === base.buildId);
   if (!targetDesign || !targetLink) return null;
   const blocksById = new Map(data.blocks.map((block) => [block.id, block]));
   const designsByBlockId = new Map(
@@ -290,7 +314,7 @@ const replacementFor = (data: GameData, base: EnemyBuild, targetBlock: BlockDefi
       const placed = base.board[row][column];
       const reference = placed ? blocksById.get(placed.blockId) : undefined;
       const referenceDesign = reference ? designsByBlockId.get(reference.id) : undefined;
-      const referenceLink = referenceDesign?.buildLinks.find((link) => link.buildId === base.traitId);
+      const referenceLink = referenceDesign?.buildLinks.find((link) => link.buildId === base.buildId);
       if (!placed || !reference || !referenceLink || reference.id === targetBlock.id) continue;
       if (reference.rarity !== targetBlock.rarity) continue;
       if (!referenceLink.roles.some((role) => targetLink.roles.includes(role))) continue;
@@ -416,19 +440,15 @@ const counterfactualsFor = (
   config.skillIds.forEach((blockId, skillIndex) => {
     const target = blockById.get(blockId);
     const design = data.buildDesign.skills.find((skill) => skill.blockId === blockId);
-    const traits =
-      design?.buildLinks.flatMap((link) =>
-        link.buildId === 'poison' || link.buildId === 'charge' ? [link.buildId] : [],
-      ) ?? [];
-    if (!target || traits.length === 0) return;
+    const buildIds = design?.buildLinks.map((link) => link.buildId).filter((id) => config.buildIds.includes(id)) ?? [];
+    if (!target || buildIds.length === 0) return;
     const samples: CounterfactualSample[] = [];
     const maxAttempts = Math.max(config.skillTrials * 250, 250);
     for (let attempt = 0; attempt < maxAttempts && samples.length < config.skillTrials; attempt += 1) {
       const run = config.runs[(skillIndex + attempt) % config.runs.length];
-      const trait = traits[attempt % traits.length];
+      const buildId = buildIds[attempt % buildIds.length];
       const baseSeed = config.seed + 1_000_003 + skillIndex * 100_003 + attempt * 97;
-      const base = generateEnemyBuild(data, run, baseSeed);
-      if (base.traitId !== trait) continue;
+      const base = generateEnemyBuild(data, run, baseSeed, { buildId });
       const targetBoard = replacementFor(data, base, target);
       if (!targetBoard) continue;
       const opponent = generateEnemyBuild(data, run, baseSeed + 43);
@@ -445,9 +465,14 @@ const counterfactualsFor = (
     const ablationSamples: CounterfactualSample[] = [];
     for (let attempt = 0; attempt < maxAttempts && ablationSamples.length < config.skillTrials; attempt += 1) {
       const run = config.runs[(skillIndex + attempt) % config.runs.length];
+      const buildId = buildIds[attempt % buildIds.length];
       const baseSeed = config.seed + 2_000_003 + skillIndex * 100_019 + attempt * 101;
-      const base = generateEnemyBuild(data, run, baseSeed);
-      if (!blockIdsOn(base.board).includes(blockId)) continue;
+      let base: EnemyBuild;
+      try {
+        base = generateEnemyBuild(data, run, baseSeed, { buildId, requiredBlockId: blockId });
+      } catch {
+        continue;
+      }
       const opponent = generateEnemyBuild(data, run, baseSeed + 47);
       if (blockIdsOn(opponent.board).includes(blockId)) continue;
       ablationSamples.push(ablationSample(data, ablatedData, base.board, opponent.board, base.maxHpBonus));
@@ -469,7 +494,7 @@ const matchedLifts = (observations: TournamentObservation[]) => {
   type Stratum = { count: number; totalScore: number; bySkill: Map<string, { count: number; totalScore: number }> };
   const strata = new Map<string, Stratum>();
   observations.forEach((observation) => {
-    const key = `${observation.run}:${observation.traitId}`;
+    const key = `${observation.run}:${observation.buildId}`;
     const stratum = strata.get(key) ?? { count: 0, totalScore: 0, bySkill: new Map() };
     stratum.count += 1;
     stratum.totalScore += observation.score;
@@ -482,15 +507,16 @@ const matchedLifts = (observations: TournamentObservation[]) => {
     strata.set(key, stratum);
   });
 
-  const result = new Map<string, { samples: number; liftTotal: number }>();
+  const result = new Map<string, { samples: number; controlSamples: number; liftTotal: number }>();
   strata.forEach((stratum) => {
     stratum.bySkill.forEach((skill, blockId) => {
       const withoutCount = stratum.count - skill.count;
       if (skill.count === 0 || withoutCount === 0) return;
       const withScore = skill.totalScore / skill.count;
       const withoutScore = (stratum.totalScore - skill.totalScore) / withoutCount;
-      const current = result.get(blockId) ?? { samples: 0, liftTotal: 0 };
+      const current = result.get(blockId) ?? { samples: 0, controlSamples: 0, liftTotal: 0 };
       current.samples += skill.count;
+      current.controlSamples += withoutCount;
       current.liftTotal += (withScore - withoutScore) * skill.count;
       result.set(blockId, current);
     });
@@ -498,7 +524,7 @@ const matchedLifts = (observations: TournamentObservation[]) => {
   return new Map(
     [...result].map(([blockId, value]) => [
       blockId,
-      { samples: value.samples, lift: round(value.liftTotal / value.samples) },
+      { samples: value.samples, controlSamples: value.controlSamples, lift: round(value.liftTotal / value.samples) },
     ]),
   );
 };
@@ -526,6 +552,122 @@ const counterfactualReport = (samples: CounterfactualSample[]): SkillCounterfact
   battleTicksDelta: samples.length > 0 ? round(mean(samples.map((sample) => sample.battleTicksDelta))) : null,
 });
 
+export function classifyBalanceSkills(
+  skills: SkillBalanceReport[],
+  config: ResolvedBalanceSimulationConfig,
+): SkillBalanceReport[] {
+  skills.forEach((skill) => {
+    skill.efficiencyZScore = null;
+    skill.ablationImpactZScore = null;
+    skill.ablationRarityDelta = null;
+    skill.signals = [];
+    skill.suspectedOutlier = false;
+  });
+
+  (['common', 'rare', 'epic', 'legendary'] as Rarity[]).forEach((rarity) => {
+    const outputComparable = skills.filter(
+      (skill) =>
+        skill.rarity === rarity &&
+        skill.appearances >= config.minimumSamples &&
+        skill.reportedOutputPerActivation !== null,
+    );
+    if (outputComparable.length >= 2) {
+      const average = mean(outputComparable.map((skill) => skill.reportedOutputPerActivation!));
+      const standardDeviation = Math.sqrt(
+        mean(outputComparable.map((skill) => (skill.reportedOutputPerActivation! - average) ** 2)),
+      );
+      outputComparable.forEach((skill) => {
+        skill.efficiencyZScore =
+          standardDeviation > 0 ? round((skill.reportedOutputPerActivation! - average) / standardDeviation) : 0;
+      });
+    }
+
+    const ablationComparable = skills.filter(
+      (skill) =>
+        skill.rarity === rarity &&
+        skill.ablation.samples >= config.minimumCounterfactualSamples &&
+        skill.ablation.scoreLift !== null,
+    );
+    if (ablationComparable.length < 2) return;
+    const average = mean(ablationComparable.map((skill) => skill.ablation.scoreLift!));
+    const rarityMedian = median(ablationComparable.map((skill) => skill.ablation.scoreLift!));
+    const standardDeviation = Math.sqrt(
+      mean(ablationComparable.map((skill) => (skill.ablation.scoreLift! - average) ** 2)),
+    );
+    ablationComparable.forEach((skill) => {
+      skill.ablationImpactZScore =
+        standardDeviation > 0 ? round((skill.ablation.scoreLift! - average) / standardDeviation) : 0;
+      skill.ablationRarityDelta = round(skill.ablation.scoreLift! - rarityMedian);
+    });
+  });
+
+  skills.forEach((skill) => {
+    const signals: BalanceSignal[] = [];
+    if (
+      skill.matchedSamples >= config.minimumSamples &&
+      skill.matchedControlSamples >= config.minimumSamples &&
+      Math.min(skill.matchedSamples, skill.matchedControlSamples) /
+        Math.max(skill.matchedSamples, skill.matchedControlSamples) >=
+        0.1 &&
+      skill.matchedScoreLift !== null
+    ) {
+      if (skill.matchedScoreLift >= config.winRateLiftThreshold) signals.push('matched-overrepresented');
+      if (skill.matchedScoreLift <= -config.winRateLiftThreshold) signals.push('matched-underrepresented');
+    }
+    if (
+      skill.counterfactual.samples >= config.minimumCounterfactualSamples &&
+      skill.counterfactual.scoreLift !== null &&
+      skill.counterfactual.scoreLift95
+    ) {
+      if (skill.counterfactual.scoreLift >= config.winRateLiftThreshold && skill.counterfactual.scoreLift95.lower > 0) {
+        signals.push('counterfactual-overpowered');
+      }
+      if (
+        skill.counterfactual.scoreLift <= -config.winRateLiftThreshold &&
+        skill.counterfactual.scoreLift95.upper < 0
+      ) {
+        signals.push('counterfactual-underpowered');
+      }
+    }
+    if (skill.efficiencyZScore !== null) {
+      if (skill.efficiencyZScore >= config.efficiencyZScoreThreshold) signals.push('reported-output-high');
+      if (skill.efficiencyZScore <= -config.efficiencyZScoreThreshold) signals.push('reported-output-low');
+    }
+    if (skill.ablationImpactZScore !== null) {
+      if (skill.ablationImpactZScore >= config.efficiencyZScoreThreshold) signals.push('ablation-impact-high');
+      if (skill.ablationImpactZScore <= -config.efficiencyZScoreThreshold) signals.push('ablation-impact-low');
+    }
+    const rarityThreshold = config.winRateLiftThreshold * 2;
+    if (
+      skill.placementPatternId === 'free' &&
+      skill.ablationRarityDelta !== null &&
+      skill.ablation.scoreLift95 &&
+      skill.ablation.scoreLift !== null
+    ) {
+      const rarityMedian = skill.ablation.scoreLift - skill.ablationRarityDelta;
+      if (skill.ablationRarityDelta >= rarityThreshold && skill.ablation.scoreLift95.lower > rarityMedian) {
+        signals.push('ablation-rarity-high');
+      }
+      if (skill.ablationRarityDelta <= -rarityThreshold && skill.ablation.scoreLift95.upper < rarityMedian) {
+        signals.push('ablation-rarity-low');
+      }
+    }
+    skill.signals = signals;
+    const directSignal = signals.some((signal) => signal.startsWith('counterfactual-'));
+    const alignedHigh =
+      signals.includes('matched-overrepresented') &&
+      (signals.includes('reported-output-high') || signals.includes('ablation-impact-high'));
+    const alignedLow =
+      signals.includes('matched-underrepresented') &&
+      (signals.includes('reported-output-low') || signals.includes('ablation-impact-low'));
+    const alignedRarityHigh = signals.includes('matched-overrepresented') && signals.includes('ablation-rarity-high');
+    const alignedRarityLow = signals.includes('matched-underrepresented') && signals.includes('ablation-rarity-low');
+    skill.suspectedOutlier = directSignal || alignedHigh || alignedLow || alignedRarityHigh || alignedRarityLow;
+  });
+
+  return skills;
+}
+
 export function runBalanceSimulation(data: GameData, options: BalanceSimulationOptions = {}): BalanceSimulationResult {
   const config = resolveOptions(data, options);
   const playableBlocks = data.buildDesign.skills.flatMap((skill) => {
@@ -533,10 +675,13 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
     const block = data.blocks.find((candidate) => candidate.id === skill.blockId);
     return block ? [block] : [];
   });
+  const designByBlockId = new Map(
+    data.buildDesign.skills.flatMap((skill) => (skill.blockId ? [[skill.blockId, skill] as const] : [])),
+  );
   const mutableSkills = new Map(playableBlocks.map((block) => [block.id, emptySkillReport()]));
   const observations: TournamentObservation[] = [];
   const byRun = new Map<number, MutableRunReport>();
-  const traitMatchups = new Map<string, MutableTraitMatchup>();
+  const buildMatchups = new Map<string, MutableBuildMatchup>();
   let playerWins = 0;
   let enemyWins = 0;
   let draws = 0;
@@ -571,10 +716,10 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
     else runReport.draws += 1;
     byRun.set(run, runReport);
 
-    const matchupKey = `${playerBuild.traitId}:${enemyBuild.traitId}`;
-    const matchup = traitMatchups.get(matchupKey) ?? {
-      playerTrait: playerBuild.traitId,
-      enemyTrait: enemyBuild.traitId,
+    const matchupKey = `${playerBuild.buildId}:${enemyBuild.buildId}`;
+    const matchup = buildMatchups.get(matchupKey) ?? {
+      playerBuild: playerBuild.buildId,
+      enemyBuild: enemyBuild.buildId,
       battles: 0,
       playerWins: 0,
       enemyWins: 0,
@@ -586,14 +731,14 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
     if (state.winner === 'player') matchup.playerWins += 1;
     else if (state.winner === 'enemy') matchup.enemyWins += 1;
     else matchup.draws += 1;
-    traitMatchups.set(matchupKey, matchup);
+    buildMatchups.set(matchupKey, matchup);
 
     const report = createBattleReport(data, state.trace);
     const builds: Record<Team, EnemyBuild> = { player: playerBuild, enemy: enemyBuild };
     (['player', 'enemy'] as Team[]).forEach((team) => {
       const skillIds = blockIdsOn(builds[team].board);
       const score = outcomeScore(state.winner, team);
-      observations.push({ run, traitId: builds[team].traitId, skillIds, score });
+      observations.push({ run, buildId: builds[team].buildId, skillIds, score });
       const reportBySkill = new Map(report[team].skills.map((skill) => [skill.blockId, skill]));
       skillIds.forEach((blockId) => {
         const aggregate = mutableSkills.get(blockId);
@@ -652,7 +797,9 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
         aggregate.appearances > 0 ? round((aggregate.wins + aggregate.draws * 0.5) / aggregate.appearances) : null,
       winRate95: wilsonInterval(aggregate.wins, aggregate.appearances),
       matchedSamples: matchedResult?.samples ?? 0,
+      matchedControlSamples: matchedResult?.controlSamples ?? 0,
       matchedScoreLift: matchedResult?.lift ?? null,
+      placementPatternId: designByBlockId.get(block.id)?.placementPatternId ?? 'free',
       averageTicks: aggregate.appearances > 0 ? round(aggregate.totalTicks / aggregate.appearances) : null,
       activationsPerBattle: aggregate.appearances > 0 ? round(aggregate.activations / aggregate.appearances) : null,
       reportedDamagePerBattle:
@@ -669,84 +816,13 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
       counterfactual,
       ablation,
       ablationImpactZScore: null,
+      ablationRarityDelta: null,
       signals: [],
       suspectedOutlier: false,
     };
   });
 
-  (['common', 'rare', 'epic', 'legendary'] as Rarity[]).forEach((rarity) => {
-    const comparable = skills.filter(
-      (skill) =>
-        skill.rarity === rarity &&
-        skill.appearances >= config.minimumSamples &&
-        skill.reportedOutputPerActivation !== null,
-    );
-    if (comparable.length < 2) return;
-    const average = mean(comparable.map((skill) => skill.reportedOutputPerActivation!));
-    const standardDeviation = Math.sqrt(
-      mean(comparable.map((skill) => (skill.reportedOutputPerActivation! - average) ** 2)),
-    );
-    comparable.forEach((skill) => {
-      skill.efficiencyZScore =
-        standardDeviation > 0 ? round((skill.reportedOutputPerActivation! - average) / standardDeviation) : 0;
-    });
-  });
-
-  (['common', 'rare', 'epic', 'legendary'] as Rarity[]).forEach((rarity) => {
-    const comparable = skills.filter(
-      (skill) =>
-        skill.rarity === rarity &&
-        skill.ablation.samples >= config.minimumCounterfactualSamples &&
-        skill.ablation.scoreLift !== null,
-    );
-    if (comparable.length < 2) return;
-    const average = mean(comparable.map((skill) => skill.ablation.scoreLift!));
-    const standardDeviation = Math.sqrt(mean(comparable.map((skill) => (skill.ablation.scoreLift! - average) ** 2)));
-    comparable.forEach((skill) => {
-      skill.ablationImpactZScore =
-        standardDeviation > 0 ? round((skill.ablation.scoreLift! - average) / standardDeviation) : 0;
-    });
-  });
-
-  skills.forEach((skill) => {
-    const signals: BalanceSignal[] = [];
-    if (skill.matchedSamples >= config.minimumSamples && skill.matchedScoreLift !== null) {
-      if (skill.matchedScoreLift >= config.winRateLiftThreshold) signals.push('matched-overrepresented');
-      if (skill.matchedScoreLift <= -config.winRateLiftThreshold) signals.push('matched-underrepresented');
-    }
-    if (
-      skill.counterfactual.samples >= config.minimumCounterfactualSamples &&
-      skill.counterfactual.scoreLift !== null &&
-      skill.counterfactual.scoreLift95
-    ) {
-      if (skill.counterfactual.scoreLift >= config.winRateLiftThreshold && skill.counterfactual.scoreLift95.lower > 0) {
-        signals.push('counterfactual-overpowered');
-      }
-      if (
-        skill.counterfactual.scoreLift <= -config.winRateLiftThreshold &&
-        skill.counterfactual.scoreLift95.upper < 0
-      ) {
-        signals.push('counterfactual-underpowered');
-      }
-    }
-    if (skill.efficiencyZScore !== null) {
-      if (skill.efficiencyZScore >= config.efficiencyZScoreThreshold) signals.push('reported-output-high');
-      if (skill.efficiencyZScore <= -config.efficiencyZScoreThreshold) signals.push('reported-output-low');
-    }
-    if (skill.ablationImpactZScore !== null) {
-      if (skill.ablationImpactZScore >= config.efficiencyZScoreThreshold) signals.push('ablation-impact-high');
-      if (skill.ablationImpactZScore <= -config.efficiencyZScoreThreshold) signals.push('ablation-impact-low');
-    }
-    skill.signals = signals;
-    const counterfactualSignal = signals.some((signal) => signal.startsWith('counterfactual-'));
-    const alignedHigh =
-      signals.includes('matched-overrepresented') &&
-      (signals.includes('reported-output-high') || signals.includes('ablation-impact-high'));
-    const alignedLow =
-      signals.includes('matched-underrepresented') &&
-      (signals.includes('reported-output-low') || signals.includes('ablation-impact-low'));
-    skill.suspectedOutlier = counterfactualSignal || alignedHigh || alignedLow;
-  });
+  classifyBalanceSkills(skills, config);
 
   skills.sort(
     (left, right) =>
@@ -758,7 +834,7 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
 
   const totalBattles = tournamentBattles + counterfactuals.battles;
   return {
-    simulationVersion: 2,
+    simulationVersion: 3,
     gameSchemaVersion: data.schemaVersion,
     config,
     summary: {
@@ -784,7 +860,7 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
         averageNodes: round(totalNodes / (report.battles * 2)),
       }))
       .sort((left, right) => left.run - right.run),
-    traitMatchups: [...traitMatchups.values()]
+    buildMatchups: [...buildMatchups.values()]
       .map(({ totalTicks: matchupTicks, ...report }) => ({
         ...report,
         playerScoreRate: round((report.playerWins + report.draws * 0.5) / report.battles),
@@ -792,7 +868,7 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
       }))
       .sort(
         (left, right) =>
-          left.playerTrait.localeCompare(right.playerTrait) || left.enemyTrait.localeCompare(right.enemyTrait),
+          left.playerBuild.localeCompare(right.playerBuild) || left.enemyBuild.localeCompare(right.enemyBuild),
       ),
     skills,
     methodology: {
@@ -801,12 +877,14 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
       counterfactual:
         'A skill replaces a same-rarity, overlapping-role node with an identical rotated port signature, then baseline and replacement boards fight the same opponent on both sides.',
       ablation:
-        'The same generated board is replayed with the target skill effects disabled while ports remain unchanged, using an opponent that does not contain that skill.',
+        'A linked build is generated with the target skill required, then the same board is replayed with that skill disabled while ports remain unchanged, using an opponent that does not contain it.',
       limitations: [
         'Generated builds spend no more than the average cumulative player coin budget for that run and use level-adjusted rarity weights, but do not model individual shop choices, rerolls, locked offers, or fusion decisions.',
         'Per-skill damage is reported trace output before shield absorption and overkill; repair is capped effective healing.',
         'Poison tick damage is team-attributed rather than source-skill-attributed.',
         'Passive support is evaluated primarily through matched and counterfactual outcome lift rather than direct trace output.',
+        'Generated builds are not an optimizer for strongest placements or multi-skill combo ceilings; multiplicative payoffs require deterministic high-synergy regression tests.',
+        'Rarity-relative signals for topology-gated skills remain informational because the fixed generator does not guarantee each loop, fully-connected, or straight-line condition.',
       ],
     },
   };
@@ -814,6 +892,14 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
 
 const nullableDelta = (current: number | null, baseline: number | null) =>
   current === null || baseline === null ? null : round(current - baseline);
+
+export function optionsFromBalanceBaseline(
+  baseline: BalanceSimulationResult,
+  overrides: BalanceSimulationOptions,
+): BalanceSimulationOptions {
+  const { skillIds: _skillIds, buildIds: _buildIds, ...reusableConfig } = baseline.config;
+  return { ...reusableConfig, ...overrides };
+}
 
 export function compareBalanceResults(
   current: BalanceSimulationResult,
@@ -825,8 +911,14 @@ export function compareBalanceResults(
     seed: config.seed,
     skillTrials: config.skillTrials,
     skillIds: config.skillIds,
+    buildIds: config.buildIds,
+    minimumSamples: config.minimumSamples,
+    minimumCounterfactualSamples: config.minimumCounterfactualSamples,
+    winRateLiftThreshold: config.winRateLiftThreshold,
+    efficiencyZScoreThreshold: config.efficiencyZScoreThreshold,
   });
   const compatible =
+    current.simulationVersion === baseline.simulationVersion &&
     JSON.stringify(comparableConfig(current.config)) === JSON.stringify(comparableConfig(baseline.config));
   const baselineById = new Map(baseline.skills.map((skill) => [skill.blockId, skill]));
   const currentById = new Map(current.skills.map((skill) => [skill.blockId, skill]));

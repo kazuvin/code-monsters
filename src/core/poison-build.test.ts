@@ -34,7 +34,7 @@ describe('poison build', () => {
     expect(tick5.skillBuffs.player['2:0']).toEqual({ poison: 16 });
   });
 
-  it('keeps poison and grows an output payoff across the battle', () => {
+  it('keeps poison and lets venom bloom scale from the poison already cultivated', () => {
     const data = structuredClone(GAME_DATA);
     data.rules.poisonTickSeconds = 100;
     const board = horizontalRoute('poison-needle', 'status-relay', 'venom-bloom');
@@ -46,7 +46,7 @@ describe('poison build', () => {
 
     expect(tick1.skillBuffs.player['2:2']).toEqual({ poison: 8 });
     expect(tick3.skillBuffs.player['2:2']).toEqual({ poison: 16 });
-    expect(enemy.poison).toBe(614);
+    expect(enemy.poison).toBe(654);
     expect(tick1.trace).toEqual(
       expect.arrayContaining([expect.objectContaining({ blockId: 'status-relay', kind: 'damage', value: 80 })]),
     );
@@ -117,7 +117,7 @@ describe('poison build', () => {
     expect(result.fighters.find((fighter) => fighter.team === 'player')?.hp).toBe(player.hp + 520);
   });
 
-  it('ruptures most of the stored poison for immediate damage', () => {
+  it('ruptures part of the stored poison while preserving the cultivated stack', () => {
     const data = structuredClone(GAME_DATA);
     data.rules.poisonTickSeconds = 100;
     const state = createBattle(data, horizontalRoute('rupture-stake'), emptyBoard());
@@ -126,9 +126,9 @@ describe('poison build', () => {
     const result = resolveTick(data, state, 1);
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(enemy.poison).toBe(50);
-    expect(enemy.hp).toBe(enemy.maxHp - 300);
-    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 300 })]));
+    expect(enemy.poison).toBe(65);
+    expect(enemy.hp).toBe(enemy.maxHp - 280);
+    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 280 })]));
   });
 
   it('lets an upstream amplifier increase rupture damage per consumed poison', () => {
@@ -140,9 +140,9 @@ describe('poison build', () => {
     const result = resolveTick(data, state, 1);
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(enemy.poison).toBe(50);
-    expect(enemy.hp).toBe(enemy.maxHp - 3050);
-    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 3050 })]));
+    expect(enemy.poison).toBe(65);
+    expect(enemy.hp).toBe(enemy.maxHp - 335);
+    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 335 })]));
   });
 
   it('deals poison damage periodically and lets one stack decay', () => {

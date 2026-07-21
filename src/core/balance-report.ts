@@ -7,9 +7,9 @@ const markdownCell = (value: string) => value.replaceAll('|', '\\|');
 export function renderBalanceMarkdown(result: BalanceSimulationResult, comparison?: BalanceComparison): string {
   const outliers = result.skills.filter((skill) => skill.suspectedOutlier);
   const singleSignals = result.skills.filter((skill) => !skill.suspectedOutlier && skill.signals.length > 0);
-  const traitWarnings = result.traitMatchups.filter(
+  const buildWarnings = result.buildMatchups.filter(
     (matchup) =>
-      matchup.playerTrait !== matchup.enemyTrait &&
+      matchup.playerBuild !== matchup.enemyBuild &&
       Math.abs(matchup.playerScoreRate - 0.5) >= result.config.winRateLiftThreshold,
   );
   const lines = [
@@ -33,11 +33,11 @@ export function renderBalanceMarkdown(result: BalanceSimulationResult, compariso
   if (outliers.length === 0) {
     lines.push('現在の閾値で、複数指標または信頼区間を満たす外れ値はありません。', '');
   } else {
-    lines.push('| スキル | レア | 登場 | 補正勝率差 | 差替勝率差 | 無効化差 | 出力Z | 無効化Z | シグナル |');
-    lines.push('| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
+    lines.push('| スキル | レア | 登場 | 補正勝率差 | 差替勝率差 | 無効化差 | 同レア差 | 出力Z | 無効化Z | シグナル |');
+    lines.push('| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
     outliers.forEach((skill) => {
       lines.push(
-        `| ${markdownCell(skill.title)} | ${skill.rarity} | ${skill.appearances} | ${percent(skill.matchedScoreLift)} | ${percent(skill.counterfactual.scoreLift)} | ${percent(skill.ablation.scoreLift)} | ${decimal(skill.efficiencyZScore, 2)} | ${decimal(skill.ablationImpactZScore, 2)} | ${skill.signals.join(', ')} |`,
+        `| ${markdownCell(skill.title)} | ${skill.rarity} | ${skill.appearances} | ${percent(skill.matchedScoreLift)} | ${percent(skill.counterfactual.scoreLift)} | ${percent(skill.ablation.scoreLift)} | ${percent(skill.ablationRarityDelta)} | ${decimal(skill.efficiencyZScore, 2)} | ${decimal(skill.ablationImpactZScore, 2)} | ${skill.signals.join(', ')} |`,
       );
     });
     lines.push('');
@@ -46,24 +46,24 @@ export function renderBalanceMarkdown(result: BalanceSimulationResult, compariso
   if (singleSignals.length === 0) {
     lines.push('外れ値条件の一部だけを満たすスキルはありません。', '');
   } else {
-    lines.push('| スキル | 補正勝率差 | 差替勝率差 | 無効化差 | 出力Z | 無効化Z | シグナル |');
-    lines.push('| --- | ---: | ---: | ---: | ---: | ---: | --- |');
+    lines.push('| スキル | 補正勝率差 | 差替勝率差 | 無効化差 | 同レア差 | 出力Z | 無効化Z | シグナル |');
+    lines.push('| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |');
     singleSignals.forEach((skill) => {
       lines.push(
-        `| ${markdownCell(skill.title)} | ${percent(skill.matchedScoreLift)} | ${percent(skill.counterfactual.scoreLift)} | ${percent(skill.ablation.scoreLift)} | ${decimal(skill.efficiencyZScore, 2)} | ${decimal(skill.ablationImpactZScore, 2)} | ${skill.signals.join(', ')} |`,
+        `| ${markdownCell(skill.title)} | ${percent(skill.matchedScoreLift)} | ${percent(skill.counterfactual.scoreLift)} | ${percent(skill.ablation.scoreLift)} | ${percent(skill.ablationRarityDelta)} | ${decimal(skill.efficiencyZScore, 2)} | ${decimal(skill.ablationImpactZScore, 2)} | ${skill.signals.join(', ')} |`,
       );
     });
     lines.push('');
   }
-  lines.push('## 特性間警告', '');
-  if (traitWarnings.length === 0) {
-    lines.push('特性間スコア率は現在の閾値内です。', '');
+  lines.push('## ビルド間警告', '');
+  if (buildWarnings.length === 0) {
+    lines.push('ビルド間スコア率は現在の閾値内です。', '');
   } else {
-    lines.push('| P特性 | E特性 | 戦闘 | Pスコア率 | 50%との差 |');
+    lines.push('| Pビルド | Eビルド | 戦闘 | Pスコア率 | 50%との差 |');
     lines.push('| --- | --- | ---: | ---: | ---: |');
-    traitWarnings.forEach((matchup) => {
+    buildWarnings.forEach((matchup) => {
       lines.push(
-        `| ${matchup.playerTrait} | ${matchup.enemyTrait} | ${matchup.battles} | ${percent(matchup.playerScoreRate)} | ${percent(matchup.playerScoreRate - 0.5)} |`,
+        `| ${matchup.playerBuild} | ${matchup.enemyBuild} | ${matchup.battles} | ${percent(matchup.playerScoreRate)} | ${percent(matchup.playerScoreRate - 0.5)} |`,
       );
     });
     lines.push('');
@@ -71,12 +71,12 @@ export function renderBalanceMarkdown(result: BalanceSimulationResult, compariso
   lines.push(
     '## スキル別集計',
     '',
-    '| ID | スキル | レア | 登場 | 勝率 | 補正勝率差 | 発動/戦 | 報告ダメ/戦 | 毒付与/戦 | 防壁/戦 | 実回復/戦 | 差替N | 差替勝率差 | 無効化N | 無効化差 |',
-    '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| ID | スキル | 配置 | レア | 登場 | 不採用 | 勝率 | 補正勝率差 | 発動/戦 | 報告ダメ/戦 | 毒付与/戦 | 防壁/戦 | 実回復/戦 | 差替N | 差替勝率差 | 無効化N | 無効化差 | 同レア差 |',
+    '| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
   );
   result.skills.forEach((skill) => {
     lines.push(
-      `| ${skill.blockId} | ${markdownCell(skill.title)} | ${skill.rarity} | ${skill.appearances} | ${percent(skill.winRate)} | ${percent(skill.matchedScoreLift)} | ${decimal(skill.activationsPerBattle, 2)} | ${decimal(skill.reportedDamagePerBattle)} | ${decimal(skill.poisonAppliedPerBattle)} | ${decimal(skill.reportedShieldPerBattle)} | ${decimal(skill.effectiveRepairPerBattle)} | ${skill.counterfactual.samples} | ${percent(skill.counterfactual.scoreLift)} | ${skill.ablation.samples} | ${percent(skill.ablation.scoreLift)} |`,
+      `| ${skill.blockId} | ${markdownCell(skill.title)} | ${skill.placementPatternId} | ${skill.rarity} | ${skill.appearances} | ${skill.matchedControlSamples} | ${percent(skill.winRate)} | ${percent(skill.matchedScoreLift)} | ${decimal(skill.activationsPerBattle, 2)} | ${decimal(skill.reportedDamagePerBattle)} | ${decimal(skill.poisonAppliedPerBattle)} | ${decimal(skill.reportedShieldPerBattle)} | ${decimal(skill.effectiveRepairPerBattle)} | ${skill.counterfactual.samples} | ${percent(skill.counterfactual.scoreLift)} | ${skill.ablation.samples} | ${percent(skill.ablation.scoreLift)} | ${percent(skill.ablationRarityDelta)} |`,
     );
   });
   lines.push(
@@ -93,14 +93,14 @@ export function renderBalanceMarkdown(result: BalanceSimulationResult, compariso
   });
   lines.push(
     '',
-    '## 特性マッチアップ',
+    '## ビルドマッチアップ',
     '',
-    '| P特性 | E特性 | 戦闘 | Pスコア率 | 平均tick |',
+    '| Pビルド | Eビルド | 戦闘 | Pスコア率 | 平均tick |',
     '| --- | --- | ---: | ---: | ---: |',
   );
-  result.traitMatchups.forEach((matchup) => {
+  result.buildMatchups.forEach((matchup) => {
     lines.push(
-      `| ${matchup.playerTrait} | ${matchup.enemyTrait} | ${matchup.battles} | ${percent(matchup.playerScoreRate)} | ${decimal(matchup.averageTicks)} |`,
+      `| ${matchup.playerBuild} | ${matchup.enemyBuild} | ${matchup.battles} | ${percent(matchup.playerScoreRate)} | ${decimal(matchup.averageTicks)} |`,
     );
   });
   if (comparison) {
@@ -119,7 +119,7 @@ export function renderBalanceMarkdown(result: BalanceSimulationResult, compariso
   result.methodology.limitations.forEach((limitation) => lines.push(`- ${limitation}`));
   lines.push(
     '',
-    '補正勝率差は同じ run・特性の不採用盤面との差です。差替勝率差は同一接続形状・同レア・役割重複のノードを置換した差、無効化差は接続を維持したまま対象効果だけを止めた差です。どちらも同じ相手へ両陣営から戦わせています。',
+    '補正勝率差は同じ run・ビルドの不採用盤面との差です。差替勝率差は同一接続形状・同レア・役割重複のノードを置換した差、無効化差は接続を維持したまま対象効果だけを止めた差です。どちらも同じ相手へ両陣営から戦わせています。',
     '',
   );
   return lines.join('\n');
@@ -135,6 +135,7 @@ export function renderBalanceCsv(result: BalanceSimulationResult): string {
   const headers = [
     'blockId',
     'title',
+    'placementPatternId',
     'rarity',
     'appearances',
     'wins',
@@ -143,6 +144,7 @@ export function renderBalanceCsv(result: BalanceSimulationResult): string {
     'winRate',
     'scoreRate',
     'matchedSamples',
+    'matchedControlSamples',
     'matchedScoreLift',
     'activationsPerBattle',
     'reportedDamagePerBattle',
@@ -160,12 +162,14 @@ export function renderBalanceCsv(result: BalanceSimulationResult): string {
     'ablationDamageDelta',
     'ablationDefenseDelta',
     'ablationImpactZScore',
+    'ablationRarityDelta',
     'suspectedOutlier',
     'signals',
   ];
   const rows = result.skills.map((skill) => [
     skill.blockId,
     skill.title,
+    skill.placementPatternId,
     skill.rarity,
     skill.appearances,
     skill.wins,
@@ -174,6 +178,7 @@ export function renderBalanceCsv(result: BalanceSimulationResult): string {
     skill.winRate,
     skill.scoreRate,
     skill.matchedSamples,
+    skill.matchedControlSamples,
     skill.matchedScoreLift,
     skill.activationsPerBattle,
     skill.reportedDamagePerBattle,
@@ -191,6 +196,7 @@ export function renderBalanceCsv(result: BalanceSimulationResult): string {
     skill.ablation.reportedDamageDelta,
     skill.ablation.reportedDefenseDelta,
     skill.ablationImpactZScore,
+    skill.ablationRarityDelta,
     skill.suspectedOutlier,
     skill.signals.join('|'),
   ]);
