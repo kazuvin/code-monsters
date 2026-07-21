@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBattle, resolveTick, runBattle } from './battle';
+import { createBattle, createPlayback, resolveTick, runBattle } from './battle';
 import type { CircuitBoard, GameData } from './types';
 
 const emptyBoard = (size = 3): CircuitBoard =>
@@ -10,7 +10,10 @@ const testData = (): GameData => ({
   rules: {
     boardSize: 3,
     sourceRow: 1,
-    battleTicks: 3,
+    battleStepMs: 1000,
+    suddenDeathSeconds: 4,
+    suddenDeathBaseDamage: 2,
+    suddenDeathGrowth: 2,
     startingCoins: 7,
     winReward: 4,
     retryReward: 1,
@@ -24,17 +27,6 @@ const testData = (): GameData => ({
   playerUnitId: 'player-bot',
   enemyUnitId: 'enemy-bot',
   blocks: [
-    {
-      id: 'hub',
-      code: 'HUB',
-      title: 'ハブ',
-      description: '',
-      glyph: '+',
-      price: 1,
-      rarity: 'common',
-      ports: ['west', 'north', 'east', 'south'],
-      effect: { kind: 'wire' },
-    },
     {
       id: 'strike',
       code: 'HIT',
@@ -102,7 +94,7 @@ const testData = (): GameData => ({
 const route = (...blockIds: string[]): CircuitBoard => {
   const board = emptyBoard();
   blockIds.forEach((blockId, column) => {
-    board[1][column] = { blockId, rotation: 0, fixed: column === 0 };
+    board[1][column] = { blockId, rotation: 0 };
   });
   return board;
 };
@@ -110,7 +102,7 @@ const route = (...blockIds: string[]): CircuitBoard => {
 describe('1vs1 circuit battle', () => {
   it('activates powered skills on their own cooldowns', () => {
     const data = testData();
-    const state = createBattle(data, route('hub', 'guard'), route('hub'));
+    const state = createBattle(data, route('guard'), emptyBoard());
     const tick1 = resolveTick(data, state, 1);
     const tick2 = resolveTick(data, tick1, 2);
 
@@ -120,7 +112,7 @@ describe('1vs1 circuit battle', () => {
 
   it('lets a powered skill pass the circuit to the next skill', () => {
     const data = testData();
-    const result = resolveTick(data, createBattle(data, route('hub', 'guard', 'strike'), route('hub')), 1);
+    const result = resolveTick(data, createBattle(data, route('guard', 'strike'), emptyBoard()), 1);
 
     expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(9);
     expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
@@ -128,14 +120,14 @@ describe('1vs1 circuit battle', () => {
 
   it('boosts a directly connected skill with a powered amplifier', () => {
     const data = testData();
-    const result = resolveTick(data, createBattle(data, route('hub', 'amp', 'strike'), route('hub')), 1);
+    const result = resolveTick(data, createBattle(data, route('amp', 'strike'), emptyBoard()), 1);
 
     expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(7);
   });
 
   it('reports only the health that a repair actually restores', () => {
     const data = testData();
-    const result = resolveTick(data, createBattle(data, route('hub', 'repair'), route('hub', 'strike')), 1);
+    const result = resolveTick(data, createBattle(data, route('repair'), route('strike')), 1);
 
     expect(result.trace.find((event) => event.kind === 'repair')?.value).toBe(0);
   });
@@ -143,17 +135,41 @@ describe('1vs1 circuit battle', () => {
   it('resolves lethal attacks simultaneously', () => {
     const data = testData();
     data.units = data.units.map((unit) => ({ ...unit, maxHp: 3 }));
-    const result = resolveTick(data, createBattle(data, route('hub', 'strike'), route('hub', 'strike')), 1);
+    const result = resolveTick(data, createBattle(data, route('strike'), route('strike')), 1);
 
     expect(result.winner).toBe('draw');
     expect(result.fighters.every((fighter) => fighter.hp === 0)).toBe(true);
   });
 
-  it('finishes a timed battle by remaining health', () => {
+  it('continues past a fixed beat count and applies exponential overload damage', () => {
     const data = testData();
-    const result = runBattle(data, route('hub', 'strike'), route('hub'));
+    const playback = createPlayback(data, route('guard'), route('guard'));
+    const result = playback.at(-1)!;
+    const overload = result.trace.filter((event) => event.kind === 'overload' && event.team === 'player');
+    const overloadPulses = playback.filter((frame) => frame.overloadLevel > 0).map((frame) => frame.overloadDamage);
 
-    expect(result.winner).toBe('player');
-    expect(result.tick).toBe(3);
+    expect(result.winner).toBe('draw');
+    expect(result.tick).toBe(6);
+    expect(overloadPulses).toEqual([2, 4, 8]);
+    expect(overload.map((event) => event.value)).toEqual([2, 4, 6]);
+    expect(result.fighters.every((fighter) => fighter.shield > 0)).toBe(true);
+  });
+
+  it('awards a simultaneous overload knockout to the fighter with more health before the pulse', () => {
+    const data = testData();
+    data.rules.suddenDeathSeconds = 1;
+    data.rules.suddenDeathBaseDamage = 16;
+    const state = createBattle(data, route('guard'), route('guard'));
+    state.fighters.find((fighter) => fighter.team === 'player')!.hp = 10;
+    state.fighters.find((fighter) => fighter.team === 'enemy')!.hp = 8;
+
+    expect(resolveTick(data, state, 1).winner).toBe('player');
+  });
+
+  it('runs to an actual knockout instead of comparing health at a time limit', () => {
+    const result = runBattle(testData(), route('guard'), route('guard'));
+
+    expect(result.tick).toBe(6);
+    expect(result.fighters.every((fighter) => fighter.hp === 0)).toBe(true);
   });
 });

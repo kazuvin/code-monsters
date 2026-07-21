@@ -11,7 +11,8 @@ const blocks: BlockDefinition[] = Array.from({ length: 7 }, (_, index) => ({
   price: 2,
   rarity: index > 4 ? 'rare' : 'common',
   ports: ['west', 'east'],
-  effect: { kind: 'wire' },
+  cooldown: 1,
+  effect: { kind: 'damage', amount: 1 },
 }));
 
 describe('shop', () => {

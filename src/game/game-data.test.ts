@@ -9,6 +9,12 @@ describe('game data', () => {
     expect(GAME_DATA.enemyBoard.every((row) => row.length === 5)).toBe(true);
   });
 
+  it('starts the player empty and offers only skills with gameplay effects', () => {
+    expect(GAME_DATA.startingRack).toEqual([]);
+    expect(GAME_DATA.playerBoard.flat().every((cell) => cell === null)).toBe(true);
+    expect(GAME_DATA.blocks.map((block) => block.effect.kind)).not.toContain('wire');
+  });
+
   it('rejects an unknown block in a circuit', () => {
     const invalid = structuredClone(GAME_DATA);
     invalid.enemyBoard[0][0] = { blockId: 'missing-block', rotation: 0 };
@@ -16,10 +22,10 @@ describe('game data', () => {
     expect(validateGameData(invalid)).toContain('enemyBoard[0][0] references unknown block "missing-block"');
   });
 
-  it('requires the source row to begin with a west-facing fixed block', () => {
+  it('rejects an overload rule that cannot escalate', () => {
     const invalid = structuredClone(GAME_DATA);
-    invalid.playerBoard[GAME_DATA.rules.sourceRow][0] = null;
+    invalid.rules.suddenDeathGrowth = 1;
 
-    expect(validateGameData(invalid)).toContain('playerBoard must connect a fixed block to the source');
+    expect(validateGameData(invalid)).toContain('suddenDeathGrowth must be greater than 1');
   });
 });

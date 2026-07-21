@@ -1,5 +1,4 @@
 import rawGameData from './game.json';
-import { rotatePorts } from '../core/circuit';
 import type { CircuitBoard, GameData } from '../core/types';
 
 export const GAME_DATA = rawGameData as GameData;
@@ -19,12 +18,6 @@ const validateBoard = (name: string, board: CircuitBoard, data: GameData, errors
       }
     });
   });
-
-  const source = board[data.rules.sourceRow]?.[0];
-  const sourceDefinition = source ? data.blocks.find((block) => block.id === source.blockId) : undefined;
-  if (!source?.fixed || !sourceDefinition || !rotatePorts(sourceDefinition.ports, source.rotation).includes('west')) {
-    errors.push(`${name} must connect a fixed block to the source`);
-  }
 };
 
 export function validateGameData(data: GameData): string[] {
@@ -51,6 +44,10 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.boardSize < 2) errors.push('boardSize must be at least 2');
   if (data.rules.sourceRow < 0 || data.rules.sourceRow >= data.rules.boardSize)
     errors.push('sourceRow is outside the board');
+  if (data.rules.battleStepMs <= 0) errors.push('battleStepMs must be positive');
+  if (data.rules.suddenDeathSeconds <= 0) errors.push('suddenDeathSeconds must be positive');
+  if (data.rules.suddenDeathBaseDamage <= 0) errors.push('suddenDeathBaseDamage must be positive');
+  if (data.rules.suddenDeathGrowth <= 1) errors.push('suddenDeathGrowth must be greater than 1');
 
   validateBoard('playerBoard', data.playerBoard, data, errors);
   validateBoard('enemyBoard', data.enemyBoard, data, errors);

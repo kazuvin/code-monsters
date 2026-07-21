@@ -12,13 +12,7 @@ export function placeBlockFromRack(
 ): { board: CircuitBoard; rack: string[] } {
   const rackIndex = rack.indexOf(blockId);
   const current = board[position.row]?.[position.column];
-  if (
-    rackIndex < 0 ||
-    current?.fixed ||
-    !board[position.row] ||
-    position.column < 0 ||
-    position.column >= board.length
-  ) {
+  if (rackIndex < 0 || !board[position.row] || position.column < 0 || position.column >= board.length) {
     return { board, rack };
   }
 
@@ -33,7 +27,7 @@ export function moveBlock(board: CircuitBoard, from: CellPosition, to: CellPosit
   if (samePosition(from, to)) return board;
   const source = board[from.row]?.[from.column];
   const destination = board[to.row]?.[to.column];
-  if (!source || source.fixed || destination?.fixed || !board[to.row] || to.column < 0 || to.column >= board.length) {
+  if (!source || !board[to.row] || to.column < 0 || to.column >= board.length) {
     return board;
   }
 
@@ -45,7 +39,7 @@ export function moveBlock(board: CircuitBoard, from: CellPosition, to: CellPosit
 
 export function rotateBoardBlock(board: CircuitBoard, position: CellPosition): CircuitBoard {
   const current = board[position.row]?.[position.column];
-  if (!current || current.fixed) return board;
+  if (!current) return board;
   const next = cloneBoard(board);
   next[position.row][position.column] = rotateBlock(current);
   return next;
@@ -57,7 +51,7 @@ export function removeBlockToRack(
   position: CellPosition,
 ): { board: CircuitBoard; rack: string[] } {
   const current = board[position.row]?.[position.column];
-  if (!current || current.fixed) return { board, rack };
+  if (!current) return { board, rack };
   const next = cloneBoard(board);
   next[position.row][position.column] = null;
   return { board: next, rack: [...rack, current.blockId] };

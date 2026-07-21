@@ -9,16 +9,16 @@ describe('circuit connectivity', () => {
 
   it('powers every mutually connected block, including a skill in the middle of a route', () => {
     const blocks: Array<{ id: string; ports: Direction[] }> = [
-      { id: 'hub', ports: ['west', 'east'] },
+      { id: 'guard', ports: ['west', 'east'] },
       { id: 'strike', ports: ['west', 'east'] },
-      { id: 'guard', ports: ['west'] },
+      { id: 'rail', ports: ['west'] },
     ];
     const board: CircuitBoard = [
       [null, null, null],
       [
-        { blockId: 'hub', rotation: 0 },
-        { blockId: 'strike', rotation: 0 },
         { blockId: 'guard', rotation: 0 },
+        { blockId: 'strike', rotation: 0 },
+        { blockId: 'rail', rotation: 0 },
       ],
       [null, null, null],
     ];
@@ -28,14 +28,14 @@ describe('circuit connectivity', () => {
 
   it('does not power a block when facing ports do not match', () => {
     const blocks: Array<{ id: string; ports: Direction[] }> = [
-      { id: 'hub', ports: ['west', 'east'] },
-      { id: 'corner', ports: ['west', 'north'] },
+      { id: 'strike', ports: ['west', 'east'] },
+      { id: 'breaker', ports: ['west', 'north'] },
     ];
     const board: CircuitBoard = [
       [null, null],
       [
-        { blockId: 'hub', rotation: 0 },
-        { blockId: 'corner', rotation: 1 },
+        { blockId: 'strike', rotation: 0 },
+        { blockId: 'breaker', rotation: 1 },
       ],
     ];
 

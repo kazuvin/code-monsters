@@ -9,11 +9,7 @@ export type ActiveEffect =
   | { kind: 'shield'; amount: number }
   | { kind: 'repair'; amount: number };
 
-export type BlockEffect =
-  | ActiveEffect
-  | { kind: 'amplify'; amount: number }
-  | { kind: 'haste'; amount: number }
-  | { kind: 'wire' };
+export type BlockEffect = ActiveEffect | { kind: 'amplify'; amount: number } | { kind: 'haste'; amount: number };
 
 export type BlockDefinition = {
   id: string;
@@ -40,7 +36,6 @@ export type UnitDefinition = {
 export type PlacedBlock = {
   blockId: string;
   rotation: Rotation;
-  fixed?: boolean;
 };
 
 export type CircuitBoard = Array<Array<PlacedBlock | null>>;
@@ -50,7 +45,10 @@ export type GameData = {
   rules: {
     boardSize: number;
     sourceRow: number;
-    battleTicks: number;
+    battleStepMs: number;
+    suddenDeathSeconds: number;
+    suddenDeathBaseDamage: number;
+    suddenDeathGrowth: number;
     startingCoins: number;
     winReward: number;
     retryReward: number;
@@ -80,17 +78,26 @@ export type FighterState = {
   shield: number;
 };
 
-export type BattleTraceEvent = {
-  id: string;
-  tick: number;
-  team: Team;
-  kind: ActiveEffect['kind'];
-  blockId: string;
-  row: number;
-  column: number;
-  value: number;
-  targetId: string;
-};
+export type BattleTraceEvent =
+  | {
+      id: string;
+      tick: number;
+      team: Team;
+      kind: ActiveEffect['kind'];
+      blockId: string;
+      row: number;
+      column: number;
+      value: number;
+      targetId: string;
+    }
+  | {
+      id: string;
+      tick: number;
+      team: Team;
+      kind: 'overload';
+      value: number;
+      targetId: string;
+    };
 
 export type BattleState = {
   tick: number;
@@ -100,6 +107,8 @@ export type BattleState = {
   playerPowered: string[];
   enemyPowered: string[];
   trace: BattleTraceEvent[];
+  overloadLevel: number;
+  overloadDamage: number;
   winner: Winner;
 };
 

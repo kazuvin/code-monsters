@@ -50,8 +50,7 @@ const effectLabel = (block: BlockDefinition) => {
   if (effect.kind === 'shield') return `シールド ${effect.amount}`;
   if (effect.kind === 'repair') return `回復 ${effect.amount}`;
   if (effect.kind === 'amplify') return `直結効果 +${effect.amount}`;
-  if (effect.kind === 'haste') return `発動間隔 -${effect.amount}`;
-  return '電流を通す';
+  return `発動間隔 -${effect.amount}`;
 };
 
 const cooldownLabel = (block: BlockDefinition) => {
@@ -63,19 +62,17 @@ const BlockVisual = ({
   block,
   rotation = 0,
   powered = false,
-  fixed = false,
   compact = false,
 }: {
   block: BlockDefinition;
   rotation?: Rotation;
   powered?: boolean;
-  fixed?: boolean;
   compact?: boolean;
 }) => {
   const ports = rotatePorts(block.ports, rotation);
   return (
     <span
-      className={`block-visual effect-${block.effect.kind} rarity-${block.rarity} ${powered ? 'is-powered' : ''} ${fixed ? 'is-fixed' : ''} ${compact ? 'is-compact' : ''}`}
+      className={`block-visual effect-${block.effect.kind} rarity-${block.rarity} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
       aria-hidden="true"
     >
       {ports.map((port) => (
@@ -105,7 +102,17 @@ const RobotSprite = ({ fighter }: { fighter: FighterState }) => (
   </span>
 );
 
-const ArenaFighter = ({ fighter, acting, hit }: { fighter: FighterState; acting: boolean; hit: boolean }) => (
+const ArenaFighter = ({
+  fighter,
+  acting,
+  hit,
+  overloaded,
+}: {
+  fighter: FighterState;
+  acting: boolean;
+  hit: boolean;
+  overloaded: boolean;
+}) => (
   <article
     className={`arena-fighter team-${fighter.team} ${fighter.hp <= 0 ? 'is-down' : ''} ${acting ? 'is-acting' : ''} ${hit ? 'is-hit' : ''}`}
     style={{ '--robot-color': fighter.color } as CSSProperties}
@@ -144,9 +151,9 @@ const ArenaFighter = ({ fighter, acting, hit }: { fighter: FighterState; acting:
           <i>▶</i>起動
         </span>
       )}
-      {!fighter.shield && fighter.hp / fighter.maxHp > 0.5 && !hit && !acting && (
-        <span className="unit-status status-normal">
-          <i>○</i>正常
+      {overloaded && (
+        <span className="unit-status status-overload">
+          <i>⚠</i>過負荷
         </span>
       )}
     </div>
@@ -169,11 +176,12 @@ const BattleCircuitSummary = ({
   tick: number;
 }) => {
   const poweredCells = new Set(powered);
-  const firingCells = new Set(
-    events.filter((event) => event.team === team).map((event) => `${event.row}:${event.column}`),
+  const skillEvents = events.filter(
+    (event): event is Exclude<BattleTraceEvent, { kind: 'overload' }> =>
+      event.kind !== 'overload' && event.team === team,
   );
-  const firingLabels = events
-    .filter((event) => event.team === team)
+  const firingCells = new Set(skillEvents.map((event) => `${event.row}:${event.column}`));
+  const firingLabels = skillEvents
     .map((event) => blockById.get(event.blockId)?.title)
     .filter((title): title is string => Boolean(title));
 
@@ -210,13 +218,7 @@ const BattleCircuitSummary = ({
                   }
                 >
                   {block && placed && (
-                    <BlockVisual
-                      block={block}
-                      rotation={placed.rotation}
-                      powered={poweredCells.has(key)}
-                      fixed={placed.fixed}
-                      compact
-                    />
+                    <BlockVisual block={block} rotation={placed.rotation} powered={poweredCells.has(key)} compact />
                   )}
                 </span>
               );
@@ -242,7 +244,7 @@ export function App() {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [playback, setPlayback] = useState<BattleState[]>([]);
   const [frame, setFrame] = useState(0);
-  const [message, setMessage] = useState('ブロックを長押しして回路を組む');
+  const [message, setMessage] = useState('ショップで技を選ぶ');
   const holdTimer = useRef<number | null>(null);
   const pendingDrag = useRef<PendingDrag | null>(null);
   const suppressClick = useRef(false);
@@ -265,16 +267,22 @@ export function App() {
     const previousCount = frame > 0 ? (playback[frame - 1]?.trace.length ?? 0) : 0;
     return battle.trace.slice(previousCount);
   }, [battle.trace, frame, playback]);
-  const actingTeams = useMemo(() => new Set(frameEvents.map((event) => event.team)), [frameEvents]);
+  const actingTeams = useMemo(
+    () => new Set(frameEvents.filter((event) => event.kind !== 'overload').map((event) => event.team)),
+    [frameEvents],
+  );
   const hitTeams = useMemo(
     () =>
       new Set(
         frameEvents
-          .filter((event) => event.kind === 'damage')
-          .map((event) => (event.team === 'player' ? 'enemy' : 'player')),
+          .filter((event) => event.kind === 'damage' || event.kind === 'overload')
+          .map((event) => (event.kind === 'overload' ? event.team : event.team === 'player' ? 'enemy' : 'player')),
       ),
     [frameEvents],
   );
+  const elapsedSeconds = (battle.tick * GAME_DATA.rules.battleStepMs) / 1000;
+  const battleProgress = Math.min(100, (elapsedSeconds / GAME_DATA.rules.suddenDeathSeconds) * 100);
+  const overloaded = battle.overloadLevel > 0;
 
   useEffect(() => {
     if (phase !== 'battle') return;
@@ -282,7 +290,7 @@ export function App() {
       const timer = window.setTimeout(() => setPhase('result'), 720);
       return () => window.clearTimeout(timer);
     }
-    const timer = window.setTimeout(() => setFrame((current) => current + 1), 620);
+    const timer = window.setTimeout(() => setFrame((current) => current + 1), GAME_DATA.rules.battleStepMs);
     return () => window.clearTimeout(timer);
   }, [frame, phase, playback.length]);
 
@@ -384,12 +392,12 @@ export function App() {
     if (drag.origin.kind === 'rack') {
       const result = placeBlockFromRack(rack, board, drag.origin.blockId, position);
       if (result.board === board) {
-        setMessage('固定ブロックは動かせません');
+        setMessage('そこには置けません');
         return;
       }
       setBoard(result.board);
       setRack(result.rack);
-      setMessage(`${blockById.get(drag.blockId)?.title ?? 'ブロック'}を配置`);
+      setMessage(`${blockById.get(drag.blockId)?.title ?? '技'}を配置`);
       return;
     }
     const next = moveBlock(board, drag.origin.position, position);
@@ -398,7 +406,7 @@ export function App() {
       return;
     }
     setBoard(next);
-    setMessage('ブロックを移動');
+    setMessage('技を移動');
   };
 
   const endHold = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -434,18 +442,18 @@ export function App() {
     if (!detail?.position) return;
     const next = rotateBoardBlock(board, detail.position);
     if (next === board) {
-      setMessage('固定ブロックは回せません');
+      setMessage('回せる技がありません');
       return;
     }
     setBoard(next);
-    setMessage('ブロックを回転');
+    setMessage('技を回転');
   };
 
   const removeDetailBlock = () => {
     if (!detail?.position) return;
     const result = removeBlockToRack(rack, board, detail.position);
     if (result.board === board) {
-      setMessage('固定ブロックは外せません');
+      setMessage('外せる技がありません');
       return;
     }
     setBoard(result.board);
@@ -534,10 +542,10 @@ export function App() {
               <header className="panel-head">
                 <div>
                   <small>YOUR CIRCUIT</small>
-                  <h2>回路ボード</h2>
+                  <h2>技回路</h2>
                 </div>
                 <span className="power-count">
-                  通電 <b>{powered.size}</b> / 25
+                  通電技 <b>{powered.size}</b>
                 </span>
               </header>
 
@@ -589,12 +597,7 @@ export function App() {
                                 onPointerUp={endHold}
                                 onPointerCancel={cancelHold}
                               >
-                                <BlockVisual
-                                  block={block}
-                                  rotation={placed.rotation}
-                                  powered={powered.has(key)}
-                                  fixed={placed.fixed}
-                                />
+                                <BlockVisual block={block} rotation={placed.rotation} powered={powered.has(key)} />
                               </button>
                             ) : (
                               <span className="empty-cell" aria-label="空きマス" />
@@ -618,8 +621,8 @@ export function App() {
 
               <div className="rack">
                 <div className="rack-label">
-                  <small>BLOCK RACK</small>
-                  <b>予備ブロック</b>
+                  <small>SKILL RACK</small>
+                  <b>予備の技</b>
                 </div>
                 <div className="rack-list">
                   {rackGroups.length === 0 ? (
@@ -649,8 +652,8 @@ export function App() {
             <aside className="console-panel shop-panel">
               <header className="panel-head">
                 <div>
-                  <small>PARTS SHOP</small>
-                  <h2>ショップ</h2>
+                  <small>SKILL SHOP</small>
+                  <h2>技ショップ</h2>
                 </div>
                 <button className="reroll-button" onClick={reroll} aria-label="ショップを更新">
                   更新 <b>{GAME_DATA.rules.rerollCost}</b>
@@ -707,18 +710,28 @@ export function App() {
               <small>CODE MONSTERS</small>
               <h1>BATTLE RUN {String(run).padStart(2, '0')}</h1>
             </div>
-            <div className="battle-counter">
-              <span>BEAT</span>
-              <b>{Math.max(1, battle.tick)}</b>
-              <i>/ {GAME_DATA.rules.battleTicks}</i>
+            <div className={`battle-counter ${overloaded ? 'is-overload' : ''}`}>
+              <span>{overloaded ? 'OVERLOAD' : 'TIME'}</span>
+              <b>{elapsedSeconds.toFixed(1)}</b>
+              <i>{overloaded ? `DMG ${battle.overloadDamage}` : `/ ${GAME_DATA.rules.suddenDeathSeconds}s`}</i>
             </div>
           </header>
 
           <div className="battle-stage">
             <div className="arena-team-label is-player">YOUR UNIT</div>
             <div className="arena-team-label is-enemy">RIVAL</div>
-            <ArenaFighter fighter={player} acting={actingTeams.has('player')} hit={hitTeams.has('player')} />
-            <ArenaFighter fighter={enemy} acting={actingTeams.has('enemy')} hit={hitTeams.has('enemy')} />
+            <ArenaFighter
+              fighter={player}
+              acting={actingTeams.has('player')}
+              hit={hitTeams.has('player')}
+              overloaded={overloaded}
+            />
+            <ArenaFighter
+              fighter={enemy}
+              acting={actingTeams.has('enemy')}
+              hit={hitTeams.has('enemy')}
+              overloaded={overloaded}
+            />
           </div>
 
           <div className="battle-circuit-deck" aria-live="polite">
@@ -740,13 +753,13 @@ export function App() {
             />
           </div>
 
-          <footer className="battle-beat-rail" aria-label="戦闘進行">
-            {Array.from({ length: GAME_DATA.rules.battleTicks }, (_, tick) => (
-              <span
-                className={`${battle.tick === tick + 1 ? 'is-active' : ''} ${battle.tick > tick + 1 ? 'is-complete' : ''}`}
-                key={`beat-${tick + 1}`}
-              />
-            ))}
+          <footer className={`battle-time-rail ${overloaded ? 'is-overload' : ''}`} aria-label="戦闘時間">
+            <div>
+              <i style={{ width: `${overloaded ? 100 : battleProgress}%` }} />
+            </div>
+            <small>
+              {overloaded ? `過負荷 Lv.${battle.overloadLevel}` : `${GAME_DATA.rules.suddenDeathSeconds}秒後 過負荷`}
+            </small>
           </footer>
         </section>
       )}
@@ -769,7 +782,6 @@ export function App() {
                 block={detailBlock}
                 rotation={detailPlaced?.rotation ?? 0}
                 powered={Boolean(detail.position && powered.has(`${detail.position.row}:${detail.position.column}`))}
-                fixed={detailPlaced?.fixed}
               />
             </div>
             <div className="dialog-copy">
@@ -795,7 +807,7 @@ export function App() {
                 </div>
               </dl>
             </div>
-            {detail.location === 'board' && !detailPlaced?.fixed && (
+            {detail.location === 'board' && (
               <div className="dialog-actions">
                 <button onClick={rotateDetailBlock}>回す ↻</button>
                 <button className="is-danger" onClick={removeDetailBlock}>

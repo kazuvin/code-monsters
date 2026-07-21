@@ -5,7 +5,7 @@ import type { CircuitBoard } from './types';
 const board: CircuitBoard = [
   [null, null, null],
   [
-    { blockId: 'hub', rotation: 0, fixed: true },
+    { blockId: 'repair', rotation: 0 },
     { blockId: 'strike', rotation: 0 },
     { blockId: 'guard', rotation: 0 },
   ],
@@ -28,11 +28,15 @@ describe('circuit loadout', () => {
     expect(result[1][2]?.blockId).toBe('strike');
   });
 
-  it('does not replace, move, remove, or rotate a fixed block', () => {
-    expect(placeBlockFromRack(['repair'], board, 'repair', { row: 1, column: 0 })).toEqual({ board, rack: ['repair'] });
-    expect(moveBlock(board, { row: 1, column: 0 }, { row: 0, column: 0 })).toBe(board);
-    expect(removeBlockToRack([], board, { row: 1, column: 0 })).toEqual({ board, rack: [] });
-    expect(rotateBoardBlock(board, { row: 1, column: 0 })).toBe(board);
+  it('allows every placed skill, including the source skill, to be edited', () => {
+    const rotated = rotateBoardBlock(board, { row: 1, column: 0 });
+    const moved = moveBlock(board, { row: 1, column: 0 }, { row: 0, column: 0 });
+    const removed = removeBlockToRack([], board, { row: 1, column: 0 });
+
+    expect(rotated[1][0]?.rotation).toBe(1);
+    expect(moved[0][0]?.blockId).toBe('repair');
+    expect(removed.board[1][0]).toBeNull();
+    expect(removed.rack).toEqual(['repair']);
   });
 
   it('rotates and removes regular blocks', () => {

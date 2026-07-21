@@ -22,6 +22,7 @@ const longDrag = async (page, source, destination) => {
 };
 
 const longTouch = async (page, client, source, destination) => {
+  await source.scrollIntoViewIfNeeded();
   const sourceBox = await source.boundingBox();
   const destinationBox = await destination.boundingBox();
   if (!sourceBox || !destinationBox) throw new Error('Could not measure touch targets');
@@ -63,33 +64,39 @@ if (checks.circuitCells !== 25) throw new Error(`Expected 25 circuit cells, foun
 if (checks.shopSlots !== 5) throw new Error(`Expected 5 shop slots, found ${checks.shopSlots}`);
 if ((await desktop.locator('.arena-fighter').count()) !== 0)
   throw new Error('Battle screen is visible during build phase');
+if ((await desktop.locator('.circuit-cell .block-button').count()) !== 0)
+  throw new Error('Player circuit should start empty');
+if ((await desktop.locator('.rack-block').count()) !== 0) throw new Error('Skill rack should start empty');
 
-const detailBlock = desktop.locator('[data-row="2"][data-column="1"] .block-button');
-await detailBlock.click();
-await desktop.getByRole('dialog', { name: '斬撃' }).waitFor();
+const firstOffer = desktop.locator('.shop-card').first();
+await firstOffer.locator('.shop-block-button').click();
+await desktop.getByRole('dialog').waitFor();
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 
-const firstCell = desktop.locator('[data-row="2"][data-column="1"]');
-const secondCell = desktop.locator('[data-row="2"][data-column="3"]');
-const firstGlyph = (await firstCell.locator('.block-core b').textContent())?.trim();
-const secondGlyph = (await secondCell.locator('.block-core b').textContent())?.trim();
-await longDrag(desktop, firstCell.locator('.block-button'), secondCell);
-if (
-  (await firstCell.locator('.block-core b').textContent())?.trim() !== secondGlyph ||
-  (await secondCell.locator('.block-core b').textContent())?.trim() !== firstGlyph
-) {
-  throw new Error('Could not swap circuit blocks with long-press drag');
+const coinsBefore = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
+await firstOffer.getByRole('button', { name: /買う/ }).click();
+const coinsAfter = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
+if (!(coinsAfter < coinsBefore)) throw new Error('Buying a skill did not spend coins');
+if ((await desktop.locator('.shop-card').count()) !== 4) throw new Error('Purchased skill was not removed');
+
+const firstCell = desktop.locator('[data-row="2"][data-column="0"]');
+const firstRackSkill = desktop.locator('.rack-block').first();
+const firstRackGlyph = (await firstRackSkill.locator('.block-core b').textContent())?.trim();
+await longDrag(desktop, firstRackSkill, firstCell);
+if ((await firstCell.locator('.block-core b').textContent())?.trim() !== firstRackGlyph) {
+  throw new Error('Could not place the first purchased skill at the power source');
 }
 
-const rackBlock = desktop.locator('.rack-block').first();
-const rackGlyph = (await rackBlock.locator('.block-core b').textContent())?.trim();
-const emptyCell = desktop.locator('[data-row="0"][data-column="0"]');
-await longDrag(desktop, rackBlock, emptyCell);
-if ((await emptyCell.locator('.block-core b').textContent())?.trim() !== rackGlyph) {
-  throw new Error('Could not place a rack block with long-press drag');
+await desktop.locator('.shop-card').first().getByRole('button', { name: /買う/ }).click();
+const secondCell = desktop.locator('[data-row="2"][data-column="1"]');
+const secondRackSkill = desktop.locator('.rack-block').first();
+const secondRackGlyph = (await secondRackSkill.locator('.block-core b').textContent())?.trim();
+await longDrag(desktop, secondRackSkill, secondCell);
+if ((await secondCell.locator('.block-core b').textContent())?.trim() !== secondRackGlyph) {
+  throw new Error('Could not place the second purchased skill');
 }
 
-await emptyCell.locator('.block-button').click();
+await secondCell.locator('.block-button').click();
 await desktop.getByRole('dialog').waitFor();
 const portsBefore = await desktop
   .locator('.dialog-block-preview .block-port')
@@ -99,15 +106,21 @@ const portsAfter = await desktop
   .locator('.dialog-block-preview .block-port')
   .evaluateAll((ports) => ports.map((port) => port.className).sort());
 if (JSON.stringify(portsBefore) === JSON.stringify(portsAfter))
-  throw new Error('Block rotation did not change its ports');
+  throw new Error('Skill rotation did not change its ports');
+for (let rotation = 0; rotation < 3; rotation += 1) {
+  await desktop.getByRole('button', { name: /回す/ }).click();
+}
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 
-const firstOffer = desktop.locator('.shop-card').first();
-const coinsBefore = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
-await firstOffer.getByRole('button', { name: /買う/ }).click();
-const coinsAfter = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
-if (!(coinsAfter < coinsBefore)) throw new Error('Buying a block did not spend coins');
-if ((await desktop.locator('.shop-card').count()) !== 4) throw new Error('Purchased shop block was not removed');
+const firstGlyph = (await firstCell.locator('.block-core b').textContent())?.trim();
+const secondGlyph = (await secondCell.locator('.block-core b').textContent())?.trim();
+await longDrag(desktop, firstCell.locator('.block-button'), secondCell);
+if (
+  (await firstCell.locator('.block-core b').textContent())?.trim() !== secondGlyph ||
+  (await secondCell.locator('.block-core b').textContent())?.trim() !== firstGlyph
+) {
+  throw new Error('Could not swap circuit skills with long-press drag');
+}
 
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: /戦闘開始/ }).click();
@@ -136,14 +149,18 @@ if (
 ) {
   throw new Error('Compact health or status UI is missing from battle units');
 }
+const desktopUnitVisual = await desktop.locator('.arena-unit-visual').first().boundingBox();
+const desktopHealth = await desktop.locator('.unit-health').first().boundingBox();
+if (!desktopUnitVisual || desktopUnitVisual.height > 100) throw new Error('Desktop battle character is too prominent');
+if (!desktopHealth || desktopHealth.width > 90 || desktopHealth.height > 12)
+  throw new Error('Desktop health display is too prominent');
+await desktop.getByText('TIME', { exact: true }).waitFor();
+if ((await desktop.locator('.battle-time-rail').count()) !== 1) throw new Error('Timed overload rail is missing');
 await desktop.waitForTimeout(900);
 if ((await desktop.locator('.battle-circuit-cell.is-firing').count()) === 0) {
   throw new Error('Circuit summary did not show a firing skill');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-battle.png', fullPage: true });
-await desktop.getByRole('dialog').waitFor({ timeout: 20_000 });
-await desktop.getByRole('button', { name: '工房へ戻る' }).click();
-await desktop.getByText('RUN 02').waitFor();
 
 const mobile = await browser.newPage({
   viewport: { width: 390, height: 844 },
@@ -166,9 +183,22 @@ const mobileCellBounds = await mobile.locator('.circuit-cell').evaluateAll((cell
 if (mobileCellBounds.some((box) => box.left < 0 || box.right > 390)) {
   throw new Error(`Mobile circuit board is clipped: ${JSON.stringify(mobileCellBounds)}`);
 }
+if ((await mobile.locator('.circuit-cell .block-button').count()) !== 0)
+  throw new Error('Mobile player circuit should start empty');
 
-const mobileFirst = mobile.locator('[data-row="2"][data-column="1"]');
-const mobileSecond = mobile.locator('[data-row="2"][data-column="3"]');
+await mobile.locator('.shop-card').first().getByRole('button', { name: /買う/ }).click();
+await mobile.locator('.circuit-panel').evaluate((panel) => panel.scrollIntoView({ block: 'start' }));
+const mobileFirst = mobile.locator('[data-row="2"][data-column="0"]');
+await longTouch(mobile, mobileClient, mobile.locator('.rack-block').first(), mobileFirst);
+await mobile.locator('.shop-card').first().getByRole('button', { name: /買う/ }).click();
+await mobile.locator('.circuit-panel').evaluate((panel) => panel.scrollIntoView({ block: 'start' }));
+const mobileSecond = mobile.locator('[data-row="2"][data-column="1"]');
+await longTouch(mobile, mobileClient, mobile.locator('.rack-block').first(), mobileSecond);
+if ((await mobileSecond.locator('.block-button').count()) !== 1) {
+  throw new Error(
+    `Could not place the second mobile skill: ${JSON.stringify({ rack: await mobile.locator('.rack-block').count(), board: await mobile.locator('.circuit-cell .block-button').count(), scrollY: await mobile.evaluate(() => window.scrollY) })}`,
+  );
+}
 const mobileFirstGlyph = (await mobileFirst.locator('.block-core b').textContent())?.trim();
 const mobileSecondGlyph = (await mobileSecond.locator('.block-core b').textContent())?.trim();
 await longTouch(mobile, mobileClient, mobileFirst.locator('.block-button'), mobileSecond);
@@ -176,7 +206,7 @@ if (
   (await mobileFirst.locator('.block-core b').textContent())?.trim() !== mobileSecondGlyph ||
   (await mobileSecond.locator('.block-core b').textContent())?.trim() !== mobileFirstGlyph
 ) {
-  throw new Error('Could not swap circuit blocks on mobile viewport');
+  throw new Error('Could not swap circuit skills on mobile viewport');
 }
 
 await mobileSecond.locator('.block-button').click();
@@ -201,10 +231,34 @@ const mobileCircuitDeck = await mobile.locator('.battle-circuit-deck').boundingB
 if (!mobileCircuitDeck || mobileCircuitDeck.y < mobileStage.y + mobileStage.height - 1) {
   throw new Error('Mobile circuit summaries are not placed below the background');
 }
+const mobileUnitVisual = await mobile.locator('.arena-unit-visual').first().boundingBox();
+const mobileHealth = await mobile.locator('.unit-health').first().boundingBox();
+if (!mobileUnitVisual || mobileUnitVisual.height > 52) throw new Error('Mobile battle character is too prominent');
+if (!mobileHealth || mobileHealth.width > 68 || mobileHealth.height > 9)
+  throw new Error('Mobile health display is too prominent');
 if ((await mobile.locator('.battle-circuit-cell.is-firing').count()) === 0) {
   throw new Error('Mobile circuit summary did not show a firing skill');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-battle.png', fullPage: true });
+
+const overload = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
+overload.on('pageerror', (error) => errors.push(error.message));
+overload.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+await overload.clock.install();
+await overload.goto(target, { waitUntil: 'networkidle' });
+await overload.getByRole('button', { name: /戦闘開始/ }).click();
+await overload.locator('.battle-screen').waitFor();
+await overload.clock.runFor(20_050);
+await overload.getByText('OVERLOAD', { exact: true }).waitFor();
+if ((await overload.locator('.status-overload').count()) !== 2) {
+  throw new Error('Overload status is not visible on both fighters');
+}
+if (!(await overload.locator('.battle-counter').textContent())?.includes('DMG 2')) {
+  throw new Error('The first exponential overload pulse is not shown');
+}
+await overload.screenshot({ path: '/tmp/code-monsters-circuit-overload.png', fullPage: true });
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
 console.log(
@@ -213,7 +267,7 @@ console.log(
       target,
       checks: { ...checks, fighters },
       horizontalOverflow,
-      screenshots: ['desktop', 'battle', 'mobile', 'mobile-battle'],
+      screenshots: ['desktop', 'battle', 'mobile', 'mobile-battle', 'overload'],
     },
     null,
     2,

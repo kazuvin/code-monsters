@@ -27,7 +27,6 @@ export function rotatePorts(ports: Direction[], rotation: Rotation): Direction[]
 }
 
 export function rotateBlock(block: PlacedBlock): PlacedBlock {
-  if (block.fixed) return block;
   return { ...block, rotation: ((block.rotation + 1) % 4) as Rotation };
 }
 

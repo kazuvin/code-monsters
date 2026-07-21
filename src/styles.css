@@ -436,11 +436,6 @@ button:focus-visible {
     3px 3px 0 rgb(2 12 17 / 46%);
 }
 
-.block-visual.is-fixed {
-  border-style: double;
-  border-width: 3px;
-}
-
 .block-port {
   position: absolute;
   z-index: 1;
@@ -1358,34 +1353,6 @@ button:focus-visible {
   font-size: 11px;
 }
 
-.battle-beat-rail {
-  position: relative;
-  z-index: 5;
-  display: grid;
-  width: min(620px, calc(100% - 32px));
-  grid-template-columns: repeat(8, 1fr);
-  gap: 4px;
-  place-self: end center;
-  padding-bottom: max(18px, env(safe-area-inset-bottom));
-}
-
-.battle-beat-rail span {
-  height: 8px;
-  border: 1px solid #315c6c;
-  background: rgb(5 22 30 / 92%);
-}
-
-.battle-beat-rail span.is-complete {
-  border-color: var(--cyan);
-  background: #288b99;
-}
-
-.battle-beat-rail span.is-active {
-  border-color: var(--paper);
-  background: var(--coral);
-  box-shadow: 0 0 12px rgb(255 120 110 / 65%);
-}
-
 .result-panel {
   width: min(390px, 100%);
   padding: 28px;
@@ -1746,12 +1713,6 @@ button:focus-visible {
     font-size: 8px;
   }
 
-  .battle-beat-rail {
-    width: calc(100% - 20px);
-    gap: 2px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
-  }
-
   .toast {
     right: 16px;
     bottom: 16px;
@@ -1795,6 +1756,10 @@ button:focus-visible {
 
 .battle-stage .arena-team-label {
   top: 5%;
+  padding: 2px 5px;
+  border-bottom-width: 1px;
+  font-size: 6px;
+  opacity: 0.62;
 }
 
 .battle-stage .arena-team-label.is-player {
@@ -1810,20 +1775,20 @@ button:focus-visible {
   position: absolute;
   bottom: 4%;
   display: grid;
-  width: clamp(150px, 18%, 230px);
+  width: clamp(86px, 10%, 120px);
   grid-template-columns: 1fr;
   grid-template-rows: auto auto auto auto;
   justify-items: center;
-  gap: 3px;
+  gap: 1px;
   text-align: center;
 }
 
 .arena-fighter.team-player {
-  left: 10%;
+  left: 13%;
 }
 
 .arena-fighter.team-enemy {
-  right: 10%;
+  right: 13%;
 }
 
 .arena-fighter.team-enemy .arena-unit-visual,
@@ -1835,16 +1800,16 @@ button:focus-visible {
 .arena-unit-visual {
   display: grid;
   width: 100%;
-  height: clamp(110px, 13vw, 190px);
+  height: clamp(60px, 7vw, 92px);
   place-items: end center;
 }
 
 .robot-sprite {
-  transform: scale(2.45);
+  transform: scale(1.35);
 }
 
 .team-enemy .robot-sprite {
-  transform: scale(-2.45, 2.45);
+  transform: scale(-1.35, 1.35);
 }
 
 .arena-unit-copy,
@@ -1852,38 +1817,40 @@ button:focus-visible {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 6px;
+  gap: 3px;
   width: auto;
-  padding: 3px 7px;
+  padding: 1px 4px;
   border: 0;
   color: var(--paper);
-  background: rgb(5 22 30 / 82%);
-  text-shadow: 2px 2px 0 var(--ink);
+  background: rgb(5 22 30 / 64%);
+  text-shadow: 1px 1px 0 var(--ink);
 }
 
 .arena-unit-copy > small {
-  font-size: 7px;
+  font-size: 5px;
+  opacity: 0.72;
 }
 
 .arena-unit-copy > strong {
   display: inline;
   margin: 0;
-  font-size: 11px;
+  font-size: 7px;
 }
 
 .unit-health {
   display: flex;
-  width: min(150px, 92%);
+  width: min(80px, 88%);
   align-items: center;
-  gap: 5px;
-  padding: 2px 4px;
-  border: 1px solid rgb(121 186 200 / 72%);
-  background: rgb(5 22 30 / 88%);
+  gap: 3px;
+  padding: 1px 2px;
+  border: 1px solid rgb(121 186 200 / 42%);
+  background: rgb(5 22 30 / 68%);
+  opacity: 0.86;
 }
 
 .unit-health > span {
   display: block;
-  height: 5px;
+  height: 3px;
   flex: 1;
   background: #04141b;
 }
@@ -1896,38 +1863,38 @@ button:focus-visible {
 }
 
 .unit-health > b {
-  min-width: 18px;
+  min-width: 13px;
   font:
-    600 8px / 1 "Pixelify Sans",
+    600 6px / 1 "Pixelify Sans",
     monospace;
   text-align: right;
 }
 
 .unit-status-list {
   display: flex;
-  min-height: 16px;
+  min-height: 9px;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
 }
 
 .unit-status {
   display: inline-flex;
-  min-height: 14px;
+  min-height: 9px;
   align-items: center;
-  gap: 3px;
-  padding: 2px 4px;
-  border: 1px solid #4e7786;
+  gap: 2px;
+  padding: 1px 3px;
+  border: 1px solid rgb(78 119 134 / 56%);
   color: var(--paper);
-  background: rgb(5 22 30 / 90%);
-  font-size: 7px;
+  background: rgb(5 22 30 / 72%);
+  font-size: 5px;
   line-height: 1;
 }
 
 .unit-status i {
   color: var(--cyan);
   font:
-    normal 7px / 1 "Pixelify Sans",
+    normal 5px / 1 "Pixelify Sans",
     monospace;
 }
 
@@ -1945,14 +1912,37 @@ button:focus-visible {
   color: var(--amber);
 }
 
-.unit-status.status-normal {
-  color: var(--muted);
+.unit-status.status-overload {
+  border-color: rgb(255 120 110 / 70%);
+  color: var(--coral);
 }
 
 .arena-fighter.is-hit::after {
   top: 30%;
   left: 50%;
+  width: 18px;
+  height: 18px;
   transform: translateX(-50%);
+}
+
+.arena-fighter.is-acting .arena-unit-visual {
+  animation-name: compact-player-lunge;
+}
+
+.arena-fighter.team-enemy.is-acting .arena-unit-visual {
+  animation-name: compact-enemy-lunge;
+}
+
+@keyframes compact-player-lunge {
+  50% {
+    transform: translateX(12px);
+  }
+}
+
+@keyframes compact-enemy-lunge {
+  50% {
+    transform: translateX(-12px);
+  }
 }
 
 .arena-fighter.team-enemy.is-hit::after {
@@ -2164,20 +2154,64 @@ button:focus-visible {
   }
 }
 
-.battle-beat-rail {
+.battle-time-rail {
+  display: grid;
   width: min(620px, calc(100% - 24px));
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
   flex: 0 0 auto;
   margin: 4px auto 0;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
 
+.battle-time-rail > div {
+  height: 4px;
+  padding: 1px;
+  border: 1px solid rgb(78 119 134 / 56%);
+  background: #04141b;
+}
+
+.battle-time-rail > div i {
+  display: block;
+  height: 100%;
+  background: var(--cyan);
+  transition: width 500ms linear;
+}
+
+.battle-time-rail > small {
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.battle-counter.is-overload b,
+.battle-counter.is-overload i,
+.battle-time-rail.is-overload > small {
+  color: var(--coral);
+}
+
+.battle-time-rail.is-overload > div {
+  border-color: rgb(255 120 110 / 70%);
+}
+
+.battle-time-rail.is-overload > div i {
+  background: var(--coral);
+  animation: overload-rail 500ms steps(2) infinite;
+}
+
+@keyframes overload-rail {
+  50% {
+    opacity: 0.42;
+  }
+}
+
 @media (max-width: 980px) {
   .robot-sprite {
-    transform: scale(1.85);
+    transform: scale(1.05);
   }
 
   .team-enemy .robot-sprite {
-    transform: scale(-1.85, 1.85);
+    transform: scale(-1.05, 1.05);
   }
 }
 
@@ -2188,61 +2222,62 @@ button:focus-visible {
 
   .arena-fighter,
   .arena-fighter.team-enemy {
-    bottom: 3%;
-    width: 108px;
+    bottom: 4%;
+    width: 74px;
   }
 
   .arena-fighter.team-player {
-    left: 8%;
+    left: 13%;
   }
 
   .arena-fighter.team-enemy {
-    right: 8%;
+    right: 13%;
   }
 
   .arena-unit-visual {
     width: 100%;
-    height: 74px;
+    height: 46px;
   }
 
   .robot-sprite {
-    transform: scale(1.08);
+    transform: scale(0.72);
   }
 
   .team-enemy .robot-sprite {
-    transform: scale(-1.08, 1.08);
+    transform: scale(-0.72, 0.72);
   }
 
   .arena-unit-copy,
   .team-enemy .arena-unit-copy {
-    padding: 2px 5px;
+    padding: 1px 3px;
   }
 
   .arena-unit-copy > strong {
-    font-size: 8px;
-  }
-
-  .arena-unit-copy > small {
-    font-size: 5px;
-  }
-
-  .unit-health {
-    width: 98px;
-    padding: 1px 3px;
-  }
-
-  .unit-health > b {
     font-size: 6px;
   }
 
-  .unit-status {
-    min-height: 11px;
-    padding: 1px 3px;
+  .arena-unit-copy > small {
+    display: none;
+  }
+
+  .unit-health {
+    width: 62px;
+    padding: 1px 2px;
+  }
+
+  .unit-health > b {
+    min-width: 11px;
     font-size: 5px;
   }
 
+  .unit-status {
+    min-height: 8px;
+    padding: 1px 2px;
+    font-size: 4px;
+  }
+
   .unit-status i {
-    font-size: 5px;
+    font-size: 4px;
   }
 
   .battle-circuit-deck {
@@ -2273,7 +2308,7 @@ button:focus-visible {
     width: min(165px, 100%);
   }
 
-  .battle-beat-rail {
+  .battle-time-rail {
     width: calc(100% - 12px);
     margin-top: 3px;
     padding-bottom: max(6px, env(safe-area-inset-bottom));

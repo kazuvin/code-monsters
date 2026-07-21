@@ -32,11 +32,15 @@ const winnerOf = (fighters: FighterState[]): Winner => {
   return null;
 };
 
-const timedWinner = (fighters: FighterState[]): Winner => {
-  const player = fighters.find((fighter) => fighter.team === 'player');
-  const enemy = fighters.find((fighter) => fighter.team === 'enemy');
-  if (!player || !enemy || player.hp === enemy.hp) return 'draw';
-  return player.hp > enemy.hp ? 'player' : 'enemy';
+export const suddenDeathStartTick = (data: GameData) =>
+  Math.ceil((data.rules.suddenDeathSeconds * 1000) / data.rules.battleStepMs);
+
+export const overloadLevelAtTick = (data: GameData, tick: number) => Math.max(0, tick - suddenDeathStartTick(data) + 1);
+
+export const overloadDamageAtTick = (data: GameData, tick: number) => {
+  const level = overloadLevelAtTick(data, tick);
+  if (level === 0) return 0;
+  return Math.round(data.rules.suddenDeathBaseDamage * data.rules.suddenDeathGrowth ** (level - 1));
 };
 
 const fighterFor = (data: GameData, team: Team): FighterState => {
@@ -65,6 +69,8 @@ export function createBattle(data: GameData, playerBoard: CircuitBoard, enemyBoa
     playerPowered: [...findPoweredCells(playerBoard, data.blocks, data.rules.sourceRow)],
     enemyPowered: [...findPoweredCells(enemyBoard, data.blocks, data.rules.sourceRow)],
     trace: [],
+    overloadLevel: 0,
+    overloadDamage: 0,
     winner: null,
   };
 }
@@ -128,6 +134,15 @@ const traceEvent = (state: BattleState, action: PlannedAction, targetId: string)
   targetId,
 });
 
+const overloadTraceEvent = (tick: number, fighter: FighterState, value: number): BattleTraceEvent => ({
+  id: `${tick}-overload-${fighter.team}`,
+  tick,
+  team: fighter.team,
+  kind: 'overload',
+  value,
+  targetId: fighter.instanceId,
+});
+
 export function resolveTick(data: GameData, state: BattleState, tick: number): BattleState {
   if (state.winner) return state;
   const fighters = state.fighters.map((fighter) => ({ ...fighter }));
@@ -167,19 +182,36 @@ export function resolveTick(data: GameData, state: BattleState, tick: number): B
     target.hp = Math.max(0, target.hp - (amount - blocked));
   }
 
-  return { ...state, tick, fighters, trace, winner: winnerOf(fighters) };
+  const overloadLevel = overloadLevelAtTick(data, tick);
+  const overloadDamage = overloadDamageAtTick(data, tick);
+  const skillWinner = winnerOf(fighters);
+  if (skillWinner || overloadDamage === 0) {
+    return { ...state, tick, fighters, trace, overloadLevel, overloadDamage: 0, winner: skillWinner };
+  }
+
+  const healthBeforeOverload = new Map(fighters.map((target) => [target.team, target.hp]));
+  for (const target of fighters) {
+    const applied = Math.min(target.hp, overloadDamage);
+    target.hp = Math.max(0, target.hp - overloadDamage);
+    trace.push(overloadTraceEvent(tick, target, applied));
+  }
+
+  let winner = winnerOf(fighters);
+  if (winner === 'draw') {
+    const playerHp = healthBeforeOverload.get('player') ?? 0;
+    const enemyHp = healthBeforeOverload.get('enemy') ?? 0;
+    if (playerHp !== enemyHp) winner = playerHp > enemyHp ? 'player' : 'enemy';
+  }
+
+  return { ...state, tick, fighters, trace, overloadLevel, overloadDamage, winner };
 }
 
 export function createPlayback(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState[] {
   let state = createBattle(data, playerBoard, enemyBoard);
   const frames = [state];
-  for (let tick = 1; tick <= data.rules.battleTicks && !state.winner; tick += 1) {
+  for (let tick = 1; !state.winner; tick += 1) {
     state = resolveTick(data, state, tick);
     frames.push(state);
-  }
-  if (!state.winner) {
-    state = { ...state, winner: timedWinner(state.fighters) };
-    frames[frames.length - 1] = state;
   }
   return frames;
 }
