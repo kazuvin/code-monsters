@@ -17,7 +17,7 @@ describe('game data', () => {
   });
 
   it('gives both fighters enough health for long poison battles', () => {
-    expect(GAME_DATA.units.map((unit) => unit.maxHp)).toEqual([216, 216]);
+    expect(GAME_DATA.units.map((unit) => unit.maxHp)).toEqual([5000, 5000]);
     expect(GAME_DATA.rules.retryReward).toBeGreaterThan(0);
   });
 
@@ -26,10 +26,67 @@ describe('game data', () => {
   });
 
   it('defines four progressively rarer shop tiers', () => {
-    expect(GAME_DATA.rules.rarityWeights).toEqual({ common: 100, rare: 45, epic: 15, legendary: 4 });
+    expect(GAME_DATA.rules.rarityWeights).toEqual({ common: 100, rare: 50, epic: 30, legendary: 15 });
     expect(new Set(GAME_DATA.blocks.map((block) => block.rarity))).toEqual(
       new Set(['common', 'rare', 'epic', 'legendary']),
     );
+  });
+
+  it('makes every higher rarity stronger and more expensive as a tier', () => {
+    const ranges = Object.fromEntries(
+      (['common', 'rare', 'epic', 'legendary'] as const).map((rarity) => {
+        const prices = GAME_DATA.blocks.filter((block) => block.rarity === rarity).map((block) => block.price);
+        return [rarity, { min: Math.min(...prices), max: Math.max(...prices) }];
+      }),
+    );
+
+    expect(ranges).toEqual({
+      common: { min: 4, max: 5 },
+      rare: { min: 7, max: 9 },
+      epic: { min: 13, max: 14 },
+      legendary: { min: 20, max: 22 },
+    });
+
+    GAME_DATA.blocks.forEach((block) => {
+      block.effects.forEach((effect) => {
+        if ('amount' in effect && ['damage', 'shield', 'repair', 'poison'].includes(effect.kind)) {
+          expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThanOrEqual(35);
+        }
+        if (effect.kind === 'growth' || effect.kind === 'amplify') {
+          expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThanOrEqual(15);
+        }
+        if (effect.kind === 'release-charge') {
+          expect(effect.amount, `${block.id} release base`).toBeGreaterThanOrEqual(100);
+          expect(effect.perCharge, `${block.id} release ratio`).toBeGreaterThanOrEqual(320);
+        }
+        if (effect.kind === 'rupture-poison') {
+          expect(effect.damagePerStack, `${block.id} rupture ratio`).toBeGreaterThanOrEqual(20);
+        }
+      });
+    });
+
+    const effectAmount = (blockId: string, kind: 'damage' | 'poison' | 'shield' | 'charge') => {
+      const effect = GAME_DATA.blocks.find((block) => block.id === blockId)?.effects.find((item) => item.kind === kind);
+      if (!effect || !('amount' in effect)) throw new Error(`missing ${blockId} ${kind} fixture`);
+      return effect.amount;
+    };
+    expect(effectAmount('arc-shot', 'damage')).toBeGreaterThan(effectAmount('strike', 'damage'));
+    expect(effectAmount('charge-guard', 'shield')).toBeGreaterThan(effectAmount('barrier', 'shield'));
+    expect(effectAmount('charge-coil', 'charge')).toBeGreaterThan(effectAmount('charge-blade', 'charge'));
+    expect(effectAmount('toxic-reservoir', 'charge')).toBeGreaterThan(effectAmount('charge-coil', 'charge'));
+    expect(effectAmount('venom-bloom', 'poison')).toBeGreaterThan(effectAmount('poison-needle', 'poison'));
+  });
+
+  it('keeps one or two charge release nodes in each high rarity', () => {
+    const releaseCount = (rarity: 'common' | 'rare' | 'epic' | 'legendary') =>
+      GAME_DATA.blocks.filter(
+        (block) => block.rarity === rarity && block.effects.some((effect) => effect.kind === 'release-charge'),
+      ).length;
+
+    expect(releaseCount('common')).toBe(0);
+    expect(releaseCount('rare')).toBe(1);
+    expect(releaseCount('epic')).toBe(2);
+    expect(releaseCount('legendary')).toBe(1);
   });
 
   it('defines a presentation color for every trait axis value', () => {
@@ -153,6 +210,21 @@ describe('game data', () => {
     invalid.blocks.find((block) => block.id === 'overcharge-cannon')!.shopWeight = 100;
 
     expect(validateGameData(invalid)).toContain('legendary nodes must be harder to roll than every epic node');
+  });
+
+  it('rejects overlapping node price tiers', () => {
+    const invalid = structuredClone(GAME_DATA);
+    invalid.blocks.find((block) => block.id === 'rail-cannon')!.price = 9;
+
+    expect(validateGameData(invalid)).toContain('epic nodes must cost more than every rare node');
+  });
+
+  it('rejects a high rarity without one or two charge release nodes', () => {
+    const invalid = structuredClone(GAME_DATA);
+    invalid.blocks = invalid.blocks.filter((block) => block.id !== 'overcharge-cannon');
+    invalid.buildDesign.skills = invalid.buildDesign.skills.filter((skill) => skill.blockId !== 'overcharge-cannon');
+
+    expect(validateGameData(invalid)).toContain('legendary rarity needs one or two charge release nodes');
   });
 
   it('rejects an effect scaling interval that cannot progress', () => {

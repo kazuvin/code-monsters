@@ -32,6 +32,7 @@
 | `charge-blade` | `charge` | `blade` |
 | `charge-arrow` | `charge` | `bow` |
 | `charge-coil` | `charge` | `device` |
+| `discharge-bow` | `charge` | `bow` |
 | `rail-cannon` | `charge` | `cannon` |
 | `charge-bastion` | `charge` | `device` |
 | `overcharge-cannon` | `charge` | `cannon` |
@@ -75,10 +76,10 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| 配置思想 | 長い充電経路と遠い解放点 |
+| 配置思想 | 充電ノードを連ねた経路と遠い解放点 |
 | 得意 | 完成した経路からの瞬間出力 |
-| リスク | 解放点が近いか経路が切れると弱い |
-| 戦い方 | 通電が進むたびにチャージし、砲撃か防壁として終端でまとめて解放する |
+| リスク | 充電ノードが足りないか経路が切れると弱い |
+| 戦い方 | 充電ノードを通るたびにチャージし、砲撃か防壁として終端でまとめて解放する |
 
 ### 役割
 
@@ -88,13 +89,13 @@
 | 育成 | `toxic-reservoir`、`status-relay`、`long-route-fang`、`amplifier`、`charge-guard`、`charge-blade`、`charge-coil` |
 | 回す | `strike`、`arc-shot`、`toxic-reservoir`、`return-coil`、`long-route-fang`、`accelerator`、`charge-arrow`、`charge-coil` |
 | 維持 | `barrier`、`repair`、`toxic-reservoir`、`charge-guard`、`charge-bastion` |
-| 活かす | `rail-cannon`、`charge-bastion`、`overcharge-cannon` |
+| 活かす | `discharge-bow`、`rail-cannon`、`charge-bastion`、`overcharge-cannon` |
 
 ### 決め手
 
 | 分岐 | 方針 | 育成・循環・活用技 | 固有の決め手 |
 | --- | --- | --- | --- |
-| 一括解放 | 全チャージを大ダメージへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`rail-cannon`、`overcharge-cannon` | `rail-cannon`、`overcharge-cannon` |
+| 一括解放 | 全チャージを大ダメージへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`discharge-bow`、`rail-cannon`、`overcharge-cannon` | `discharge-bow`、`rail-cannon`、`overcharge-cannon` |
 | 防壁解放 | 全チャージをシールドへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`charge-bastion` | `charge-bastion` |
 
 ### 開放性と実装状況
@@ -102,6 +103,6 @@
 - 開放スキル: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`
 - 複合特性スキル: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`
 - 武器・装置の幅: `blade`、`bow`、`device`、`cannon`
-- 専用技率: 33%（上限 50%）
+- 専用技率: 37%（上限 50%）
 - 計画中: —
-- 実装済み: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`rail-cannon`、`charge-bastion`、`overcharge-cannon`（最低 8）
+- 実装済み: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`discharge-bow`、`rail-cannon`、`charge-bastion`、`overcharge-cannon`（最低 8）

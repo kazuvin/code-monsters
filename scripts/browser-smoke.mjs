@@ -116,7 +116,7 @@ if (JSON.stringify(retainedPorts) !== JSON.stringify(lockedPorts)) {
 
 await desktop.getByRole('button', { name: /カード一覧/ }).click();
 await desktop.locator('.catalog-screen').waitFor();
-if ((await desktop.locator('.catalog-card').count()) !== 22) {
+if ((await desktop.locator('.catalog-card').count()) !== 23) {
   throw new Error(`Catalog does not show every card: ${await desktop.locator('.catalog-card').count()}`);
 }
 if ((await desktop.locator('.rarity-legend span').count()) !== 4) {
@@ -161,14 +161,14 @@ const nodeAuras = Object.values(rarityAuraPlacement).map((sample) => sample.node
 if (nodeAuras.some((aura) => aura === 'none' || aura === 'missing') || new Set(nodeAuras).size !== 4) {
   throw new Error(`Rarity aura is not attached to each node frame: ${JSON.stringify(rarityAuraPlacement)}`);
 }
-if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== 22) {
+if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== 23) {
   throw new Error('Catalog cards do not expose every weapon axis');
 }
-if ((await desktop.locator('.catalog-card .axis-badge.is-trait').count()) < 22) {
+if ((await desktop.locator('.catalog-card .axis-badge.is-trait').count()) < 23) {
   throw new Error('Catalog cards do not expose every trait axis');
 }
 await desktop.locator('.catalog-filters button').filter({ hasText: /^毒/ }).click();
-if ((await desktop.locator('.catalog-card').count()) >= 22 || (await desktop.locator('.catalog-card').count()) === 0) {
+if ((await desktop.locator('.catalog-card').count()) >= 23 || (await desktop.locator('.catalog-card').count()) === 0) {
   throw new Error('Catalog trait filter did not narrow the card list');
 }
 await desktop.getByRole('button', { name: /すべて/ }).click();
@@ -345,7 +345,7 @@ mobile.on('console', (message) => {
 await mobile.goto(target, { waitUntil: 'networkidle' });
 await mobile.getByRole('button', { name: /カード一覧/ }).click();
 await mobile.locator('.catalog-screen').waitFor();
-if ((await mobile.locator('.catalog-card').count()) !== 22) throw new Error('Mobile catalog does not show every card');
+if ((await mobile.locator('.catalog-card').count()) !== 23) throw new Error('Mobile catalog does not show every card');
 await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png', fullPage: true });
 await mobile.getByRole('button', { name: /回路/ }).click();
 const mobileCellBounds = await mobile.locator('.circuit-cell').evaluateAll((cells) =>
@@ -511,13 +511,33 @@ if ((await pulse.locator('.battle-screen').getAttribute('data-battle-speed')) !=
   throw new Error('Battle speed did not switch to 3x');
 }
 
-const overload = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
+const overload = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 overload.on('pageerror', (error) => errors.push(error.message));
 overload.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
-await overload.clock.install();
 await overload.goto(target, { waitUntil: 'networkidle' });
+const overloadChargeOffer = overload.locator('.shop-card').filter({ hasText: '充電矢' });
+const overloadDefenseOffer = overload.locator('.shop-card').filter({ hasText: '帰還コイル' });
+if ((await overloadChargeOffer.count()) !== 1 || (await overloadDefenseOffer.count()) !== 1) {
+  throw new Error('Overload fixture is missing its survival route offers');
+}
+await overloadChargeOffer.getByRole('button', { name: /買う/ }).click();
+await overloadDefenseOffer.getByRole('button', { name: /買う/ }).click();
+await longDrag(
+  overload,
+  overload.locator('.rack-block').filter({ hasText: '充電矢' }),
+  overload.locator('[data-row="2"][data-column="0"]'),
+);
+await longDrag(
+  overload,
+  overload.locator('.rack-block').filter({ hasText: '帰還コイル' }),
+  overload.locator('[data-row="3"][data-column="0"]'),
+);
+if ((await overload.locator('.circuit-cell.is-powered .block-button').count()) !== 2) {
+  throw new Error('Overload survival route did not power both nodes');
+}
+await overload.clock.install();
 await overload.getByRole('button', { name: /戦闘開始/ }).click();
 await overload.locator('.battle-screen').waitFor();
 await overload.getByRole('button', { name: '3倍' }).click();
@@ -526,7 +546,7 @@ await overload.getByText('OVERLOAD', { exact: true }).waitFor();
 if ((await overload.locator('.status-overload').count()) !== 2) {
   throw new Error('Overload status is not visible on both fighters');
 }
-if (!(await overload.locator('.battle-counter').textContent())?.includes('DMG 2')) {
+if (!(await overload.locator('.battle-counter').textContent())?.includes('DMG 250')) {
   throw new Error('The first exponential overload pulse is not shown');
 }
 await overload.screenshot({ path: '/tmp/code-monsters-circuit-overload.png', fullPage: true });
@@ -547,14 +567,14 @@ await lockedRun.locator('.battle-screen').waitFor();
 await lockedRun.getByRole('button', { name: '3倍' }).click();
 await advanceClock(lockedRun, 50_000, 160);
 await lockedRun.locator('.result-panel').waitFor();
-if (!(await lockedRun.locator('.result-reward').textContent())?.includes('COIN +2')) {
+if (!(await lockedRun.locator('.result-reward').textContent())?.includes('COIN +8')) {
   throw new Error('Defeat result does not show its coin reward');
 }
 await lockedRun.screenshot({ path: '/tmp/code-monsters-circuit-loss-reward.png', fullPage: true });
 await lockedRun.getByRole('button', { name: '工房へ戻る' }).click();
 const coinsAfterLoss = Number((await lockedRun.locator('.coin-readout b').textContent())?.trim());
 const retainedAcrossRun = lockedRun.locator('.shop-card').last();
-if (coinsAfterLoss !== coinsBeforeLoss + 2) {
+if (coinsAfterLoss !== coinsBeforeLoss + 8) {
   throw new Error(`Defeat reward was not granted: ${coinsBeforeLoss} -> ${coinsAfterLoss}`);
 }
 if (

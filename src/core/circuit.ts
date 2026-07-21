@@ -208,7 +208,7 @@ export function calculateChargeByCell(
       block?.effects.reduce((total, effect) => total + (effect.kind === 'charge' ? effect.amount : 0), 0) ?? 0;
 
     incomingCharge.set(key, incoming);
-    outgoingCharge.set(key, incoming + 1 + nodeBonus);
+    outgoingCharge.set(key, incoming + nodeBonus);
   });
 
   return incomingCharge;

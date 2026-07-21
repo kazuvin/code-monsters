@@ -130,10 +130,11 @@ describe('build design', () => {
     expect(markdown).toContain('# ビルド・シナジーマトリクス');
     expect(markdown).toContain('| 特性 | 戦闘中に育て、別の武器へ受け渡せる仕組み |');
     expect(markdown).toContain('| `poison-needle` | `poison` | `bow` |');
-    expect(markdown).toContain('配置思想 | 長い充電経路と遠い解放点');
+    expect(markdown).toContain('配置思想 | 充電ノードを連ねた経路と遠い解放点');
     expect(markdown).toContain('| 培養 | 毒を残して育てる |');
     expect(markdown).toContain('| 破裂 | 毒を一気に破裂させる |');
     expect(markdown).toContain('| 一括解放 | 全チャージを大ダメージへ変える |');
+    expect(markdown).toContain('`discharge-bow`');
     expect(markdown).toContain('`status-relay`');
   });
 });

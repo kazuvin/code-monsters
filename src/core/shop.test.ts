@@ -4,9 +4,9 @@ import type { BlockDefinition, Rarity, RarityWeights } from './types';
 
 const rarityWeights: RarityWeights = {
   common: 100,
-  rare: 45,
-  epic: 15,
-  legendary: 4,
+  rare: 50,
+  epic: 30,
+  legendary: 15,
 };
 
 const blocks: BlockDefinition[] = Array.from({ length: 7 }, (_, index) => ({

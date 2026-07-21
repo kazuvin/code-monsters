@@ -150,6 +150,26 @@ export function validateGameData(data: GameData): string[] {
       errors.push(`${rarity} nodes must be harder to roll than every ${previous} node`);
     }
   });
+  rarities.slice(1).forEach((rarity, index) => {
+    const previous = rarities[index];
+    const previousPrices = data.blocks.filter((block) => block.rarity === previous).map((block) => block.price);
+    const rarityPrices = data.blocks.filter((block) => block.rarity === rarity).map((block) => block.price);
+    if (
+      previousPrices.length > 0 &&
+      rarityPrices.length > 0 &&
+      Math.min(...rarityPrices) <= Math.max(...previousPrices)
+    ) {
+      errors.push(`${rarity} nodes must cost more than every ${previous} node`);
+    }
+  });
+  (['rare', 'epic', 'legendary'] as Rarity[]).forEach((rarity) => {
+    const releaseCount = data.blocks.filter(
+      (block) => block.rarity === rarity && block.effects.some((effect) => effect.kind === 'release-charge'),
+    ).length;
+    if (releaseCount < 1 || releaseCount > 2) {
+      errors.push(`${rarity} rarity needs one or two charge release nodes`);
+    }
+  });
   errors.push(...validateBuildDesign(data.buildDesign, [...blockIds]));
   return errors;
 }
