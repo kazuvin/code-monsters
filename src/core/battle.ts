@@ -161,7 +161,7 @@ const traceEvent = (
   value,
   targetId,
   ...(buffStat ? { buffStat } : {}),
-  ...(action.mergeMultiplier > 1 && kind !== 'growth' ? { mergeMultiplier: action.mergeMultiplier } : {}),
+  ...(action.mergeMultiplier > 1 ? { mergeMultiplier: action.mergeMultiplier } : {}),
 });
 
 const systemTraceEvent = (
@@ -193,7 +193,7 @@ const numericAmount = (
         })
       : 0) +
     (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0);
-  return buffStat ? amount * action.mergeMultiplier : amount;
+  return amount * action.mergeMultiplier;
 };
 
 const cloneSkillBuffs = (buffs: BattleState['skillBuffs']): BattleState['skillBuffs'] => ({

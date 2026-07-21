@@ -101,17 +101,19 @@ describe('poison build', () => {
     board[1][1] = { blockId: 'strike', rotation: 0 };
     board[1][2] = { blockId: 'serpentine-venom', rotation: 0 };
 
-    const result = resolveTick(data, createBattle(data, board, emptyBoard()), 1);
-    const needleEvents = result.trace.filter(
-      (event) => 'blockId' in event && event.blockId === 'poison-needle' && event.kind !== 'growth',
-    );
+    const state = createBattle(data, board, emptyBoard());
+    state.fighters.find((fighter) => fighter.team === 'enemy')!.poison = 1;
+    const result = resolveTick(data, state, 1);
+    const needleEvents = result.trace.filter((event) => 'blockId' in event && event.blockId === 'poison-needle');
 
     expect(needleEvents).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ kind: 'damage', value: 2, mergeMultiplier: 2 }),
-        expect.objectContaining({ kind: 'poison', value: 2, mergeMultiplier: 2 }),
+        expect.objectContaining({ kind: 'damage', value: 4, mergeMultiplier: 2 }),
+        expect.objectContaining({ kind: 'poison', value: 4, mergeMultiplier: 2 }),
+        expect.objectContaining({ kind: 'growth', value: 2, mergeMultiplier: 2 }),
       ]),
     );
+    expect(result.skillBuffs.player['2:2']).toEqual({ damage: 1, poison: 3 });
   });
 
   it('ruptures half of the stored poison for immediate damage', () => {
