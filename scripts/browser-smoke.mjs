@@ -558,7 +558,8 @@ await overload.getByRole('button', { name: /戦闘開始/ }).click();
 await overload.locator('.battle-screen').waitFor();
 await overload.getByRole('button', { name: '3倍' }).click();
 let shieldFeedback = null;
-for (let step = 0; step < 12; step += 1) {
+for (let step = 0; step < 120; step += 1) {
+  if ((await overload.locator('.result-panel').count()) > 0) break;
   await advanceClock(overload, 160, 160);
   const shield = overload.locator('[data-feedback-kind="shield"]').first();
   if ((await shield.count()) > 0) {
