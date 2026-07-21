@@ -79,6 +79,11 @@ const initialSeed = 73;
 const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
+const ownedBlockIdsFor = (board: CircuitBoard, rack: PlacedBlock[]) =>
+  new Set([
+    ...rack.map((placed) => placed.blockId),
+    ...board.flatMap((row) => row.flatMap((placed) => (placed ? [placed.blockId] : []))),
+  ]);
 const skillDesignByBlockId = new Map(
   GAME_DATA.buildDesign.skills.flatMap((skill) => (skill.blockId ? [[skill.blockId, skill] as const] : [])),
 );
@@ -766,14 +771,20 @@ export function App() {
   const [run, setRun] = useState(1);
   const [seed, setSeed] = useState(initialSeed);
   const [enemySeed, setEnemySeed] = useState(initialSeed + 101);
-  const [shop, setShop] = useState(() =>
-    createShop(shopBlocks, GAME_DATA.rules.rarityWeights, initialSeed, GAME_DATA.rules.shopSize),
-  );
   const [rack, setRack] = useState<PlacedBlock[]>(() =>
     GAME_DATA.startingRack.map((blockId) => ({ blockId, rotation: 0 })),
   );
   const [board, setBoard] = useState<CircuitBoard>(() =>
     GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null))),
+  );
+  const [shop, setShop] = useState(() =>
+    createShop(
+      shopBlocks,
+      GAME_DATA.rules.rarityWeights,
+      initialSeed,
+      GAME_DATA.rules.shopSize,
+      ownedBlockIdsFor(board, rack),
+    ),
   );
   const [detail, setDetail] = useState<DetailTarget | null>(null);
   const [dragging, setDragging] = useState<DragState | null>(null);
@@ -787,6 +798,7 @@ export function App() {
   const pendingDrag = useRef<PendingDrag | null>(null);
   const suppressClick = useRef(false);
 
+  const ownedBlockIds = useMemo(() => ownedBlockIdsFor(board, rack), [board, rack]);
   const circuitAnalysis = useMemo(() => analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
   const powered = circuitAnalysis.poweredCells;
   const enemyBuild = useMemo(() => generateEnemyBuild(GAME_DATA, run, enemySeed), [run, enemySeed]);
@@ -1102,7 +1114,7 @@ export function App() {
     setSeed(nextSeed);
     setEnemySeed((current) => current + 47);
     setShop((current) =>
-      rerollShop(shopBlocks, GAME_DATA.rules.rarityWeights, current, nextSeed, GAME_DATA.rules.shopSize),
+      rerollShop(shopBlocks, GAME_DATA.rules.rarityWeights, current, nextSeed, GAME_DATA.rules.shopSize, ownedBlockIds),
     );
     setMessage('ショップを更新');
   };
@@ -1125,7 +1137,9 @@ export function App() {
     const nextSeed = seed + 11;
     setCoins((current) => current + reward);
     setSeed(nextSeed);
-    setShop(advanceShop(shopBlocks, GAME_DATA.rules.rarityWeights, shop, nextSeed, GAME_DATA.rules.shopSize));
+    setShop(
+      advanceShop(shopBlocks, GAME_DATA.rules.rarityWeights, shop, nextSeed, GAME_DATA.rules.shopSize, ownedBlockIds),
+    );
     setRun((current) => current + 1);
     setPlayback([]);
     setReportOpen(false);

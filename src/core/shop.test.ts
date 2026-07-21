@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { rotatePorts } from './circuit';
 import { advanceShop, createShop, rerollShop } from './shop';
 import type { BlockDefinition, Rarity, RarityWeights } from './types';
 
@@ -30,10 +31,21 @@ describe('shop', () => {
 
   it('randomizes only connector direction while preserving the authored edge count', () => {
     const corner = [{ ...blocks[0], id: 'corner', ports: ['west', 'north'] as BlockDefinition['ports'] }];
-    const offers = Array.from({ length: 32 }, (_, seed) => createShop(corner, rarityWeights, seed + 1, 1)[0]);
+    const offers = Array.from(
+      { length: 32 },
+      (_, seed) => createShop(corner, rarityWeights, seed + 1, 1, new Set(['corner']))[0],
+    );
 
     expect(new Set(offers.map((offer) => offer.rotation))).toEqual(new Set([0, 1, 2, 3]));
     expect(offers.every((offer) => corner[0].ports.length === 2)).toBe(true);
+  });
+
+  it('gives every unowned offer a west connector while preserving eligible direction variety', () => {
+    const corner = [{ ...blocks[0], id: 'corner', ports: ['west', 'north'] as BlockDefinition['ports'] }];
+    const offers = Array.from({ length: 32 }, (_, seed) => createShop(corner, rarityWeights, seed + 1, 1)[0]);
+
+    expect(offers.every((offer) => rotatePorts(corner[0].ports, offer.rotation).includes('west'))).toBe(true);
+    expect(new Set(offers.map((offer) => offer.rotation)).size).toBeGreaterThan(1);
   });
 
   it('keeps locked offers when rerolling', () => {

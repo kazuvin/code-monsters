@@ -1,4 +1,7 @@
 import type { BlockDefinition, RarityWeights, Rotation, ShopOffer } from './types';
+import { rotatePorts } from './circuit';
+
+const ROTATIONS: Rotation[] = [0, 1, 2, 3];
 
 const randomUnit = (seed: number) => {
   const value = Math.sin(seed * 9301 + 49297) * 233280;
@@ -8,7 +11,13 @@ const randomUnit = (seed: number) => {
 const effectiveWeight = (block: BlockDefinition, rarityWeights: RarityWeights) =>
   rarityWeights[block.rarity] * (block.shopWeight ?? 1);
 
-const randomRotation = (seed: number): Rotation => Math.floor(randomUnit(seed * 53 + 11) * 4) as Rotation;
+const offerRotation = (block: BlockDefinition, seed: number, ownedBlockIds: ReadonlySet<string>): Rotation => {
+  const candidates = ownedBlockIds.has(block.id)
+    ? ROTATIONS
+    : ROTATIONS.filter((rotation) => rotatePorts(block.ports, rotation).includes('west'));
+  if (candidates.length === 0) throw new Error(`Block "${block.id}" cannot expose a west connector`);
+  return candidates[Math.floor(randomUnit(seed * 53 + 11) * candidates.length)];
+};
 
 const pickWeighted = (blocks: BlockDefinition[], rarityWeights: RarityWeights, seed: number) => {
   const total = blocks.reduce((sum, block) => sum + effectiveWeight(block, rarityWeights), 0);
@@ -25,6 +34,7 @@ export function createShop(
   rarityWeights: RarityWeights,
   seed: number,
   size: number,
+  ownedBlockIds: ReadonlySet<string> = new Set(),
 ): ShopOffer[] {
   if (blocks.length < size) throw new Error('Shop size exceeds the block pool');
   const used = new Set<string>();
@@ -36,7 +46,7 @@ export function createShop(
       id: `${seed}-${slot}-${block.id}`,
       slot,
       blockId: block.id,
-      rotation: randomRotation(seed * 19 + slot * 37),
+      rotation: offerRotation(block, seed * 19 + slot * 37, ownedBlockIds),
       locked: false,
     };
   });
@@ -48,6 +58,7 @@ export function rerollShop(
   current: ShopOffer[],
   seed: number,
   size: number,
+  ownedBlockIds: ReadonlySet<string> = new Set(),
 ): ShopOffer[] {
   const retained = new Map(current.filter((offer) => offer.locked).map((offer) => [offer.slot, offer]));
   const used = new Set([...retained.values()].map((offer) => offer.blockId));
@@ -61,7 +72,7 @@ export function rerollShop(
       id: `${seed}-${slot}-${block.id}`,
       slot,
       blockId: block.id,
-      rotation: randomRotation(seed * 19 + slot * 37),
+      rotation: offerRotation(block, seed * 19 + slot * 37, ownedBlockIds),
       locked: false,
     };
   });
@@ -73,6 +84,7 @@ export function advanceShop(
   current: ShopOffer[],
   seed: number,
   size: number,
+  ownedBlockIds: ReadonlySet<string> = new Set(),
 ): ShopOffer[] {
-  return rerollShop(blocks, rarityWeights, current, seed, size);
+  return rerollShop(blocks, rarityWeights, current, seed, size, ownedBlockIds);
 }

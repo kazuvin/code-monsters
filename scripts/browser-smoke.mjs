@@ -89,6 +89,11 @@ if (
 ) {
   throw new Error('Shop cards do not show their trait axis');
 }
+if (
+  !(await desktop.locator('.shop-card').evaluateAll((cards) => cards.every((card) => card.querySelector('.port-west'))))
+) {
+  throw new Error('An unowned shop offer is missing its west connector');
+}
 
 const lockedOffer = desktop.locator('.shop-card').last();
 const lockedTitle = (await lockedOffer.locator('.shop-block-button strong').textContent())?.trim();
@@ -112,6 +117,11 @@ const retainedPorts = await retainedOffer
   .evaluateAll((ports) => ports.map((port) => port.className).sort());
 if (JSON.stringify(retainedPorts) !== JSON.stringify(lockedPorts)) {
   throw new Error('Locked shop offer did not retain its generated connector direction');
+}
+if (
+  !(await desktop.locator('.shop-card').evaluateAll((cards) => cards.every((card) => card.querySelector('.port-west'))))
+) {
+  throw new Error('A rerolled unowned shop offer is missing its west connector');
 }
 
 await desktop.getByRole('button', { name: /カード一覧/ }).click();
