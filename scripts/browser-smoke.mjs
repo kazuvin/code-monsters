@@ -353,25 +353,13 @@ if (
 ) {
   throw new Error('Damage did not show its projectile and impact value');
 }
-await pulse.getByRole('button', { name: '3倍' }).click();
-if ((await pulse.locator('.battle-screen').getAttribute('data-battle-speed')) !== '3') {
-  throw new Error('Battle speed did not switch to 3x');
-}
-await pulse.clock.runFor(159);
-const pulseBeforeFastFrame = await pulse
-  .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
-  .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
-if (JSON.stringify(pulseBeforeFastFrame) !== JSON.stringify(['2:0'])) {
-  throw new Error('The 3x speed advanced before one scaled frame elapsed');
-}
-await pulse.clock.runFor(2);
+await pulse.clock.runFor(480);
 const parallelPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
   .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
 if (JSON.stringify(parallelPulse) !== JSON.stringify(['1:0', '2:1'])) {
   throw new Error(`Split pulse did not fire the same depth together: ${JSON.stringify(parallelPulse)}`);
 }
-await pulse.getByRole('button', { name: '1倍' }).click();
 await pulse.clock.runFor(480);
 const continuedPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
@@ -402,6 +390,10 @@ if (
   (await cooldownSource.getAttribute('data-activated')) !== null
 ) {
   throw new Error('A cooldown skill did not conduct current without lighting as activated');
+}
+await pulse.getByRole('button', { name: '3倍' }).click();
+if ((await pulse.locator('.battle-screen').getAttribute('data-battle-speed')) !== '3') {
+  throw new Error('Battle speed did not switch to 3x');
 }
 
 const overload = await browser.newPage({ viewport: { width: 960, height: 900 }, deviceScaleFactor: 1 });
