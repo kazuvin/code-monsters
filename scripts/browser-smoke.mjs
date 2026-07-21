@@ -1,6 +1,7 @@
 import { chromium } from 'playwright-core';
 
 const target = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
+const battleBackgroundRatio = 1672 / 941;
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: true,
@@ -115,7 +116,30 @@ const fighters = await desktop.locator('.arena-fighter').count();
 if (fighters !== 2) throw new Error(`Expected 2 arena fighters, found ${fighters}`);
 if ((await desktop.locator('.workspace-layout').count()) !== 0)
   throw new Error('Build screen remained visible in battle');
+const desktopStage = await desktop.locator('.battle-stage').boundingBox();
+if (!desktopStage || Math.abs(desktopStage.width / desktopStage.height - battleBackgroundRatio) > 0.03) {
+  throw new Error(`Battle background is not displayed at its full image ratio: ${JSON.stringify(desktopStage)}`);
+}
+if ((await desktop.locator('.battle-circuit-summary').count()) !== 2) {
+  throw new Error('Expected player and rival circuit summaries');
+}
+const desktopCircuitDeck = await desktop.locator('.battle-circuit-deck').boundingBox();
+if (!desktopCircuitDeck || desktopCircuitDeck.y + desktopCircuitDeck.height > 1100) {
+  throw new Error(`Desktop circuit summaries are not fully visible: ${JSON.stringify(desktopCircuitDeck)}`);
+}
+if ((await desktop.locator('.battle-circuit-cell').count()) !== 50) {
+  throw new Error('Expected two complete 5x5 circuit summaries');
+}
+if (
+  (await desktop.locator('.unit-health').count()) !== 2 ||
+  (await desktop.locator('.unit-status-list').count()) !== 2
+) {
+  throw new Error('Compact health or status UI is missing from battle units');
+}
 await desktop.waitForTimeout(900);
+if ((await desktop.locator('.battle-circuit-cell.is-firing').count()) === 0) {
+  throw new Error('Circuit summary did not show a firing skill');
+}
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-battle.png', fullPage: true });
 await desktop.getByRole('dialog').waitFor({ timeout: 20_000 });
 await desktop.getByRole('button', { name: '工房へ戻る' }).click();
@@ -169,6 +193,17 @@ if (horizontalOverflow > 1) throw new Error(`Mobile page overflows horizontally 
 await mobile.getByRole('button', { name: /戦闘開始/ }).click();
 await mobile.locator('.battle-screen').waitFor();
 await mobile.waitForTimeout(900);
+const mobileStage = await mobile.locator('.battle-stage').boundingBox();
+if (!mobileStage || Math.abs(mobileStage.width / mobileStage.height - battleBackgroundRatio) > 0.03) {
+  throw new Error(`Mobile battle background is not displayed at its full image ratio: ${JSON.stringify(mobileStage)}`);
+}
+const mobileCircuitDeck = await mobile.locator('.battle-circuit-deck').boundingBox();
+if (!mobileCircuitDeck || mobileCircuitDeck.y < mobileStage.y + mobileStage.height - 1) {
+  throw new Error('Mobile circuit summaries are not placed below the background');
+}
+if ((await mobile.locator('.battle-circuit-cell.is-firing').count()) === 0) {
+  throw new Error('Mobile circuit summary did not show a firing skill');
+}
 await mobile.screenshot({ path: '/tmp/code-monsters-circuit-mobile-battle.png', fullPage: true });
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 

@@ -105,18 +105,6 @@ const RobotSprite = ({ fighter }: { fighter: FighterState }) => (
   </span>
 );
 
-const StatusMeter = ({ fighter }: { fighter: FighterState }) => (
-  <div className="fighter-meter">
-    <span className="hp-track" aria-label={`${fighter.name} HP ${fighter.hp} / ${fighter.maxHp}`}>
-      <i style={{ width: `${Math.max(0, (fighter.hp / fighter.maxHp) * 100)}%` }} />
-    </span>
-    <span className="fighter-values">
-      <b>{fighter.hp}</b>
-      {fighter.shield > 0 && <em>盾 {fighter.shield}</em>}
-    </span>
-  </div>
-);
-
 const ArenaFighter = ({ fighter, acting, hit }: { fighter: FighterState; acting: boolean; hit: boolean }) => (
   <article
     className={`arena-fighter team-${fighter.team} ${fighter.hp <= 0 ? 'is-down' : ''} ${acting ? 'is-acting' : ''} ${hit ? 'is-hit' : ''}`}
@@ -128,21 +116,116 @@ const ArenaFighter = ({ fighter, acting, hit }: { fighter: FighterState; acting:
     <div className="arena-unit-copy">
       <small>{fighter.code}</small>
       <strong>{fighter.name}</strong>
-      <StatusMeter fighter={fighter} />
+    </div>
+    <div className="unit-health" aria-label={`${fighter.name} HP ${fighter.hp} / ${fighter.maxHp}`}>
+      <span>
+        <i style={{ width: `${Math.max(0, (fighter.hp / fighter.maxHp) * 100)}%` }} />
+      </span>
+      <b>{fighter.hp}</b>
+    </div>
+    <div className="unit-status-list" aria-label={`${fighter.name}の状態`}>
+      {fighter.shield > 0 && (
+        <span className="unit-status status-shield">
+          <i>▣</i>防護 {fighter.shield}
+        </span>
+      )}
+      {fighter.hp / fighter.maxHp <= 0.5 && fighter.hp > 0 && (
+        <span className="unit-status status-damage">
+          <i>!</i>損傷
+        </span>
+      )}
+      {hit && (
+        <span className="unit-status status-hit">
+          <i>×</i>被弾
+        </span>
+      )}
+      {acting && !hit && (
+        <span className="unit-status status-active">
+          <i>▶</i>起動
+        </span>
+      )}
+      {!fighter.shield && fighter.hp / fighter.maxHp > 0.5 && !hit && !acting && (
+        <span className="unit-status status-normal">
+          <i>○</i>正常
+        </span>
+      )}
     </div>
   </article>
 );
 
-const traceLabel = (event: BattleTraceEvent) => {
-  const block = blockById.get(event.blockId);
-  if (!block) return event.blockId;
-  const suffix =
-    event.kind === 'damage'
-      ? ` ${event.value} HIT`
-      : event.kind === 'shield'
-        ? ` 盾+${event.value}`
-        : ` HP+${event.value}`;
-  return `${block.title}${suffix}`;
+const BattleCircuitSummary = ({
+  team,
+  label,
+  board,
+  powered,
+  events,
+  tick,
+}: {
+  team: 'player' | 'enemy';
+  label: string;
+  board: CircuitBoard;
+  powered: string[];
+  events: BattleTraceEvent[];
+  tick: number;
+}) => {
+  const poweredCells = new Set(powered);
+  const firingCells = new Set(
+    events.filter((event) => event.team === team).map((event) => `${event.row}:${event.column}`),
+  );
+  const firingLabels = events
+    .filter((event) => event.team === team)
+    .map((event) => blockById.get(event.blockId)?.title)
+    .filter((title): title is string => Boolean(title));
+
+  return (
+    <section className={`battle-circuit-summary team-${team}`} aria-label={`${label}の回路サマリー`}>
+      <header>
+        <span>
+          <small>{team === 'player' ? 'YOUR CIRCUIT' : 'RIVAL CIRCUIT'}</small>
+          <strong>{label}</strong>
+        </span>
+        <em>{firingLabels.length > 0 ? firingLabels.slice(0, 2).join('・') : `通電 ${poweredCells.size}`}</em>
+      </header>
+      <div className="battle-circuit-map">
+        <div
+          className="battle-circuit-source"
+          style={{ '--source-row': GAME_DATA.rules.sourceRow + 1 } as CSSProperties}
+          aria-hidden="true"
+        >
+          <i>∞</i>
+        </div>
+        <div className="battle-circuit-grid" key={`${team}-${tick}`}>
+          {board.flatMap((row, rowIndex) =>
+            row.map((placed, columnIndex) => {
+              const key = `${rowIndex}:${columnIndex}`;
+              const block = placed ? blockById.get(placed.blockId) : undefined;
+              return (
+                <span
+                  className={`battle-circuit-cell ${poweredCells.has(key) ? 'is-powered' : ''} ${firingCells.has(key) ? 'is-firing' : ''}`}
+                  key={key}
+                  aria-label={
+                    block
+                      ? `${block.title}${firingCells.has(key) ? ' 発火' : poweredCells.has(key) ? ' 通電' : ' 未通電'}`
+                      : '空き'
+                  }
+                >
+                  {block && placed && (
+                    <BlockVisual
+                      block={block}
+                      rotation={placed.rotation}
+                      powered={poweredCells.has(key)}
+                      fixed={placed.fixed}
+                      compact
+                    />
+                  )}
+                </span>
+              );
+            }),
+          )}
+        </div>
+      </div>
+    </section>
+  );
 };
 
 export function App() {
@@ -631,15 +714,30 @@ export function App() {
             </div>
           </header>
 
-          <div className="arena-field">
+          <div className="battle-stage">
             <div className="arena-team-label is-player">YOUR UNIT</div>
             <div className="arena-team-label is-enemy">RIVAL</div>
             <ArenaFighter fighter={player} acting={actingTeams.has('player')} hit={hitTeams.has('player')} />
             <ArenaFighter fighter={enemy} acting={actingTeams.has('enemy')} hit={hitTeams.has('enemy')} />
-            <div className="battle-callout" aria-live="polite">
-              <small>CIRCUIT LIVE</small>
-              <strong>{frameEvents.map(traceLabel).slice(0, 2).join(' / ') || '通電開始'}</strong>
-            </div>
+          </div>
+
+          <div className="battle-circuit-deck" aria-live="polite">
+            <BattleCircuitSummary
+              team="player"
+              label={player.name}
+              board={battle.playerBoard}
+              powered={battle.playerPowered}
+              events={frameEvents}
+              tick={battle.tick}
+            />
+            <BattleCircuitSummary
+              team="enemy"
+              label={enemy.name}
+              board={battle.enemyBoard}
+              powered={battle.enemyPowered}
+              events={frameEvents}
+              tick={battle.tick}
+            />
           </div>
 
           <footer className="battle-beat-rail" aria-label="戦闘進行">
