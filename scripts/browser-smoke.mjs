@@ -209,7 +209,7 @@ if (!(await desktop.getByText('相手の技', { exact: true }).count())) {
 if (!(await desktop.locator('.dialog-merge-rule').textContent())?.includes('×2')) {
   throw new Error('Enemy merge skill detail does not show its doubled effect');
 }
-if (!(await desktop.getByRole('dialog').textContent())?.includes('接続左・上・右 · 合流')) {
+if (!(await desktop.getByRole('dialog').textContent())?.includes('接続下・左 · 合流')) {
   throw new Error('Enemy merge skill is mislabeled as a branch');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-buff-detail.png', fullPage: true });
@@ -373,11 +373,17 @@ if (JSON.stringify(parallelPulse) !== JSON.stringify(['1:0', '2:1'])) {
 }
 await pulse.getByRole('button', { name: '1倍' }).click();
 await pulse.clock.runFor(480);
-await pulse.clock.runFor(480);
+const continuedPulse = await pulse
+  .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
+  .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
+if (JSON.stringify(continuedPulse) !== JSON.stringify(['1:1', '2:2'])) {
+  throw new Error(`Split paths did not continue without waiting: ${JSON.stringify(continuedPulse)}`);
+}
 await pulse.clock.runFor(480);
 const mergingPulse = pulse.locator('.battle-circuit-summary.team-enemy .battle-circuit-cell.is-merging');
 if (
   (await mergingPulse.count()) !== 1 ||
+  (await mergingPulse.getAttribute('data-cell-key')) !== '1:2' ||
   !(await mergingPulse.locator('.block-merge-chip').textContent())?.includes('×2')
 ) {
   const pulseState = await pulse
@@ -408,7 +414,7 @@ await overload.goto(target, { waitUntil: 'networkidle' });
 await overload.getByRole('button', { name: /戦闘開始/ }).click();
 await overload.locator('.battle-screen').waitFor();
 await overload.getByRole('button', { name: '3倍' }).click();
-await advanceClock(overload, 32_005, 160);
+await advanceClock(overload, 25_605, 160);
 await overload.getByText('OVERLOAD', { exact: true }).waitFor();
 if ((await overload.locator('.status-overload').count()) !== 2) {
   throw new Error('Overload status is not visible on both fighters');

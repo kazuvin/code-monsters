@@ -70,9 +70,9 @@ describe('poison build', () => {
     );
 
     expect(firedBlocks).toEqual(new Set(['poison-needle', 'cultivation-blade', 'return-coil', 'serpentine-venom']));
-    expect(result.skillBuffs.player['1:1']).toEqual({ shield: 2 });
-    expect(result.skillBuffs.player['1:0']).toEqual({ poison: 1 });
-    expect(player.shield).toBe(2);
+    expect(result.skillBuffs.player['1:1']).toEqual({ shield: 3 });
+    expect(result.skillBuffs.player['1:0']).toBeUndefined();
+    expect(player.shield).toBe(4);
   });
 
   it('fires every powered branch instead of only following one output', () => {
@@ -105,17 +105,13 @@ describe('poison build', () => {
 
     const state = createBattle(data, board, emptyBoard());
     state.fighters.find((fighter) => fighter.team === 'enemy')!.poison = 1;
+    const player = state.fighters.find((fighter) => fighter.team === 'player')!;
+    player.hp -= 20;
     const result = resolveTick(data, state, 1);
-    const needleEvents = result.trace.filter((event) => 'blockId' in event && event.blockId === 'poison-needle');
+    const repairEvents = result.trace.filter((event) => 'blockId' in event && event.blockId === 'repair');
 
-    expect(needleEvents).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ kind: 'damage', value: 4, mergeMultiplier: 2 }),
-        expect.objectContaining({ kind: 'poison', value: 4, mergeMultiplier: 2 }),
-        expect.objectContaining({ kind: 'growth', value: 2, mergeMultiplier: 2 }),
-      ]),
-    );
-    expect(result.skillBuffs.player['2:2']).toEqual({ damage: 1, poison: 3 });
+    expect(repairEvents).toEqual([expect.objectContaining({ kind: 'repair', value: 6, mergeMultiplier: 2 })]);
+    expect(result.fighters.find((fighter) => fighter.team === 'player')?.hp).toBe(player.hp + 6);
   });
 
   it('ruptures half of the stored poison for immediate damage', () => {

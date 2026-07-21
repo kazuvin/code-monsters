@@ -35,8 +35,13 @@ describe('game data', () => {
         .map(([key]) => key)
         .sort(),
     ).toEqual(['1:0', '2:1']);
-    expect(analysis.waveStep.get('2:2')).toBe(5);
-    expect(analysis.mergeCells).toEqual(new Set(['2:2']));
+    expect(analysis.waveStep.get('2:2')).toBe(3);
+    expect(analysis.waveStep.get('1:2')).toBe(4);
+    expect(analysis.upstreamCells.get('1:2')).toEqual([
+      { row: 1, column: 1 },
+      { row: 2, column: 2 },
+    ]);
+    expect(analysis.mergeCells).toEqual(new Set(['1:2']));
   });
 
   it('implements all ten poison designs as fixed-shape playable skills', () => {

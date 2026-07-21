@@ -129,7 +129,7 @@ describe('circuit connectivity', () => {
     );
   });
 
-  it('waits for the longer branch before firing a merge cell', () => {
+  it('advances every branch each stage and merges where wave fronts arrive together', () => {
     const blocks: Array<{ id: string; ports: Direction[] }> = [
       { id: 'split', ports: ['west', 'north', 'east'] },
       { id: 'east', ports: ['west', 'east'] },
@@ -159,12 +159,12 @@ describe('circuit connectivity', () => {
     expect(analysis.waveStep.get('1:0')).toBe(2);
     expect(analysis.waveStep.get('1:1')).toBe(3);
     expect(analysis.waveStep.get('1:2')).toBe(4);
-    expect(analysis.waveStep.get('2:2')).toBe(5);
-    expect(analysis.mergeCells).toEqual(new Set(['2:2']));
+    expect(analysis.waveStep.get('2:2')).toBe(3);
+    expect(analysis.mergeCells).toEqual(new Set(['1:2']));
     expect(analysis.branchCells).toEqual(new Set(['2:0']));
   });
 
-  it('treats the far three-port junction of a cycle as its merge', () => {
+  it('treats the cell reached by both advancing fronts as its merge', () => {
     const board: CircuitBoard = Array.from({ length: GAME_DATA.rules.boardSize }, () =>
       Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
     );
@@ -173,6 +173,6 @@ describe('circuit connectivity', () => {
     board[1][1] = { blockId: 'return-coil', rotation: 0 };
     board[1][0] = { blockId: 'serpentine-venom', rotation: 0 };
 
-    expect(analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow).mergeCells).toEqual(new Set(['1:0']));
+    expect(analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow).mergeCells).toEqual(new Set(['1:1']));
   });
 });
