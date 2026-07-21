@@ -422,6 +422,12 @@ button:focus-visible {
   border-left-color: var(--green);
 }
 
+.block-visual.effect-poison,
+.block-visual.effect-growth {
+  border-left-color: #8bd450;
+  background-color: #183f39;
+}
+
 .block-visual.effect-amplify,
 .block-visual.effect-haste {
   border-left-color: var(--amber);
@@ -442,6 +448,14 @@ button:focus-visible {
   display: block;
   margin: 0;
   background: #527889;
+}
+
+.block-port.is-input {
+  background: #477080;
+}
+
+.block-port.is-output {
+  background: var(--amber);
 }
 
 .is-powered > .block-port {
@@ -915,6 +929,16 @@ button:focus-visible {
 .dialog-actions button.is-danger {
   border-color: #9a5554;
   background: #4b292c;
+}
+
+.fixed-direction {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  border: 1px solid #42616d;
+  color: var(--muted);
+  background: #102c36;
+  font-size: 10px;
 }
 
 .drag-ghost {
@@ -1912,6 +1936,15 @@ button:focus-visible {
   color: var(--amber);
 }
 
+.unit-status.status-poison {
+  border-color: rgb(139 212 80 / 70%);
+  color: #b9ed8d;
+}
+
+.unit-status.status-poison i {
+  color: #8bd450;
+}
+
 .unit-status.status-overload {
   border-color: rgb(255 120 110 / 70%);
   color: var(--coral);
@@ -2112,6 +2145,21 @@ button:focus-visible {
 
 .battle-circuit-cell .power-pip {
   display: none;
+}
+
+.block-growth {
+  position: absolute;
+  z-index: 7;
+  top: -2px;
+  right: -2px;
+  min-width: 10px;
+  padding: 1px 2px;
+  border: 1px solid #8bd450;
+  color: #dfffc4;
+  background: #173b2c;
+  font-size: 5px;
+  line-height: 1;
+  text-align: center;
 }
 
 .battle-circuit-cell.is-powered .block-visual {

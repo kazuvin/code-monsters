@@ -1,5 +1,5 @@
 import { cloneBoard, rotateBlock } from './circuit';
-import type { CellPosition, CircuitBoard } from './types';
+import type { BlockDefinition, CellPosition, CircuitBoard } from './types';
 
 const samePosition = (left: CellPosition, right: CellPosition) =>
   left.row === right.row && left.column === right.column;
@@ -37,9 +37,14 @@ export function moveBlock(board: CircuitBoard, from: CellPosition, to: CellPosit
   return next;
 }
 
-export function rotateBoardBlock(board: CircuitBoard, position: CellPosition): CircuitBoard {
+export function rotateBoardBlock(
+  board: CircuitBoard,
+  position: CellPosition,
+  blocks: Array<Pick<BlockDefinition, 'id' | 'rotatable'>> = [],
+): CircuitBoard {
   const current = board[position.row]?.[position.column];
   if (!current) return board;
+  if (blocks.find((block) => block.id === current.blockId)?.rotatable === false) return board;
   const next = cloneBoard(board);
   next[position.row][position.column] = rotateBlock(current);
   return next;

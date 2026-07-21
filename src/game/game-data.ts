@@ -1,5 +1,6 @@
 import rawGameData from './game.json';
 import type { CircuitBoard, GameData } from '../core/types';
+import { validateBuildDesign } from './build-design';
 
 export const GAME_DATA = rawGameData as GameData;
 
@@ -48,6 +49,8 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.suddenDeathSeconds <= 0) errors.push('suddenDeathSeconds must be positive');
   if (data.rules.suddenDeathBaseDamage <= 0) errors.push('suddenDeathBaseDamage must be positive');
   if (data.rules.suddenDeathGrowth <= 1) errors.push('suddenDeathGrowth must be greater than 1');
+  if (data.rules.poisonTickSeconds <= 0) errors.push('poisonTickSeconds must be positive');
+  if (data.rules.poisonDecay < 0) errors.push('poisonDecay must not be negative');
 
   validateBoard('playerBoard', data.playerBoard, data, errors);
   validateBoard('enemyBoard', data.enemyBoard, data, errors);
@@ -55,15 +58,34 @@ export function validateGameData(data: GameData): string[] {
   data.startingRack.forEach((blockId, index) => {
     if (!blockIds.has(blockId)) errors.push(`startingRack[${index}] references unknown block "${blockId}"`);
   });
+  const buildIds = new Set(data.buildDesign.builds.map((build) => build.id));
   data.blocks.forEach((block) => {
-    if (block.ports.length === 0) errors.push(`block "${block.id}" must have a port`);
-    if (
-      (block.effect.kind === 'damage' || block.effect.kind === 'shield' || block.effect.kind === 'repair') &&
-      !block.cooldown
-    ) {
-      errors.push(`active block "${block.id}" must have a cooldown`);
-    }
+    if (block.inputPorts.length + block.outputPorts.length === 0) errors.push(`block "${block.id}" must have a port`);
+    if (block.effects.length === 0) errors.push(`block "${block.id}" must have an effect`);
+    const active = block.effects.some((effect) => effect.kind !== 'amplify' && effect.kind !== 'haste');
+    if (active && !block.cooldown) errors.push(`active block "${block.id}" must have a cooldown`);
+    block.effects.forEach((effect) => {
+      if ('amount' in effect && effect.amount <= 0) {
+        errors.push(`block "${block.id}" effect "${effect.kind}" amount must be positive`);
+      }
+      if ('scaling' in effect && effect.scaling && effect.scaling.every <= 0) {
+        errors.push(`block "${block.id}" effect "${effect.kind}" scaling every must be positive`);
+      }
+      if ('trigger' in effect && effect.trigger?.kind === 'path-length-at-least' && effect.trigger.amount < 1) {
+        errors.push(`block "${block.id}" effect "${effect.kind}" path length must be positive`);
+      }
+      if (effect.kind === 'rupture-poison') {
+        if (effect.fraction <= 0 || effect.fraction > 1) {
+          errors.push(`block "${block.id}" rupture fraction must be between 0 and 1`);
+        }
+        if (effect.damagePerStack <= 0) errors.push(`block "${block.id}" rupture damage must be positive`);
+      }
+    });
+    block.buildIds?.forEach((buildId) => {
+      if (!buildIds.has(buildId)) errors.push(`block "${block.id}" references unknown build "${buildId}"`);
+    });
   });
+  errors.push(...validateBuildDesign(data.buildDesign, [...blockIds]));
   return errors;
 }
 

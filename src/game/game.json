@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 5,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -7,6 +7,8 @@
     "suddenDeathSeconds": 20,
     "suddenDeathBaseDamage": 2,
     "suddenDeathGrowth": 2,
+    "poisonTickSeconds": 1,
+    "poisonDecay": 1,
     "startingCoins": 8,
     "winReward": 4,
     "retryReward": 2,
@@ -19,6 +21,132 @@
   ],
   "playerUnitId": "volt",
   "enemyUnitId": "rust",
+  "buildDesign": {
+    "rules": {
+      "requiredRoles": ["starter", "grower", "cycler", "sustain", "payoff"],
+      "requiredPayoffRoles": ["grower", "cycler", "payoff"],
+      "minimumPayoffsPerBuild": 2,
+      "minimumOpenSkillsPerBuild": 2,
+      "maximumExclusiveSkillRatio": 0.75,
+      "minimumPlayableSkillsPerBuild": 10
+    },
+    "builds": [
+      {
+        "id": "poison",
+        "title": "毒",
+        "placementIdentity": "長い経路と循環",
+        "strength": "後半の継続成長",
+        "risk": "立ち上がりが遅い",
+        "gamePlan": "毒を重ねながら回路を繰り返し通し、戦闘中強化を後半の圧力へ変える",
+        "payoffs": [
+          { "id": "cultivate", "title": "培養", "strategy": "毒を残して育てる" },
+          { "id": "burst", "title": "破裂", "strategy": "毒を一気に破裂させる" }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "id": "poison-needle",
+        "title": "毒針",
+        "summary": "毒を始動し、既に毒なら自身も育つ",
+        "status": "playable",
+        "blockId": "poison-needle",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "buildLinks": [{ "buildId": "poison", "roles": ["starter", "grower"], "payoffIds": ["cultivate", "burst"] }]
+      },
+      {
+        "id": "cultivation-blade",
+        "title": "培養刃",
+        "summary": "毒を与えた後、出力先を戦闘中強化する",
+        "status": "playable",
+        "blockId": "cultivation-blade",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "buildLinks": [{ "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate"] }]
+      },
+      {
+        "id": "serpentine-venom",
+        "title": "蛇行毒",
+        "summary": "経路を曲げ、長い毒経路ほど自身が育つ",
+        "status": "playable",
+        "blockId": "serpentine-venom",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "buildLinks": [{ "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] }]
+      },
+      {
+        "id": "corrosion-film",
+        "title": "腐食膜",
+        "summary": "毒を与えるたびに防御を得て成長時間を作る",
+        "status": "playable",
+        "blockId": "corrosion-film",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "buildLinks": [{ "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate"] }]
+      },
+      {
+        "id": "toxic-reservoir",
+        "title": "毒溜め",
+        "summary": "長い経路で得た毒を維持力へ変える",
+        "status": "playable",
+        "blockId": "toxic-reservoir",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "buildLinks": [{ "buildId": "poison", "roles": ["grower", "sustain"], "payoffIds": ["cultivate", "burst"] }]
+      },
+      {
+        "id": "venom-bloom",
+        "title": "猛毒花",
+        "summary": "毒を消さず、戦闘中強化に応じて毒を増やす",
+        "status": "playable",
+        "blockId": "venom-bloom",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "buildLinks": [{ "buildId": "poison", "roles": ["payoff"], "payoffIds": ["cultivate"] }]
+      },
+      {
+        "id": "rupture-stake",
+        "title": "破裂杭",
+        "summary": "毒を減らす代わりに、その量を即時ダメージへ変える",
+        "status": "playable",
+        "blockId": "rupture-stake",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "buildLinks": [{ "buildId": "poison", "roles": ["payoff"], "payoffIds": ["burst"] }]
+      },
+      {
+        "id": "status-relay",
+        "title": "異常伝送",
+        "summary": "状態異常が付くと出力先を戦闘中強化する",
+        "status": "playable",
+        "blockId": "status-relay",
+        "scope": "shared",
+        "sharedSynergies": ["status-effect", "combat-growth"],
+        "buildLinks": [{ "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] }]
+      },
+      {
+        "id": "return-coil",
+        "title": "帰還コイル",
+        "summary": "発動済みの技へ戻し、再発動ではなく次の通電へ強化を残す",
+        "status": "playable",
+        "blockId": "return-coil",
+        "scope": "shared",
+        "sharedSynergies": ["cycle", "combat-growth"],
+        "buildLinks": [{ "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] }]
+      },
+      {
+        "id": "long-route-fang",
+        "title": "長路の牙",
+        "summary": "通過した技が多いほど育つ汎用攻撃",
+        "status": "playable",
+        "blockId": "long-route-fang",
+        "scope": "shared",
+        "sharedSynergies": ["long-route", "combat-growth"],
+        "buildLinks": [{ "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] }]
+      }
+    ]
+  },
   "blocks": [
     {
       "id": "strike",
@@ -29,9 +157,10 @@
       "price": 2,
       "rarity": "common",
       "shopWeight": 5,
-      "ports": ["west", "east"],
+      "inputPorts": ["west"],
+      "outputPorts": ["east"],
       "cooldown": 1,
-      "effect": { "kind": "damage", "amount": 2 }
+      "effects": [{ "kind": "damage", "amount": 2 }]
     },
     {
       "id": "breaker",
@@ -42,9 +171,10 @@
       "price": 3,
       "rarity": "common",
       "shopWeight": 3,
-      "ports": ["west", "north"],
+      "inputPorts": ["west"],
+      "outputPorts": ["north"],
       "cooldown": 2,
-      "effect": { "kind": "damage", "amount": 4 }
+      "effects": [{ "kind": "damage", "amount": 4 }]
     },
     {
       "id": "arc-shot",
@@ -55,9 +185,10 @@
       "price": 3,
       "rarity": "rare",
       "shopWeight": 2,
-      "ports": ["west", "north", "east"],
+      "inputPorts": ["west"],
+      "outputPorts": ["north", "east"],
       "cooldown": 2,
-      "effect": { "kind": "damage", "amount": 3 }
+      "effects": [{ "kind": "damage", "amount": 3 }]
     },
     {
       "id": "barrier",
@@ -68,9 +199,10 @@
       "price": 2,
       "rarity": "common",
       "shopWeight": 4,
-      "ports": ["west", "east"],
+      "inputPorts": ["west"],
+      "outputPorts": ["east"],
       "cooldown": 2,
-      "effect": { "kind": "shield", "amount": 3 }
+      "effects": [{ "kind": "shield", "amount": 3 }]
     },
     {
       "id": "repair",
@@ -81,9 +213,10 @@
       "price": 3,
       "rarity": "rare",
       "shopWeight": 2,
-      "ports": ["west", "north"],
+      "inputPorts": ["west"],
+      "outputPorts": ["north"],
       "cooldown": 3,
-      "effect": { "kind": "repair", "amount": 3 }
+      "effects": [{ "kind": "repair", "amount": 3 }]
     },
     {
       "id": "rail-cannon",
@@ -94,9 +227,10 @@
       "price": 4,
       "rarity": "rare",
       "shopWeight": 2,
-      "ports": ["west"],
+      "inputPorts": ["west"],
+      "outputPorts": [],
       "cooldown": 4,
-      "effect": { "kind": "damage", "amount": 7 }
+      "effects": [{ "kind": "damage", "amount": 7 }]
     },
     {
       "id": "amplifier",
@@ -107,8 +241,9 @@
       "price": 3,
       "rarity": "rare",
       "shopWeight": 2,
-      "ports": ["west", "east"],
-      "effect": { "kind": "amplify", "amount": 2 }
+      "inputPorts": ["west"],
+      "outputPorts": ["east"],
+      "effects": [{ "kind": "amplify", "amount": 2 }]
     },
     {
       "id": "accelerator",
@@ -119,8 +254,208 @@
       "price": 3,
       "rarity": "rare",
       "shopWeight": 2,
-      "ports": ["west", "east"],
-      "effect": { "kind": "haste", "amount": 1 }
+      "inputPorts": ["west"],
+      "outputPorts": ["east"],
+      "effects": [{ "kind": "haste", "amount": 1 }]
+    },
+    {
+      "id": "poison-needle",
+      "code": "VENOM",
+      "title": "毒針",
+      "description": "毒を始動。すでに毒なら自身が育つ",
+      "glyph": "毒",
+      "price": 2,
+      "rarity": "common",
+      "shopWeight": 5,
+      "inputPorts": ["west"],
+      "outputPorts": ["east"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 1,
+      "effects": [
+        { "kind": "damage", "amount": 1 },
+        { "kind": "poison", "amount": 1 },
+        { "kind": "growth", "amount": 1, "target": "self", "trigger": { "kind": "enemy-poisoned" } }
+      ]
+    },
+    {
+      "id": "cultivation-blade",
+      "code": "CULT",
+      "title": "培養刃",
+      "description": "毒状態なら、次の技を戦闘中強化",
+      "glyph": "培",
+      "price": 3,
+      "rarity": "common",
+      "shopWeight": 4,
+      "inputPorts": ["west"],
+      "outputPorts": ["north"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "damage", "amount": 2 },
+        { "kind": "growth", "amount": 1, "target": "outputs", "trigger": { "kind": "enemy-poisoned" } }
+      ]
+    },
+    {
+      "id": "serpentine-venom",
+      "code": "BEND",
+      "title": "蛇行毒",
+      "description": "経路を下へ曲げ、長い経路で育つ",
+      "glyph": "蛇",
+      "price": 2,
+      "rarity": "common",
+      "shopWeight": 4,
+      "inputPorts": ["west"],
+      "outputPorts": ["south"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "poison", "amount": 1 },
+        {
+          "kind": "growth",
+          "amount": 1,
+          "target": "self",
+          "trigger": { "kind": "path-length-at-least", "amount": 3 }
+        }
+      ]
+    },
+    {
+      "id": "corrosion-film",
+      "code": "FILM",
+      "title": "腐食膜",
+      "description": "相手の毒が多いほど防護を得る",
+      "glyph": "膜",
+      "price": 3,
+      "rarity": "common",
+      "shopWeight": 3,
+      "inputPorts": ["south"],
+      "outputPorts": ["east"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 2,
+      "effects": [{ "kind": "shield", "amount": 2, "scaling": { "kind": "enemy-poison", "every": 3, "amount": 1 } }]
+    },
+    {
+      "id": "toxic-reservoir",
+      "code": "TANK",
+      "title": "毒溜め",
+      "description": "長い経路を毒と防護へ変える",
+      "glyph": "溜",
+      "price": 4,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "inputPorts": ["north"],
+      "outputPorts": ["east"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 3,
+      "effects": [
+        { "kind": "poison", "amount": 1 },
+        { "kind": "shield", "amount": 1, "scaling": { "kind": "path-length", "every": 2, "amount": 1 } },
+        {
+          "kind": "growth",
+          "amount": 1,
+          "target": "self",
+          "trigger": { "kind": "path-length-at-least", "amount": 4 }
+        }
+      ]
+    },
+    {
+      "id": "venom-bloom",
+      "code": "BLOOM",
+      "title": "猛毒花",
+      "description": "毒を残し、戦闘中強化で毒を増やす",
+      "glyph": "花",
+      "price": 4,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "inputPorts": ["west"],
+      "outputPorts": ["east"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 3,
+      "effects": [{ "kind": "poison", "amount": 1, "scaling": { "kind": "self-growth", "every": 2, "amount": 1 } }]
+    },
+    {
+      "id": "rupture-stake",
+      "code": "BURST",
+      "title": "破裂杭",
+      "description": "毒を半分失わせ、1毒につき3ダメージ",
+      "glyph": "裂",
+      "price": 4,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "inputPorts": ["west"],
+      "outputPorts": [],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 4,
+      "effects": [{ "kind": "rupture-poison", "fraction": 0.5, "damagePerStack": 3 }]
+    },
+    {
+      "id": "status-relay",
+      "code": "RELAY",
+      "title": "異常伝送",
+      "description": "毒状態なら、出力先を戦闘中強化",
+      "glyph": "伝",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 3,
+      "inputPorts": ["west"],
+      "outputPorts": ["east"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "damage", "amount": 1 },
+        { "kind": "growth", "amount": 1, "target": "outputs", "trigger": { "kind": "enemy-poisoned" } }
+      ]
+    },
+    {
+      "id": "return-coil",
+      "code": "RETURN",
+      "title": "帰還コイル",
+      "description": "循環していると、自身と戻り先が育つ",
+      "glyph": "還",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 2,
+      "inputPorts": ["south"],
+      "outputPorts": ["west"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "shield", "amount": 1 },
+        { "kind": "growth", "amount": 1, "target": "self", "trigger": { "kind": "in-cycle" } },
+        { "kind": "growth", "amount": 1, "target": "outputs", "trigger": { "kind": "in-cycle" } }
+      ]
+    },
+    {
+      "id": "long-route-fang",
+      "code": "LONG",
+      "title": "長路の牙",
+      "description": "通った技が多いほど強くなる",
+      "glyph": "路",
+      "price": 3,
+      "rarity": "rare",
+      "shopWeight": 3,
+      "inputPorts": ["north"],
+      "outputPorts": ["east"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "damage", "amount": 2, "scaling": { "kind": "path-length", "every": 1, "amount": 1 } },
+        {
+          "kind": "growth",
+          "amount": 1,
+          "target": "self",
+          "trigger": { "kind": "path-length-at-least", "amount": 4 }
+        }
+      ]
     }
   ],
   "startingRack": [],

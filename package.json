@@ -8,6 +8,8 @@
     "prepare": "husky",
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "design:matrix": "node --experimental-strip-types scripts/generate-build-matrix.ts",
+    "design:matrix:check": "node --experimental-strip-types scripts/generate-build-matrix.ts --check",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "preview": "vite preview",

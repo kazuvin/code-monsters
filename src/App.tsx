@@ -45,12 +45,21 @@ const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
 
 const effectLabel = (block: BlockDefinition) => {
-  const effect = block.effect;
-  if (effect.kind === 'damage') return `ダメージ ${effect.amount}`;
-  if (effect.kind === 'shield') return `シールド ${effect.amount}`;
-  if (effect.kind === 'repair') return `回復 ${effect.amount}`;
-  if (effect.kind === 'amplify') return `直結効果 +${effect.amount}`;
-  return `発動間隔 -${effect.amount}`;
+  return block.effects
+    .map((effect) => {
+      if (effect.kind === 'damage') return `ダメージ ${effect.amount}`;
+      if (effect.kind === 'shield') return `シールド ${effect.amount}`;
+      if (effect.kind === 'repair') return `回復 ${effect.amount}`;
+      if (effect.kind === 'poison') return `毒 ${effect.amount}`;
+      if (effect.kind === 'rupture-poison') return `毒を半減・1毒につき${effect.damagePerStack}ダメージ`;
+      if (effect.kind === 'growth') {
+        const target = effect.target === 'self' ? '自身' : effect.target === 'inputs' ? '前の技' : '次の技';
+        return `${target}を強化 +${effect.amount}`;
+      }
+      if (effect.kind === 'amplify') return `次の技の効果 +${effect.amount}`;
+      return `次の技の発動間隔 -${effect.amount}`;
+    })
+    .join(' / ');
 };
 
 const cooldownLabel = (block: BlockDefinition) => {
@@ -69,14 +78,21 @@ const BlockVisual = ({
   powered?: boolean;
   compact?: boolean;
 }) => {
-  const ports = rotatePorts(block.ports, rotation);
+  const inputPorts = rotatePorts(block.inputPorts, rotation);
+  const outputPorts = rotatePorts(block.outputPorts, rotation);
+  const visualEffect = block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
+    ? 'poison'
+    : block.effects[0]?.kind;
   return (
     <span
-      className={`block-visual effect-${block.effect.kind} rarity-${block.rarity} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
+      className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
       aria-hidden="true"
     >
-      {ports.map((port) => (
-        <i className={`block-port port-${port}`} key={port} />
+      {inputPorts.map((port) => (
+        <i className={`block-port port-${port} is-input`} key={`input-${port}`} />
+      ))}
+      {outputPorts.map((port) => (
+        <i className={`block-port port-${port} is-output`} key={`output-${port}`} />
       ))}
       <span className="block-core">
         <b>{block.glyph}</b>
@@ -136,6 +152,11 @@ const ArenaFighter = ({
           <i>▣</i>防護 {fighter.shield}
         </span>
       )}
+      {fighter.poison > 0 && (
+        <span className="unit-status status-poison">
+          <i>◆</i>毒 {fighter.poison}
+        </span>
+      )}
       {fighter.hp / fighter.maxHp <= 0.5 && fighter.hp > 0 && (
         <span className="unit-status status-damage">
           <i>!</i>損傷
@@ -167,6 +188,7 @@ const BattleCircuitSummary = ({
   powered,
   events,
   tick,
+  growth,
 }: {
   team: 'player' | 'enemy';
   label: string;
@@ -174,11 +196,12 @@ const BattleCircuitSummary = ({
   powered: string[];
   events: BattleTraceEvent[];
   tick: number;
+  growth: Record<string, number>;
 }) => {
   const poweredCells = new Set(powered);
   const skillEvents = events.filter(
-    (event): event is Exclude<BattleTraceEvent, { kind: 'overload' }> =>
-      event.kind !== 'overload' && event.team === team,
+    (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
+      event.kind !== 'overload' && event.kind !== 'poison-tick' && event.team === team,
   );
   const firingCells = new Set(skillEvents.map((event) => `${event.row}:${event.column}`));
   const firingLabels = skillEvents
@@ -218,7 +241,10 @@ const BattleCircuitSummary = ({
                   }
                 >
                   {block && placed && (
-                    <BlockVisual block={block} rotation={placed.rotation} powered={poweredCells.has(key)} compact />
+                    <>
+                      <BlockVisual block={block} rotation={placed.rotation} powered={poweredCells.has(key)} compact />
+                      {(growth[key] ?? 0) > 0 && <b className="block-growth">+{growth[key]}</b>}
+                    </>
                   )}
                 </span>
               );
@@ -275,8 +301,20 @@ export function App() {
     () =>
       new Set(
         frameEvents
-          .filter((event) => event.kind === 'damage' || event.kind === 'overload')
-          .map((event) => (event.kind === 'overload' ? event.team : event.team === 'player' ? 'enemy' : 'player')),
+          .filter(
+            (event) =>
+              event.kind === 'damage' ||
+              event.kind === 'rupture' ||
+              event.kind === 'poison-tick' ||
+              event.kind === 'overload',
+          )
+          .map((event) =>
+            event.kind === 'overload' || event.kind === 'poison-tick'
+              ? event.team
+              : event.team === 'player'
+                ? 'enemy'
+                : 'player',
+          ),
       ),
     [frameEvents],
   );
@@ -440,9 +478,9 @@ export function App() {
 
   const rotateDetailBlock = () => {
     if (!detail?.position) return;
-    const next = rotateBoardBlock(board, detail.position);
+    const next = rotateBoardBlock(board, detail.position, GAME_DATA.blocks);
     if (next === board) {
-      setMessage('回せる技がありません');
+      setMessage(detailBlock?.rotatable === false ? 'この技は向き固定' : '回せる技がありません');
       return;
     }
     setBoard(next);
@@ -742,6 +780,7 @@ export function App() {
               powered={battle.playerPowered}
               events={frameEvents}
               tick={battle.tick}
+              growth={battle.skillGrowth.player}
             />
             <BattleCircuitSummary
               team="enemy"
@@ -750,6 +789,7 @@ export function App() {
               powered={battle.enemyPowered}
               events={frameEvents}
               tick={battle.tick}
+              growth={battle.skillGrowth.enemy}
             />
           </div>
 
@@ -798,18 +838,30 @@ export function App() {
                   <dd>{cooldownLabel(detailBlock)}</dd>
                 </div>
                 <div>
-                  <dt>接続</dt>
+                  <dt>入力</dt>
                   <dd>
-                    {rotatePorts(detailBlock.ports, detailPlaced?.rotation ?? 0)
+                    {rotatePorts(detailBlock.inputPorts, detailPlaced?.rotation ?? 0)
                       .map((port) => ({ north: '上', east: '右', south: '下', west: '左' })[port as Direction])
-                      .join('・')}
+                      .join('・') || 'なし'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>出力</dt>
+                  <dd>
+                    {rotatePorts(detailBlock.outputPorts, detailPlaced?.rotation ?? 0)
+                      .map((port) => ({ north: '上', east: '右', south: '下', west: '左' })[port as Direction])
+                      .join('・') || '終端'}
                   </dd>
                 </div>
               </dl>
             </div>
             {detail.location === 'board' && (
               <div className="dialog-actions">
-                <button onClick={rotateDetailBlock}>回す ↻</button>
+                {detailBlock.rotatable === false ? (
+                  <span className="fixed-direction">向き固定</span>
+                ) : (
+                  <button onClick={rotateDetailBlock}>回す ↻</button>
+                )}
                 <button className="is-danger" onClick={removeDetailBlock}>
                   外す
                 </button>

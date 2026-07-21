@@ -47,4 +47,11 @@ describe('circuit loadout', () => {
     expect(removed.board[1][1]).toBeNull();
     expect(removed.rack).toEqual(['strike']);
   });
+
+  it('keeps a fixed-direction skill at its authored orientation', () => {
+    const result = rotateBoardBlock(board, { row: 1, column: 1 }, [{ id: 'strike', rotatable: false }]);
+
+    expect(result).toBe(board);
+    expect(result[1][1]?.rotation).toBe(0);
+  });
 });

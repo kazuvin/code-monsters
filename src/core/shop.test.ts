@@ -10,9 +10,10 @@ const blocks: BlockDefinition[] = Array.from({ length: 7 }, (_, index) => ({
   glyph: String(index),
   price: 2,
   rarity: index > 4 ? 'rare' : 'common',
-  ports: ['west', 'east'],
+  inputPorts: ['west'],
+  outputPorts: ['east'],
   cooldown: 1,
-  effect: { kind: 'damage', amount: 1 },
+  effects: [{ kind: 'damage', amount: 1 }],
 }));
 
 describe('shop', () => {

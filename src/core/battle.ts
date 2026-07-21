@@ -1,23 +1,28 @@
-import { cellKey, cloneBoard, connectedNeighbors, findPoweredCells } from './circuit';
+import { analyzeCircuit, cellKey, cloneBoard, connectedInputs, connectedOutputs } from './circuit';
 import type {
-  ActiveEffect,
   BattleState,
   BattleTraceEvent,
   BlockDefinition,
+  BlockEffect,
   CellPosition,
   CircuitBoard,
+  EffectScaling,
+  EffectTrigger,
   FighterState,
   GameData,
   Team,
   Winner,
 } from './types';
 
-type PlannedAction = {
+type PlannedActivation = {
   team: Team;
   block: BlockDefinition;
   position: CellPosition;
-  effect: ActiveEffect;
-  amount: number;
+  pathLength: number;
+  inCycle: boolean;
+  inputs: CellPosition[];
+  outputs: CellPosition[];
+  boost: number;
 };
 
 const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player');
@@ -57,17 +62,21 @@ const fighterFor = (data: GameData, team: Team): FighterState => {
     hp: unit.maxHp,
     maxHp: unit.maxHp,
     shield: 0,
+    poison: 0,
   };
 };
 
 export function createBattle(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState {
+  const playerAnalysis = analyzeCircuit(playerBoard, data.blocks, data.rules.sourceRow);
+  const enemyAnalysis = analyzeCircuit(enemyBoard, data.blocks, data.rules.sourceRow);
   return {
     tick: 0,
     fighters: [fighterFor(data, 'player'), fighterFor(data, 'enemy')],
     playerBoard: cloneBoard(playerBoard),
     enemyBoard: cloneBoard(enemyBoard),
-    playerPowered: [...findPoweredCells(playerBoard, data.blocks, data.rules.sourceRow)],
-    enemyPowered: [...findPoweredCells(enemyBoard, data.blocks, data.rules.sourceRow)],
+    playerPowered: [...playerAnalysis.poweredCells],
+    enemyPowered: [...enemyAnalysis.poweredCells],
+    skillGrowth: { player: {}, enemy: {} },
     trace: [],
     overloadLevel: 0,
     overloadDamage: 0,
@@ -75,135 +84,245 @@ export function createBattle(data: GameData, playerBoard: CircuitBoard, enemyBoa
   };
 }
 
-const activeEffect = (block: BlockDefinition): ActiveEffect | null => {
-  if (block.effect.kind === 'damage' || block.effect.kind === 'shield' || block.effect.kind === 'repair') {
-    return block.effect;
-  }
-  return null;
-};
+const modifierAmount = (block: BlockDefinition, kind: 'amplify' | 'haste') =>
+  block.effects.reduce((sum, effect) => sum + (effect.kind === kind ? effect.amount : 0), 0);
 
-function plannedActions(
-  data: GameData,
-  board: CircuitBoard,
-  powered: Set<string>,
-  team: Team,
-  tick: number,
-): PlannedAction[] {
+const hasActivation = (block: BlockDefinition) =>
+  block.effects.some((effect) => effect.kind !== 'amplify' && effect.kind !== 'haste');
+
+function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tick: number): PlannedActivation[] {
   const definitions = new Map(data.blocks.map((block) => [block.id, block]));
-  const plans: PlannedAction[] = [];
+  const analysis = analyzeCircuit(board, data.blocks, data.rules.sourceRow);
+  const plans: PlannedActivation[] = [];
 
   board.forEach((row, rowIndex) =>
     row.forEach((placed, columnIndex) => {
       const position = { row: rowIndex, column: columnIndex };
-      if (!placed || !powered.has(cellKey(position))) return;
+      const key = cellKey(position);
+      if (!placed || !analysis.poweredCells.has(key)) return;
       const block = definitions.get(placed.blockId);
-      if (!block) return;
-      const effect = activeEffect(block);
-      if (!effect) return;
-
-      const modifiers = connectedNeighbors(board, data.blocks, position)
-        .filter((neighbor) => powered.has(cellKey(neighbor)))
-        .map((neighbor) => board[neighbor.row][neighbor.column])
-        .map((neighbor) => (neighbor ? definitions.get(neighbor.blockId) : undefined))
-        .filter((neighbor): neighbor is BlockDefinition => Boolean(neighbor));
-      const haste = modifiers.reduce(
-        (sum, modifier) => sum + (modifier.effect.kind === 'haste' ? modifier.effect.amount : 0),
-        0,
-      );
-      const boost = modifiers.reduce(
-        (sum, modifier) => sum + (modifier.effect.kind === 'amplify' ? modifier.effect.amount : 0),
-        0,
-      );
+      if (!block || !hasActivation(block)) return;
+      const inputs = connectedInputs(board, data.blocks, position);
+      const inputBlocks = inputs
+        .filter((input) => analysis.poweredCells.has(cellKey(input)))
+        .map((input) => board[input.row][input.column])
+        .map((input) => (input ? definitions.get(input.blockId) : undefined))
+        .filter((input): input is BlockDefinition => Boolean(input));
+      const haste = inputBlocks.reduce((sum, input) => sum + modifierAmount(input, 'haste'), 0);
       const cooldown = Math.max(1, (block.cooldown ?? 1) - haste);
       if ((tick - 1) % cooldown !== 0) return;
-      plans.push({ team, block, position, effect, amount: effect.amount + boost });
+      plans.push({
+        team,
+        block,
+        position,
+        pathLength: analysis.routeLength.get(key) ?? 1,
+        inCycle: analysis.cyclicCells.has(key),
+        inputs,
+        outputs: connectedOutputs(board, data.blocks, position),
+        boost: inputBlocks.reduce((sum, input) => sum + modifierAmount(input, 'amplify'), 0),
+      });
     }),
   );
-  return plans;
+
+  return plans.sort(
+    (left, right) =>
+      left.pathLength - right.pathLength ||
+      left.position.row - right.position.row ||
+      left.position.column - right.position.column,
+  );
 }
 
-const traceEvent = (state: BattleState, action: PlannedAction, targetId: string): BattleTraceEvent => ({
-  id: `${state.tick + 1}-${action.team}-${action.position.row}-${action.position.column}-${state.trace.length}`,
-  tick: state.tick + 1,
+const triggerMatches = (
+  trigger: EffectTrigger | undefined,
+  context: { enemyPoison: number; pathLength: number; inCycle: boolean },
+) => {
+  if (!trigger) return true;
+  if (trigger.kind === 'enemy-poisoned') return context.enemyPoison > 0;
+  if (trigger.kind === 'path-length-at-least') return context.pathLength >= trigger.amount;
+  return context.inCycle;
+};
+
+const scaledBonus = (
+  scaling: EffectScaling | undefined,
+  context: { selfGrowth: number; enemyPoison: number; pathLength: number },
+) => {
+  if (!scaling) return 0;
+  const source =
+    scaling.kind === 'self-growth'
+      ? context.selfGrowth
+      : scaling.kind === 'enemy-poison'
+        ? context.enemyPoison
+        : context.pathLength;
+  return Math.floor(source / scaling.every) * scaling.amount;
+};
+
+const traceEvent = (
+  tick: number,
+  action: PlannedActivation,
+  kind: Extract<BattleTraceEvent, { blockId: string }>['kind'],
+  value: number,
+  targetId: string,
+  sequence: number,
+): BattleTraceEvent => ({
+  id: `${tick}-${action.team}-${action.position.row}-${action.position.column}-${sequence}`,
+  tick,
   team: action.team,
-  kind: action.effect.kind,
+  kind,
   blockId: action.block.id,
   row: action.position.row,
   column: action.position.column,
-  value: action.amount,
+  value,
   targetId,
 });
 
-const overloadTraceEvent = (tick: number, fighter: FighterState, value: number): BattleTraceEvent => ({
-  id: `${tick}-overload-${fighter.team}`,
+const systemTraceEvent = (
+  tick: number,
+  fighter: FighterState,
+  kind: 'overload' | 'poison-tick',
+  value: number,
+): BattleTraceEvent => ({
+  id: `${tick}-${kind}-${fighter.team}`,
   tick,
   team: fighter.team,
-  kind: 'overload',
+  kind,
   value,
   targetId: fighter.instanceId,
 });
 
+const numericAmount = (
+  effect: Extract<BlockEffect, { amount: number }>,
+  action: PlannedActivation,
+  context: { selfGrowth: number; enemyPoison: number },
+) =>
+  effect.amount +
+  ('scaling' in effect
+    ? scaledBonus(effect.scaling, {
+        selfGrowth: context.selfGrowth,
+        enemyPoison: context.enemyPoison,
+        pathLength: action.pathLength,
+      })
+    : 0) +
+  (effect.kind === 'growth' ? 0 : action.boost);
+
 export function resolveTick(data: GameData, state: BattleState, tick: number): BattleState {
   if (state.winner) return state;
   const fighters = state.fighters.map((fighter) => ({ ...fighter }));
-  const poweredByTeam = {
-    player: new Set(state.playerPowered),
-    enemy: new Set(state.enemyPowered),
+  const skillGrowth = {
+    player: { ...state.skillGrowth.player },
+    enemy: { ...state.skillGrowth.enemy },
   };
   const plans = [
-    ...plannedActions(data, state.playerBoard, poweredByTeam.player, 'player', tick),
-    ...plannedActions(data, state.enemyBoard, poweredByTeam.enemy, 'enemy', tick),
+    ...plannedActivations(data, state.playerBoard, 'player', tick),
+    ...plannedActivations(data, state.enemyBoard, 'enemy', tick),
   ];
   const trace = [...state.trace];
+  const pendingDamage = new Map<Team, number>();
   const fighter = (team: Team) => fighters.find((candidate) => candidate.team === team)!;
 
-  for (const plan of plans.filter((action) => action.effect.kind !== 'damage')) {
+  plans.sort(
+    (left, right) =>
+      left.pathLength - right.pathLength ||
+      left.team.localeCompare(right.team) ||
+      left.position.row - right.position.row ||
+      left.position.column - right.position.column,
+  );
+
+  for (const plan of plans) {
     const actor = fighter(plan.team);
-    let appliedAmount = plan.amount;
-    if (plan.effect.kind === 'shield') actor.shield += plan.amount;
-    if (plan.effect.kind === 'repair') {
-      const previousHp = actor.hp;
-      actor.hp = Math.min(actor.maxHp, actor.hp + plan.amount);
-      appliedAmount = actor.hp - previousHp;
+    const target = fighter(otherTeam(plan.team));
+    const planKey = cellKey(plan.position);
+    const context = {
+      enemyPoison: target.poison,
+      pathLength: plan.pathLength,
+      inCycle: plan.inCycle,
+      selfGrowth: skillGrowth[plan.team][planKey] ?? 0,
+    };
+
+    for (const effect of plan.block.effects) {
+      if (effect.kind === 'amplify' || effect.kind === 'haste') continue;
+      if (!triggerMatches(effect.trigger, context)) continue;
+
+      if (effect.kind === 'rupture-poison') {
+        const consumed = Math.floor(target.poison * effect.fraction);
+        if (consumed === 0) continue;
+        target.poison -= consumed;
+        const value = consumed * effect.damagePerStack;
+        pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
+        trace.push(traceEvent(tick, plan, 'rupture', value, target.instanceId, trace.length));
+        continue;
+      }
+
+      const amount = numericAmount(effect, plan, context);
+      if (effect.kind === 'damage') {
+        pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + amount);
+        trace.push(traceEvent(tick, plan, 'damage', amount, target.instanceId, trace.length));
+      }
+      if (effect.kind === 'shield') {
+        actor.shield += amount;
+        trace.push(traceEvent(tick, plan, 'shield', amount, actor.instanceId, trace.length));
+      }
+      if (effect.kind === 'repair') {
+        const previousHp = actor.hp;
+        actor.hp = Math.min(actor.maxHp, actor.hp + amount);
+        trace.push(traceEvent(tick, plan, 'repair', actor.hp - previousHp, actor.instanceId, trace.length));
+      }
+      if (effect.kind === 'poison') {
+        target.poison += amount;
+        trace.push(traceEvent(tick, plan, 'poison', amount, target.instanceId, trace.length));
+      }
+      if (effect.kind === 'growth') {
+        const targets =
+          effect.target === 'self' ? [plan.position] : effect.target === 'inputs' ? plan.inputs : plan.outputs;
+        targets.forEach((position) => {
+          const targetKey = cellKey(position);
+          skillGrowth[plan.team][targetKey] = (skillGrowth[plan.team][targetKey] ?? 0) + amount;
+          trace.push(traceEvent(tick, plan, 'growth', amount, `${plan.team}:${targetKey}`, trace.length));
+        });
+      }
     }
-    trace.push(traceEvent({ ...state, tick: tick - 1 }, { ...plan, amount: appliedAmount }, actor.instanceId));
   }
 
-  const damage = new Map<Team, number>();
-  for (const plan of plans.filter((action) => action.effect.kind === 'damage')) {
-    const targetTeam = otherTeam(plan.team);
-    damage.set(targetTeam, (damage.get(targetTeam) ?? 0) + plan.amount);
-    trace.push(traceEvent({ ...state, tick: tick - 1 }, plan, fighter(targetTeam).instanceId));
-  }
-  for (const [team, amount] of damage) {
+  for (const [team, amount] of pendingDamage) {
     const target = fighter(team);
     const blocked = Math.min(target.shield, amount);
     target.shield -= blocked;
     target.hp = Math.max(0, target.hp - (amount - blocked));
   }
 
+  let winner = winnerOf(fighters);
+  const poisonTickInterval = Math.max(1, Math.ceil((data.rules.poisonTickSeconds * 1000) / data.rules.battleStepMs));
+  if (!winner && tick % poisonTickInterval === 0) {
+    fighters.forEach((target) => {
+      if (target.poison <= 0 || target.hp <= 0) return;
+      const applied = Math.min(target.hp, target.poison);
+      target.hp = Math.max(0, target.hp - target.poison);
+      trace.push(systemTraceEvent(tick, target, 'poison-tick', applied));
+      target.poison = Math.max(0, target.poison - data.rules.poisonDecay);
+    });
+    winner = winnerOf(fighters);
+  }
+
   const overloadLevel = overloadLevelAtTick(data, tick);
   const overloadDamage = overloadDamageAtTick(data, tick);
-  const skillWinner = winnerOf(fighters);
-  if (skillWinner || overloadDamage === 0) {
-    return { ...state, tick, fighters, trace, overloadLevel, overloadDamage: 0, winner: skillWinner };
+  if (winner || overloadDamage === 0) {
+    return { ...state, tick, fighters, skillGrowth, trace, overloadLevel, overloadDamage: 0, winner };
   }
 
   const healthBeforeOverload = new Map(fighters.map((target) => [target.team, target.hp]));
   for (const target of fighters) {
     const applied = Math.min(target.hp, overloadDamage);
     target.hp = Math.max(0, target.hp - overloadDamage);
-    trace.push(overloadTraceEvent(tick, target, applied));
+    trace.push(systemTraceEvent(tick, target, 'overload', applied));
   }
 
-  let winner = winnerOf(fighters);
+  winner = winnerOf(fighters);
   if (winner === 'draw') {
     const playerHp = healthBeforeOverload.get('player') ?? 0;
     const enemyHp = healthBeforeOverload.get('enemy') ?? 0;
     if (playerHp !== enemyHp) winner = playerHp > enemyHp ? 'player' : 'enemy';
   }
 
-  return { ...state, tick, fighters, trace, overloadLevel, overloadDamage, winner };
+  return { ...state, tick, fighters, skillGrowth, trace, overloadLevel, overloadDamage, winner };
 }
 
 export function createPlayback(data: GameData, playerBoard: CircuitBoard, enemyBoard: CircuitBoard): BattleState[] {

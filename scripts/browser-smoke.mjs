@@ -101,14 +101,19 @@ await desktop.getByRole('dialog').waitFor();
 const portsBefore = await desktop
   .locator('.dialog-block-preview .block-port')
   .evaluateAll((ports) => ports.map((port) => port.className).sort());
-await desktop.getByRole('button', { name: /回す/ }).click();
-const portsAfter = await desktop
-  .locator('.dialog-block-preview .block-port')
-  .evaluateAll((ports) => ports.map((port) => port.className).sort());
-if (JSON.stringify(portsBefore) === JSON.stringify(portsAfter))
-  throw new Error('Skill rotation did not change its ports');
-for (let rotation = 0; rotation < 3; rotation += 1) {
-  await desktop.getByRole('button', { name: /回す/ }).click();
+const rotateButton = desktop.getByRole('button', { name: /回す/ });
+if ((await rotateButton.count()) > 0) {
+  await rotateButton.click();
+  const portsAfter = await desktop
+    .locator('.dialog-block-preview .block-port')
+    .evaluateAll((ports) => ports.map((port) => port.className).sort());
+  if (JSON.stringify(portsBefore) === JSON.stringify(portsAfter))
+    throw new Error('Skill rotation did not change its ports');
+  for (let rotation = 0; rotation < 3; rotation += 1) {
+    await rotateButton.click();
+  }
+} else if ((await desktop.getByText('向き固定', { exact: true }).count()) !== 1) {
+  throw new Error('A fixed-direction skill did not explain its rotation lock');
 }
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 

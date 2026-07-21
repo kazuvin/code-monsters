@@ -9,6 +9,18 @@
 - Prefer pure functions and discriminated unions over inheritance. Add a new block effect by extending the data union and resolver.
 - Keep the first playable loop small: shop, 5x5 circuit board, deterministic 1-vs-1 battle, result, repeat.
 
+## Build design
+
+- Define a build as a placement identity, strength, risk, game plan, and payoff paths in `src/game/game.json` before expanding its skills.
+- Give every build coverage for starter, grower, cycler, sustain, and payoff roles. A label or status type alone is not a build.
+- Give every build at least two distinct payoff paths. Each path must have its own payoff skill plus supporting grower and cycler skills.
+- Make payoff paths meaningfully different. For example, poison can preserve stacks for continued growth or rupture stacks for immediate damage.
+- Keep builds open to shop-driven pivots. Each build needs reusable skills or explicit cross-build hooks, and must stay below the configured exclusive-skill ratio.
+- Let connector direction and circuit topology express the build identity. Do not replace placement decisions with flat same-tag bonuses.
+- Keep unimplemented concepts in `buildDesign.skills` with `status: "planned"`; only use `status: "playable"` with a valid `blockId`.
+- Keep `minimumPlayableSkillsPerBuild` at `0` while build design is exploratory; raise it deliberately when playable coverage should become a release gate.
+- Run `pnpm design:matrix` after build-design changes and review `docs/build-synergy-matrix.md`. Run `pnpm design:matrix:check` to detect stale output and invalid coverage.
+
 ## Test-driven development
 
 - Write or update a failing Vitest test before changing core behavior.

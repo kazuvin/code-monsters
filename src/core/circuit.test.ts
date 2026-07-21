@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findPoweredCells, rotatePorts } from './circuit';
+import { analyzeCircuit, findPoweredCells, rotatePorts } from './circuit';
 import type { CircuitBoard, Direction } from './types';
 
 describe('circuit connectivity', () => {
@@ -8,10 +8,10 @@ describe('circuit connectivity', () => {
   });
 
   it('powers every mutually connected block, including a skill in the middle of a route', () => {
-    const blocks: Array<{ id: string; ports: Direction[] }> = [
-      { id: 'guard', ports: ['west', 'east'] },
-      { id: 'strike', ports: ['west', 'east'] },
-      { id: 'rail', ports: ['west'] },
+    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
+      { id: 'guard', inputPorts: ['west'], outputPorts: ['east'] },
+      { id: 'strike', inputPorts: ['west'], outputPorts: ['east'] },
+      { id: 'rail', inputPorts: ['west'], outputPorts: [] },
     ];
     const board: CircuitBoard = [
       [null, null, null],
@@ -27,9 +27,9 @@ describe('circuit connectivity', () => {
   });
 
   it('does not power a block when facing ports do not match', () => {
-    const blocks: Array<{ id: string; ports: Direction[] }> = [
-      { id: 'strike', ports: ['west', 'east'] },
-      { id: 'breaker', ports: ['west', 'north'] },
+    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
+      { id: 'strike', inputPorts: ['west'], outputPorts: ['east'] },
+      { id: 'breaker', inputPorts: ['west'], outputPorts: ['north'] },
     ];
     const board: CircuitBoard = [
       [null, null],
@@ -40,5 +40,46 @@ describe('circuit connectivity', () => {
     ];
 
     expect(findPoweredCells(board, blocks, 1)).toEqual(new Set(['1:0']));
+  });
+
+  it('does not send power backwards through an input', () => {
+    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
+      { id: 'source-skill', inputPorts: ['west'], outputPorts: ['east'] },
+      { id: 'backward-skill', inputPorts: ['east'], outputPorts: ['west'] },
+    ];
+    const board: CircuitBoard = [
+      [null, null],
+      [
+        { blockId: 'source-skill', rotation: 0 },
+        { blockId: 'backward-skill', rotation: 0 },
+      ],
+    ];
+
+    expect(findPoweredCells(board, blocks, 1)).toEqual(new Set(['1:0']));
+  });
+
+  it('reports route length and reachable directed cycles', () => {
+    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
+      { id: 'a', inputPorts: ['west', 'east'], outputPorts: ['north'] },
+      { id: 'b', inputPorts: ['south'], outputPorts: ['east'] },
+      { id: 'c', inputPorts: ['west'], outputPorts: ['south'] },
+      { id: 'd', inputPorts: ['north'], outputPorts: ['west'] },
+    ];
+    const board: CircuitBoard = [
+      [
+        { blockId: 'b', rotation: 0 },
+        { blockId: 'c', rotation: 0 },
+      ],
+      [
+        { blockId: 'a', rotation: 0 },
+        { blockId: 'd', rotation: 0 },
+      ],
+    ];
+
+    const analysis = analyzeCircuit(board, blocks, 1);
+
+    expect(analysis.routeLength.get('1:0')).toBe(1);
+    expect(analysis.routeLength.get('1:1')).toBe(4);
+    expect(analysis.cyclicCells).toEqual(new Set(['1:0', '0:0', '0:1', '1:1']));
   });
 });
