@@ -11,7 +11,10 @@ export function placeBlockFromRack(
   position: CellPosition,
 ): { board: CircuitBoard; rack: PlacedBlock[] } {
   const rackIndex = rack.findIndex(
-    (candidate) => candidate.blockId === block.blockId && candidate.rotation === block.rotation,
+    (candidate) =>
+      candidate.blockId === block.blockId &&
+      candidate.rotation === block.rotation &&
+      (candidate.stars ?? 0) === (block.stars ?? 0),
   );
   const current = board[position.row]?.[position.column];
   if (rackIndex < 0 || !board[position.row] || position.column < 0 || position.column >= board.length) {

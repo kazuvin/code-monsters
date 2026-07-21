@@ -101,6 +101,29 @@ describe('circuit connectivity', () => {
     expect(analysis.cyclicCells).toEqual(new Set(['1:0', '0:0', '0:1', '1:1']));
   });
 
+  it('reports fully connected ports and the longest straight segment through each node', () => {
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'line', ports: ['west', 'east'] },
+      { id: 'junction', ports: ['west', 'north', 'east'] },
+      { id: 'cap', ports: ['south'] },
+    ];
+    const board: CircuitBoard = [
+      [null, { blockId: 'cap', rotation: 0 }, null],
+      [
+        { blockId: 'line', rotation: 0 },
+        { blockId: 'junction', rotation: 0 },
+        { blockId: 'line', rotation: 0 },
+      ],
+      [null, null, null],
+    ];
+
+    const analysis = analyzeCircuit(board, blocks, 1);
+
+    expect(analysis.fullyConnectedCells).toContain('1:1');
+    expect(analysis.straightLineLength.get('1:1')).toBe(3);
+    expect(analysis.straightLineLength.get('0:1')).toBe(2);
+  });
+
   it('can build a reachable cycle from the playable poison skills', () => {
     const board: CircuitBoard = Array.from({ length: GAME_DATA.rules.boardSize }, () =>
       Array.from({ length: GAME_DATA.rules.boardSize }, () => null),

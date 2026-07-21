@@ -70,7 +70,7 @@ describe('poison build', () => {
     );
 
     expect(firedBlocks).toEqual(new Set(['poison-needle', 'cultivation-blade', 'return-coil', 'charge-guard']));
-    expect(result.skillBuffs.player['1:1']).toEqual({ shield: 95 });
+    expect(result.skillBuffs.player['1:1']).toEqual({ shield: 155 });
     expect(result.skillBuffs.player['1:0']).toBeUndefined();
     expect(player.shield).toBe(630);
   });

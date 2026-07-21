@@ -7,6 +7,8 @@ export type Rotation = 0 | 1 | 2 | 3;
 export type BuildRole = 'starter' | 'grower' | 'cycler' | 'sustain' | 'payoff';
 export type SkillDesignStatus = 'planned' | 'playable';
 export type SkillDesignScope = 'exclusive' | 'shared';
+export type PlacementPatternId = 'free' | 'loop' | 'fully-connected' | 'straight-line';
+export type SkillStars = 0 | 1;
 export type BuffStat = 'damage' | 'poison' | 'shield' | 'repair' | 'rupture';
 export type BuffTarget = BuffStat | 'all';
 export type SkillBuffState = Partial<Record<BuffStat, number>>;
@@ -14,11 +16,14 @@ export type SkillBuffState = Partial<Record<BuffStat, number>>;
 export type EffectTrigger =
   | { kind: 'enemy-poisoned' }
   | { kind: 'path-length-at-least'; amount: number }
-  | { kind: 'in-cycle' };
+  | { kind: 'in-cycle' }
+  | { kind: 'all-ports-connected' }
+  | { kind: 'straight-line-at-least'; amount: number };
 
 export type EffectScaling =
   | { kind: 'enemy-poison'; every: number; amount: number }
-  | { kind: 'path-length'; every: number; amount: number };
+  | { kind: 'path-length'; every: number; amount: number }
+  | { kind: 'straight-line'; every: number; amount: number };
 
 type NumericEffect = {
   amount: number;
@@ -49,8 +54,8 @@ export type BlockEffect =
       stat: BuffTarget;
       trigger?: EffectTrigger;
     }
-  | { kind: 'amplify'; amount: number }
-  | { kind: 'haste'; amount: number }
+  | { kind: 'amplify'; amount: number; trigger?: EffectTrigger }
+  | { kind: 'haste'; amount: number; trigger?: EffectTrigger }
   | { kind: 'charge'; amount: number };
 
 export type BlockDefinition = {
@@ -112,6 +117,7 @@ export type SkillDesignDefinition = {
   blockId?: string;
   scope: SkillDesignScope;
   sharedSynergies: string[];
+  placementPatternId: PlacementPatternId;
   axisLinks: SkillAxisLink[];
   buildLinks: SkillBuildLink[];
 };
@@ -129,6 +135,11 @@ export type BuildDesign = {
     minimumWeaponTypesPerBuild: number;
     requireSkillDesignForEveryBlock: boolean;
   };
+  placementPatterns: Array<{
+    id: PlacementPatternId;
+    title: string;
+    description: string;
+  }>;
   axes: BuildAxisDefinition[];
   builds: BuildDefinition[];
   skills: SkillDesignDefinition[];
@@ -145,6 +156,14 @@ export type UnitDefinition = {
 export type PlacedBlock = {
   blockId: string;
   rotation: Rotation;
+  stars?: SkillStars;
+};
+
+export type SkillFusionRules = {
+  copiesRequired: number;
+  rewardChoices: number;
+  effectMultiplier: number;
+  cooldownReduction: number;
 };
 
 export type CircuitBoard = Array<Array<PlacedBlock | null>>;
@@ -168,6 +187,7 @@ export type GameData = {
     rerollCost: number;
     shopSize: number;
     rarityWeights: RarityWeights;
+    skillFusion: SkillFusionRules;
     enemyGeneration: {
       startingNodes: number;
       nodesPerRun: number;
@@ -215,6 +235,7 @@ export type BattleTraceEvent =
       buffStat?: BuffStat;
       mergeMultiplier?: number;
       charge?: number;
+      stars?: SkillStars;
     }
   | {
       id: string;

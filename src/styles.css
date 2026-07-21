@@ -515,6 +515,25 @@ button:focus-visible {
     3px 3px 0 rgb(2 12 17 / 46%);
 }
 
+.skill-star {
+  position: absolute;
+  z-index: 10;
+  top: -7px;
+  left: -7px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid #fff0a6;
+  color: #2a2108;
+  background: var(--amber);
+  box-shadow:
+    2px 2px 0 #07151d,
+    0 0 9px rgb(255 211 106 / 75%);
+  font-size: 13px;
+  line-height: 1;
+}
+
 .block-port {
   position: absolute;
   z-index: 1;
@@ -810,6 +829,39 @@ button:focus-visible {
   font-size: 10px;
 }
 
+.fusion-ready-list {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 6px;
+  overflow-x: auto;
+  padding-top: 3px;
+}
+
+.fusion-ready-list button {
+  display: flex;
+  min-width: 150px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  cursor: pointer;
+  border: 1px solid var(--amber);
+  color: var(--paper);
+  background: #2c250f;
+  box-shadow: inset 0 0 0 2px #131d19;
+  text-align: left;
+}
+
+.fusion-ready-list button span {
+  color: var(--amber);
+  font:
+    600 12px / 1 "Pixelify Sans",
+    monospace;
+}
+
+.fusion-ready-list button b {
+  font-size: 9px;
+}
+
 .shop-panel {
   display: flex;
   min-height: 100%;
@@ -849,12 +901,6 @@ button:focus-visible {
 
 .shop-card {
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 4%);
-}
-
-.shop-card:nth-child(5),
-.shop-empty:nth-child(5) {
-  grid-column: 1 / -1;
-  min-height: 98px;
 }
 
 .shop-block-button {
@@ -1268,6 +1314,7 @@ button:focus-visible {
 }
 
 .dialog-backdrop,
+.fusion-backdrop,
 .result-backdrop {
   position: fixed;
   z-index: 40;
@@ -1277,6 +1324,212 @@ button:focus-visible {
   padding: 20px;
   background: rgb(3 13 18 / 78%);
   backdrop-filter: blur(2px);
+}
+
+.fusion-backdrop {
+  z-index: 55;
+}
+
+.fusion-dialog {
+  width: min(720px, 100%);
+  padding: 28px;
+  border: 3px solid var(--amber);
+  color: var(--paper);
+  background: linear-gradient(90deg, transparent 49%, rgb(255 211 106 / 8%) 50%, transparent 51%), #081d26;
+  box-shadow:
+    12px 12px 0 rgb(0 0 0 / 64%),
+    inset 0 0 0 4px #04141b,
+    0 0 28px rgb(255 211 106 / 18%);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+
+.fusion-dialog > header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #6f612e;
+  text-align: center;
+}
+
+.fusion-dialog > header small {
+  color: var(--amber);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.fusion-dialog > header h2 {
+  margin: 3px 0 0;
+  font-size: 28px;
+}
+
+.fusion-dialog > header h2 b {
+  color: var(--amber);
+  text-shadow: 0 0 10px rgb(255 211 106 / 80%);
+}
+
+.fusion-converge {
+  position: relative;
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  overflow: hidden;
+}
+
+.fusion-copies {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.fusion-copies .block-visual {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  animation: fusion-copy 900ms steps(7) both;
+}
+
+.fusion-copies .block-visual:nth-child(1) {
+  --fusion-x: -150px;
+  --fusion-y: 26px;
+}
+
+.fusion-copies .block-visual:nth-child(2) {
+  --fusion-x: 0px;
+  --fusion-y: -72px;
+}
+
+.fusion-copies .block-visual:nth-child(3) {
+  --fusion-x: 150px;
+  --fusion-y: 26px;
+}
+
+.fusion-converge > strong {
+  position: relative;
+  z-index: 12;
+  color: var(--amber);
+  font-size: 82px;
+  line-height: 1;
+  text-shadow:
+    0 0 8px #fff3ac,
+    0 0 28px var(--amber);
+  animation: fusion-star 900ms steps(7) both;
+}
+
+.fusion-converge > span {
+  align-self: end;
+  margin-bottom: 30px;
+  color: var(--amber);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+.fusion-reward > p {
+  margin: 16px 0 12px;
+  color: #d9c979;
+  font-size: 10px;
+  text-align: center;
+}
+
+.fusion-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fusion-choice {
+  --rarity-color: var(--paper);
+  display: grid;
+  min-height: 174px;
+  grid-template-rows: 102px auto;
+  place-items: center;
+  padding: 13px 9px 10px;
+  cursor: pointer;
+  border: 1px solid var(--rarity-color);
+  color: var(--paper);
+  background: #0d2b37;
+  box-shadow:
+    inset 0 0 0 2px #061820,
+    0 0 12px color-mix(in srgb, var(--rarity-color) 32%, transparent);
+  animation: fusion-choice-in 320ms steps(4) both;
+}
+
+.fusion-choice:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.fusion-choice:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.fusion-choice:hover,
+.fusion-choice:focus-visible {
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 0 0 2px #061820,
+    0 5px 0 #031016,
+    0 0 20px color-mix(in srgb, var(--rarity-color) 58%, transparent);
+}
+
+.fusion-choice .block-visual {
+  width: 88px;
+  height: 88px;
+}
+
+.fusion-choice > span {
+  display: grid;
+  gap: 3px;
+  text-align: center;
+}
+
+.fusion-choice > span small {
+  color: var(--rarity-color);
+  font-size: 7px;
+}
+
+.fusion-choice > span b {
+  font-size: 12px;
+}
+
+@keyframes fusion-copy {
+  0%,
+  24% {
+    opacity: 1;
+    transform: translate(var(--fusion-x), var(--fusion-y)) scale(1);
+  }
+  74% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.76);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.18);
+  }
+}
+
+@keyframes fusion-star {
+  0%,
+  66% {
+    opacity: 0;
+    transform: scale(0.15) rotate(-20deg);
+  }
+  82% {
+    opacity: 1;
+    transform: scale(1.24) rotate(4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes fusion-choice-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .block-dialog {
@@ -1365,6 +1618,25 @@ button:focus-visible {
 }
 
 .dialog-merge-rule span {
+  color: var(--amber);
+  font:
+    600 8px / 1 "Pixelify Sans",
+    monospace;
+}
+
+.dialog-star-rule {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -5px 0 12px;
+  padding: 6px 8px;
+  border: 1px solid #8d752b;
+  color: #fff0b2;
+  background: #2c250f;
+  font-size: 9px;
+}
+
+.dialog-star-rule span {
   color: var(--amber);
   font:
     600 8px / 1 "Pixelify Sans",
@@ -2346,12 +2618,6 @@ button:focus-visible {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .shop-card:nth-child(5),
-  .shop-empty:nth-child(5) {
-    grid-column: auto;
-    min-height: 124px;
-  }
-
   .arena-field {
     padding-inline: 24px;
   }
@@ -2527,17 +2793,64 @@ button:focus-visible {
     padding: 10px;
   }
 
-  .shop-card:nth-child(5),
-  .shop-empty:nth-child(5) {
-    grid-column: 1 / -1;
-    min-height: 98px;
-  }
-
   .shop-block-button .block-visual {
     width: 48px;
     height: 48px;
     min-width: 48px;
     min-height: 48px;
+  }
+
+  .fusion-backdrop {
+    align-items: center;
+    padding: 8px;
+  }
+
+  .fusion-dialog {
+    padding: 19px 12px 14px;
+    border-width: 2px;
+    box-shadow:
+      6px 6px 0 rgb(0 0 0 / 64%),
+      inset 0 0 0 2px #04141b;
+  }
+
+  .fusion-dialog > header h2 {
+    font-size: 23px;
+  }
+
+  .fusion-converge {
+    min-height: 230px;
+  }
+
+  .fusion-copies .block-visual {
+    width: 66px;
+    height: 66px;
+  }
+
+  .fusion-copies .block-visual:nth-child(1) {
+    --fusion-x: -102px;
+  }
+
+  .fusion-copies .block-visual:nth-child(3) {
+    --fusion-x: 102px;
+  }
+
+  .fusion-choices {
+    gap: 5px;
+  }
+
+  .fusion-choice {
+    min-height: 142px;
+    grid-template-rows: 82px auto;
+    padding: 8px 4px;
+  }
+
+  .fusion-choice .block-visual {
+    width: 68px;
+    height: 68px;
+  }
+
+  .fusion-choice > span b {
+    font-size: 9px;
   }
 
   .catalog-screen {

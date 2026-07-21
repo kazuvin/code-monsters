@@ -8,6 +8,8 @@ const randomUnit = (seed: number) => {
   return value - Math.floor(value);
 };
 
+export const randomShopSeed = (random: () => number = Math.random) => Math.floor(random() * 1_000_000_000);
+
 const effectiveWeight = (block: BlockDefinition, rarityWeights: RarityWeights) =>
   rarityWeights[block.rarity] * (block.shopWeight ?? 1);
 

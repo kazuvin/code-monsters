@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rotatePorts } from './circuit';
-import { advanceShop, createShop, rerollShop } from './shop';
+import { advanceShop, createShop, randomShopSeed, rerollShop } from './shop';
 import type { BlockDefinition, Rarity, RarityWeights } from './types';
 
 const rarityWeights: RarityWeights = {
@@ -24,6 +24,11 @@ const blocks: BlockDefinition[] = Array.from({ length: 7 }, (_, index) => ({
 }));
 
 describe('shop', () => {
+  it('creates a fresh shop seed from the current random source', () => {
+    expect(randomShopSeed(() => 0.125)).toBe(125_000_000);
+    expect(randomShopSeed(() => 0.875)).toBe(875_000_000);
+  });
+
   it('creates deterministic unique block offers from a seed', () => {
     expect(createShop(blocks, rarityWeights, 42, 5)).toEqual(createShop(blocks, rarityWeights, 42, 5));
     expect(new Set(createShop(blocks, rarityWeights, 42, 5).map((offer) => offer.blockId)).size).toBe(5);

@@ -18,6 +18,9 @@ const validateBoard = (name: string, board: CircuitBoard, data: GameData, errors
       if (placed && ![0, 1, 2, 3].includes(placed.rotation)) {
         errors.push(`${name}[${rowIndex}][${columnIndex}] has an invalid rotation`);
       }
+      if (placed && ![0, 1].includes(placed.stars ?? 0)) {
+        errors.push(`${name}[${rowIndex}][${columnIndex}] has an invalid star rank`);
+      }
     });
   });
 };
@@ -67,6 +70,12 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.poisonTickSeconds <= 0) errors.push('poisonTickSeconds must be positive');
   if (data.rules.poisonDecay < 0) errors.push('poisonDecay must not be negative');
   if (data.rules.mergeEffectMultiplier <= 1) errors.push('mergeEffectMultiplier must be greater than 1');
+  if (data.rules.skillFusion.copiesRequired !== 3) errors.push('skillFusion.copiesRequired must be 3');
+  if (data.rules.skillFusion.rewardChoices !== 3) errors.push('skillFusion.rewardChoices must be 3');
+  if (data.rules.skillFusion.effectMultiplier <= 1) errors.push('skillFusion.effectMultiplier must be greater than 1');
+  if (data.rules.skillFusion.cooldownReduction < 0) {
+    errors.push('skillFusion.cooldownReduction must not be negative');
+  }
   rarities.forEach((rarity) => {
     if (!Number.isFinite(data.rules.rarityWeights[rarity]) || data.rules.rarityWeights[rarity] <= 0) {
       errors.push(`rarityWeights.${rarity} must be positive`);
@@ -130,6 +139,9 @@ export function validateGameData(data: GameData): string[] {
       if ('trigger' in effect && effect.trigger?.kind === 'path-length-at-least' && effect.trigger.amount < 1) {
         errors.push(`block "${block.id}" effect "${effect.kind}" path length must be positive`);
       }
+      if ('trigger' in effect && effect.trigger?.kind === 'straight-line-at-least' && effect.trigger.amount < 2) {
+        errors.push(`block "${block.id}" effect "${effect.kind}" straight line must be at least 2`);
+      }
       if (
         effect.kind === 'growth' &&
         !['all', 'damage', 'poison', 'shield', 'repair', 'rupture'].includes(effect.stat)
@@ -189,6 +201,14 @@ export function validateGameData(data: GameData): string[] {
     ).length;
     if (releaseCount < 1 || releaseCount > 2) {
       errors.push(`${rarity} rarity needs one or two charge release nodes`);
+    }
+  });
+  rarities.forEach((rarity) => {
+    if (
+      data.blocks.filter((block) => block.rarity === rarity && block.price > 0).length <
+      data.rules.skillFusion.rewardChoices
+    ) {
+      errors.push(`${rarity} rarity needs at least ${data.rules.skillFusion.rewardChoices} fusion reward skills`);
     }
   });
   errors.push(...validateBuildDesign(data.buildDesign, [...blockIds]));

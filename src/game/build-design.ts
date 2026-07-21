@@ -37,6 +37,14 @@ export type BuildMatrixRow = {
   hybridSkillIds: string[];
 };
 
+export type SkillCoverageMatrixRow = {
+  placementPatternId: string;
+  placementPatternTitle: string;
+  traitId: string;
+  traitTitle: string;
+  counts: Record<string, number>;
+};
+
 const linkFor = (skill: SkillDesignDefinition, buildId: string) =>
   skill.buildLinks.find((link) => link.buildId === buildId);
 
@@ -117,6 +125,30 @@ export function createBuildMatrix(design: BuildDesign): BuildMatrixRow[] {
   });
 }
 
+export function createSkillCoverageMatrix(design: BuildDesign): SkillCoverageMatrixRow[] {
+  const traits = design.axes.find((axis) => axis.id === 'trait')?.values ?? [];
+  const weapons = design.axes.find((axis) => axis.id === 'weapon')?.values ?? [];
+  return design.placementPatterns.flatMap((pattern) =>
+    traits.map((trait) => ({
+      placementPatternId: pattern.id,
+      placementPatternTitle: pattern.title,
+      traitId: trait.id,
+      traitTitle: trait.title,
+      counts: Object.fromEntries(
+        weapons.map((weapon) => [
+          weapon.id,
+          design.skills.filter(
+            (skill) =>
+              skill.placementPatternId === pattern.id &&
+              (axisLinkFor(skill, 'trait')?.valueIds.includes(trait.id) ?? false) &&
+              (axisLinkFor(skill, 'weapon')?.valueIds.includes(weapon.id) ?? false),
+          ).length,
+        ]),
+      ),
+    })),
+  );
+}
+
 const pushDuplicateErrors = (label: string, ids: string[], errors: string[]) => {
   const seen = new Set<string>();
   ids.forEach((id) => {
@@ -132,6 +164,17 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
   const blockIds = new Set(playableBlockIds);
   const axisIds = new Set(design.axes.map((axis) => axis.id));
   const axisValues = new Map(design.axes.map((axis) => [axis.id, new Set(axis.values.map((value) => value.id))]));
+  const placementPatternIds = new Set(design.placementPatterns.map((pattern) => pattern.id));
+
+  pushDuplicateErrors(
+    'placement pattern',
+    design.placementPatterns.map((pattern) => pattern.id),
+    errors,
+  );
+  design.placementPatterns.forEach((pattern) => {
+    if (!pattern.title.trim()) errors.push(`placement pattern "${pattern.id}" needs a title`);
+    if (!pattern.description.trim()) errors.push(`placement pattern "${pattern.id}" needs a description`);
+  });
 
   pushDuplicateErrors(
     'build axis',
@@ -221,6 +264,9 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
     if (skill.scope === 'shared' && skill.sharedSynergies.length === 0) {
       errors.push(`shared skill design "${skill.id}" needs a shared synergy`);
     }
+    if (!placementPatternIds.has(skill.placementPatternId)) {
+      errors.push(`skill design "${skill.id}" references unknown placement pattern "${skill.placementPatternId}"`);
+    }
     if (skill.status === 'playable' && !skill.blockId) {
       errors.push(`playable skill design "${skill.id}" needs a blockId`);
     }
@@ -276,6 +322,12 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
         }
       });
     });
+  });
+
+  design.placementPatterns.forEach((pattern) => {
+    if (!design.skills.some((skill) => skill.placementPatternId === pattern.id)) {
+      errors.push(`placement pattern "${pattern.id}" needs at least one skill`);
+    }
   });
 
   if (design.rules.requireSkillDesignForEveryBlock) {
@@ -334,6 +386,8 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
 const codeList = (ids: string[]) => (ids.length === 0 ? '—' : ids.map((id) => `\`${id}\``).join('、'));
 
 export function renderBuildMatrixMarkdown(design: BuildDesign): string {
+  const weapons = design.axes.find((axis) => axis.id === 'weapon')?.values ?? [];
+  const patternTitles = new Map(design.placementPatterns.map((pattern) => [pattern.id, pattern.title]));
   const lines = [
     '# ビルド・シナジーマトリクス',
     '',
@@ -350,11 +404,22 @@ export function renderBuildMatrixMarkdown(design: BuildDesign): string {
     '',
     '## ノードの組み合わせ',
     '',
-    '| ノード | 特性 | 武器・装置 |',
-    '| --- | --- | --- |',
+    '| ノード | 特性 | 武器・装置 | 配置条件 |',
+    '| --- | --- | --- | --- |',
     ...design.skills.map(
       (skill) =>
-        `| \`${skill.id}\` | ${codeList(axisLinkFor(skill, 'trait')?.valueIds ?? [])} | ${codeList(axisLinkFor(skill, 'weapon')?.valueIds ?? [])} |`,
+        `| \`${skill.id}\` | ${codeList(axisLinkFor(skill, 'trait')?.valueIds ?? [])} | ${codeList(axisLinkFor(skill, 'weapon')?.valueIds ?? [])} | ${patternTitles.get(skill.placementPatternId) ?? skill.placementPatternId} |`,
+    ),
+    '',
+    '## 配置条件 × 特性 × 武器・装置（スキル数）',
+    '',
+    '> 0または少数のセルを、次に追加するスキル候補として優先します。',
+    '',
+    `| 配置条件 × 特性 | ${weapons.map((weapon) => weapon.title).join(' | ')} |`,
+    `| --- | ${weapons.map(() => '---:').join(' | ')} |`,
+    ...createSkillCoverageMatrix(design).map(
+      (row) =>
+        `| ${row.placementPatternTitle} × ${row.traitTitle} | ${weapons.map((weapon) => row.counts[weapon.id] ?? 0).join(' | ')} |`,
     ),
     '',
   ];

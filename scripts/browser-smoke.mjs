@@ -1,6 +1,9 @@
 import { chromium } from 'playwright-core';
 
-const target = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
+const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
+const seededTarget = new URL(requestedTarget);
+if (!seededTarget.searchParams.has('shopSeed')) seededTarget.searchParams.set('shopSeed', '73');
+const target = seededTarget.toString();
 const battleBackgroundRatio = 1672 / 941;
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -67,7 +70,7 @@ const checks = {
   shopSlots: await desktop.locator('.shop-card, .shop-empty').count(),
 };
 if (checks.circuitCells !== 25) throw new Error(`Expected 25 circuit cells, found ${checks.circuitCells}`);
-if (checks.shopSlots !== 5) throw new Error(`Expected 5 shop slots, found ${checks.shopSlots}`);
+if (checks.shopSlots !== 6) throw new Error(`Expected 6 shop slots, found ${checks.shopSlots}`);
 if ((await desktop.locator('.arena-fighter').count()) !== 0)
   throw new Error('Battle screen is visible during build phase');
 if ((await desktop.locator('.circuit-cell .block-button').count()) !== 0)
@@ -96,6 +99,9 @@ if (
 }
 
 const lockedOffer = desktop.locator('.shop-card').last();
+const unlockedTitlesBeforeReroll = await desktop
+  .locator('.shop-card:not(:last-child) .shop-block-button strong')
+  .allTextContents();
 const lockedTitle = (await lockedOffer.locator('.shop-block-button strong').textContent())?.trim();
 const lockedPorts = await lockedOffer
   .locator('.block-visual .block-port')
@@ -118,6 +124,12 @@ const retainedPorts = await retainedOffer
 if (JSON.stringify(retainedPorts) !== JSON.stringify(lockedPorts)) {
   throw new Error('Locked shop offer did not retain its generated connector direction');
 }
+const unlockedTitlesAfterReroll = await desktop
+  .locator('.shop-card:not(:last-child) .shop-block-button strong')
+  .allTextContents();
+if (JSON.stringify(unlockedTitlesAfterReroll) === JSON.stringify(unlockedTitlesBeforeReroll)) {
+  throw new Error('Unlocked shop offers did not randomize on reroll');
+}
 if (
   !(await desktop.locator('.shop-card').evaluateAll((cards) => cards.every((card) => card.querySelector('.port-west'))))
 ) {
@@ -126,7 +138,7 @@ if (
 
 await desktop.getByRole('button', { name: /カード一覧/ }).click();
 await desktop.locator('.catalog-screen').waitFor();
-if ((await desktop.locator('.catalog-card').count()) !== 23) {
+if ((await desktop.locator('.catalog-card').count()) !== 26) {
   throw new Error(`Catalog does not show every card: ${await desktop.locator('.catalog-card').count()}`);
 }
 if ((await desktop.locator('.rarity-legend span').count()) !== 4) {
@@ -171,14 +183,14 @@ const nodeAuras = Object.values(rarityAuraPlacement).map((sample) => sample.node
 if (nodeAuras.some((aura) => aura === 'none' || aura === 'missing') || new Set(nodeAuras).size !== 4) {
   throw new Error(`Rarity aura is not attached to each node frame: ${JSON.stringify(rarityAuraPlacement)}`);
 }
-if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== 23) {
+if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== 26) {
   throw new Error('Catalog cards do not expose every weapon axis');
 }
-if ((await desktop.locator('.catalog-card .axis-badge.is-trait').count()) < 23) {
+if ((await desktop.locator('.catalog-card .axis-badge.is-trait').count()) < 26) {
   throw new Error('Catalog cards do not expose every trait axis');
 }
 await desktop.locator('.catalog-filters button').filter({ hasText: /^毒/ }).click();
-if ((await desktop.locator('.catalog-card').count()) >= 23 || (await desktop.locator('.catalog-card').count()) === 0) {
+if ((await desktop.locator('.catalog-card').count()) >= 26 || (await desktop.locator('.catalog-card').count()) === 0) {
   throw new Error('Catalog trait filter did not narrow the card list');
 }
 await desktop.getByRole('button', { name: /すべて/ }).click();
@@ -213,7 +225,7 @@ const purchasedOfferPorts = await firstOffer
 await firstOffer.getByRole('button', { name: /買う/ }).click();
 const coinsAfter = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
 if (!(coinsAfter < coinsBefore)) throw new Error('Buying a skill did not spend coins');
-if ((await desktop.locator('.shop-card').count()) !== 4) throw new Error('Purchased skill was not removed');
+if ((await desktop.locator('.shop-card').count()) !== 5) throw new Error('Purchased skill was not removed');
 const purchasedRackPorts = await desktop
   .locator('.rack-block')
   .first()
@@ -355,7 +367,7 @@ mobile.on('console', (message) => {
 await mobile.goto(target, { waitUntil: 'networkidle' });
 await mobile.getByRole('button', { name: /カード一覧/ }).click();
 await mobile.locator('.catalog-screen').waitFor();
-if ((await mobile.locator('.catalog-card').count()) !== 23) throw new Error('Mobile catalog does not show every card');
+if ((await mobile.locator('.catalog-card').count()) !== 26) throw new Error('Mobile catalog does not show every card');
 await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png', fullPage: true });
 await mobile.getByRole('button', { name: /回路/ }).click();
 const mobileCellBounds = await mobile.locator('.circuit-cell').evaluateAll((cells) =>
@@ -542,7 +554,9 @@ overload.on('pageerror', (error) => errors.push(error.message));
 overload.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
-await overload.goto(target, { waitUntil: 'networkidle' });
+const overloadTarget = new URL(target);
+overloadTarget.searchParams.set('shopSeed', '203');
+await overload.goto(overloadTarget.toString(), { waitUntil: 'networkidle' });
 const overloadChargeOffer = overload.locator('.shop-card').filter({ hasText: '充電矢' });
 const overloadDefenseOffer = overload.locator('.shop-card').filter({ hasText: '帰還コイル' });
 if ((await overloadChargeOffer.count()) !== 1 || (await overloadDefenseOffer.count()) !== 1) {
@@ -669,6 +683,40 @@ if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit
 if (!(await lockedRun.locator('.arena-fighter.team-enemy .unit-health').getAttribute('aria-label'))?.includes('5300')) {
   throw new Error('The run-two rival did not receive its configured health growth');
 }
+
+const fusion = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
+fusion.on('pageerror', (error) => errors.push(error.message));
+fusion.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+const fusionTarget = new URL(target);
+fusionTarget.searchParams.set('fusionFixture', 'strike');
+await fusion.goto(fusionTarget.toString(), { waitUntil: 'networkidle' });
+const fusionButton = fusion.getByRole('button', { name: '斬撃を合成' });
+await fusionButton.waitFor();
+await fusionButton.click();
+const fusionDialog = fusion.getByRole('dialog', { name: /斬撃/ });
+await fusionDialog.waitFor();
+if ((await fusionDialog.locator('.fusion-copies .block-visual').count()) !== 3) {
+  throw new Error('Fusion does not visually converge three copies');
+}
+await fusion.screenshot({ path: '/tmp/code-monsters-fusion-desktop.png', fullPage: true });
+await fusionDialog.locator('.fusion-choices').waitFor();
+const fusionChoices = fusionDialog.locator('.fusion-choice');
+if ((await fusionChoices.count()) !== 3) throw new Error('Fusion reward does not offer three skills');
+const fusionRarities = await fusionChoices.evaluateAll((choices) =>
+  choices.map((choice) => [...choice.classList].find((name) => name.startsWith('rarity-'))),
+);
+if (new Set(fusionRarities).size !== 1 || fusionRarities[0] !== 'rarity-common') {
+  throw new Error(`Fusion rewards do not match the fused rarity: ${JSON.stringify(fusionRarities)}`);
+}
+await fusion.setViewportSize({ width: 390, height: 844 });
+await fusion.screenshot({ path: '/tmp/code-monsters-fusion-mobile.png', fullPage: true });
+await fusionChoices.first().click();
+await fusionDialog.waitFor({ state: 'detached' });
+if ((await fusion.locator('.rack-block .skill-star').count()) !== 1) {
+  throw new Error('The fused skill is not retained with a star marker');
+}
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
 console.log(
@@ -692,6 +740,8 @@ console.log(
         'battle-report-desktop',
         'battle-report-mobile',
         'loss-reward',
+        'fusion-desktop',
+        'fusion-mobile',
       ],
     },
     null,

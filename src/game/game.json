@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 13,
+  "schemaVersion": 14,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -15,8 +15,14 @@
     "winReward": 12,
     "retryReward": 8,
     "rerollCost": 3,
-    "shopSize": 5,
+    "shopSize": 6,
     "rarityWeights": { "common": 100, "rare": 50, "epic": 30, "legendary": 15 },
+    "skillFusion": {
+      "copiesRequired": 3,
+      "rewardChoices": 3,
+      "effectMultiplier": 1.5,
+      "cooldownReduction": 1
+    },
     "enemyGeneration": {
       "startingNodes": 7,
       "nodesPerRun": 1,
@@ -42,9 +48,23 @@
       "minimumPlayableSkillsPerBuild": 8,
       "requiredAxisIds": ["trait", "weapon"],
       "minimumHybridSkillsPerBuild": 2,
-      "minimumWeaponTypesPerBuild": 4,
+      "minimumWeaponTypesPerBuild": 5,
       "requireSkillDesignForEveryBlock": true
     },
+    "placementPatterns": [
+      { "id": "free", "title": "条件なし", "description": "接続できれば効果を発揮する基礎配置" },
+      { "id": "loop", "title": "循環", "description": "ノードが閉じた輪の一部として通電する配置" },
+      {
+        "id": "fully-connected",
+        "title": "全接続",
+        "description": "ノードが持つ接続部をすべて相互接続する配置"
+      },
+      {
+        "id": "straight-line",
+        "title": "長直線",
+        "description": "指定数以上の連続した直線へノードを組み込む配置"
+      }
+    ],
     "axes": [
       {
         "id": "trait",
@@ -79,7 +99,8 @@
           { "id": "blade", "title": "剣", "description": "短い間隔で攻撃しながら次へつなぐ" },
           { "id": "bow", "title": "弓", "description": "分岐しやすい射撃で複数の経路を作る" },
           { "id": "cannon", "title": "砲", "description": "終端で蓄積を大きな一撃へ変換する" },
-          { "id": "device", "title": "装置", "description": "特性の育成、循環、維持を支える" }
+          { "id": "device", "title": "装置", "description": "特性の育成、循環、維持を支える" },
+          { "id": "magic", "title": "魔法", "description": "難しい配置条件を満たして効果を跳ね上げる" }
         ]
       }
     ],
@@ -120,6 +141,7 @@
         "blockId": "strike",
         "scope": "shared",
         "sharedSynergies": ["foundation", "blade"],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["starter", "cycler"], "payoffIds": ["cultivate", "burst"] },
@@ -134,6 +156,7 @@
         "blockId": "breaker",
         "scope": "shared",
         "sharedSynergies": ["foundation", "blade"],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["starter"], "payoffIds": ["cultivate", "burst"] },
@@ -148,6 +171,7 @@
         "blockId": "arc-shot",
         "scope": "shared",
         "sharedSynergies": ["foundation", "bow", "branch"],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
@@ -162,6 +186,7 @@
         "blockId": "barrier",
         "scope": "shared",
         "sharedSynergies": ["foundation", "sustain"],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
@@ -176,6 +201,7 @@
         "blockId": "repair",
         "scope": "shared",
         "sharedSynergies": ["foundation", "sustain"],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
@@ -190,6 +216,7 @@
         "blockId": "poison-needle",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
         "buildLinks": [{ "buildId": "poison", "roles": ["starter", "grower"], "payoffIds": ["cultivate", "burst"] }]
       },
@@ -201,6 +228,7 @@
         "blockId": "cultivation-blade",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [{ "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate"] }]
       },
@@ -212,6 +240,7 @@
         "blockId": "toxic-reservoir",
         "scope": "shared",
         "sharedSynergies": ["poison", "charge", "sustain"],
+        "placementPatternId": "free",
         "axisLinks": [
           { "axisId": "trait", "valueIds": ["poison", "charge"] },
           { "axisId": "weapon", "valueIds": ["device"] }
@@ -229,6 +258,7 @@
         "blockId": "venom-bloom",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [{ "buildId": "poison", "roles": ["payoff"], "payoffIds": ["cultivate"] }]
       },
@@ -240,6 +270,7 @@
         "blockId": "rupture-stake",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
         "buildLinks": [{ "buildId": "poison", "roles": ["payoff"], "payoffIds": ["burst"] }]
       },
@@ -251,6 +282,7 @@
         "blockId": "status-relay",
         "scope": "shared",
         "sharedSynergies": ["status-effect", "charge", "combat-growth"],
+        "placementPatternId": "free",
         "axisLinks": [
           { "axisId": "trait", "valueIds": ["poison", "charge"] },
           { "axisId": "weapon", "valueIds": ["device"] }
@@ -268,6 +300,7 @@
         "blockId": "return-coil",
         "scope": "shared",
         "sharedSynergies": ["cycle", "combat-growth"],
+        "placementPatternId": "loop",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
@@ -282,6 +315,7 @@
         "blockId": "long-route-fang",
         "scope": "shared",
         "sharedSynergies": ["long-route", "combat-growth"],
+        "placementPatternId": "straight-line",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] },
@@ -296,7 +330,8 @@
         "blockId": "amplifier",
         "scope": "shared",
         "sharedSynergies": ["effect-power"],
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] }
@@ -310,7 +345,8 @@
         "blockId": "accelerator",
         "scope": "shared",
         "sharedSynergies": ["cooldown"],
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "placementPatternId": "fully-connected",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] }
@@ -324,6 +360,7 @@
         "blockId": "charge-guard",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["grower", "sustain"], "payoffIds": ["burst", "guard"] }]
       },
@@ -335,6 +372,7 @@
         "blockId": "charge-blade",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["starter", "grower"], "payoffIds": ["burst", "guard"] }]
       },
@@ -346,6 +384,7 @@
         "blockId": "charge-arrow",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] }]
       },
@@ -357,6 +396,7 @@
         "blockId": "charge-coil",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }]
       },
@@ -368,6 +408,7 @@
         "blockId": "discharge-bow",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
       },
@@ -379,6 +420,7 @@
         "blockId": "rail-cannon",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
       },
@@ -390,8 +432,48 @@
         "blockId": "charge-bastion",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["sustain", "payoff"], "payoffIds": ["guard"] }]
+      },
+      {
+        "id": "venom-orbit",
+        "title": "輪毒術",
+        "summary": "輪の一部に組み込むと毒を大きく重ねる配置魔法",
+        "status": "playable",
+        "blockId": "venom-orbit",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "loop",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "buildLinks": [{ "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] }]
+      },
+      {
+        "id": "sealed-junction",
+        "title": "封環結界",
+        "summary": "すべての接続部を埋めると強固な防壁を作る共有魔法",
+        "status": "playable",
+        "blockId": "sealed-junction",
+        "scope": "shared",
+        "sharedSynergies": ["fully-connected", "sustain", "magic"],
+        "placementPatternId": "fully-connected",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "charge-line-lance",
+        "title": "雷路槍",
+        "summary": "5ノード以上の直線でチャージと大ダメージを両立する剣技",
+        "status": "playable",
+        "blockId": "charge-line-lance",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "straight-line",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "buildLinks": [{ "buildId": "charge", "roles": ["grower", "payoff"], "payoffIds": ["burst"] }]
       },
       {
         "id": "overcharge-cannon",
@@ -401,6 +483,7 @@
         "blockId": "overcharge-cannon",
         "scope": "exclusive",
         "sharedSynergies": [],
+        "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
       }
@@ -509,14 +592,17 @@
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "この先に直接つながった技の発動間隔を1拍短くする。3本のエッジを持つ代わりに価格が高い。",
+      "description": "3つの接続部がすべて繋がると、この先の技の発動間隔を1拍短くし、各効果を110増やす。",
       "glyph": "速",
       "price": 8,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "east", "south"],
       "buildIds": ["poison", "charge"],
-      "effects": [{ "kind": "haste", "amount": 1 }]
+      "effects": [
+        { "kind": "haste", "amount": 1, "trigger": { "kind": "all-ports-connected" } },
+        { "kind": "amplify", "amount": 110, "trigger": { "kind": "all-ports-connected" } }
+      ]
     },
     {
       "id": "poison-needle",
@@ -645,7 +731,7 @@
       "id": "return-coil",
       "code": "RETURN",
       "title": "帰還コイル",
-      "description": "2拍ごとにシールド170を得て、回路が一周すると自身とこの先の技の各効果を30ずつ増やす。",
+      "description": "2拍ごとにシールド170を得て、回路が一周すると自身とこの先の技の各効果を60ずつ増やす。",
       "glyph": "還",
       "price": 8,
       "rarity": "rare",
@@ -658,14 +744,14 @@
         { "kind": "shield", "amount": 170 },
         {
           "kind": "growth",
-          "amount": 30,
+          "amount": 60,
           "target": "self",
           "stat": "shield",
           "trigger": { "kind": "in-cycle" }
         },
         {
           "kind": "growth",
-          "amount": 30,
+          "amount": 60,
           "target": "downstream",
           "stat": "all",
           "trigger": { "kind": "in-cycle" }
@@ -676,7 +762,7 @@
       "id": "long-route-fang",
       "code": "LONG",
       "title": "長路の牙",
-      "description": "2拍ごとに150ダメージを与え、通電した技1個につきダメージが45増える。",
+      "description": "2拍ごとに150ダメージを与え、同じ直線上で繋がった技1個につきダメージが55増える。4ノード以上の直線ではさらに育つ。",
       "glyph": "路",
       "price": 8,
       "rarity": "rare",
@@ -686,13 +772,13 @@
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "damage", "amount": 150, "scaling": { "kind": "path-length", "every": 1, "amount": 45 } },
+        { "kind": "damage", "amount": 150, "scaling": { "kind": "straight-line", "every": 1, "amount": 55 } },
         {
           "kind": "growth",
           "amount": 40,
           "target": "self",
           "stat": "damage",
-          "trigger": { "kind": "path-length-at-least", "amount": 4 }
+          "trigger": { "kind": "straight-line-at-least", "amount": 4 }
         }
       ]
     },
@@ -784,6 +870,61 @@
       "buildIds": ["charge"],
       "cooldown": 3,
       "effects": [{ "kind": "release-charge", "output": "shield", "amount": 240, "perCharge": 500 }]
+    },
+    {
+      "id": "venom-orbit",
+      "code": "ORBIT",
+      "title": "輪毒術",
+      "description": "3拍ごとに毒120を与える。輪の一部として通電すると、さらに毒360を与える。",
+      "glyph": "輪",
+      "price": 14,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "rotatable": false,
+      "buildIds": ["poison"],
+      "cooldown": 3,
+      "effects": [
+        { "kind": "poison", "amount": 120 },
+        { "kind": "poison", "amount": 360, "trigger": { "kind": "in-cycle" } }
+      ]
+    },
+    {
+      "id": "sealed-junction",
+      "code": "SEAL",
+      "title": "封環結界",
+      "description": "3拍ごとにシールド160を得る。4つの接続部がすべて繋がると、さらにシールド720を得る。",
+      "glyph": "封",
+      "price": 13,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["poison", "charge"],
+      "cooldown": 3,
+      "effects": [
+        { "kind": "shield", "amount": 160 },
+        { "kind": "shield", "amount": 720, "trigger": { "kind": "all-ports-connected" } }
+      ]
+    },
+    {
+      "id": "charge-line-lance",
+      "code": "LANCE",
+      "title": "雷路槍",
+      "description": "通電にチャージ2を追加し、3拍ごとに180ダメージを与える。5ノード以上の直線ではさらに1200ダメージを与える。",
+      "glyph": "槍",
+      "price": 21,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west", "east"],
+      "rotatable": false,
+      "buildIds": ["charge"],
+      "cooldown": 3,
+      "effects": [
+        { "kind": "charge", "amount": 2 },
+        { "kind": "damage", "amount": 180 },
+        { "kind": "damage", "amount": 1200, "trigger": { "kind": "straight-line-at-least", "amount": 5 } }
+      ]
     },
     {
       "id": "overcharge-cannon",

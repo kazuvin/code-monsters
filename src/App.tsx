@@ -12,9 +12,10 @@ import { analyzeCircuit, calculateChargeByCell, rotatePorts } from './core/circu
 import { damageTierFor, type DamageTier } from './core/combat-presentation';
 import { battleReward } from './core/economy';
 import { generateEnemyBuild } from './core/enemy-builder';
+import { fuseSkillCopies, pickFusionRewardIds, upgradeBlockDefinition } from './core/fusion';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
 import { BATTLE_SPEEDS, playbackFrameMs, type BattleSpeed } from './core/playback';
-import { advanceShop, createShop, rerollShop } from './core/shop';
+import { advanceShop, createShop, randomShopSeed, rerollShop } from './core/shop';
 import {
   incomingSkillModifiers,
   summarizeSkillProgress,
@@ -35,6 +36,7 @@ import type {
   Rarity,
   ShopOffer,
   SkillBuffState,
+  SkillStars,
   Team,
 } from './core/types';
 import { GAME_DATA } from './game/game-data';
@@ -47,12 +49,14 @@ type DetailTarget = {
   rotation?: Rotation;
   location: 'board' | 'rack' | 'shop' | 'catalog' | 'battle';
   team?: Team;
+  stars?: SkillStars;
 };
 type DragOrigin = { kind: 'board'; position: CellPosition } | { kind: 'rack'; block: PlacedBlock };
 type DragState = {
   origin: DragOrigin;
   blockId: string;
   rotation: Rotation;
+  stars: SkillStars;
   x: number;
   y: number;
 };
@@ -66,6 +70,12 @@ type FighterFeedback = {
   repair: number;
 };
 type FeedbackKind = keyof FighterFeedback;
+type FusionRewardState = {
+  fusedBlockId: string;
+  stage: 'fusing' | 'choose';
+  choiceIds: string[];
+  seed: number;
+};
 
 const directionBetween = (from: CellPosition, to: CellPosition): Direction => {
   if (to.row < from.row) return 'north';
@@ -75,7 +85,12 @@ const directionBetween = (from: CellPosition, to: CellPosition): Direction => {
 };
 type PendingDrag = DragState & { pointerId: number; startX: number; startY: number; started: boolean };
 
-const initialSeed = 73;
+const query = new URLSearchParams(window.location.search);
+const fixtureSeed = Number(query.get('shopSeed'));
+const hasFixtureSeed = Number.isInteger(fixtureSeed) && fixtureSeed > 0;
+const initialSeed = hasFixtureSeed ? fixtureSeed : randomShopSeed();
+const nextShopSeed = (current: number, step = 1) => (hasFixtureSeed ? current + step : randomShopSeed());
+const fusionFixtureBlockId = query.get('fusionFixture');
 const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
@@ -102,7 +117,7 @@ const RARITY_COPY: Record<Rarity, { label: string; code: string; color: string; 
   legendary: { label: 'レジェンダリー', code: 'L', color: '#ff9b42', aura: '16px' },
 };
 const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
-const WEAPON_MARK: Record<string, string> = { blade: '剣', bow: '弓', cannon: '砲', device: '機' };
+const WEAPON_MARK: Record<string, string> = { blade: '剣', bow: '弓', cannon: '砲', device: '機', magic: '術' };
 const FEEDBACK_COPY: Record<FeedbackKind, string> = {
   damage: 'ダメージ',
   poison: '毒付与',
@@ -210,12 +225,14 @@ const cooldownLabel = (block: BlockDefinition) => {
 const BlockVisual = ({
   block,
   rotation = 0,
+  stars = 0,
   powered = false,
   compact = false,
   portFlows,
 }: {
   block: BlockDefinition;
   rotation?: Rotation;
+  stars?: SkillStars;
   powered?: boolean;
   compact?: boolean;
   portFlows?: Partial<Record<Direction, PortFlow>>;
@@ -244,6 +261,7 @@ const BlockVisual = ({
         <b>{block.glyph}</b>
         {!compact && <small>{block.code}</small>}
       </span>
+      {stars > 0 && <strong className="skill-star">★</strong>}
       {weapon && <span className="block-weapon-mark">{WEAPON_MARK[weapon.id] ?? '技'}</span>}
       {powered && <em className="power-pip" />}
     </span>
@@ -619,7 +637,7 @@ const BattleCircuitSummary = ({
 }) => {
   const poweredCells = new Set(powered);
   const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
-  const chargeByCell = calculateChargeByCell(board, GAME_DATA.blocks, analysis);
+  const chargeByCell = calculateChargeByCell(board, GAME_DATA.blocks, analysis, GAME_DATA.rules.skillFusion);
   const skillEvents = events.filter(
     (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
       event.kind !== 'overload' && event.kind !== 'poison-tick' && event.team === team,
@@ -675,7 +693,10 @@ const BattleCircuitSummary = ({
           {board.flatMap((row, rowIndex) =>
             row.map((placed, columnIndex) => {
               const key = `${rowIndex}:${columnIndex}`;
-              const block = placed ? blockById.get(placed.blockId) : undefined;
+              const baseBlock = placed ? blockById.get(placed.blockId) : undefined;
+              const block = baseBlock
+                ? upgradeBlockDefinition(baseBlock, placed?.stars ?? 0, GAME_DATA.rules.skillFusion)
+                : undefined;
               const stateLabel = mergingCells.has(key)
                 ? `合流 効果${GAME_DATA.rules.mergeEffectMultiplier}倍`
                 : activatedCells.has(key)
@@ -687,10 +708,17 @@ const BattleCircuitSummary = ({
                       : '未通電';
               if (block && placed) {
                 const position = { row: rowIndex, column: columnIndex };
-                const modifiers = incomingSkillModifiers(board, GAME_DATA.blocks, analysis, position);
+                const modifiers = incomingSkillModifiers(
+                  board,
+                  GAME_DATA.blocks,
+                  analysis,
+                  position,
+                  GAME_DATA.rules.skillFusion,
+                );
                 const progress = summarizeSkillProgress(block, buffs[key], modifiers, {
                   enemyPoison,
                   pathLength: analysis.routeLength.get(key) ?? 0,
+                  straightLineLength: analysis.straightLineLength.get(key) ?? 0,
                 });
                 const skillBuffs = visibleBuffs(block, progress, modifiers);
                 const badgeLabels = [
@@ -723,6 +751,7 @@ const BattleCircuitSummary = ({
                     <BlockVisual
                       block={block}
                       rotation={placed.rotation}
+                      stars={placed.stars ?? 0}
                       powered={poweredCells.has(key)}
                       compact
                       portFlows={portFlowsByCell.get(key)}
@@ -772,7 +801,12 @@ export function App() {
   const [seed, setSeed] = useState(initialSeed);
   const [enemySeed, setEnemySeed] = useState(initialSeed + 101);
   const [rack, setRack] = useState<PlacedBlock[]>(() =>
-    GAME_DATA.startingRack.map((blockId) => ({ blockId, rotation: 0 })),
+    [
+      ...GAME_DATA.startingRack,
+      ...(fusionFixtureBlockId && blockById.has(fusionFixtureBlockId)
+        ? Array.from({ length: GAME_DATA.rules.skillFusion.copiesRequired }, () => fusionFixtureBlockId)
+        : []),
+    ].map((blockId) => ({ blockId, rotation: 0 })),
   );
   const [board, setBoard] = useState<CircuitBoard>(() =>
     GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null))),
@@ -793,10 +827,12 @@ export function App() {
   const [battleSpeed, setBattleSpeed] = useState<BattleSpeed>(1);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportTeam, setReportTeam] = useState<Team>('player');
+  const [fusionReward, setFusionReward] = useState<FusionRewardState | null>(null);
   const [message, setMessage] = useState('ショップで技を選ぶ');
   const holdTimer = useRef<number | null>(null);
   const pendingDrag = useRef<PendingDrag | null>(null);
   const suppressClick = useRef(false);
+  const fusionTimer = useRef<number | null>(null);
 
   const ownedBlockIds = useMemo(() => ownedBlockIdsFor(board, rack), [board, rack]);
   const circuitAnalysis = useMemo(() => analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
@@ -815,13 +851,26 @@ export function App() {
   const rackGroups = useMemo(() => {
     const groups = new Map<string, { block: BlockDefinition; placed: PlacedBlock; count: number }>();
     rack.forEach((placed) => {
-      const key = `${placed.blockId}:${placed.rotation}`;
+      const key = `${placed.blockId}:${placed.rotation}:${placed.stars ?? 0}`;
       const current = groups.get(key);
       if (current) current.count += 1;
       else groups.set(key, { block: blockById.get(placed.blockId)!, placed, count: 1 });
     });
     return [...groups.values()];
   }, [rack]);
+  const fusibleBlocks = useMemo(() => {
+    const counts = new Map<string, number>();
+    [...rack, ...board.flat().filter((placed): placed is PlacedBlock => Boolean(placed))].forEach((placed) => {
+      if ((placed.stars ?? 0) > 0) return;
+      counts.set(placed.blockId, (counts.get(placed.blockId) ?? 0) + 1);
+    });
+    return [...counts]
+      .filter(([, count]) => count >= GAME_DATA.rules.skillFusion.copiesRequired)
+      .flatMap(([blockId]) => {
+        const block = blockById.get(blockId);
+        return block ? [block] : [];
+      });
+  }, [board, rack]);
   const catalogBlocks = useMemo(
     () =>
       [...GAME_DATA.blocks]
@@ -946,6 +995,7 @@ export function App() {
   useEffect(
     () => () => {
       if (holdTimer.current) window.clearTimeout(holdTimer.current);
+      if (fusionTimer.current) window.clearTimeout(fusionTimer.current);
     },
     [],
   );
@@ -960,6 +1010,7 @@ export function App() {
     origin: DragOrigin,
     blockId: string,
     rotation: Rotation,
+    stars: SkillStars = 0,
   ) => {
     if (event.button !== 0) return;
     clearHold();
@@ -968,6 +1019,7 @@ export function App() {
       origin,
       blockId,
       rotation,
+      stars,
       pointerId: event.pointerId,
       x: event.clientX,
       y: event.clientY,
@@ -984,6 +1036,7 @@ export function App() {
         origin: pending.origin,
         blockId: pending.blockId,
         rotation: pending.rotation,
+        stars: pending.stars,
         x: pending.x,
         y: pending.y,
       });
@@ -1006,6 +1059,7 @@ export function App() {
       origin: pending.origin,
       blockId: pending.blockId,
       rotation: pending.rotation,
+      stars: pending.stars,
       x: event.clientX,
       y: event.clientY,
     });
@@ -1104,15 +1158,49 @@ export function App() {
     setMessage(`${block.title}を入手`);
   };
 
+  const startFusion = (blockId: string) => {
+    const block = blockById.get(blockId);
+    const result = fuseSkillCopies(board, rack, blockId, GAME_DATA.rules.skillFusion.copiesRequired);
+    if (!block || !result) {
+      setMessage('合成には通常版が3個必要');
+      return;
+    }
+    const rewardSeed = nextShopSeed(seed, 503);
+    setBoard(result.board);
+    setRack(result.rack);
+    setDetail(null);
+    setFusionReward({
+      fusedBlockId: blockId,
+      stage: 'fusing',
+      choiceIds: pickFusionRewardIds(shopBlocks, block.rarity, rewardSeed, GAME_DATA.rules.skillFusion.rewardChoices),
+      seed: rewardSeed,
+    });
+    if (fusionTimer.current) window.clearTimeout(fusionTimer.current);
+    fusionTimer.current = window.setTimeout(() => {
+      setFusionReward((current) => (current ? { ...current, stage: 'choose' } : null));
+      fusionTimer.current = null;
+    }, 900);
+  };
+
+  const chooseFusionReward = (blockId: string) => {
+    if (!fusionReward) return;
+    const block = blockById.get(blockId);
+    if (!block) return;
+    const choiceIndex = Math.max(0, fusionReward.choiceIds.indexOf(blockId));
+    const reward = createShop([block], GAME_DATA.rules.rarityWeights, fusionReward.seed + choiceIndex * 17, 1)[0];
+    setRack((current) => [...current, { blockId, rotation: reward.rotation }]);
+    setFusionReward(null);
+    setMessage(`${block.title}を獲得`);
+  };
+
   const reroll = () => {
     if (coins < GAME_DATA.rules.rerollCost) {
       setMessage('コインが足りません');
       return;
     }
-    const nextSeed = seed + 1;
+    const nextSeed = nextShopSeed(seed);
     setCoins((current) => current - GAME_DATA.rules.rerollCost);
     setSeed(nextSeed);
-    setEnemySeed((current) => current + 47);
     setShop((current) =>
       rerollShop(shopBlocks, GAME_DATA.rules.rarityWeights, current, nextSeed, GAME_DATA.rules.shopSize, ownedBlockIds),
     );
@@ -1134,13 +1222,14 @@ export function App() {
 
   const returnToWorkshop = () => {
     const reward = battleReward(GAME_DATA, battle.winner);
-    const nextSeed = seed + 11;
+    const nextSeed = nextShopSeed(seed, 11);
     setCoins((current) => current + reward);
     setSeed(nextSeed);
     setShop(
       advanceShop(shopBlocks, GAME_DATA.rules.rarityWeights, shop, nextSeed, GAME_DATA.rules.shopSize, ownedBlockIds),
     );
     setRun((current) => current + 1);
+    setEnemySeed((current) => (hasFixtureSeed ? current + 47 : randomShopSeed()));
     setPlayback([]);
     setReportOpen(false);
     setFrame(0);
@@ -1148,7 +1237,7 @@ export function App() {
     setMessage(`コイン +${reward}`);
   };
 
-  const detailBlock = detail ? blockById.get(detail.blockId) : undefined;
+  const detailBaseBlock = detail ? blockById.get(detail.blockId) : undefined;
   const detailBattleTeam = detail?.location === 'battle' ? detail.team : undefined;
   const detailBoard =
     detailBattleTeam === 'player' ? battle.playerBoard : detailBattleTeam === 'enemy' ? battle.enemyBoard : board;
@@ -1159,15 +1248,30 @@ export function App() {
         ? new Set(battle.enemyPowered)
         : powered;
   const detailPlaced = detail?.position ? detailBoard[detail.position.row]?.[detail.position.column] : undefined;
+  const detailStars = detailPlaced?.stars ?? detail?.stars ?? 0;
+  const detailBlock = detailBaseBlock
+    ? upgradeBlockDefinition(detailBaseBlock, detailStars, GAME_DATA.rules.skillFusion)
+    : undefined;
   const detailRotation = detailPlaced?.rotation ?? detail?.rotation ?? 0;
   const detailCellKey = detail?.position ? `${detail.position.row}:${detail.position.column}` : undefined;
   const detailOwner = detailBattleTeam === 'player' ? player : detailBattleTeam === 'enemy' ? enemy : undefined;
   const detailOpponent = detailBattleTeam === 'player' ? enemy : detailBattleTeam === 'enemy' ? player : undefined;
   const detailAnalysis = analyzeCircuit(detailBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
-  const detailChargeByCell = calculateChargeByCell(detailBoard, GAME_DATA.blocks, detailAnalysis);
+  const detailChargeByCell = calculateChargeByCell(
+    detailBoard,
+    GAME_DATA.blocks,
+    detailAnalysis,
+    GAME_DATA.rules.skillFusion,
+  );
   const detailModifiers =
     detail?.position && detailCellKey && detailPoweredCells.has(detailCellKey)
-      ? incomingSkillModifiers(detailBoard, GAME_DATA.blocks, detailAnalysis, detail.position)
+      ? incomingSkillModifiers(
+          detailBoard,
+          GAME_DATA.blocks,
+          detailAnalysis,
+          detail.position,
+          GAME_DATA.rules.skillFusion,
+        )
       : { effectPower: 0, cooldownReduction: 0 };
   const detailBuffs =
     detailBattleTeam && detailCellKey ? (battle.skillBuffs[detailBattleTeam][detailCellKey] ?? {}) : {};
@@ -1175,6 +1279,7 @@ export function App() {
     ? summarizeSkillProgress(detailBlock, detailBuffs, detailModifiers, {
         enemyPoison: detailOpponent?.poison ?? 0,
         pathLength: detailCellKey ? (detailAnalysis.routeLength.get(detailCellKey) ?? 0) : 0,
+        straightLineLength: detailCellKey ? (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) : 0,
       })
     : undefined;
   const detailVisibleBuffs =
@@ -1188,6 +1293,11 @@ export function App() {
     ? [
         detailAnalysis.branchCells.has(detailCellKey) ? '自動分岐' : '',
         detailAnalysis.mergeCells.has(detailCellKey) ? '合流' : '',
+        detailAnalysis.cyclicCells.has(detailCellKey) ? '循環' : '',
+        detailAnalysis.fullyConnectedCells.has(detailCellKey) ? '全接続' : '',
+        (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) >= 4
+          ? `直線${detailAnalysis.straightLineLength.get(detailCellKey)}`
+          : '',
       ]
         .filter(Boolean)
         .join('・')
@@ -1292,13 +1402,19 @@ export function App() {
                                       { kind: 'board', position: { row: rowIndex, column: columnIndex } },
                                       block.id,
                                       placed.rotation,
+                                      placed.stars ?? 0,
                                     )
                                   }
                                   onPointerMove={moveHold}
                                   onPointerUp={endHold}
                                   onPointerCancel={cancelHold}
                                 >
-                                  <BlockVisual block={block} rotation={placed.rotation} powered={powered.has(key)} />
+                                  <BlockVisual
+                                    block={block}
+                                    rotation={placed.rotation}
+                                    stars={placed.stars ?? 0}
+                                    powered={powered.has(key)}
+                                  />
                                   {circuitAnalysis.mergeCells.has(key) && (
                                     <b className="merge-preview">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
                                   )}
@@ -1335,23 +1451,49 @@ export function App() {
                       rackGroups.map(({ block, placed, count }) => (
                         <button
                           className="rack-block"
-                          key={`${block.id}-${placed.rotation}`}
-                          aria-label={`${block.title} ${count}個。クリックで詳細、長押しで配置`}
-                          onClick={() => openDetail({ blockId: block.id, rotation: placed.rotation, location: 'rack' })}
+                          key={`${block.id}-${placed.rotation}-${placed.stars ?? 0}`}
+                          aria-label={`${block.title}${(placed.stars ?? 0) > 0 ? ' 星1' : ''} ${count}個。クリックで詳細、長押しで配置`}
+                          onClick={() =>
+                            openDetail({
+                              blockId: block.id,
+                              rotation: placed.rotation,
+                              stars: placed.stars ?? 0,
+                              location: 'rack',
+                            })
+                          }
                           onPointerDown={(event) =>
-                            beginHold(event, { kind: 'rack', block: placed }, block.id, placed.rotation)
+                            beginHold(
+                              event,
+                              { kind: 'rack', block: placed },
+                              block.id,
+                              placed.rotation,
+                              placed.stars ?? 0,
+                            )
                           }
                           onPointerMove={moveHold}
                           onPointerUp={endHold}
                           onPointerCancel={cancelHold}
                         >
-                          <BlockVisual block={block} rotation={placed.rotation} compact />
-                          <span>{block.title}</span>
+                          <BlockVisual block={block} rotation={placed.rotation} stars={placed.stars ?? 0} compact />
+                          <span>
+                            {block.title}
+                            {(placed.stars ?? 0) > 0 ? ' ★' : ''}
+                          </span>
                           <em>×{count}</em>
                         </button>
                       ))
                     )}
                   </div>
+                  {fusibleBlocks.length > 0 && (
+                    <div className="fusion-ready-list" aria-label="合成可能な技">
+                      {fusibleBlocks.map((block) => (
+                        <button type="button" key={block.id} onClick={() => startFusion(block.id)}>
+                          <span>3 → ★</span>
+                          <b>{block.title}を合成</b>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -1543,6 +1685,63 @@ export function App() {
         {message}
       </div>
 
+      {fusionReward && (
+        <div className="fusion-backdrop">
+          <section
+            className={`fusion-dialog is-${fusionReward.stage}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="fusion-dialog-title"
+          >
+            <header>
+              <small>SKILL FUSION</small>
+              <h2 id="fusion-dialog-title">
+                {blockById.get(fusionReward.fusedBlockId)?.title} <b>★</b>
+              </h2>
+            </header>
+            {fusionReward.stage === 'fusing' ? (
+              <div className="fusion-converge" aria-label="3つの技を合成中">
+                <div className="fusion-copies" aria-hidden="true">
+                  {Array.from({ length: GAME_DATA.rules.skillFusion.copiesRequired }, (_, index) => (
+                    <BlockVisual
+                      block={blockById.get(fusionReward.fusedBlockId)!}
+                      compact
+                      key={`${fusionReward.fusedBlockId}-${index}`}
+                    />
+                  ))}
+                </div>
+                <strong>★</strong>
+                <span>3 NODE SYNC</span>
+              </div>
+            ) : (
+              <div className="fusion-reward">
+                <p>同じレアリティから1つ獲得</p>
+                <div className="fusion-choices">
+                  {fusionReward.choiceIds.map((blockId) => {
+                    const block = blockById.get(blockId)!;
+                    return (
+                      <button
+                        type="button"
+                        className={`fusion-choice rarity-${block.rarity}`}
+                        style={blockVisualStyle(block)}
+                        onClick={() => chooseFusionReward(blockId)}
+                        key={blockId}
+                      >
+                        <BlockVisual block={block} compact />
+                        <span>
+                          <small>{RARITY_COPY[block.rarity].label}</small>
+                          <b>{block.title}</b>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
       {detailBlock && detail && (
         <div
           className="dialog-backdrop"
@@ -1556,14 +1755,25 @@ export function App() {
               <BlockVisual
                 block={detailBlock}
                 rotation={detailRotation}
+                stars={detailStars}
                 powered={Boolean(detailCellKey && detailPoweredCells.has(detailCellKey))}
               />
             </div>
             <div className="dialog-copy">
               <small>{detail.location === 'battle' ? `${detailBlock.code} · LIVE` : detailBlock.code}</small>
-              <h2 id="block-dialog-title">{detailBlock.title}</h2>
+              <h2 id="block-dialog-title">
+                {detailBlock.title}
+                {detailStars > 0 ? ' ★' : ''}
+              </h2>
               <BlockAxisBadges blockId={detailBlock.id} />
               <p>{detailBlock.description}</p>
+              {detailStars > 0 && (
+                <div className="dialog-star-rule">
+                  <span>STAR UPGRADE</span>
+                  全効果 ×{GAME_DATA.rules.skillFusion.effectMultiplier}・発動間隔 -
+                  {GAME_DATA.rules.skillFusion.cooldownReduction}拍
+                </div>
+              )}
               {detailMergeMultiplier > 1 && (
                 <div className="dialog-merge-rule">
                   <span>MERGE</span>
@@ -1697,7 +1907,12 @@ export function App() {
 
       {dragging && (
         <div className="drag-ghost" style={{ left: dragging.x, top: dragging.y } as CSSProperties} aria-hidden="true">
-          <BlockVisual block={blockById.get(dragging.blockId)!} rotation={dragging.rotation} powered />
+          <BlockVisual
+            block={blockById.get(dragging.blockId)!}
+            rotation={dragging.rotation}
+            stars={dragging.stars}
+            powered
+          />
         </div>
       )}
 

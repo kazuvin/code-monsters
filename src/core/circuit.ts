@@ -1,4 +1,12 @@
-import type { BlockDefinition, CellPosition, CircuitBoard, Direction, PlacedBlock, Rotation } from './types';
+import type {
+  BlockDefinition,
+  CellPosition,
+  CircuitBoard,
+  Direction,
+  PlacedBlock,
+  Rotation,
+  SkillFusionRules,
+} from './types';
 
 type ConnectionBlock = Pick<BlockDefinition, 'id' | 'ports'>;
 
@@ -75,6 +83,8 @@ export type CircuitAnalysis = {
   waveStep: Map<string, number>;
   mergeCells: Set<string>;
   branchCells: Set<string>;
+  fullyConnectedCells: Set<string>;
+  straightLineLength: Map<string, number>;
   upstreamCells: Map<string, CellPosition[]>;
   downstreamCells: Map<string, CellPosition[]>;
 };
@@ -86,6 +96,8 @@ const emptyAnalysis = (): CircuitAnalysis => ({
   waveStep: new Map(),
   mergeCells: new Set(),
   branchCells: new Set(),
+  fullyConnectedCells: new Set(),
+  straightLineLength: new Map(),
   upstreamCells: new Map(),
   downstreamCells: new Map(),
 });
@@ -166,6 +178,37 @@ export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], s
   const downstreamCells = new Map([...downstreamKeys].map(([key, outputs]) => [key, outputs.map(positionForKey)]));
   const mergeCells = new Set([...poweredCells].filter((key) => (upstreamKeys.get(key)?.length ?? 0) >= 2));
   const branchCells = new Set([...poweredCells].filter((key) => (downstreamKeys.get(key)?.length ?? 0) >= 2));
+  const fullyConnectedCells = new Set(
+    [...poweredCells].filter((key) => {
+      const position = positionForKey(key);
+      const current = definitionAt(board, blocks, position);
+      if (!current) return false;
+      const connected = new Set(neighborsByKey.get(key) ?? []);
+      return rotatePorts(current.definition.ports, current.placed.rotation).every((direction) => {
+        if (position.row === sourceRow && position.column === 0 && direction === 'west') return true;
+        const vector = VECTORS[direction];
+        return connected.has(cellKey({ row: position.row + vector.row, column: position.column + vector.column }));
+      });
+    }),
+  );
+  const straightLineLength = new Map<string, number>();
+  const segmentLength = (key: string, direction: Direction) => {
+    let length = 0;
+    let position = positionForKey(key);
+    while (true) {
+      const vector = VECTORS[direction];
+      const next = { row: position.row + vector.row, column: position.column + vector.column };
+      const nextKey = cellKey(next);
+      if (!(neighborsByKey.get(cellKey(position)) ?? []).includes(nextKey)) return length;
+      length += 1;
+      position = next;
+    }
+  };
+  poweredCells.forEach((key) => {
+    const horizontal = 1 + segmentLength(key, 'west') + segmentLength(key, 'east');
+    const vertical = 1 + segmentLength(key, 'north') + segmentLength(key, 'south');
+    straightLineLength.set(key, Math.max(horizontal, vertical));
+  });
 
   return {
     poweredCells,
@@ -174,6 +217,8 @@ export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], s
     waveStep,
     mergeCells,
     branchCells,
+    fullyConnectedCells,
+    straightLineLength,
     upstreamCells,
     downstreamCells,
   };
@@ -187,6 +232,7 @@ export function calculateChargeByCell(
   board: CircuitBoard,
   blocks: BlockDefinition[],
   analysis: CircuitAnalysis,
+  fusionRules?: SkillFusionRules,
 ): Map<string, number> {
   const definitions = new Map(blocks.map((block) => [block.id, block]));
   const incomingCharge = new Map<string, number>();
@@ -205,7 +251,16 @@ export function calculateChargeByCell(
     const placed = blockAt(board, position);
     const block = placed ? definitions.get(placed.blockId) : undefined;
     const nodeBonus =
-      block?.effects.reduce((total, effect) => total + (effect.kind === 'charge' ? effect.amount : 0), 0) ?? 0;
+      block?.effects.reduce(
+        (total, effect) =>
+          total +
+          (effect.kind === 'charge'
+            ? (placed?.stars ?? 0) > 0 && fusionRules
+              ? Math.round(effect.amount * fusionRules.effectMultiplier)
+              : effect.amount
+            : 0),
+        0,
+      ) ?? 0;
 
     incomingCharge.set(key, incoming);
     outgoingCharge.set(key, incoming + nodeBonus);

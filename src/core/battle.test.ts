@@ -24,6 +24,12 @@ const testData = (): GameData => ({
     rerollCost: 1,
     shopSize: 3,
     rarityWeights: { common: 100, rare: 45, epic: 15, legendary: 4 },
+    skillFusion: {
+      copiesRequired: 3,
+      rewardChoices: 3,
+      effectMultiplier: 1.5,
+      cooldownReduction: 1,
+    },
     enemyGeneration: {
       startingNodes: 2,
       nodesPerRun: 1,
@@ -52,6 +58,7 @@ const testData = (): GameData => ({
       minimumWeaponTypesPerBuild: 1,
       requireSkillDesignForEveryBlock: false,
     },
+    placementPatterns: [],
     axes: [],
     builds: [],
     skills: [],
@@ -145,6 +152,30 @@ describe('1vs1 circuit battle', () => {
 
     expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(9);
     expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
+  });
+
+  it('applies upgraded parameters and cooldowns to a starred skill', () => {
+    const data = testData();
+    const board = route('strike');
+    board[1][0] = { blockId: 'strike', rotation: 0, stars: 1 };
+    const tick1 = resolveTick(data, createBattle(data, board, emptyBoard()), 1);
+    const tick2 = resolveTick(data, tick1, 2);
+
+    expect(tick1.trace.find((event) => event.kind === 'damage')?.value).toBe(5);
+    expect(tick2.trace.filter((event) => event.kind === 'damage')).toHaveLength(2);
+  });
+
+  it('activates a straight-line condition only when its minimum segment is complete', () => {
+    const data = testData();
+    data.blocks.find((block) => block.id === 'strike')!.effects = [
+      { kind: 'damage', amount: 3, trigger: { kind: 'straight-line-at-least', amount: 3 } },
+    ];
+
+    const short = resolveTick(data, createBattle(data, route('strike', 'guard'), emptyBoard()), 1);
+    const complete = resolveTick(data, createBattle(data, route('strike', 'guard', 'repair'), emptyBoard()), 1);
+
+    expect(short.trace.filter((event) => event.kind === 'damage')).toHaveLength(0);
+    expect(complete.trace.filter((event) => event.kind === 'damage')).toHaveLength(1);
   });
 
   it('plays one frame per circuit depth while parallel cells share a frame', () => {

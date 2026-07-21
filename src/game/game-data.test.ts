@@ -24,9 +24,38 @@ describe('game data', () => {
   });
 
   it('defines four progressively rarer shop tiers', () => {
+    expect(GAME_DATA.rules.shopSize).toBe(6);
     expect(GAME_DATA.rules.rarityWeights).toEqual({ common: 100, rare: 50, epic: 30, legendary: 15 });
     expect(new Set(GAME_DATA.blocks.map((block) => block.rarity))).toEqual(
       new Set(['common', 'rare', 'epic', 'legendary']),
+    );
+  });
+
+  it('defines three-copy fusion and enough same-rarity rewards for every tier', () => {
+    expect(GAME_DATA.rules.skillFusion).toEqual({
+      copiesRequired: 3,
+      rewardChoices: 3,
+      effectMultiplier: 1.5,
+      cooldownReduction: 1,
+    });
+    (['common', 'rare', 'epic', 'legendary'] as const).forEach((rarity) => {
+      expect(GAME_DATA.blocks.filter((block) => block.rarity === rarity).length, rarity).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it('uses difficult circuit conditions for stronger existing and new skills', () => {
+    const skill = (blockId: string) => GAME_DATA.buildDesign.skills.find((candidate) => candidate.blockId === blockId)!;
+    const block = (blockId: string) => GAME_DATA.blocks.find((candidate) => candidate.id === blockId)!;
+
+    expect(skill('return-coil').placementPatternId).toBe('loop');
+    expect(skill('long-route-fang').placementPatternId).toBe('straight-line');
+    expect(skill('accelerator').placementPatternId).toBe('fully-connected');
+    expect(block('venom-orbit').effects).toContainEqual(expect.objectContaining({ trigger: { kind: 'in-cycle' } }));
+    expect(block('sealed-junction').effects).toContainEqual(
+      expect.objectContaining({ trigger: { kind: 'all-ports-connected' } }),
+    );
+    expect(block('charge-line-lance').effects).toContainEqual(
+      expect.objectContaining({ trigger: { kind: 'straight-line-at-least', amount: 5 } }),
     );
   });
 
@@ -166,7 +195,7 @@ describe('game data', () => {
       return traits?.length === 1 && traits[0] === 'poison';
     });
 
-    expect(poisonOnly).toHaveLength(4);
+    expect(poisonOnly).toHaveLength(5);
     expect(poisonDesigns.length).toBeGreaterThan(poisonOnly.length);
     expect(poisonBlocks).toHaveLength(poisonDesigns.length);
     expect(poisonDesigns.every((skill) => skill.status === 'playable' && skill.blockId)).toBe(true);
@@ -198,7 +227,7 @@ describe('game data', () => {
     const branchingSkills = GAME_DATA.blocks.filter((block) => block.ports.length >= 3);
 
     expect(branchingSkills.map((block) => block.id).sort()).toEqual(
-      ['accelerator', 'arc-shot', 'barrier', 'charge-arrow', 'poison-needle'].sort(),
+      ['accelerator', 'arc-shot', 'barrier', 'charge-arrow', 'poison-needle', 'sealed-junction', 'venom-orbit'].sort(),
     );
     branchingSkills.forEach((block) => {
       if (block.cooldown) expect(block.cooldown, `${block.id} should pay a cooldown tax`).toBeGreaterThanOrEqual(2);

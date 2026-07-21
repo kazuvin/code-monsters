@@ -1,4 +1,5 @@
 import { analyzeCircuit, calculateChargeByCell, cellKey, cloneBoard } from './circuit';
+import { upgradeBlockDefinition } from './fusion';
 import { buffStatForEffect, buffStatsForBlock, effectScalingBonus, incomingSkillModifiers } from './skill-progress';
 import type {
   BattleState,
@@ -21,12 +22,15 @@ type PlannedActivation = {
   position: CellPosition;
   pathLength: number;
   inCycle: boolean;
+  allPortsConnected: boolean;
+  straightLineLength: number;
   upstream: CellPosition[];
   downstream: CellPosition[];
   boost: number;
   waveStep: number;
   mergeMultiplier: number;
   charge: number;
+  stars: 0 | 1;
 };
 
 export type BattleOptions = { enemyMaxHpBonus?: number };
@@ -105,7 +109,7 @@ const hasActivation = (block: BlockDefinition) =>
 function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tick: number): PlannedActivation[] {
   const definitions = new Map(data.blocks.map((block) => [block.id, block]));
   const analysis = analyzeCircuit(board, data.blocks, data.rules.sourceRow);
-  const chargeByCell = calculateChargeByCell(board, data.blocks, analysis);
+  const chargeByCell = calculateChargeByCell(board, data.blocks, analysis, data.rules.skillFusion);
   const plans: PlannedActivation[] = [];
 
   board.forEach((row, rowIndex) =>
@@ -113,10 +117,13 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
       const position = { row: rowIndex, column: columnIndex };
       const key = cellKey(position);
       if (!placed || !analysis.poweredCells.has(key)) return;
-      const block = definitions.get(placed.blockId);
-      if (!block || !hasActivation(block)) return;
+      const baseBlock = definitions.get(placed.blockId);
+      if (!baseBlock) return;
+      const stars = placed.stars ?? 0;
+      const block = upgradeBlockDefinition(baseBlock, stars, data.rules.skillFusion);
+      if (!hasActivation(block)) return;
       const upstream = analysis.upstreamCells.get(key) ?? [];
-      const modifiers = incomingSkillModifiers(board, data.blocks, analysis, position);
+      const modifiers = incomingSkillModifiers(board, data.blocks, analysis, position, data.rules.skillFusion);
       const cooldown = Math.max(1, (block.cooldown ?? 1) - modifiers.cooldownReduction);
       if ((tick - 1) % cooldown !== 0) return;
       plans.push({
@@ -125,12 +132,15 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
         position,
         pathLength: analysis.routeLength.get(key) ?? 1,
         inCycle: analysis.cyclicCells.has(key),
+        allPortsConnected: analysis.fullyConnectedCells.has(key),
+        straightLineLength: analysis.straightLineLength.get(key) ?? 1,
         upstream,
         downstream: analysis.downstreamCells.get(key) ?? [],
         boost: modifiers.effectPower,
         waveStep: analysis.waveStep.get(key) ?? 1,
         mergeMultiplier: analysis.mergeCells.has(key) ? data.rules.mergeEffectMultiplier : 1,
         charge: chargeByCell.get(key) ?? 0,
+        stars,
       });
     }),
   );
@@ -145,12 +155,20 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
 
 const triggerMatches = (
   trigger: EffectTrigger | undefined,
-  context: { enemyPoison: number; pathLength: number; inCycle: boolean },
+  context: {
+    enemyPoison: number;
+    pathLength: number;
+    inCycle: boolean;
+    allPortsConnected: boolean;
+    straightLineLength: number;
+  },
 ) => {
   if (!trigger) return true;
   if (trigger.kind === 'enemy-poisoned') return context.enemyPoison > 0;
   if (trigger.kind === 'path-length-at-least') return context.pathLength >= trigger.amount;
-  return context.inCycle;
+  if (trigger.kind === 'in-cycle') return context.inCycle;
+  if (trigger.kind === 'all-ports-connected') return context.allPortsConnected;
+  return context.straightLineLength >= trigger.amount;
 };
 
 const traceEvent = (
@@ -175,6 +193,7 @@ const traceEvent = (
   ...(buffStat ? { buffStat } : {}),
   ...(action.mergeMultiplier > 1 ? { mergeMultiplier: action.mergeMultiplier } : {}),
   ...(charge === undefined ? {} : { charge }),
+  ...(action.stars > 0 ? { stars: action.stars } : {}),
 });
 
 const systemTraceEvent = (
@@ -203,6 +222,7 @@ const numericAmount = (
       ? effectScalingBonus(effect.scaling, {
           enemyPoison: context.enemyPoison,
           pathLength: action.pathLength,
+          straightLineLength: action.straightLineLength,
         })
       : 0) +
     (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0);
@@ -248,6 +268,8 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
         enemyPoison: target.poison,
         pathLength: plan.pathLength,
         inCycle: plan.inCycle,
+        allPortsConnected: plan.allPortsConnected,
+        straightLineLength: plan.straightLineLength,
         selfBuffs: skillBuffs[plan.team][planKey] ?? {},
       };
 

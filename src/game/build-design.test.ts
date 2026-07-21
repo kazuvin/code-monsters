@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createBuildMatrix, renderBuildMatrixMarkdown, validateBuildDesign } from './build-design';
+import {
+  createBuildMatrix,
+  createSkillCoverageMatrix,
+  renderBuildMatrixMarkdown,
+  validateBuildDesign,
+} from './build-design';
 import { GAME_DATA } from './game-data';
 
 describe('build design', () => {
@@ -15,6 +20,7 @@ describe('build design', () => {
       'bow',
       'cannon',
       'device',
+      'magic',
     ]);
 
     const hybridSkills = GAME_DATA.buildDesign.skills.filter(
@@ -25,6 +31,27 @@ describe('build design', () => {
     GAME_DATA.buildDesign.skills.forEach((skill) => {
       expect(skill.axisLinks.map((link) => link.axisId).sort(), skill.id).toEqual(['trait', 'weapon']);
     });
+  });
+
+  it('tracks internal placement conditions and generates a trait-by-type coverage count', () => {
+    expect(GAME_DATA.buildDesign.placementPatterns.map((pattern) => pattern.id)).toEqual([
+      'free',
+      'loop',
+      'fully-connected',
+      'straight-line',
+    ]);
+    expect(GAME_DATA.buildDesign.skills.every((skill) => Boolean(skill.placementPatternId))).toBe(true);
+
+    const rows = createSkillCoverageMatrix(GAME_DATA.buildDesign);
+    expect(
+      rows.find((row) => row.placementPatternId === 'loop' && row.traitId === 'poison')?.counts.magic,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      rows.find((row) => row.placementPatternId === 'fully-connected' && row.traitId === 'neutral')?.counts.magic,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      rows.find((row) => row.placementPatternId === 'straight-line' && row.traitId === 'charge')?.counts.blade,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('adds charge while keeping poison open to weapon and cross-trait combinations', () => {
@@ -144,6 +171,8 @@ describe('build design', () => {
     expect(markdown).toContain('# ビルド・シナジーマトリクス');
     expect(markdown).toContain('| 特性 | ノード固有の蓄積・変換。無特性はどのビルドにも属さない |');
     expect(markdown).toContain('| `poison-needle` | `poison` | `bow` |');
+    expect(markdown).toContain('## 配置条件 × 特性 × 武器・装置（スキル数）');
+    expect(markdown).toContain('| 循環 × 毒 |');
     expect(markdown).toContain('配置思想 | 充電ノードを連ねた経路と遠い解放点');
     expect(markdown).toContain('| 培養 | 毒を残して育てる |');
     expect(markdown).toContain('| 破裂 | 毒を一気に破裂させる |');
