@@ -123,6 +123,12 @@ if ((await secondCell.locator('.block-core b').textContent())?.trim() !== second
 
 await secondCell.locator('.block-button').click();
 await desktop.getByRole('dialog').waitFor();
+if ((await desktop.getByRole('dialog').getByText('接続', { exact: true }).count()) !== 1) {
+  throw new Error('Skill detail does not show its direction-neutral connections');
+}
+if ((await desktop.getByRole('dialog').locator('.block-port.is-input, .block-port.is-output').count()) !== 0) {
+  throw new Error('Skill detail still distinguishes input and output ports');
+}
 const portsBefore = await desktop
   .locator('.dialog-block-preview .block-port')
   .evaluateAll((ports) => ports.map((port) => port.className).sort());
@@ -137,7 +143,7 @@ if ((await rotateButton.count()) > 0) {
   for (let rotation = 0; rotation < 3; rotation += 1) {
     await rotateButton.click();
   }
-} else if ((await desktop.getByText('向き固定', { exact: true }).count()) !== 1) {
+} else if ((await desktop.getByText('形は固定', { exact: true }).count()) !== 1) {
   throw new Error('A fixed-direction skill did not explain its rotation lock');
 }
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
@@ -190,23 +196,18 @@ await desktop.waitForTimeout(900);
 if ((await desktop.locator('.battle-circuit-cell.is-firing').count()) === 0) {
   throw new Error('Circuit summary did not show a firing skill');
 }
-const enemyBuffedSkill = desktop.locator(
-  '.battle-circuit-summary.team-enemy .battle-circuit-skill:has(.block-buff-chip)',
-);
-await enemyBuffedSkill.first().waitFor({ timeout: 5000 });
-await enemyBuffedSkill.first().click();
+const enemyMergeSkill = desktop.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]');
+await enemyMergeSkill.waitFor({ timeout: 5000 });
+await enemyMergeSkill.click();
 await desktop.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
-if (
-  !(await desktop.getByText('発動間隔', { exact: true }).count()) ||
-  !(await desktop.locator('.battle-buff-values b').textContent())?.includes('-1拍')
-) {
-  throw new Error('Enemy merge skill detail does not show its acceleration');
-}
 if (!(await desktop.getByText('相手の技', { exact: true }).count())) {
   throw new Error('Enemy skill detail does not identify its owner');
 }
 if (!(await desktop.locator('.dialog-merge-rule').textContent())?.includes('×2')) {
   throw new Error('Enemy merge skill detail does not show its doubled effect');
+}
+if (!(await desktop.getByRole('dialog').textContent())?.includes('接続左・上・右 · 合流')) {
+  throw new Error('Enemy merge skill is mislabeled as a branch');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-buff-detail.png', fullPage: true });
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
@@ -289,11 +290,9 @@ if (!mobileHealth || mobileHealth.width > 68 || mobileHealth.height > 9)
 if ((await mobile.locator('.battle-circuit-cell.is-firing').count()) === 0) {
   throw new Error('Mobile circuit summary did not show a firing skill');
 }
-const mobileBuffedSkill = mobile.locator(
-  '.battle-circuit-summary.team-enemy .battle-circuit-skill:has(.block-buff-chip)',
-);
-await mobileBuffedSkill.first().waitFor({ timeout: 5000 });
-await mobileBuffedSkill.first().click();
+const mobileMergeSkill = mobile.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]');
+await mobileMergeSkill.waitFor({ timeout: 5000 });
+await mobileMergeSkill.click();
 await mobile.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
 if (!(await mobile.locator('.dialog-merge-rule').textContent())?.includes('×2')) {
   throw new Error('Mobile merge detail does not show its doubled effect');

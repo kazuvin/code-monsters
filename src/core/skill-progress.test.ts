@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { analyzeCircuit } from './circuit';
 import { buffStatsForBlock, incomingSkillModifiers, summarizeSkillProgress } from './skill-progress';
 import type { BlockDefinition, CircuitBoard } from './types';
 
@@ -10,8 +11,7 @@ const block = (effects: BlockDefinition['effects']): BlockDefinition => ({
   glyph: '試',
   price: 1,
   rarity: 'common',
-  inputPorts: ['west'],
-  outputPorts: ['east'],
+  ports: ['west', 'east'],
   effects,
   cooldown: 1,
 });
@@ -60,7 +60,7 @@ describe('skill progress', () => {
     const blocks = [
       { ...block([{ kind: 'amplify', amount: 2 }]), id: 'amp' },
       { ...block([{ kind: 'haste', amount: 1 }]), id: 'fast' },
-      { ...block([{ kind: 'damage', amount: 2 }]), id: 'strike', inputPorts: ['west', 'north'] as const },
+      { ...block([{ kind: 'damage', amount: 2 }]), id: 'strike', ports: ['west', 'east', 'north'] as const },
     ] satisfies BlockDefinition[];
     const board: CircuitBoard = [
       [null, { blockId: 'fast', rotation: 0 }],
@@ -70,7 +70,8 @@ describe('skill progress', () => {
       ],
     ];
 
-    expect(incomingSkillModifiers(board, blocks, new Set(['1:0', '1:1']), { row: 1, column: 1 })).toEqual({
+    const analysis = analyzeCircuit(board, blocks, 1);
+    expect(incomingSkillModifiers(board, blocks, analysis, { row: 1, column: 1 })).toEqual({
       effectPower: 2,
       cooldownReduction: 0,
     });

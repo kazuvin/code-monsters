@@ -9,10 +9,10 @@ describe('circuit connectivity', () => {
   });
 
   it('powers every mutually connected block, including a skill in the middle of a route', () => {
-    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
-      { id: 'guard', inputPorts: ['west'], outputPorts: ['east'] },
-      { id: 'strike', inputPorts: ['west'], outputPorts: ['east'] },
-      { id: 'rail', inputPorts: ['west'], outputPorts: [] },
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'guard', ports: ['west', 'east'] },
+      { id: 'strike', ports: ['west', 'east'] },
+      { id: 'rail', ports: ['west'] },
     ];
     const board: CircuitBoard = [
       [null, null, null],
@@ -28,9 +28,9 @@ describe('circuit connectivity', () => {
   });
 
   it('does not power a block when facing ports do not match', () => {
-    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
-      { id: 'strike', inputPorts: ['west'], outputPorts: ['east'] },
-      { id: 'breaker', inputPorts: ['west'], outputPorts: ['north'] },
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'strike', ports: ['west', 'east'] },
+      { id: 'breaker', ports: ['west', 'north'] },
     ];
     const board: CircuitBoard = [
       [null, null],
@@ -43,10 +43,10 @@ describe('circuit connectivity', () => {
     expect(findPoweredCells(board, blocks, 1)).toEqual(new Set(['1:0']));
   });
 
-  it('does not send power backwards through an input', () => {
-    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
-      { id: 'source-skill', inputPorts: ['west'], outputPorts: ['east'] },
-      { id: 'backward-skill', inputPorts: ['east'], outputPorts: ['west'] },
+  it('sends power through a connection in either direction', () => {
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'source-skill', ports: ['west', 'east'] },
+      { id: 'backward-skill', ports: ['east', 'west'] },
     ];
     const board: CircuitBoard = [
       [null, null],
@@ -56,15 +56,32 @@ describe('circuit connectivity', () => {
       ],
     ];
 
-    expect(findPoweredCells(board, blocks, 1)).toEqual(new Set(['1:0']));
+    expect(findPoweredCells(board, blocks, 1)).toEqual(new Set(['1:0', '1:1']));
   });
 
-  it('reports route length and reachable directed cycles', () => {
-    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
-      { id: 'a', inputPorts: ['west', 'east'], outputPorts: ['north'] },
-      { id: 'b', inputPorts: ['south'], outputPorts: ['east'] },
-      { id: 'c', inputPorts: ['west'], outputPorts: ['south'] },
-      { id: 'd', inputPorts: ['north'], outputPorts: ['west'] },
+  it('automatically powers every connected branch of a three-port skill', () => {
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'junction', ports: ['west', 'north', 'east'] },
+      { id: 'upper', ports: ['east', 'south'] },
+      { id: 'right', ports: ['west', 'east'] },
+    ];
+    const board: CircuitBoard = [
+      [{ blockId: 'upper', rotation: 0 }, null],
+      [
+        { blockId: 'junction', rotation: 0 },
+        { blockId: 'right', rotation: 0 },
+      ],
+    ];
+
+    expect(findPoweredCells(board, blocks, 1)).toEqual(new Set(['1:0', '0:0', '1:1']));
+  });
+
+  it('reports route length and reachable cycles', () => {
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'a', ports: ['west', 'east', 'north'] },
+      { id: 'b', ports: ['south', 'east'] },
+      { id: 'c', ports: ['west', 'south'] },
+      { id: 'd', ports: ['north', 'west'] },
     ];
     const board: CircuitBoard = [
       [
@@ -80,7 +97,7 @@ describe('circuit connectivity', () => {
     const analysis = analyzeCircuit(board, blocks, 1);
 
     expect(analysis.routeLength.get('1:0')).toBe(1);
-    expect(analysis.routeLength.get('1:1')).toBe(4);
+    expect(analysis.routeLength.get('1:1')).toBe(2);
     expect(analysis.cyclicCells).toEqual(new Set(['1:0', '0:0', '0:1', '1:1']));
   });
 
@@ -113,13 +130,13 @@ describe('circuit connectivity', () => {
   });
 
   it('waits for the longer branch before firing a merge cell', () => {
-    const blocks: Array<{ id: string; inputPorts: Direction[]; outputPorts: Direction[] }> = [
-      { id: 'split', inputPorts: ['west'], outputPorts: ['north', 'east'] },
-      { id: 'east', inputPorts: ['west'], outputPorts: ['east'] },
-      { id: 'north-east', inputPorts: ['south'], outputPorts: ['east'] },
-      { id: 'east-east', inputPorts: ['west'], outputPorts: ['east'] },
-      { id: 'down', inputPorts: ['west'], outputPorts: ['south'] },
-      { id: 'merge', inputPorts: ['west', 'north'], outputPorts: ['east'] },
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'split', ports: ['west', 'north', 'east'] },
+      { id: 'east', ports: ['west', 'east'] },
+      { id: 'north-east', ports: ['south', 'east'] },
+      { id: 'east-east', ports: ['west', 'east'] },
+      { id: 'down', ports: ['west', 'south'] },
+      { id: 'merge', ports: ['west', 'north', 'east'] },
     ];
     const board: CircuitBoard = [
       [null, null, null],
@@ -144,9 +161,10 @@ describe('circuit connectivity', () => {
     expect(analysis.waveStep.get('1:2')).toBe(4);
     expect(analysis.waveStep.get('2:2')).toBe(5);
     expect(analysis.mergeCells).toEqual(new Set(['2:2']));
+    expect(analysis.branchCells).toEqual(new Set(['2:0']));
   });
 
-  it('does not treat a returning cycle edge as a merge', () => {
+  it('treats the far three-port junction of a cycle as its merge', () => {
     const board: CircuitBoard = Array.from({ length: GAME_DATA.rules.boardSize }, () =>
       Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
     );
@@ -155,6 +173,6 @@ describe('circuit connectivity', () => {
     board[1][1] = { blockId: 'return-coil', rotation: 0 };
     board[1][0] = { blockId: 'serpentine-venom', rotation: 0 };
 
-    expect(analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow).mergeCells).toEqual(new Set());
+    expect(analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow).mergeCells).toEqual(new Set(['1:0']));
   });
 });

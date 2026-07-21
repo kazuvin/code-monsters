@@ -24,7 +24,7 @@ const validateBoard = (name: string, board: CircuitBoard, data: GameData, errors
 
 export function validateGameData(data: GameData): string[] {
   const errors: string[] = [];
-  const opposite = { north: 'south', east: 'west', south: 'north', west: 'east' } as const;
+  const directions = new Set(['north', 'east', 'south', 'west']);
   const unique = (label: string, ids: string[]) => {
     const seen = new Set<string>();
     for (const id of ids) {
@@ -62,15 +62,13 @@ export function validateGameData(data: GameData): string[] {
     if (!blockIds.has(blockId)) errors.push(`startingRack[${index}] references unknown block "${blockId}"`);
   });
   const buildIds = new Set(data.buildDesign.builds.map((build) => build.id));
-  const inputDirections = new Set(data.blocks.flatMap((block) => block.inputPorts));
   data.blocks.forEach((block) => {
     if (!block.description.trim().endsWith('。'))
       errors.push(`block "${block.id}" description must be a complete sentence`);
-    if (block.inputPorts.length + block.outputPorts.length === 0) errors.push(`block "${block.id}" must have a port`);
-    block.outputPorts.forEach((output) => {
-      if (!inputDirections.has(opposite[output])) {
-        errors.push(`block "${block.id}" output "${output}" has no compatible receiver`);
-      }
+    if (block.ports.length === 0) errors.push(`block "${block.id}" must have a port`);
+    if (new Set(block.ports).size !== block.ports.length) errors.push(`block "${block.id}" has duplicate ports`);
+    block.ports.forEach((port) => {
+      if (!directions.has(port)) errors.push(`block "${block.id}" has invalid port "${port}"`);
     });
     if (block.effects.length === 0) errors.push(`block "${block.id}" must have an effect`);
     const active = block.effects.some((effect) => effect.kind !== 'amplify' && effect.kind !== 'haste');

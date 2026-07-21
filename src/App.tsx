@@ -77,9 +77,9 @@ const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplie
       if (effect.kind === 'poison') return amountLabel('毒');
       if (effect.kind === 'rupture-poison') return `毒を半分消費・1毒につき${currentAmount}ダメージ`;
       if (effect.kind === 'growth') {
-        const target = effect.target === 'self' ? '自身' : effect.target === 'inputs' ? '前の技' : '次の技';
+        const target = effect.target === 'self' ? '自身' : effect.target === 'upstream' ? '前の技' : '次の技';
         const stat = effect.stat === 'all' ? '発動効果' : BUFF_COPY[effect.stat].label;
-        return `${target}の${stat}を戦闘中 +${effect.amount}`;
+        return `${target}の${stat}を戦闘中 +${effect.amount * multiplier}`;
       }
       if (effect.kind === 'amplify') return `接続先の発動効果を +${effect.amount}`;
       return `接続先の発動間隔を ${effect.amount}拍短縮`;
@@ -118,8 +118,7 @@ const BlockVisual = ({
   powered?: boolean;
   compact?: boolean;
 }) => {
-  const inputPorts = rotatePorts(block.inputPorts, rotation);
-  const outputPorts = rotatePorts(block.outputPorts, rotation);
+  const ports = rotatePorts(block.ports, rotation);
   const visualEffect = block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
     ? 'poison'
     : block.effects[0]?.kind;
@@ -128,11 +127,8 @@ const BlockVisual = ({
       className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
       aria-hidden="true"
     >
-      {inputPorts.map((port) => (
-        <i className={`block-port port-${port} is-input`} key={`input-${port}`} />
-      ))}
-      {outputPorts.map((port) => (
-        <i className={`block-port port-${port} is-output`} key={`output-${port}`} />
+      {ports.map((port) => (
+        <i className={`block-port port-${port}`} key={port} />
       ))}
       <span className="block-core">
         <b>{block.glyph}</b>
@@ -299,7 +295,7 @@ const BattleCircuitSummary = ({
                     : '未通電';
               if (block && placed) {
                 const position = { row: rowIndex, column: columnIndex };
-                const modifiers = incomingSkillModifiers(board, GAME_DATA.blocks, poweredCells, position);
+                const modifiers = incomingSkillModifiers(board, GAME_DATA.blocks, analysis, position);
                 const progress = summarizeSkillProgress(block, buffs[key], modifiers, {
                   enemyPoison,
                   pathLength: analysis.routeLength.get(key) ?? 0,
@@ -594,7 +590,7 @@ export function App() {
     if (!detail?.position) return;
     const next = rotateBoardBlock(board, detail.position, GAME_DATA.blocks);
     if (next === board) {
-      setMessage(detailBlock?.rotatable === false ? 'この技は向き固定' : '回せる技がありません');
+      setMessage(detailBlock?.rotatable === false ? 'この技は形が固定' : '回せる技がありません');
       return;
     }
     setBoard(next);
@@ -681,7 +677,7 @@ export function App() {
   const detailAnalysis = analyzeCircuit(detailBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
   const detailModifiers =
     detail?.position && detailCellKey && detailPoweredCells.has(detailCellKey)
-      ? incomingSkillModifiers(detailBoard, GAME_DATA.blocks, detailPoweredCells, detail.position)
+      ? incomingSkillModifiers(detailBoard, GAME_DATA.blocks, detailAnalysis, detail.position)
       : { effectPower: 0, cooldownReduction: 0 };
   const detailBuffs =
     detailBattleTeam && detailCellKey ? (battle.skillBuffs[detailBattleTeam][detailCellKey] ?? {}) : {};
@@ -698,6 +694,16 @@ export function App() {
     : undefined;
   const detailMergeMultiplier =
     detailCellKey && detailAnalysis.mergeCells.has(detailCellKey) ? GAME_DATA.rules.mergeEffectMultiplier : 1;
+  const detailTopology = detailCellKey
+    ? [
+        detailAnalysis.branchCells.has(detailCellKey) ? '自動分岐' : '',
+        detailAnalysis.mergeCells.has(detailCellKey) ? '合流' : '',
+      ]
+        .filter(Boolean)
+        .join('・')
+    : detailBlock && detailBlock.ports.length >= 3
+      ? '3方向'
+      : '';
 
   return (
     <main className={`app-shell phase-${phase}`}>
@@ -1061,19 +1067,12 @@ export function App() {
                   </dd>
                 </div>
                 <div>
-                  <dt>入力</dt>
+                  <dt>接続</dt>
                   <dd>
-                    {rotatePorts(detailBlock.inputPorts, detailPlaced?.rotation ?? 0)
+                    {rotatePorts(detailBlock.ports, detailPlaced?.rotation ?? 0)
                       .map((port) => ({ north: '上', east: '右', south: '下', west: '左' })[port as Direction])
-                      .join('・') || 'なし'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>出力</dt>
-                  <dd>
-                    {rotatePorts(detailBlock.outputPorts, detailPlaced?.rotation ?? 0)
-                      .map((port) => ({ north: '上', east: '右', south: '下', west: '左' })[port as Direction])
-                      .join('・') || '終端'}
+                      .join('・')}
+                    {detailTopology ? ` · ${detailTopology}` : ''}
                   </dd>
                 </div>
               </dl>
@@ -1081,7 +1080,7 @@ export function App() {
             {detail.location === 'board' && (
               <div className="dialog-actions">
                 {detailBlock.rotatable === false ? (
-                  <span className="fixed-direction">向き固定</span>
+                  <span className="fixed-direction">形は固定</span>
                 ) : (
                   <button onClick={rotateDetailBlock}>回す ↻</button>
                 )}

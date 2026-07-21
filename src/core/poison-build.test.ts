@@ -25,11 +25,13 @@ describe('poison build', () => {
     const tick1 = resolveTick(data, state, 1);
     const tick2 = resolveTick(data, tick1, 2);
     const tick3 = resolveTick(data, tick2, 3);
-    const enemy = tick3.fighters.find((fighter) => fighter.team === 'enemy')!;
+    const tick4 = resolveTick(data, tick3, 4);
+    const tick5 = resolveTick(data, tick4, 5);
+    const enemy = tick5.fighters.find((fighter) => fighter.team === 'enemy')!;
 
     expect(enemy.poison).toBe(4);
     expect(enemy.hp).toBe(enemy.maxHp - 3);
-    expect(tick3.skillBuffs.player['2:0']).toEqual({ poison: 2 });
+    expect(tick5.skillBuffs.player['2:0']).toEqual({ poison: 2 });
   });
 
   it('keeps poison and grows an output payoff across the battle', () => {
@@ -44,7 +46,7 @@ describe('poison build', () => {
 
     expect(tick1.skillBuffs.player['2:2']).toEqual({ poison: 1 });
     expect(tick3.skillBuffs.player['2:2']).toEqual({ poison: 2 });
-    expect(enemy.poison).toBe(12);
+    expect(enemy.poison).toBe(7);
   });
 
   it('activates every skill in a real poison cycle and applies named buffs in route order', () => {
@@ -69,7 +71,7 @@ describe('poison build', () => {
 
     expect(firedBlocks).toEqual(new Set(['poison-needle', 'cultivation-blade', 'return-coil', 'serpentine-venom']));
     expect(result.skillBuffs.player['1:1']).toEqual({ shield: 2 });
-    expect(result.skillBuffs.player['1:0']).toEqual({ poison: 2 });
+    expect(result.skillBuffs.player['1:0']).toEqual({ poison: 1 });
     expect(player.shield).toBe(2);
   });
 
@@ -86,7 +88,7 @@ describe('poison build', () => {
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
     expect(firedBlocks).toEqual(['arc-shot', 'corrosion-film', 'strike']);
-    expect(enemy.hp).toBe(enemy.maxHp - 5);
+    expect(enemy.hp).toBe(enemy.maxHp - 4);
     expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
   });
 
@@ -99,7 +101,7 @@ describe('poison build', () => {
     board[2][2] = { blockId: 'poison-needle', rotation: 0 };
     board[1][0] = { blockId: 'corrosion-film', rotation: 0 };
     board[1][1] = { blockId: 'strike', rotation: 0 };
-    board[1][2] = { blockId: 'serpentine-venom', rotation: 0 };
+    board[1][2] = { blockId: 'repair', rotation: 3 };
 
     const state = createBattle(data, board, emptyBoard());
     state.fighters.find((fighter) => fighter.team === 'enemy')!.poison = 1;

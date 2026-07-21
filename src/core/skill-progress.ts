@@ -1,4 +1,4 @@
-import { cellKey, connectedInputs } from './circuit';
+import { cellKey, type CircuitAnalysis } from './circuit';
 import type {
   ActiveEffect,
   BlockDefinition,
@@ -59,12 +59,11 @@ export function effectScalingBonus(scaling: EffectScaling | undefined, context: 
 export function incomingSkillModifiers(
   board: CircuitBoard,
   blocks: BlockDefinition[],
-  poweredCells: ReadonlySet<string>,
+  analysis: CircuitAnalysis,
   position: CellPosition,
 ): SkillModifiers {
   const definitions = new Map(blocks.map((block) => [block.id, block]));
-  const inputs = connectedInputs(board, blocks, position)
-    .filter((input) => poweredCells.has(cellKey(input)))
+  const inputs = (analysis.upstreamCells.get(cellKey(position)) ?? [])
     .map((input) => board[input.row][input.column])
     .map((placed) => (placed ? definitions.get(placed.blockId) : undefined))
     .filter((block): block is BlockDefinition => Boolean(block));

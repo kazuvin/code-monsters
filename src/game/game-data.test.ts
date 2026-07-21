@@ -35,7 +35,7 @@ describe('game data', () => {
     expect(analysis.mergeCells).toEqual(new Set(['2:2']));
   });
 
-  it('implements all ten poison designs as fixed-direction playable skills', () => {
+  it('implements all ten poison designs as fixed-shape playable skills', () => {
     const poisonDesigns = GAME_DATA.buildDesign.skills.filter((skill) =>
       skill.buildLinks.some((link) => link.buildId === 'poison'),
     );
@@ -50,14 +50,22 @@ describe('game data', () => {
     );
   });
 
-  it('has at least one playable receiver for every output direction', () => {
-    const opposite = { north: 'south', east: 'west', south: 'north', west: 'east' } as const;
-    const inputDirections = new Set(GAME_DATA.blocks.flatMap((block) => block.inputPorts));
-
+  it('uses one undirected set of unique connection ports for every skill', () => {
     GAME_DATA.blocks.forEach((block) => {
-      block.outputPorts.forEach((output) => {
-        expect(inputDirections.has(opposite[output]), `${block.id} output ${output} has no receiver`).toBe(true);
-      });
+      expect(block.ports.length, `${block.id} needs a port`).toBeGreaterThan(0);
+      expect(new Set(block.ports).size, `${block.id} has duplicate ports`).toBe(block.ports.length);
+    });
+  });
+
+  it('makes three-port branching skills slower or more expensive than straight skills', () => {
+    const branchingSkills = GAME_DATA.blocks.filter((block) => block.ports.length >= 3);
+
+    expect(branchingSkills.map((block) => block.id).sort()).toEqual(
+      ['accelerator', 'arc-shot', 'barrier', 'poison-needle', 'serpentine-venom'].sort(),
+    );
+    branchingSkills.forEach((block) => {
+      if (block.cooldown) expect(block.cooldown, `${block.id} should pay a cooldown tax`).toBeGreaterThanOrEqual(2);
+      else expect(block.price, `${block.id} should pay a price tax`).toBeGreaterThanOrEqual(4);
     });
   });
 

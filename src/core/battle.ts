@@ -1,4 +1,4 @@
-import { analyzeCircuit, cellKey, cloneBoard, connectedInputs, connectedOutputs } from './circuit';
+import { analyzeCircuit, cellKey, cloneBoard } from './circuit';
 import { buffStatForEffect, buffStatsForBlock, effectScalingBonus, incomingSkillModifiers } from './skill-progress';
 import type {
   BattleState,
@@ -21,8 +21,8 @@ type PlannedActivation = {
   position: CellPosition;
   pathLength: number;
   inCycle: boolean;
-  inputs: CellPosition[];
-  outputs: CellPosition[];
+  upstream: CellPosition[];
+  downstream: CellPosition[];
   boost: number;
   waveStep: number;
   mergeMultiplier: number;
@@ -105,8 +105,8 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
       if (!placed || !analysis.poweredCells.has(key)) return;
       const block = definitions.get(placed.blockId);
       if (!block || !hasActivation(block)) return;
-      const inputs = connectedInputs(board, data.blocks, position);
-      const modifiers = incomingSkillModifiers(board, data.blocks, analysis.poweredCells, position);
+      const upstream = analysis.upstreamCells.get(key) ?? [];
+      const modifiers = incomingSkillModifiers(board, data.blocks, analysis, position);
       const cooldown = Math.max(1, (block.cooldown ?? 1) - modifiers.cooldownReduction);
       if ((tick - 1) % cooldown !== 0) return;
       plans.push({
@@ -115,8 +115,8 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
         position,
         pathLength: analysis.routeLength.get(key) ?? 1,
         inCycle: analysis.cyclicCells.has(key),
-        inputs,
-        outputs: connectedOutputs(board, data.blocks, position),
+        upstream,
+        downstream: analysis.downstreamCells.get(key) ?? [],
         boost: modifiers.effectPower,
         waveStep: analysis.waveStep.get(key) ?? 1,
         mergeMultiplier: analysis.mergeCells.has(key) ? data.rules.mergeEffectMultiplier : 1,
@@ -273,7 +273,7 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
         }
         if (effect.kind === 'growth') {
           const targets =
-            effect.target === 'self' ? [plan.position] : effect.target === 'inputs' ? plan.inputs : plan.outputs;
+            effect.target === 'self' ? [plan.position] : effect.target === 'upstream' ? plan.upstream : plan.downstream;
           targets.forEach((position) => {
             const targetKey = cellKey(position);
             const targetPlaced = (plan.team === 'player' ? state.playerBoard : state.enemyBoard)[position.row][

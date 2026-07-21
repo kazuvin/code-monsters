@@ -469,14 +469,6 @@ button:focus-visible {
   background: #527889;
 }
 
-.block-port.is-input {
-  background: #477080;
-}
-
-.block-port.is-output {
-  background: var(--amber);
-}
-
 .is-powered > .block-port {
   background: var(--cyan);
   box-shadow: 0 0 8px rgb(93 231 242 / 80%);

@@ -37,7 +37,7 @@ export type BlockEffect =
   | {
       kind: 'growth';
       amount: number;
-      target: 'self' | 'inputs' | 'outputs';
+      target: 'self' | 'upstream' | 'downstream';
       stat: BuffTarget;
       trigger?: EffectTrigger;
     }
@@ -53,8 +53,7 @@ export type BlockDefinition = {
   price: number;
   rarity: Rarity;
   shopWeight?: number;
-  inputPorts: Direction[];
-  outputPorts: Direction[];
+  ports: Direction[];
   rotatable?: boolean;
   buildIds?: string[];
   effects: BlockEffect[];
