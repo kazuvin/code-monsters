@@ -519,11 +519,10 @@ const continuedPulse = await pulse
 if (JSON.stringify(continuedPulse) !== JSON.stringify(['1:1', '2:2'])) {
   throw new Error(`Split paths did not continue without waiting: ${JSON.stringify(continuedPulse)}`);
 }
-await pulse.clock.runFor(480);
 const mergingPulse = pulse.locator('.battle-circuit-summary.team-enemy .battle-circuit-cell.is-merging');
 if (
   (await mergingPulse.count()) !== 1 ||
-  (await mergingPulse.getAttribute('data-cell-key')) !== '1:2' ||
+  (await mergingPulse.getAttribute('data-cell-key')) !== '1:1' ||
   !(await mergingPulse.locator('.block-merge-chip').textContent())?.includes('×2')
 ) {
   const pulseState = await pulse
@@ -534,6 +533,13 @@ if (
   throw new Error(`Merged pulse did not arrive last with its doubled-effect marker: ${JSON.stringify(pulseState)}`);
 }
 await pulse.screenshot({ path: '/tmp/code-monsters-circuit-pulse-merge.png', fullPage: true });
+await pulse.clock.runFor(480);
+const terminalPulse = await pulse
+  .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
+  .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
+if (JSON.stringify(terminalPulse) !== JSON.stringify(['1:2'])) {
+  throw new Error(`Merged pulse did not continue to the terminal node: ${JSON.stringify(terminalPulse)}`);
+}
 await pulse.clock.runFor(480);
 const cooldownSource = pulse.locator('.battle-circuit-summary.team-enemy [data-cell-key="2:0"]');
 if ((await cooldownSource.getAttribute('data-pulse-step')) !== '1') await pulse.clock.runFor(480);
@@ -674,14 +680,19 @@ if (
 await lockedRun.getByRole('button', { name: /戦闘開始/ }).click();
 await lockedRun.locator('.battle-screen').waitFor();
 const secondRunRival = (await lockedRun.locator('.rival-readout').textContent()) ?? '';
-if (!secondRunRival.includes('LV.02') || !secondRunRival.includes('8 NODE')) {
+if (!secondRunRival.includes('LV.02') || !secondRunRival.includes('7 NODE') || !secondRunRival.includes('40/40 COIN')) {
   throw new Error(`The rival did not grow on run two: ${secondRunRival}`);
 }
-if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 8) {
-  throw new Error('The generated run-two rival circuit does not contain eight powered nodes');
+if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 7) {
+  throw new Error('The generated run-two rival circuit does not contain seven affordable powered nodes');
 }
-if (!(await lockedRun.locator('.arena-fighter.team-enemy .unit-health').getAttribute('aria-label'))?.includes('5300')) {
+if (!(await lockedRun.locator('.arena-fighter.team-enemy .unit-health').getAttribute('aria-label'))?.includes('7500')) {
   throw new Error('The run-two rival did not receive its configured health growth');
+}
+if (
+  !(await lockedRun.locator('.arena-fighter.team-player .unit-health').getAttribute('aria-label'))?.includes('7500')
+) {
+  throw new Error('The run-two player did not receive the same configured health growth');
 }
 
 const fusion = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });

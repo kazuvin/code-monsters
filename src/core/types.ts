@@ -166,6 +166,13 @@ export type SkillFusionRules = {
   cooldownReduction: number;
 };
 
+export type LevelProgressionRules = {
+  runsPerLevel: number;
+  maxLevel: number;
+  hpPerLevel: number;
+  rarityWeightMultiplierPerLevel: RarityWeights;
+};
+
 export type CircuitBoard = Array<Array<PlacedBlock | null>>;
 
 export type GameData = {
@@ -187,14 +194,12 @@ export type GameData = {
     rerollCost: number;
     shopSize: number;
     rarityWeights: RarityWeights;
+    levelProgression: LevelProgressionRules;
     skillFusion: SkillFusionRules;
     enemyGeneration: {
       startingNodes: number;
       nodesPerRun: number;
       maxNodes: number;
-      epicUnlockRun: number;
-      legendaryUnlockRun: number;
-      hpGrowthPerRun: number;
     };
   };
   units: UnitDefinition[];

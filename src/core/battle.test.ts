@@ -24,6 +24,12 @@ const testData = (): GameData => ({
     rerollCost: 1,
     shopSize: 3,
     rarityWeights: { common: 100, rare: 45, epic: 15, legendary: 4 },
+    levelProgression: {
+      runsPerLevel: 1,
+      maxLevel: 3,
+      hpPerLevel: 5,
+      rarityWeightMultiplierPerLevel: { common: 0.96, rare: 1.02, epic: 1.08, legendary: 1.14 },
+    },
     skillFusion: {
       copiesRequired: 3,
       rewardChoices: 3,
@@ -34,9 +40,6 @@ const testData = (): GameData => ({
       startingNodes: 2,
       nodesPerRun: 1,
       maxNodes: 3,
-      epicUnlockRun: 2,
-      legendaryUnlockRun: 3,
-      hpGrowthPerRun: 0,
     },
   },
   units: [
@@ -136,6 +139,15 @@ const route = (...blockIds: string[]): CircuitBoard => {
 };
 
 describe('1vs1 circuit battle', () => {
+  it('can apply the same level health bonus to both teams', () => {
+    const state = createBattle(testData(), emptyBoard(), emptyBoard(), {
+      playerMaxHpBonus: 5,
+      enemyMaxHpBonus: 5,
+    });
+
+    expect(state.fighters.map((fighter) => fighter.maxHp)).toEqual([17, 17]);
+  });
+
   it('activates powered skills on their own cooldowns', () => {
     const data = testData();
     const state = createBattle(data, route('guard'), emptyBoard());

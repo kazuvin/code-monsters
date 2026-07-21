@@ -33,7 +33,7 @@ type PlannedActivation = {
   stars: 0 | 1;
 };
 
-export type BattleOptions = { enemyMaxHpBonus?: number };
+export type BattleOptions = { playerMaxHpBonus?: number; enemyMaxHpBonus?: number };
 
 const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player');
 
@@ -62,7 +62,7 @@ const fighterFor = (data: GameData, team: Team, options: BattleOptions): Fighter
   const unitId = team === 'player' ? data.playerUnitId : data.enemyUnitId;
   const unit = data.units.find((candidate) => candidate.id === unitId);
   if (!unit) throw new Error(`Missing ${team} unit "${unitId}"`);
-  const maxHp = unit.maxHp + (team === 'enemy' ? (options.enemyMaxHpBonus ?? 0) : 0);
+  const maxHp = unit.maxHp + (team === 'player' ? (options.playerMaxHpBonus ?? 0) : (options.enemyMaxHpBonus ?? 0));
   return {
     instanceId: `${team}-${unit.id}`,
     unitId: unit.id,

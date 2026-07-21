@@ -63,10 +63,16 @@ export function validateGameData(data: GameData): string[] {
   if (enemyGeneration.maxNodes < enemyGeneration.startingNodes || enemyGeneration.maxNodes > boardCellCount) {
     errors.push('enemyGeneration.maxNodes must fit the board and not be below startingNodes');
   }
-  if (enemyGeneration.epicUnlockRun < 1 || enemyGeneration.legendaryUnlockRun <= enemyGeneration.epicUnlockRun) {
-    errors.push('enemyGeneration rarity unlock runs must progress from epic to legendary');
+  const levelProgression = data.rules.levelProgression;
+  if (!Number.isInteger(levelProgression.runsPerLevel) || levelProgression.runsPerLevel < 1) {
+    errors.push('levelProgression.runsPerLevel must be a positive integer');
   }
-  if (enemyGeneration.hpGrowthPerRun < 0) errors.push('enemyGeneration.hpGrowthPerRun must not be negative');
+  if (!Number.isInteger(levelProgression.maxLevel) || levelProgression.maxLevel < 1) {
+    errors.push('levelProgression.maxLevel must be a positive integer');
+  }
+  if (!Number.isFinite(levelProgression.hpPerLevel) || levelProgression.hpPerLevel < 0) {
+    errors.push('levelProgression.hpPerLevel must not be negative');
+  }
   if (data.rules.poisonTickSeconds <= 0) errors.push('poisonTickSeconds must be positive');
   if (data.rules.poisonDecay < 0) errors.push('poisonDecay must not be negative');
   if (data.rules.mergeEffectMultiplier <= 1) errors.push('mergeEffectMultiplier must be greater than 1');
@@ -79,6 +85,10 @@ export function validateGameData(data: GameData): string[] {
   rarities.forEach((rarity) => {
     if (!Number.isFinite(data.rules.rarityWeights[rarity]) || data.rules.rarityWeights[rarity] <= 0) {
       errors.push(`rarityWeights.${rarity} must be positive`);
+    }
+    const multiplier = levelProgression.rarityWeightMultiplierPerLevel[rarity];
+    if (!Number.isFinite(multiplier) || multiplier <= 0) {
+      errors.push(`levelProgression.rarityWeightMultiplierPerLevel.${rarity} must be positive`);
     }
   });
   rarities.slice(1).forEach((rarity, index) => {

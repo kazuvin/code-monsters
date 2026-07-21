@@ -15,6 +15,7 @@ import { generateEnemyBuild } from './core/enemy-builder';
 import { fuseSkillCopies, pickFusionRewardIds, upgradeBlockDefinition } from './core/fusion';
 import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
 import { BATTLE_SPEEDS, playbackFrameMs, type BattleSpeed } from './core/playback';
+import { levelForRun, maxHpBonusForLevel, rarityWeightsForLevel } from './core/progression';
 import { advanceShop, createShop, randomShopSeed, rerollShop } from './core/shop';
 import {
   incomingSkillModifiers,
@@ -797,6 +798,7 @@ export function App() {
   const [workshopView, setWorkshopView] = useState<WorkshopView>('circuit');
   const [catalogFilter, setCatalogFilter] = useState('all');
   const [coins, setCoins] = useState(GAME_DATA.rules.startingCoins);
+  const [earnedCoins, setEarnedCoins] = useState(GAME_DATA.rules.startingCoins);
   const [run, setRun] = useState(1);
   const [seed, setSeed] = useState(initialSeed);
   const [enemySeed, setEnemySeed] = useState(initialSeed + 101);
@@ -814,7 +816,7 @@ export function App() {
   const [shop, setShop] = useState(() =>
     createShop(
       shopBlocks,
-      GAME_DATA.rules.rarityWeights,
+      rarityWeightsForLevel(GAME_DATA, 1),
       initialSeed,
       GAME_DATA.rules.shopSize,
       ownedBlockIdsFor(board, rack),
@@ -837,11 +839,21 @@ export function App() {
   const ownedBlockIds = useMemo(() => ownedBlockIdsFor(board, rack), [board, rack]);
   const circuitAnalysis = useMemo(() => analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
   const powered = circuitAnalysis.poweredCells;
-  const enemyBuild = useMemo(() => generateEnemyBuild(GAME_DATA, run, enemySeed), [run, enemySeed]);
+  const level = levelForRun(GAME_DATA, run);
+  const maxHpBonus = maxHpBonusForLevel(GAME_DATA, level);
+  const shopRarityWeights = useMemo(() => rarityWeightsForLevel(GAME_DATA, level), [level]);
+  const enemyBuild = useMemo(
+    () => generateEnemyBuild(GAME_DATA, run, enemySeed, { budget: earnedCoins }),
+    [earnedCoins, run, enemySeed],
+  );
   const enemyTrait = axisById.get('trait')?.values.find((value) => value.id === enemyBuild.traitId);
   const preview = useMemo(
-    () => createBattle(GAME_DATA, board, enemyBuild.board, { enemyMaxHpBonus: enemyBuild.maxHpBonus }),
-    [board, enemyBuild.board, enemyBuild.maxHpBonus],
+    () =>
+      createBattle(GAME_DATA, board, enemyBuild.board, {
+        playerMaxHpBonus: maxHpBonus,
+        enemyMaxHpBonus: maxHpBonus,
+      }),
+    [board, enemyBuild.board, maxHpBonus],
   );
   const battle = playback[frame] ?? preview;
   const fighters = battle.fighters;
@@ -1187,7 +1199,7 @@ export function App() {
     const block = blockById.get(blockId);
     if (!block) return;
     const choiceIndex = Math.max(0, fusionReward.choiceIds.indexOf(blockId));
-    const reward = createShop([block], GAME_DATA.rules.rarityWeights, fusionReward.seed + choiceIndex * 17, 1)[0];
+    const reward = createShop([block], shopRarityWeights, fusionReward.seed + choiceIndex * 17, 1)[0];
     setRack((current) => [...current, { blockId, rotation: reward.rotation }]);
     setFusionReward(null);
     setMessage(`${block.title}を獲得`);
@@ -1202,7 +1214,7 @@ export function App() {
     setCoins((current) => current - GAME_DATA.rules.rerollCost);
     setSeed(nextSeed);
     setShop((current) =>
-      rerollShop(shopBlocks, GAME_DATA.rules.rarityWeights, current, nextSeed, GAME_DATA.rules.shopSize, ownedBlockIds),
+      rerollShop(shopBlocks, shopRarityWeights, current, nextSeed, GAME_DATA.rules.shopSize, ownedBlockIds),
     );
     setMessage('ショップを更新');
   };
@@ -1211,7 +1223,10 @@ export function App() {
     setShop((current) => current.map((offer) => (offer.id === id ? { ...offer, locked: !offer.locked } : offer)));
 
   const startBattle = () => {
-    const next = createPlayback(GAME_DATA, board, enemyBuild.board, { enemyMaxHpBonus: enemyBuild.maxHpBonus });
+    const next = createPlayback(GAME_DATA, board, enemyBuild.board, {
+      playerMaxHpBonus: maxHpBonus,
+      enemyMaxHpBonus: maxHpBonus,
+    });
     setDetail(null);
     setReportOpen(false);
     setPlayback(next);
@@ -1223,10 +1238,19 @@ export function App() {
   const returnToWorkshop = () => {
     const reward = battleReward(GAME_DATA, battle.winner);
     const nextSeed = nextShopSeed(seed, 11);
+    const nextLevel = levelForRun(GAME_DATA, run + 1);
     setCoins((current) => current + reward);
+    setEarnedCoins((current) => current + reward);
     setSeed(nextSeed);
     setShop(
-      advanceShop(shopBlocks, GAME_DATA.rules.rarityWeights, shop, nextSeed, GAME_DATA.rules.shopSize, ownedBlockIds),
+      advanceShop(
+        shopBlocks,
+        rarityWeightsForLevel(GAME_DATA, nextLevel),
+        shop,
+        nextSeed,
+        GAME_DATA.rules.shopSize,
+        ownedBlockIds,
+      ),
     );
     setRun((current) => current + 1);
     setEnemySeed((current) => (hasFixtureSeed ? current + 47 : randomShopSeed()));
@@ -1340,6 +1364,9 @@ export function App() {
             <div className="run-stats">
               <span>
                 RUN <b>{String(run).padStart(2, '0')}</b>
+              </span>
+              <span>
+                LV <b>{String(level).padStart(2, '0')}</b>
               </span>
               <span className="coin-readout">
                 COIN <b>{coins}</b>
@@ -1580,9 +1607,11 @@ export function App() {
             </div>
             <div className="battle-hud-tools">
               <div className="rival-readout">
-                <small>RIVAL LV.{String(run).padStart(2, '0')}</small>
+                <small>RIVAL LV.{String(level).padStart(2, '0')}</small>
                 <b>{enemyTrait?.title ?? enemyBuild.traitId}</b>
-                <i>{enemyBuild.nodeCount} NODE</i>
+                <i>
+                  {enemyBuild.nodeCount} NODE · {enemyBuild.totalCost}/{enemyBuild.budget} COIN
+                </i>
               </div>
               <div className="battle-speed" role="group" aria-label="戦闘速度">
                 {BATTLE_SPEEDS.map((speed) => (
@@ -1928,7 +1957,7 @@ export function App() {
                 自機 <b>{player.hp}</b>
               </span>
               <span>
-                相手 LV.{run} <b>{enemy.hp}</b>
+                相手 LV.{level} <b>{enemy.hp}</b>
               </span>
             </div>
             <p className="result-reward">報酬 COIN +{battleReward(GAME_DATA, battle.winner)}</p>

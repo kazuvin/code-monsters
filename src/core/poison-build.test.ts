@@ -29,9 +29,9 @@ describe('poison build', () => {
     const tick5 = resolveTick(data, tick4, 5);
     const enemy = tick5.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(enemy.poison).toBe(120);
+    expect(enemy.poison).toBe(113);
     expect(enemy.hp).toBe(enemy.maxHp - 135);
-    expect(tick5.skillBuffs.player['2:0']).toEqual({ poison: 30 });
+    expect(tick5.skillBuffs.player['2:0']).toEqual({ poison: 16 });
   });
 
   it('keeps poison and grows an output payoff across the battle', () => {
@@ -44,9 +44,12 @@ describe('poison build', () => {
     const tick4 = resolveTick(data, tick3, 4);
     const enemy = tick4.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(tick1.skillBuffs.player['2:2']).toEqual({ poison: 25 });
-    expect(tick3.skillBuffs.player['2:2']).toEqual({ poison: 50 });
-    expect(enemy.poison).toBe(665);
+    expect(tick1.skillBuffs.player['2:2']).toEqual({ poison: 8 });
+    expect(tick3.skillBuffs.player['2:2']).toEqual({ poison: 16 });
+    expect(enemy.poison).toBe(614);
+    expect(tick1.trace).toEqual(
+      expect.arrayContaining([expect.objectContaining({ blockId: 'status-relay', kind: 'damage', value: 80 })]),
+    );
   });
 
   it('activates every skill in a real poison cycle and applies named buffs in route order', () => {
@@ -123,9 +126,9 @@ describe('poison build', () => {
     const result = resolveTick(data, state, 1);
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(enemy.poison).toBe(35);
-    expect(enemy.hp).toBe(enemy.maxHp - 1430);
-    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 1430 })]));
+    expect(enemy.poison).toBe(50);
+    expect(enemy.hp).toBe(enemy.maxHp - 300);
+    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 300 })]));
   });
 
   it('lets an upstream amplifier increase rupture damage per consumed poison', () => {
@@ -137,9 +140,9 @@ describe('poison build', () => {
     const result = resolveTick(data, state, 1);
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(enemy.poison).toBe(35);
-    expect(enemy.hp).toBe(0);
-    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 5005 })]));
+    expect(enemy.poison).toBe(50);
+    expect(enemy.hp).toBe(enemy.maxHp - 3050);
+    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 3050 })]));
   });
 
   it('deals poison damage periodically and lets one stack decay', () => {

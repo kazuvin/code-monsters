@@ -31,6 +31,15 @@ describe('game data', () => {
     );
   });
 
+  it('defines automatic level health and rarity progression', () => {
+    expect(GAME_DATA.rules.levelProgression).toEqual({
+      runsPerLevel: 1,
+      maxLevel: 9,
+      hpPerLevel: 2500,
+      rarityWeightMultiplierPerLevel: { common: 0.96, rare: 1.02, epic: 1.08, legendary: 1.14 },
+    });
+  });
+
   it('defines three-copy fusion and enough same-rarity rewards for every tier', () => {
     expect(GAME_DATA.rules.skillFusion).toEqual({
       copiesRequired: 3,
@@ -80,14 +89,14 @@ describe('game data', () => {
           expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThanOrEqual(35);
         }
         if (effect.kind === 'growth' || effect.kind === 'amplify') {
-          expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThanOrEqual(15);
+          expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThanOrEqual(8);
         }
         if (effect.kind === 'release-charge') {
           expect(effect.amount, `${block.id} release base`).toBeGreaterThanOrEqual(100);
           expect(effect.perCharge, `${block.id} release ratio`).toBeGreaterThanOrEqual(320);
         }
         if (effect.kind === 'rupture-poison') {
-          expect(effect.damagePerStack, `${block.id} rupture ratio`).toBeGreaterThanOrEqual(20);
+          expect(effect.damagePerStack, `${block.id} rupture ratio`).toBeGreaterThanOrEqual(6);
         }
       });
     });
@@ -140,14 +149,11 @@ describe('game data', () => {
     ]);
   });
 
-  it('defines a rival generator that adds one node per round and unlocks rarities over time', () => {
+  it('defines a rival generator that attempts to add one affordable node per round', () => {
     expect(GAME_DATA.rules.enemyGeneration).toEqual({
       startingNodes: 7,
       nodesPerRun: 1,
       maxNodes: 15,
-      epicUnlockRun: 3,
-      legendaryUnlockRun: 5,
-      hpGrowthPerRun: 300,
     });
   });
 

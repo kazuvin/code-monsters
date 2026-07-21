@@ -83,12 +83,12 @@ export function renderBalanceMarkdown(result: BalanceSimulationResult, compariso
     '',
     '## ラン別集計',
     '',
-    '| Run | 戦闘 | P勝 | E勝 | 引分 | 平均tick |',
-    '| ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Run | Lv | 予算 | 平均使用額 | 平均ノード | 戦闘 | P勝 | E勝 | 引分 | 平均tick |',
+    '| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
   );
   result.byRun.forEach((run) => {
     lines.push(
-      `| ${run.run} | ${run.battles} | ${run.playerWins} | ${run.enemyWins} | ${run.draws} | ${decimal(run.averageTicks)} |`,
+      `| ${run.run} | ${run.level} | ${run.budget} | ${decimal(run.averageBuildCost)} | ${decimal(run.averageNodes, 2)} | ${run.battles} | ${run.playerWins} | ${run.enemyWins} | ${run.draws} | ${decimal(run.averageTicks)} |`,
     );
   });
   lines.push(

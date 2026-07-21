@@ -23,6 +23,12 @@ describe('balance simulation', () => {
     expect(first.summary.sideSwappedPairs).toBe(3);
     expect(first.summary.teamSamples).toBe(12);
     expect(first.byRun.reduce((total, run) => total + run.battles, 0)).toBe(6);
+    expect(first.byRun.map((run) => [run.run, run.level, run.budget])).toEqual([
+      [1, 1, 32],
+      [3, 3, 52],
+      [5, 5, 72],
+    ]);
+    expect(first.byRun.every((run) => run.averageBuildCost <= run.budget)).toBe(true);
   });
 
   it('keeps every playable skill visible even when it has no direct trace events', () => {
@@ -36,6 +42,21 @@ describe('balance simulation', () => {
       blockId: 'amplifier',
       title: GAME_DATA.blocks.find((block) => block.id === 'amplifier')?.title,
     });
+  });
+
+  it('keeps poison and charge cross-trait outcomes inside the tuning guardrail', () => {
+    const result = runBalanceSimulation(GAME_DATA, {
+      ...quickConfig,
+      battles: 400,
+      runs: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    });
+    const poisonIntoCharge = result.traitMatchups.find(
+      (matchup) => matchup.playerTrait === 'poison' && matchup.enemyTrait === 'charge',
+    );
+
+    expect(poisonIntoCharge?.battles).toBeGreaterThan(50);
+    expect(poisonIntoCharge?.playerScoreRate).toBeGreaterThanOrEqual(0.35);
+    expect(poisonIntoCharge?.playerScoreRate).toBeLessThanOrEqual(0.65);
   });
 
   it('runs a connector-compatible counterfactual on both sides', () => {

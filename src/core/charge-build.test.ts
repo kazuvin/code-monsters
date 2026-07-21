@@ -18,7 +18,7 @@ describe('charge build', () => {
     const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
-    expect(release).toMatchObject({ kind: 'damage', value: 2020, charge: 3 });
+    expect(release).toMatchObject({ kind: 'damage', value: 2470, charge: 5 });
   });
 
   it('only deals the base release damage when the cannon is next to the source', () => {
@@ -64,8 +64,20 @@ describe('charge build', () => {
     const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'charge-bastion');
 
-    expect(release).toMatchObject({ kind: 'shield', value: 1740, charge: 3 });
-    expect(state.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(1740);
+    expect(release).toMatchObject({ kind: 'shield', value: 2740, charge: 5 });
+    expect(state.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2740);
+  });
+
+  it('lets the defensive charge payoff repair poison damage as well as add shield', () => {
+    const board = emptyBoard();
+    board[GAME_DATA.rules.sourceRow][0] = { blockId: 'charge-bastion', rotation: 0 };
+    const state = createBattle(GAME_DATA, board, emptyBoard());
+    const player = state.fighters.find((fighter) => fighter.team === 'player')!;
+    player.hp -= 1000;
+
+    const result = resolveTick(GAME_DATA, state, 1);
+
+    expect(result.fighters.find((fighter) => fighter.team === 'player')?.hp).toBe(player.hp + 600);
   });
 
   it('scales charge release strength with rarity', () => {
@@ -78,8 +90,8 @@ describe('charge build', () => {
       return state.trace.find((event) => 'blockId' in event && event.blockId === blockId);
     };
 
-    expect(releaseValue('discharge-bow')).toMatchObject({ kind: 'damage', value: 1080, charge: 3 });
-    expect(releaseValue('rail-cannon')).toMatchObject({ kind: 'damage', value: 2020, charge: 3 });
-    expect(releaseValue('overcharge-cannon')).toMatchObject({ kind: 'damage', value: 3800, charge: 3 });
+    expect(releaseValue('discharge-bow')).toMatchObject({ kind: 'damage', value: 2120, charge: 5 });
+    expect(releaseValue('rail-cannon')).toMatchObject({ kind: 'damage', value: 2470, charge: 5 });
+    expect(releaseValue('overcharge-cannon')).toMatchObject({ kind: 'damage', value: 6000, charge: 5 });
   });
 });

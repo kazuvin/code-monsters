@@ -10,13 +10,13 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const usage = `Usage: pnpm balance:simulate [options]
 
 Options:
-  --battles <count>                 Tournament battles (default: 1000)
+  --battles <count>                 Tournament battles (default: 10000)
   --runs <1:9|1,3,5>               Runs to sample (default: 1:9)
   --seed <integer>                  Fixed random seed (default: 20260721)
-  --skill-trials <count>            Replacement and ablation trials per skill (default: 12)
+  --skill-trials <count>            Replacement and ablation trials per skill (default: 40)
   --skills <id,id>                  Limit counterfactual trials to selected skills
-  --minimum-samples <count>         Tournament sample gate (default: 100)
-  --minimum-counterfactual <count>  Counterfactual sample gate (default: 8)
+  --minimum-samples <count>         Tournament sample gate (default: 400)
+  --minimum-counterfactual <count>  Counterfactual sample gate (default: 24)
   --win-rate-lift <ratio>           Outlier threshold, e.g. 0.08
   --efficiency-z <score>            Reported-output Z-score threshold
   --output <path>                   Output base without extension

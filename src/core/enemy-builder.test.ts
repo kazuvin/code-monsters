@@ -12,28 +12,51 @@ describe('enemy build generator', () => {
     expect(generateEnemyBuild(GAME_DATA, 1, 74)).not.toEqual(first);
   });
 
-  it('adds a powered node every round until the configured cap', () => {
+  it('adds only nodes that fit the same cumulative budget available to the player', () => {
     const builds = Array.from({ length: 11 }, (_, index) => generateEnemyBuild(GAME_DATA, index + 1, 73));
 
-    expect(builds.map((build) => build.nodeCount)).toEqual([7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 15]);
+    expect(builds[0].nodeCount).toBe(5);
     expect(builds.map((build) => build.maxHpBonus)).toEqual([
-      0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000,
+      0, 2500, 5000, 7500, 10_000, 12_500, 15_000, 17_500, 20_000, 20_000, 20_000,
     ]);
-    builds.forEach((build) => {
+    builds.forEach((build, index) => {
+      const targetNodes = Math.min(15, 7 + index);
       const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
       expect(analysis.poweredCells.size).toBe(build.nodeCount);
+      expect(build.nodeCount).toBeLessThanOrEqual(targetNodes);
+      expect(build.totalCost).toBeLessThanOrEqual(build.budget);
+      expect(build.budget).toBe(32 + index * 10);
     });
   });
 
-  it('applies the generated round health bonus to the rival fighter', () => {
+  it('applies the generated level health bonus equally to both fighters', () => {
     const build = generateEnemyBuild(GAME_DATA, 4, 73);
     const battle = createBattle(GAME_DATA, GAME_DATA.playerBoard, build.board, {
+      playerMaxHpBonus: build.maxHpBonus,
       enemyMaxHpBonus: build.maxHpBonus,
     });
+    const player = battle.fighters.find((fighter) => fighter.team === 'player')!;
     const enemy = battle.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(enemy.maxHp).toBe(5900);
-    expect(enemy.hp).toBe(5900);
+    expect(player.maxHp).toBe(12_500);
+    expect(player.hp).toBe(12_500);
+    expect(enemy.maxHp).toBe(12_500);
+    expect(enemy.hp).toBe(12_500);
+  });
+
+  it('never spends more than an explicitly supplied player budget', () => {
+    const build = generateEnemyBuild(GAME_DATA, 2, 73, { budget: 40 });
+
+    expect(build.budget).toBe(40);
+    expect(build.totalCost).toBeLessThanOrEqual(40);
+    expect(build.nodeCount).toBeLessThanOrEqual(8);
+  });
+
+  it('fills the most affordable nodes before lowering the run target', () => {
+    const build = generateEnemyBuild(GAME_DATA, 2, 221, { budget: 40 });
+
+    expect(build.nodeCount).toBe(7);
+    expect(build.totalCost).toBeLessThanOrEqual(40);
   });
 
   it('builds around one real trait plus neutral support and includes a starter and payoff', () => {
