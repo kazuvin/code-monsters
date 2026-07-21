@@ -1177,7 +1177,6 @@ export function App() {
                     return (
                       <article
                         className={`shop-card rarity-${block.rarity} ${offer.locked ? 'is-locked' : ''}`}
-                        style={blockVisualStyle(block)}
                         key={offer.id}
                       >
                         <button

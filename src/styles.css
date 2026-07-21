@@ -461,11 +461,23 @@ button:focus-visible {
   background: linear-gradient(135deg, rgb(255 255 255 / 8%) 0 12%, transparent 12% 88%, rgb(0 0 0 / 16%) 88%), #153b48;
   box-shadow:
     inset 0 -5px 0 rgb(3 16 23 / 30%),
-    0 0 var(--rarity-aura) color-mix(in srgb, var(--rarity-color) 58%, transparent),
     3px 3px 0 rgb(2 12 17 / 46%);
   transition:
     transform 80ms steps(2),
     border-color 80ms linear;
+}
+
+.block-visual::after {
+  position: absolute;
+  z-index: 8;
+  inset: -2px;
+  content: "";
+  border: 1px solid color-mix(in srgb, var(--rarity-color) 78%, transparent);
+  box-shadow:
+    0 0 2px var(--rarity-color),
+    0 0 var(--rarity-aura) color-mix(in srgb, var(--rarity-color) 62%, transparent),
+    inset 0 0 4px color-mix(in srgb, var(--rarity-color) 26%, transparent);
+  pointer-events: none;
 }
 
 .block-visual.effect-damage {
@@ -500,7 +512,6 @@ button:focus-visible {
   box-shadow:
     inset 0 -5px 0 rgb(3 16 23 / 30%),
     0 0 12px rgb(93 231 242 / 35%),
-    0 0 var(--rarity-aura) color-mix(in srgb, var(--rarity-color) 66%, transparent),
     3px 3px 0 rgb(2 12 17 / 46%);
 }
 
@@ -837,9 +848,7 @@ button:focus-visible {
 }
 
 .shop-card {
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 4%),
-    0 0 var(--rarity-aura) color-mix(in srgb, var(--rarity-color) 38%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 4%);
 }
 
 .shop-card:nth-child(5),
@@ -906,9 +915,7 @@ button:focus-visible {
 
 .shop-card.is-locked {
   border-color: var(--amber);
-  box-shadow:
-    inset 0 0 0 1px rgb(255 200 87 / 28%),
-    0 0 var(--rarity-aura) color-mix(in srgb, var(--rarity-color) 48%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(255 200 87 / 28%);
 }
 
 .buy-button {
@@ -1144,7 +1151,6 @@ button:focus-visible {
   background: linear-gradient(135deg, rgb(255 255 255 / 4%) 0 11%, transparent 11%), #0c2732;
   box-shadow:
     inset 0 0 0 2px #071b23,
-    0 0 var(--rarity-aura) color-mix(in srgb, var(--rarity-color) 45%, transparent),
     5px 5px 0 rgb(2 10 15 / 48%);
   text-align: left;
   transition:
@@ -1157,7 +1163,6 @@ button:focus-visible {
   transform: translateY(-3px);
   box-shadow:
     inset 0 0 0 2px #071b23,
-    0 0 calc(var(--rarity-aura) + 5px) color-mix(in srgb, var(--rarity-color) 62%, transparent),
     7px 8px 0 rgb(2 10 15 / 48%);
 }
 

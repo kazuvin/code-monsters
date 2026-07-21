@@ -141,6 +141,26 @@ const expectedRarityColors = {
 if (JSON.stringify(rarityColors) !== JSON.stringify(expectedRarityColors)) {
   throw new Error(`Catalog rarity aura colors are incorrect: ${JSON.stringify(rarityColors)}`);
 }
+const rarityAuraPlacement = await desktop.locator('.catalog-card').evaluateAll((cards) => {
+  const samples = new Map();
+  cards.forEach((card) => {
+    const rarity = [...card.classList].find((name) => name.startsWith('rarity-'))?.replace('rarity-', '');
+    if (!rarity || samples.has(rarity)) return;
+    const node = card.querySelector('.block-visual');
+    samples.set(rarity, {
+      cardShadow: getComputedStyle(card).boxShadow,
+      nodeAura: node ? getComputedStyle(node, '::after').boxShadow : 'missing',
+    });
+  });
+  return Object.fromEntries(samples);
+});
+if (new Set(Object.values(rarityAuraPlacement).map((sample) => sample.cardShadow)).size !== 1) {
+  throw new Error(`Rarity aura is still applied to catalog card shells: ${JSON.stringify(rarityAuraPlacement)}`);
+}
+const nodeAuras = Object.values(rarityAuraPlacement).map((sample) => sample.nodeAura);
+if (nodeAuras.some((aura) => aura === 'none' || aura === 'missing') || new Set(nodeAuras).size !== 4) {
+  throw new Error(`Rarity aura is not attached to each node frame: ${JSON.stringify(rarityAuraPlacement)}`);
+}
 if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== 22) {
   throw new Error('Catalog cards do not expose every weapon axis');
 }
