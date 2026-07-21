@@ -1,4 +1,4 @@
-import type { BlockDefinition, RarityWeights, ShopOffer } from './types';
+import type { BlockDefinition, RarityWeights, Rotation, ShopOffer } from './types';
 
 const randomUnit = (seed: number) => {
   const value = Math.sin(seed * 9301 + 49297) * 233280;
@@ -7,6 +7,8 @@ const randomUnit = (seed: number) => {
 
 const effectiveWeight = (block: BlockDefinition, rarityWeights: RarityWeights) =>
   rarityWeights[block.rarity] * (block.shopWeight ?? 1);
+
+const randomRotation = (seed: number): Rotation => Math.floor(randomUnit(seed * 53 + 11) * 4) as Rotation;
 
 const pickWeighted = (blocks: BlockDefinition[], rarityWeights: RarityWeights, seed: number) => {
   const total = blocks.reduce((sum, block) => sum + effectiveWeight(block, rarityWeights), 0);
@@ -30,7 +32,13 @@ export function createShop(
     const candidates = blocks.filter((block) => !used.has(block.id));
     const block = pickWeighted(candidates, rarityWeights, seed * 17 + slot * 31 + 7);
     used.add(block.id);
-    return { id: `${seed}-${slot}-${block.id}`, slot, blockId: block.id, locked: false };
+    return {
+      id: `${seed}-${slot}-${block.id}`,
+      slot,
+      blockId: block.id,
+      rotation: randomRotation(seed * 19 + slot * 37),
+      locked: false,
+    };
   });
 }
 
@@ -49,7 +57,13 @@ export function rerollShop(
     const candidates = blocks.filter((block) => !used.has(block.id));
     const block = pickWeighted(candidates, rarityWeights, seed * 17 + slot * 31 + 7);
     used.add(block.id);
-    return { id: `${seed}-${slot}-${block.id}`, slot, blockId: block.id, locked: false };
+    return {
+      id: `${seed}-${slot}-${block.id}`,
+      slot,
+      blockId: block.id,
+      rotation: randomRotation(seed * 19 + slot * 37),
+      locked: false,
+    };
   });
 }
 

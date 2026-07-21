@@ -27,6 +27,7 @@ import type {
   CircuitBoard,
   Direction,
   FighterState,
+  PlacedBlock,
   Rotation,
   Rarity,
   ShopOffer,
@@ -36,13 +37,15 @@ import type {
 import { GAME_DATA } from './game/game-data';
 
 type Phase = 'build' | 'battle' | 'result';
+type WorkshopView = 'circuit' | 'catalog';
 type DetailTarget = {
   blockId: string;
   position?: CellPosition;
-  location: 'board' | 'rack' | 'shop' | 'battle';
+  rotation?: Rotation;
+  location: 'board' | 'rack' | 'shop' | 'catalog' | 'battle';
   team?: Team;
 };
-type DragOrigin = { kind: 'board'; position: CellPosition } | { kind: 'rack'; blockId: string };
+type DragOrigin = { kind: 'board'; position: CellPosition } | { kind: 'rack'; block: PlacedBlock };
 type DragState = {
   origin: DragOrigin;
   blockId: string;
@@ -72,6 +75,10 @@ const initialSeed = 73;
 const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
+const skillDesignByBlockId = new Map(
+  GAME_DATA.buildDesign.skills.flatMap((skill) => (skill.blockId ? [[skill.blockId, skill] as const] : [])),
+);
+const axisById = new Map(GAME_DATA.buildDesign.axes.map((axis) => [axis.id, axis]));
 const BUFF_COPY: Record<BuffStat, { label: string; short: string }> = {
   damage: { label: 'ダメージ量', short: '攻' },
   poison: { label: '毒の付与量', short: '毒' },
@@ -79,11 +86,58 @@ const BUFF_COPY: Record<BuffStat, { label: string; short: string }> = {
   repair: { label: '回復量', short: '癒' },
   rupture: { label: '破裂威力', short: '裂' },
 };
-const RARITY_COPY: Record<Rarity, { label: string; code: string }> = {
-  normal: { label: 'ノーマル', code: 'N' },
-  rare: { label: 'レア', code: 'R' },
-  epic: { label: 'エピック', code: 'E' },
-  legendary: { label: 'レジェンダリー', code: 'L' },
+const RARITY_COPY: Record<Rarity, { label: string; code: string; color: string; aura: string }> = {
+  common: { label: 'コモン', code: 'C', color: '#f4fbff', aura: '7px' },
+  rare: { label: 'レア', code: 'R', color: '#69dcff', aura: '9px' },
+  epic: { label: 'エピック', code: 'E', color: '#bd7cff', aura: '12px' },
+  legendary: { label: 'レジェンダリー', code: 'L', color: '#ff9b42', aura: '16px' },
+};
+const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
+const WEAPON_MARK: Record<string, string> = { blade: '剣', bow: '弓', cannon: '砲', device: '機' };
+
+const axisValuesForBlock = (blockId: string, axisId: string) => {
+  const valueIds = skillDesignByBlockId.get(blockId)?.axisLinks.find((link) => link.axisId === axisId)?.valueIds ?? [];
+  const axis = axisById.get(axisId);
+  return valueIds.flatMap((valueId) => {
+    const value = axis?.values.find((candidate) => candidate.id === valueId);
+    return value ? [value] : [];
+  });
+};
+
+const blockVisualStyle = (block: BlockDefinition) => {
+  const traits = axisValuesForBlock(block.id, 'trait');
+  const rarity = RARITY_COPY[block.rarity];
+  return {
+    '--rarity-color': rarity.color,
+    '--rarity-aura': rarity.aura,
+    '--trait-primary': traits[0]?.color ?? '#486977',
+    '--trait-secondary': traits[1]?.color ?? traits[0]?.color ?? '#486977',
+  } as CSSProperties;
+};
+
+const BlockAxisBadges = ({ blockId, compact = false }: { blockId: string; compact?: boolean }) => {
+  const traits = axisValuesForBlock(blockId, 'trait');
+  const weapons = axisValuesForBlock(blockId, 'weapon');
+  return (
+    <span className={`axis-badges ${compact ? 'is-compact' : ''}`}>
+      {traits.map((trait) => (
+        <span
+          className="axis-badge is-trait"
+          style={{ '--axis-color': trait.color ?? '#486977' } as CSSProperties}
+          key={trait.id}
+        >
+          <i />
+          {trait.title}
+        </span>
+      ))}
+      {weapons.map((weapon) => (
+        <span className="axis-badge is-weapon" key={weapon.id}>
+          <b>{WEAPON_MARK[weapon.id] ?? '技'}</b>
+          {weapon.title}
+        </span>
+      ))}
+    </span>
+  );
 };
 
 const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplier = 1, charge = 0) => {
@@ -151,6 +205,8 @@ const BlockVisual = ({
   portFlows?: Partial<Record<Direction, PortFlow>>;
 }) => {
   const ports = rotatePorts(block.ports, rotation);
+  const traits = axisValuesForBlock(block.id, 'trait');
+  const [weapon] = axisValuesForBlock(block.id, 'weapon');
   const visualEffect = block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
     ? 'charge'
     : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
@@ -158,7 +214,8 @@ const BlockVisual = ({
       : block.effects[0]?.kind;
   return (
     <span
-      className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
+      className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${traits.length > 1 ? 'is-hybrid-trait' : ''} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
+      style={blockVisualStyle(block)}
       aria-hidden="true"
     >
       {ports.map((port) => (
@@ -171,10 +228,102 @@ const BlockVisual = ({
         <b>{block.glyph}</b>
         {!compact && <small>{block.code}</small>}
       </span>
+      {weapon && <span className="block-weapon-mark">{WEAPON_MARK[weapon.id] ?? '技'}</span>}
       {powered && <em className="power-pip" />}
     </span>
   );
 };
+
+const CatalogScreen = ({
+  blocks,
+  filter,
+  onFilter,
+  onSelect,
+}: {
+  blocks: BlockDefinition[];
+  filter: string;
+  onFilter: (filter: string) => void;
+  onSelect: (target: DetailTarget) => void;
+}) => (
+  <section className="catalog-screen" aria-label="カードカタログ">
+    <header className="catalog-hero">
+      <div>
+        <small>NODE ARCHIVE / {String(GAME_DATA.blocks.length).padStart(2, '0')}</small>
+        <h2>カードカタログ</h2>
+        <p>特性で育て、武器で届ける。すべての組み合わせと接続数を確認できます。</p>
+      </div>
+      <div className="rarity-legend" aria-label="レアリティの色">
+        {RARITY_ORDER.map((rarity) => (
+          <span style={{ '--rarity-color': RARITY_COPY[rarity].color } as CSSProperties} key={rarity}>
+            <i />
+            {RARITY_COPY[rarity].label}
+          </span>
+        ))}
+      </div>
+    </header>
+
+    <nav className="catalog-filters" aria-label="カード絞り込み">
+      <button aria-pressed={filter === 'all'} onClick={() => onFilter('all')}>
+        すべて <b>{GAME_DATA.blocks.length}</b>
+      </button>
+      {GAME_DATA.buildDesign.axes.flatMap((axis) =>
+        axis.values.map((value) => (
+          <button
+            className={`filter-${axis.id}`}
+            aria-pressed={filter === value.id}
+            onClick={() => onFilter(value.id)}
+            style={{ '--axis-color': value.color ?? '#79bac8' } as CSSProperties}
+            key={`${axis.id}-${value.id}`}
+          >
+            <i>{axis.id === 'weapon' ? (WEAPON_MARK[value.id] ?? '技') : ''}</i>
+            {value.title}
+            <b>
+              {
+                GAME_DATA.blocks.filter((block) =>
+                  axisValuesForBlock(block.id, axis.id).some((item) => item.id === value.id),
+                ).length
+              }
+            </b>
+          </button>
+        )),
+      )}
+    </nav>
+
+    <div className="catalog-grid">
+      {blocks.map((block, index) => (
+        <button
+          className={`catalog-card rarity-${block.rarity}`}
+          style={blockVisualStyle(block)}
+          onClick={() => onSelect({ blockId: block.id, rotation: 0, location: 'catalog' })}
+          aria-label={`${block.title}の詳細を見る`}
+          key={block.id}
+        >
+          <span className="catalog-card-index">#{String(index + 1).padStart(2, '0')}</span>
+          <span className="catalog-card-rarity">
+            <i /> {RARITY_COPY[block.rarity].label}
+          </span>
+          <span className="catalog-card-art">
+            <BlockVisual block={block} />
+          </span>
+          <span className="catalog-card-copy">
+            <small>{block.code}</small>
+            <strong>{block.title}</strong>
+          </span>
+          <BlockAxisBadges blockId={block.id} />
+          <span className="catalog-card-description">{block.description}</span>
+          <span className="catalog-card-spec">
+            <b>{block.ports.length} EDGE</b>
+            <i>{cooldownLabel(block)}</i>
+          </span>
+        </button>
+      ))}
+    </div>
+    <footer className="catalog-note">
+      <b>CONNECTOR RULE</b>
+      エッジ本数はカード固有。生える向きはショップ入荷時に決まり、購入後も保持されます。
+    </footer>
+  </section>
+);
 
 const RobotSprite = ({ fighter }: { fighter: FighterState }) => (
   <span
@@ -446,13 +595,17 @@ const BattleCircuitSummary = ({
 
 export function App() {
   const [phase, setPhase] = useState<Phase>('build');
+  const [workshopView, setWorkshopView] = useState<WorkshopView>('circuit');
+  const [catalogFilter, setCatalogFilter] = useState('all');
   const [coins, setCoins] = useState(GAME_DATA.rules.startingCoins);
   const [run, setRun] = useState(1);
   const [seed, setSeed] = useState(initialSeed);
   const [shop, setShop] = useState(() =>
     createShop(shopBlocks, GAME_DATA.rules.rarityWeights, initialSeed, GAME_DATA.rules.shopSize),
   );
-  const [rack, setRack] = useState([...GAME_DATA.startingRack]);
+  const [rack, setRack] = useState<PlacedBlock[]>(() =>
+    GAME_DATA.startingRack.map((blockId) => ({ blockId, rotation: 0 })),
+  );
   const [board, setBoard] = useState<CircuitBoard>(() =>
     GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null))),
   );
@@ -473,13 +626,31 @@ export function App() {
   const fighters = battle.fighters;
   const player = fighters.find((fighter) => fighter.team === 'player')!;
   const enemy = fighters.find((fighter) => fighter.team === 'enemy')!;
-  const rackGroups = useMemo(
+  const rackGroups = useMemo(() => {
+    const groups = new Map<string, { block: BlockDefinition; placed: PlacedBlock; count: number }>();
+    rack.forEach((placed) => {
+      const key = `${placed.blockId}:${placed.rotation}`;
+      const current = groups.get(key);
+      if (current) current.count += 1;
+      else groups.set(key, { block: blockById.get(placed.blockId)!, placed, count: 1 });
+    });
+    return [...groups.values()];
+  }, [rack]);
+  const catalogBlocks = useMemo(
     () =>
-      [...new Set(rack)].map((blockId) => ({
-        block: blockById.get(blockId)!,
-        count: rack.filter((candidate) => candidate === blockId).length,
-      })),
-    [rack],
+      [...GAME_DATA.blocks]
+        .filter(
+          (block) =>
+            catalogFilter === 'all' ||
+            axisValuesForBlock(block.id, 'trait').some((value) => value.id === catalogFilter) ||
+            axisValuesForBlock(block.id, 'weapon').some((value) => value.id === catalogFilter),
+        )
+        .sort(
+          (left, right) =>
+            RARITY_ORDER.indexOf(left.rarity) - RARITY_ORDER.indexOf(right.rarity) ||
+            left.title.localeCompare(right.title, 'ja'),
+        ),
+    [catalogFilter],
   );
   const frameEvents = useMemo(() => {
     const previousCount = frame > 0 ? (playback[frame - 1]?.trace.length ?? 0) : 0;
@@ -652,7 +823,7 @@ export function App() {
     }
     const position = { row: Number(target.dataset.row), column: Number(target.dataset.column) };
     if (drag.origin.kind === 'rack') {
-      const result = placeBlockFromRack(rack, board, drag.origin.blockId, position);
+      const result = placeBlockFromRack(rack, board, drag.origin.block, position);
       if (result.board === board) {
         setMessage('そこには置けません');
         return;
@@ -732,7 +903,7 @@ export function App() {
       return;
     }
     setCoins((current) => current - block.price);
-    setRack((current) => [...current, block.id]);
+    setRack((current) => [...current, { blockId: block.id, rotation: offer.rotation }]);
     setShop((current) => current.filter((item) => item.id !== offer.id));
     setMessage(`${block.title}を入手`);
   };
@@ -787,6 +958,7 @@ export function App() {
         ? new Set(battle.enemyPowered)
         : powered;
   const detailPlaced = detail?.position ? detailBoard[detail.position.row]?.[detail.position.column] : undefined;
+  const detailRotation = detailPlaced?.rotation ?? detail?.rotation ?? 0;
   const detailCellKey = detail?.position ? `${detail.position.row}:${detail.position.column}` : undefined;
   const detailOwner = detailBattleTeam === 'player' ? player : detailBattleTeam === 'enemy' ? enemy : undefined;
   const detailOpponent = detailBattleTeam === 'player' ? enemy : detailBattleTeam === 'enemy' ? player : undefined;
@@ -834,6 +1006,26 @@ export function App() {
                 <small>CIRCUIT BAY</small>
               </div>
             </div>
+            <nav className="workshop-tabs" aria-label="工房メニュー">
+              <button
+                aria-pressed={workshopView === 'circuit'}
+                onClick={() => {
+                  setWorkshopView('circuit');
+                  setDetail(null);
+                }}
+              >
+                <span>01</span> 回路
+              </button>
+              <button
+                aria-pressed={workshopView === 'catalog'}
+                onClick={() => {
+                  setWorkshopView('catalog');
+                  setDetail(null);
+                }}
+              >
+                <span>02</span> カード一覧
+              </button>
+            </nav>
             <div className="run-stats">
               <span>
                 RUN <b>{String(run).padStart(2, '0')}</b>
@@ -844,180 +1036,193 @@ export function App() {
             </div>
           </header>
 
-          <div className="workspace-layout">
-            <section className="console-panel circuit-panel">
-              <header className="panel-head">
-                <div>
-                  <small>YOUR CIRCUIT</small>
-                  <h2>技回路</h2>
-                </div>
-                <span className="power-count">
-                  通電技 <b>{powered.size}</b>
-                </span>
-              </header>
+          {workshopView === 'circuit' ? (
+            <div className="workspace-layout">
+              <section className="console-panel circuit-panel">
+                <header className="panel-head">
+                  <div>
+                    <small>YOUR CIRCUIT</small>
+                    <h2>技回路</h2>
+                  </div>
+                  <span className="power-count">
+                    通電技 <b>{powered.size}</b>
+                  </span>
+                </header>
 
-              <div className="circuit-workbench">
-                <div className="circuit-stage">
-                  <div
-                    className="source-column"
-                    style={{ '--source-row': GAME_DATA.rules.sourceRow + 1 } as CSSProperties}
-                  >
-                    <div className="power-source" aria-label="電源コア">
-                      <small>CORE</small>
-                      <b>∞</b>
+                <div className="circuit-workbench">
+                  <div className="circuit-stage">
+                    <div
+                      className="source-column"
+                      style={{ '--source-row': GAME_DATA.rules.sourceRow + 1 } as CSSProperties}
+                    >
+                      <div className="power-source" aria-label="電源コア">
+                        <small>CORE</small>
+                        <b>∞</b>
+                      </div>
+                    </div>
+                    <div className="circuit-board" role="grid" aria-label="5×5 回路ボード">
+                      {board.flatMap((row, rowIndex) =>
+                        row.map((placed, columnIndex) => {
+                          const block = placed ? blockById.get(placed.blockId) : undefined;
+                          const key = `${rowIndex}:${columnIndex}`;
+                          return (
+                            <div
+                              className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''}`}
+                              data-circuit-cell
+                              data-row={rowIndex}
+                              data-column={columnIndex}
+                              role="gridcell"
+                              key={key}
+                            >
+                              {block && placed ? (
+                                <button
+                                  className="block-button"
+                                  aria-label={`${block.title}${powered.has(key) ? ' 通電中' : ' 未通電'}。クリックで詳細、長押しで移動`}
+                                  onClick={() =>
+                                    openDetail({
+                                      blockId: block.id,
+                                      position: { row: rowIndex, column: columnIndex },
+                                      location: 'board',
+                                    })
+                                  }
+                                  onPointerDown={(event) =>
+                                    beginHold(
+                                      event,
+                                      { kind: 'board', position: { row: rowIndex, column: columnIndex } },
+                                      block.id,
+                                      placed.rotation,
+                                    )
+                                  }
+                                  onPointerMove={moveHold}
+                                  onPointerUp={endHold}
+                                  onPointerCancel={cancelHold}
+                                >
+                                  <BlockVisual block={block} rotation={placed.rotation} powered={powered.has(key)} />
+                                  {circuitAnalysis.mergeCells.has(key) && (
+                                    <b className="merge-preview">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
+                                  )}
+                                </button>
+                              ) : (
+                                <span className="empty-cell" aria-label="空きマス" />
+                              )}
+                            </div>
+                          );
+                        }),
+                      )}
                     </div>
                   </div>
-                  <div className="circuit-board" role="grid" aria-label="5×5 回路ボード">
-                    {board.flatMap((row, rowIndex) =>
-                      row.map((placed, columnIndex) => {
-                        const block = placed ? blockById.get(placed.blockId) : undefined;
-                        const key = `${rowIndex}:${columnIndex}`;
-                        return (
-                          <div
-                            className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''}`}
-                            data-circuit-cell
-                            data-row={rowIndex}
-                            data-column={columnIndex}
-                            role="gridcell"
-                            key={key}
-                          >
-                            {block && placed ? (
-                              <button
-                                className="block-button"
-                                aria-label={`${block.title}${powered.has(key) ? ' 通電中' : ' 未通電'}。クリックで詳細、長押しで移動`}
-                                onClick={() =>
-                                  openDetail({
-                                    blockId: block.id,
-                                    position: { row: rowIndex, column: columnIndex },
-                                    location: 'board',
-                                  })
-                                }
-                                onPointerDown={(event) =>
-                                  beginHold(
-                                    event,
-                                    { kind: 'board', position: { row: rowIndex, column: columnIndex } },
-                                    block.id,
-                                    placed.rotation,
-                                  )
-                                }
-                                onPointerMove={moveHold}
-                                onPointerUp={endHold}
-                                onPointerCancel={cancelHold}
-                              >
-                                <BlockVisual block={block} rotation={placed.rotation} powered={powered.has(key)} />
-                                {circuitAnalysis.mergeCells.has(key) && (
-                                  <b className="merge-preview">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
-                                )}
-                              </button>
-                            ) : (
-                              <span className="empty-cell" aria-label="空きマス" />
-                            )}
-                          </div>
-                        );
-                      }),
+                  <div className="board-legend" aria-hidden="true">
+                    <span>
+                      <i className="legend-live" /> 通電
+                    </span>
+                    <span>
+                      <i className="legend-off" /> 未接続
+                    </span>
+                    <b>長押しで移動</b>
+                  </div>
+                </div>
+
+                <div className="rack">
+                  <div className="rack-label">
+                    <small>SKILL RACK</small>
+                    <b>予備の技</b>
+                  </div>
+                  <div className="rack-list">
+                    {rackGroups.length === 0 ? (
+                      <span className="rack-empty">ショップで補充</span>
+                    ) : (
+                      rackGroups.map(({ block, placed, count }) => (
+                        <button
+                          className="rack-block"
+                          key={`${block.id}-${placed.rotation}`}
+                          aria-label={`${block.title} ${count}個。クリックで詳細、長押しで配置`}
+                          onClick={() => openDetail({ blockId: block.id, rotation: placed.rotation, location: 'rack' })}
+                          onPointerDown={(event) =>
+                            beginHold(event, { kind: 'rack', block: placed }, block.id, placed.rotation)
+                          }
+                          onPointerMove={moveHold}
+                          onPointerUp={endHold}
+                          onPointerCancel={cancelHold}
+                        >
+                          <BlockVisual block={block} rotation={placed.rotation} compact />
+                          <span>{block.title}</span>
+                          <em>×{count}</em>
+                        </button>
+                      ))
                     )}
                   </div>
                 </div>
-                <div className="board-legend" aria-hidden="true">
-                  <span>
-                    <i className="legend-live" /> 通電
-                  </span>
-                  <span>
-                    <i className="legend-off" /> 未接続
-                  </span>
-                  <b>長押しで移動</b>
-                </div>
-              </div>
+              </section>
 
-              <div className="rack">
-                <div className="rack-label">
-                  <small>SKILL RACK</small>
-                  <b>予備の技</b>
-                </div>
-                <div className="rack-list">
-                  {rackGroups.length === 0 ? (
-                    <span className="rack-empty">ショップで補充</span>
-                  ) : (
-                    rackGroups.map(({ block, count }) => (
-                      <button
-                        className="rack-block"
-                        key={block.id}
-                        aria-label={`${block.title} ${count}個。クリックで詳細、長押しで配置`}
-                        onClick={() => openDetail({ blockId: block.id, location: 'rack' })}
-                        onPointerDown={(event) => beginHold(event, { kind: 'rack', blockId: block.id }, block.id, 0)}
-                        onPointerMove={moveHold}
-                        onPointerUp={endHold}
-                        onPointerCancel={cancelHold}
-                      >
-                        <BlockVisual block={block} compact />
-                        <span>{block.title}</span>
-                        <em>×{count}</em>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            </section>
-
-            <aside className="console-panel shop-panel">
-              <header className="panel-head">
-                <div>
-                  <small>SKILL SHOP</small>
-                  <h2>技ショップ</h2>
-                </div>
-                <button className="reroll-button" onClick={reroll} aria-label="ショップを更新">
-                  更新 <b>{GAME_DATA.rules.rerollCost}</b>
-                </button>
-              </header>
-              <div className="shop-list">
-                {Array.from({ length: GAME_DATA.rules.shopSize }, (_, slot) => {
-                  const offer = shop.find((item) => item.slot === slot);
-                  if (!offer)
+              <aside className="console-panel shop-panel">
+                <header className="panel-head">
+                  <div>
+                    <small>SKILL SHOP</small>
+                    <h2>技ショップ</h2>
+                  </div>
+                  <button className="reroll-button" onClick={reroll} aria-label="ショップを更新">
+                    更新 <b>{GAME_DATA.rules.rerollCost}</b>
+                  </button>
+                </header>
+                <div className="shop-list">
+                  {Array.from({ length: GAME_DATA.rules.shopSize }, (_, slot) => {
+                    const offer = shop.find((item) => item.slot === slot);
+                    if (!offer)
+                      return (
+                        <div className="shop-empty" key={`empty-${slot}`}>
+                          SOLD
+                        </div>
+                      );
+                    const block = blockById.get(offer.blockId)!;
                     return (
-                      <div className="shop-empty" key={`empty-${slot}`}>
-                        SOLD
-                      </div>
+                      <article
+                        className={`shop-card rarity-${block.rarity} ${offer.locked ? 'is-locked' : ''}`}
+                        style={blockVisualStyle(block)}
+                        key={offer.id}
+                      >
+                        <button
+                          className={`lock-button ${offer.locked ? 'is-locked' : ''}`}
+                          onClick={() => toggleLock(offer.id)}
+                          aria-label={`${block.title}を${offer.locked ? 'ロック解除' : 'ロック'}`}
+                          aria-pressed={offer.locked}
+                        >
+                          {offer.locked ? 'LOCKED' : 'LOCK'}
+                        </button>
+                        <button
+                          className="shop-block-button"
+                          onClick={() => openDetail({ blockId: block.id, rotation: offer.rotation, location: 'shop' })}
+                          aria-label={`${block.title}の詳細を見る`}
+                        >
+                          <BlockVisual block={block} rotation={offer.rotation} compact />
+                          <span>
+                            <small>
+                              {RARITY_COPY[block.rarity].code} · {block.code}
+                            </small>
+                            <strong>{block.title}</strong>
+                            <BlockAxisBadges blockId={block.id} compact />
+                          </span>
+                        </button>
+                        <button className="buy-button" onClick={() => buy(offer)}>
+                          買う <b>{block.price}</b>
+                        </button>
+                      </article>
                     );
-                  const block = blockById.get(offer.blockId)!;
-                  return (
-                    <article
-                      className={`shop-card rarity-${block.rarity} ${offer.locked ? 'is-locked' : ''}`}
-                      key={offer.id}
-                    >
-                      <button
-                        className={`lock-button ${offer.locked ? 'is-locked' : ''}`}
-                        onClick={() => toggleLock(offer.id)}
-                        aria-label={`${block.title}を${offer.locked ? 'ロック解除' : 'ロック'}`}
-                        aria-pressed={offer.locked}
-                      >
-                        {offer.locked ? 'LOCKED' : 'LOCK'}
-                      </button>
-                      <button
-                        className="shop-block-button"
-                        onClick={() => openDetail({ blockId: block.id, location: 'shop' })}
-                        aria-label={`${block.title}の詳細を見る`}
-                      >
-                        <BlockVisual block={block} compact />
-                        <span>
-                          <small>
-                            {RARITY_COPY[block.rarity].code} · {block.code}
-                          </small>
-                          <strong>{block.title}</strong>
-                        </span>
-                      </button>
-                      <button className="buy-button" onClick={() => buy(offer)}>
-                        買う <b>{block.price}</b>
-                      </button>
-                    </article>
-                  );
-                })}
-              </div>
-              <button className="run-button" onClick={startBattle}>
-                <span>戦闘開始</span>
-                <small>POWER ON ▶</small>
-              </button>
-            </aside>
-          </div>
+                  })}
+                </div>
+                <button className="run-button" onClick={startBattle}>
+                  <span>戦闘開始</span>
+                  <small>POWER ON ▶</small>
+                </button>
+              </aside>
+            </div>
+          ) : (
+            <CatalogScreen
+              blocks={catalogBlocks}
+              filter={catalogFilter}
+              onFilter={setCatalogFilter}
+              onSelect={openDetail}
+            />
+          )}
         </>
       ) : (
         <section
@@ -1137,13 +1342,14 @@ export function App() {
             <div className="dialog-block-preview">
               <BlockVisual
                 block={detailBlock}
-                rotation={detailPlaced?.rotation ?? 0}
+                rotation={detailRotation}
                 powered={Boolean(detailCellKey && detailPoweredCells.has(detailCellKey))}
               />
             </div>
             <div className="dialog-copy">
               <small>{detail.location === 'battle' ? `${detailBlock.code} · LIVE` : detailBlock.code}</small>
               <h2 id="block-dialog-title">{detailBlock.title}</h2>
+              <BlockAxisBadges blockId={detailBlock.id} />
               <p>{detailBlock.description}</p>
               {detailMergeMultiplier > 1 && (
                 <div className="dialog-merge-rule">
@@ -1200,7 +1406,25 @@ export function App() {
               <dl>
                 <div>
                   <dt>レアリティ</dt>
-                  <dd>{RARITY_COPY[detailBlock.rarity].label}</dd>
+                  <dd className="rarity-value" style={blockVisualStyle(detailBlock)}>
+                    <i /> {RARITY_COPY[detailBlock.rarity].label}
+                  </dd>
+                </div>
+                <div>
+                  <dt>特性軸</dt>
+                  <dd>
+                    {axisValuesForBlock(detailBlock.id, 'trait')
+                      .map((value) => value.title)
+                      .join('・')}
+                  </dd>
+                </div>
+                <div>
+                  <dt>武器軸</dt>
+                  <dd>
+                    {axisValuesForBlock(detailBlock.id, 'weapon')
+                      .map((value) => value.title)
+                      .join('・')}
+                  </dd>
                 </div>
                 {detailCellKey && detailPoweredCells.has(detailCellKey) && (
                   <div>
@@ -1234,7 +1458,7 @@ export function App() {
                 <div>
                   <dt>接続</dt>
                   <dd>
-                    {rotatePorts(detailBlock.ports, detailPlaced?.rotation ?? 0)
+                    {rotatePorts(detailBlock.ports, detailRotation)
                       .map((port) => ({ north: '上', east: '右', south: '下', west: '左' })[port as Direction])
                       .join('・')}
                     {detailTopology ? ` · ${detailTopology}` : ''}

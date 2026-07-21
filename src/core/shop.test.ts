@@ -3,7 +3,7 @@ import { advanceShop, createShop, rerollShop } from './shop';
 import type { BlockDefinition, Rarity, RarityWeights } from './types';
 
 const rarityWeights: RarityWeights = {
-  normal: 100,
+  common: 100,
   rare: 45,
   epic: 15,
   legendary: 4,
@@ -16,7 +16,7 @@ const blocks: BlockDefinition[] = Array.from({ length: 7 }, (_, index) => ({
   description: `ブロック${index}の効果`,
   glyph: String(index),
   price: 2,
-  rarity: index > 4 ? 'rare' : 'normal',
+  rarity: index > 4 ? 'rare' : 'common',
   ports: ['west', 'east'],
   cooldown: 1,
   effects: [{ kind: 'damage', amount: 1 }],
@@ -26,6 +26,14 @@ describe('shop', () => {
   it('creates deterministic unique block offers from a seed', () => {
     expect(createShop(blocks, rarityWeights, 42, 5)).toEqual(createShop(blocks, rarityWeights, 42, 5));
     expect(new Set(createShop(blocks, rarityWeights, 42, 5).map((offer) => offer.blockId)).size).toBe(5);
+  });
+
+  it('randomizes only connector direction while preserving the authored edge count', () => {
+    const corner = [{ ...blocks[0], id: 'corner', ports: ['west', 'north'] as BlockDefinition['ports'] }];
+    const offers = Array.from({ length: 32 }, (_, seed) => createShop(corner, rarityWeights, seed + 1, 1)[0]);
+
+    expect(new Set(offers.map((offer) => offer.rotation))).toEqual(new Set([0, 1, 2, 3]));
+    expect(offers.every((offer) => corner[0].ports.length === 2)).toBe(true);
   });
 
   it('keeps locked offers when rerolling', () => {
@@ -67,7 +75,7 @@ describe('shop', () => {
       counts[offer.blockId as Rarity] += 1;
     }
 
-    expect(counts.normal).toBeGreaterThan(counts.rare);
+    expect(counts.common).toBeGreaterThan(counts.rare);
     expect(counts.rare).toBeGreaterThan(counts.epic);
     expect(counts.epic).toBeGreaterThan(counts.legendary);
   });

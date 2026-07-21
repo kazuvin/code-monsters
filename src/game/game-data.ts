@@ -25,7 +25,7 @@ const validateBoard = (name: string, board: CircuitBoard, data: GameData, errors
 export function validateGameData(data: GameData): string[] {
   const errors: string[] = [];
   const directions = new Set(['north', 'east', 'south', 'west']);
-  const rarities: Rarity[] = ['normal', 'rare', 'epic', 'legendary'];
+  const rarities: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
   const unique = (label: string, ids: string[]) => {
     const seen = new Set<string>();
     for (const id of ids) {
@@ -75,6 +75,12 @@ export function validateGameData(data: GameData): string[] {
     if (!blockIds.has(blockId)) errors.push(`startingRack[${index}] references unknown block "${blockId}"`);
   });
   const buildIds = new Set(data.buildDesign.builds.map((build) => build.id));
+  const traitAxis = data.buildDesign.axes.find((axis) => axis.id === 'trait');
+  traitAxis?.values.forEach((value) => {
+    if (!value.color || !/^#[0-9a-f]{6}$/i.test(value.color)) {
+      errors.push(`trait axis value "${value.id}" needs a six-digit hex color`);
+    }
+  });
   data.blocks.forEach((block) => {
     if (!block.description.trim().endsWith('。'))
       errors.push(`block "${block.id}" description must be a complete sentence`);

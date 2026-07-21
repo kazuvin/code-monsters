@@ -1,25 +1,27 @@
 import { cloneBoard, rotateBlock } from './circuit';
-import type { BlockDefinition, CellPosition, CircuitBoard } from './types';
+import type { BlockDefinition, CellPosition, CircuitBoard, PlacedBlock } from './types';
 
 const samePosition = (left: CellPosition, right: CellPosition) =>
   left.row === right.row && left.column === right.column;
 
 export function placeBlockFromRack(
-  rack: string[],
+  rack: PlacedBlock[],
   board: CircuitBoard,
-  blockId: string,
+  block: PlacedBlock,
   position: CellPosition,
-): { board: CircuitBoard; rack: string[] } {
-  const rackIndex = rack.indexOf(blockId);
+): { board: CircuitBoard; rack: PlacedBlock[] } {
+  const rackIndex = rack.findIndex(
+    (candidate) => candidate.blockId === block.blockId && candidate.rotation === block.rotation,
+  );
   const current = board[position.row]?.[position.column];
   if (rackIndex < 0 || !board[position.row] || position.column < 0 || position.column >= board.length) {
     return { board, rack };
   }
 
   const nextBoard = cloneBoard(board);
-  nextBoard[position.row][position.column] = { blockId, rotation: 0 };
+  nextBoard[position.row][position.column] = { ...block };
   const nextRack = rack.filter((_, index) => index !== rackIndex);
-  if (current) nextRack.push(current.blockId);
+  if (current) nextRack.push({ ...current });
   return { board: nextBoard, rack: nextRack };
 }
 
@@ -51,13 +53,13 @@ export function rotateBoardBlock(
 }
 
 export function removeBlockToRack(
-  rack: string[],
+  rack: PlacedBlock[],
   board: CircuitBoard,
   position: CellPosition,
-): { board: CircuitBoard; rack: string[] } {
+): { board: CircuitBoard; rack: PlacedBlock[] } {
   const current = board[position.row]?.[position.column];
   if (!current) return { board, rack };
   const next = cloneBoard(board);
   next[position.row][position.column] = null;
-  return { board: next, rack: [...rack, current.blockId] };
+  return { board: next, rack: [...rack, { ...current }] };
 }

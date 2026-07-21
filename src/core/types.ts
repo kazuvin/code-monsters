@@ -1,5 +1,5 @@
 export type Team = 'player' | 'enemy';
-export type Rarity = 'normal' | 'rare' | 'epic' | 'legendary';
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type RarityWeights = Record<Rarity, number>;
 export type Winner = Team | 'draw' | null;
 export type Direction = 'north' | 'east' | 'south' | 'west';
@@ -90,7 +90,7 @@ export type BuildAxisDefinition = {
   id: string;
   title: string;
   description: string;
-  values: Array<{ id: string; title: string; description: string }>;
+  values: Array<{ id: string; title: string; description: string; color?: string }>;
 };
 
 export type SkillAxisLink = {
@@ -239,5 +239,6 @@ export type ShopOffer = {
   id: string;
   slot: number;
   blockId: string;
+  rotation: Rotation;
   locked: boolean;
 };

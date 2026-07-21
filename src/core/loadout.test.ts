@@ -14,10 +14,19 @@ const board: CircuitBoard = [
 
 describe('circuit loadout', () => {
   it('places a rack block and returns the replaced block to the rack', () => {
-    const result = placeBlockFromRack(['repair'], board, 'repair', { row: 1, column: 1 });
+    const result = placeBlockFromRack(
+      [{ blockId: 'repair', rotation: 3 }],
+      board,
+      { blockId: 'repair', rotation: 3 },
+      {
+        row: 1,
+        column: 1,
+      },
+    );
 
     expect(result.board[1][1]?.blockId).toBe('repair');
-    expect(result.rack).toEqual(['strike']);
+    expect(result.board[1][1]?.rotation).toBe(3);
+    expect(result.rack).toEqual([{ blockId: 'strike', rotation: 0 }]);
     expect(board[1][1]?.blockId).toBe('strike');
   });
 
@@ -36,7 +45,7 @@ describe('circuit loadout', () => {
     expect(rotated[1][0]?.rotation).toBe(1);
     expect(moved[0][0]?.blockId).toBe('repair');
     expect(removed.board[1][0]).toBeNull();
-    expect(removed.rack).toEqual(['repair']);
+    expect(removed.rack).toEqual([{ blockId: 'repair', rotation: 0 }]);
   });
 
   it('rotates and removes regular blocks', () => {
@@ -45,7 +54,7 @@ describe('circuit loadout', () => {
 
     expect(rotated[1][1]?.rotation).toBe(1);
     expect(removed.board[1][1]).toBeNull();
-    expect(removed.rack).toEqual(['strike']);
+    expect(removed.rack).toEqual([{ blockId: 'strike', rotation: 1 }]);
   });
 
   it('keeps a fixed-direction skill at its authored orientation', () => {

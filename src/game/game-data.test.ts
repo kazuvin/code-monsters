@@ -26,10 +26,19 @@ describe('game data', () => {
   });
 
   it('defines four progressively rarer shop tiers', () => {
-    expect(GAME_DATA.rules.rarityWeights).toEqual({ normal: 100, rare: 45, epic: 15, legendary: 4 });
+    expect(GAME_DATA.rules.rarityWeights).toEqual({ common: 100, rare: 45, epic: 15, legendary: 4 });
     expect(new Set(GAME_DATA.blocks.map((block) => block.rarity))).toEqual(
-      new Set(['normal', 'rare', 'epic', 'legendary']),
+      new Set(['common', 'rare', 'epic', 'legendary']),
     );
+  });
+
+  it('defines a presentation color for every trait axis value', () => {
+    const trait = GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'trait');
+
+    expect(trait?.values.map((value) => [value.id, value.color])).toEqual([
+      ['poison', '#8bd450'],
+      ['charge', '#ffd36a'],
+    ]);
   });
 
   it('starts the rival with a readable split and merge circuit', () => {
@@ -128,6 +137,15 @@ describe('game data', () => {
     invalid.rules.rarityWeights.epic = invalid.rules.rarityWeights.rare;
 
     expect(validateGameData(invalid)).toContain('rarityWeights.epic must be lower than rarityWeights.rare');
+  });
+
+  it('rejects a trait axis value without a display color', () => {
+    const invalid = structuredClone(GAME_DATA);
+    const poison = invalid.buildDesign.axes.find((axis) => axis.id === 'trait')?.values[0];
+    if (!poison) throw new Error('missing trait fixture');
+    poison.color = '';
+
+    expect(validateGameData(invalid)).toContain('trait axis value "poison" needs a six-digit hex color');
   });
 
   it('keeps per-node tuning from making a higher rarity easier to roll', () => {

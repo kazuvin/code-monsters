@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -16,7 +16,7 @@
     "retryReward": 2,
     "rerollCost": 1,
     "shopSize": 5,
-    "rarityWeights": { "normal": 100, "rare": 45, "epic": 15, "legendary": 4 }
+    "rarityWeights": { "common": 100, "rare": 45, "epic": 15, "legendary": 4 }
   },
   "units": [
     { "id": "volt", "name": "ヴォルト", "code": "V-01", "maxHp": 216, "color": "#5de7f2" },
@@ -43,8 +43,18 @@
         "title": "特性",
         "description": "戦闘中に育て、別の武器へ受け渡せる仕組み",
         "values": [
-          { "id": "poison", "title": "毒", "description": "毒を残して育てるか、破裂させて使う" },
-          { "id": "charge", "title": "チャージ", "description": "通電経路で蓄え、遠い解放点で使う" }
+          {
+            "id": "poison",
+            "title": "毒",
+            "description": "毒を残して育てるか、破裂させて使う",
+            "color": "#8bd450"
+          },
+          {
+            "id": "charge",
+            "title": "チャージ",
+            "description": "通電経路で蓄え、遠い解放点で使う",
+            "color": "#ffd36a"
+          }
         ]
       },
       {
@@ -409,10 +419,10 @@
       "id": "strike",
       "code": "SLASH",
       "title": "斬撃",
-      "description": "1拍ごとに、相手へ2ダメージを与える。左右につながる。",
+      "description": "1拍ごとに、相手へ2ダメージを与える。2本のエッジを持つ。",
       "glyph": "斬",
       "price": 2,
-      "rarity": "normal",
+      "rarity": "common",
       "shopWeight": 5,
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
@@ -423,10 +433,10 @@
       "id": "breaker",
       "code": "BREAK",
       "title": "破砕撃",
-      "description": "2拍ごとに、相手へ4ダメージを与える。左と上につながる。",
+      "description": "2拍ごとに、相手へ4ダメージを与える。2本のエッジを持つ。",
       "glyph": "破",
       "price": 3,
-      "rarity": "normal",
+      "rarity": "common",
       "shopWeight": 3,
       "ports": ["west", "north"],
       "buildIds": ["poison", "charge"],
@@ -437,7 +447,7 @@
       "id": "arc-shot",
       "code": "ARC",
       "title": "アーク弾",
-      "description": "2拍ごとに、相手へ2ダメージを与える。3方向へつながる。",
+      "description": "2拍ごとに、相手へ2ダメージを与える。3本のエッジを持つ。",
       "glyph": "弧",
       "price": 3,
       "rarity": "rare",
@@ -451,10 +461,10 @@
       "id": "barrier",
       "code": "GUARD",
       "title": "障壁",
-      "description": "2拍ごとに、シールドを2得る。3方向へつながる。",
+      "description": "2拍ごとに、シールドを2得る。3本のエッジを持つ。",
       "glyph": "盾",
       "price": 2,
-      "rarity": "normal",
+      "rarity": "common",
       "shopWeight": 4,
       "ports": ["west", "north", "east"],
       "buildIds": ["poison", "charge"],
@@ -465,7 +475,7 @@
       "id": "repair",
       "code": "REPAIR",
       "title": "修復",
-      "description": "3拍ごとに、失ったHPを3回復する。左と上につながる。",
+      "description": "3拍ごとに、失ったHPを3回復する。2本のエッジを持つ。",
       "glyph": "修",
       "price": 3,
       "rarity": "rare",
@@ -507,7 +517,7 @@
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "この先に直接つながった技の発動間隔を1拍短くする。3方向へつながる代わりに価格が高い。",
+      "description": "この先に直接つながった技の発動間隔を1拍短くする。3本のエッジを持つ代わりに価格が高い。",
       "glyph": "速",
       "price": 4,
       "rarity": "rare",
@@ -523,7 +533,7 @@
       "description": "2拍ごとに、毒矢で1ダメージと毒1を与える。相手がすでに毒なら、この技の毒付与量が1増える。",
       "glyph": "毒",
       "price": 2,
-      "rarity": "normal",
+      "rarity": "common",
       "shopWeight": 5,
       "ports": ["west", "north", "east"],
       "rotatable": false,
@@ -703,7 +713,7 @@
       "description": "通電にチャージ1を追加する。2拍ごとに、剣で相手へ1ダメージを与える。",
       "glyph": "充",
       "price": 2,
-      "rarity": "normal",
+      "rarity": "common",
       "shopWeight": 5,
       "ports": ["west", "east"],
       "rotatable": false,
@@ -718,7 +728,7 @@
       "description": "通電にチャージ1を追加する。2拍ごとに、弓で相手へ1ダメージを与える。",
       "glyph": "矢",
       "price": 3,
-      "rarity": "normal",
+      "rarity": "common",
       "shopWeight": 4,
       "ports": ["west", "north", "east"],
       "rotatable": false,

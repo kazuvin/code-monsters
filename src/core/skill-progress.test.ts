@@ -10,7 +10,7 @@ const block = (effects: BlockDefinition['effects']): BlockDefinition => ({
   description: 'テスト用。',
   glyph: '試',
   price: 1,
-  rarity: 'normal',
+  rarity: 'common',
   ports: ['west', 'east'],
   effects,
   cooldown: 1,

@@ -76,12 +76,25 @@ if ((await desktop.locator('.rack-block').count()) !== 0) throw new Error('Skill
 const shopRarities = await desktop
   .locator('.shop-card')
   .evaluateAll((cards) => cards.map((card) => [...card.classList].find((name) => name.startsWith('rarity-'))));
-if (shopRarities.some((rarity) => !/^rarity-(normal|rare|epic|legendary)$/.test(rarity ?? ''))) {
+if (shopRarities.some((rarity) => !/^rarity-(common|rare|epic|legendary)$/.test(rarity ?? ''))) {
   throw new Error(`Shop cards do not expose the four-tier rarity model: ${JSON.stringify(shopRarities)}`);
+}
+if (
+  (await desktop.locator('.shop-card .block-weapon-mark').count()) !== (await desktop.locator('.shop-card').count())
+) {
+  throw new Error('Shop cards do not show their weapon axis');
+}
+if (
+  (await desktop.locator('.shop-card .axis-badge.is-trait').count()) < (await desktop.locator('.shop-card').count())
+) {
+  throw new Error('Shop cards do not show their trait axis');
 }
 
 const lockedOffer = desktop.locator('.shop-card').last();
 const lockedTitle = (await lockedOffer.locator('.shop-block-button strong').textContent())?.trim();
+const lockedPorts = await lockedOffer
+  .locator('.block-visual .block-port')
+  .evaluateAll((ports) => ports.map((port) => port.className).sort());
 await lockedOffer.locator('.lock-button').click();
 if ((await lockedOffer.locator('.lock-button').getAttribute('aria-pressed')) !== 'true') {
   throw new Error('Shop lock did not enter its active state');
@@ -94,6 +107,62 @@ if (
 ) {
   throw new Error('Locked shop offer was not retained by reroll');
 }
+const retainedPorts = await retainedOffer
+  .locator('.block-visual .block-port')
+  .evaluateAll((ports) => ports.map((port) => port.className).sort());
+if (JSON.stringify(retainedPorts) !== JSON.stringify(lockedPorts)) {
+  throw new Error('Locked shop offer did not retain its generated connector direction');
+}
+
+await desktop.getByRole('button', { name: /カード一覧/ }).click();
+await desktop.locator('.catalog-screen').waitFor();
+if ((await desktop.locator('.catalog-card').count()) !== 22) {
+  throw new Error(`Catalog does not show every card: ${await desktop.locator('.catalog-card').count()}`);
+}
+if ((await desktop.locator('.rarity-legend span').count()) !== 4) {
+  throw new Error('Catalog does not explain all four rarity colors');
+}
+const rarityColors = await desktop
+  .locator('.catalog-card')
+  .evaluateAll((cards) =>
+    Object.fromEntries(
+      cards.map((card) => [
+        [...card.classList].find((name) => name.startsWith('rarity-'))?.replace('rarity-', ''),
+        getComputedStyle(card).getPropertyValue('--rarity-color').trim().toLowerCase(),
+      ]),
+    ),
+  );
+const expectedRarityColors = {
+  common: '#f4fbff',
+  rare: '#69dcff',
+  epic: '#bd7cff',
+  legendary: '#ff9b42',
+};
+if (JSON.stringify(rarityColors) !== JSON.stringify(expectedRarityColors)) {
+  throw new Error(`Catalog rarity aura colors are incorrect: ${JSON.stringify(rarityColors)}`);
+}
+if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== 22) {
+  throw new Error('Catalog cards do not expose every weapon axis');
+}
+if ((await desktop.locator('.catalog-card .axis-badge.is-trait').count()) < 22) {
+  throw new Error('Catalog cards do not expose every trait axis');
+}
+await desktop.locator('.catalog-filters button').filter({ hasText: /^毒/ }).click();
+if ((await desktop.locator('.catalog-card').count()) >= 22 || (await desktop.locator('.catalog-card').count()) === 0) {
+  throw new Error('Catalog trait filter did not narrow the card list');
+}
+await desktop.getByRole('button', { name: /すべて/ }).click();
+await desktop.locator('.catalog-card').first().click();
+await desktop.getByRole('dialog').waitFor();
+if (
+  (await desktop.getByRole('dialog').getByText('特性軸', { exact: true }).count()) !== 1 ||
+  (await desktop.getByRole('dialog').getByText('武器軸', { exact: true }).count()) !== 1
+) {
+  throw new Error('Catalog card detail does not explain both build axes');
+}
+await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
+await desktop.screenshot({ path: '/tmp/code-monsters-catalog-desktop.png', fullPage: true });
+await desktop.getByRole('button', { name: /回路/ }).click();
 
 const firstOffer = desktop.locator('.shop-card').first();
 await firstOffer.locator('.shop-block-button').click();
@@ -108,10 +177,21 @@ if ((await desktop.getByRole('dialog').getByText('レアリティ', { exact: tru
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 
 const coinsBefore = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
+const purchasedOfferPorts = await firstOffer
+  .locator('.block-visual .block-port')
+  .evaluateAll((ports) => ports.map((port) => port.className).sort());
 await firstOffer.getByRole('button', { name: /買う/ }).click();
 const coinsAfter = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
 if (!(coinsAfter < coinsBefore)) throw new Error('Buying a skill did not spend coins');
 if ((await desktop.locator('.shop-card').count()) !== 4) throw new Error('Purchased skill was not removed');
+const purchasedRackPorts = await desktop
+  .locator('.rack-block')
+  .first()
+  .locator('.block-port')
+  .evaluateAll((ports) => ports.map((port) => port.className).sort());
+if (JSON.stringify(purchasedRackPorts) !== JSON.stringify(purchasedOfferPorts)) {
+  throw new Error('Purchased skill did not retain its generated connector direction in the rack');
+}
 
 const firstCell = desktop.locator('[data-row="2"][data-column="0"]');
 const firstRackSkill = desktop.locator('.rack-block').first();
@@ -119,6 +199,12 @@ const firstRackGlyph = (await firstRackSkill.locator('.block-core b').textConten
 await longDrag(desktop, firstRackSkill, firstCell);
 if ((await firstCell.locator('.block-core b').textContent())?.trim() !== firstRackGlyph) {
   throw new Error('Could not place the first purchased skill at the power source');
+}
+const purchasedBoardPorts = await firstCell
+  .locator('.block-port')
+  .evaluateAll((ports) => ports.map((port) => port.className).sort());
+if (JSON.stringify(purchasedBoardPorts) !== JSON.stringify(purchasedOfferPorts)) {
+  throw new Error('Placed skill did not retain its generated connector direction');
 }
 
 await desktop.locator('.shop-card').first().getByRole('button', { name: /買う/ }).click();
@@ -237,6 +323,11 @@ mobile.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
 await mobile.goto(target, { waitUntil: 'networkidle' });
+await mobile.getByRole('button', { name: /カード一覧/ }).click();
+await mobile.locator('.catalog-screen').waitFor();
+if ((await mobile.locator('.catalog-card').count()) !== 22) throw new Error('Mobile catalog does not show every card');
+await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png', fullPage: true });
+await mobile.getByRole('button', { name: /回路/ }).click();
 const mobileCellBounds = await mobile.locator('.circuit-cell').evaluateAll((cells) =>
   cells.map((cell) => {
     const box = cell.getBoundingClientRect();
@@ -462,9 +553,11 @@ console.log(
       horizontalOverflow,
       screenshots: [
         'desktop',
+        'catalog-desktop',
         'battle',
         'buff-detail',
         'mobile',
+        'catalog-mobile',
         'mobile-battle',
         'mobile-buff-detail',
         'pulse-merge',
