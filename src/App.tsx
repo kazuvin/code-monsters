@@ -10,8 +10,10 @@ import { createBattle, createPlayback } from './core/battle';
 import { createBattleReport, type BattleReport, type TeamBattleReport } from './core/battle-report';
 import {
   analyzeCircuit,
+  analyzeMagicSigils,
   calculateChargeByCell,
   circuitConditionsForBlock,
+  countActiveMagicSigils,
   rotatePorts,
   type CircuitConditionStatus,
 } from './core/circuit';
@@ -25,6 +27,8 @@ import { levelForRun, maxHpBonusForLevel, rarityWeightsForLevel } from './core/p
 import { advanceShop, createShop, randomShopSeed, rerollShop } from './core/shop';
 import {
   incomingSkillModifiers,
+  combineSkillModifiers,
+  magicSigilModifiers,
   summarizeSkillProgress,
   type SkillModifiers,
   type SkillProgress,
@@ -99,6 +103,9 @@ const initialSeed = hasFixtureSeed ? fixtureSeed : randomShopSeed();
 const nextShopSeed = (current: number, step = 1) => (hasFixtureSeed ? current + step : randomShopSeed());
 const fusionFixtureBlockId = query.get('fusionFixture');
 const topologyFixture = query.get('topologyFixture');
+const magicSigilFixture = query.get('magicSigilFixture');
+const enemyBuildFixture = query.get('enemyBuildFixture');
+const enemyRequiredBlockFixture = query.get('enemyRequiredBlockFixture');
 const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
@@ -138,6 +145,7 @@ const conditionLabel = (condition: CircuitConditionStatus) => {
   if (condition.trigger.kind === 'path-length-at-least') return `経路 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'in-cycle') return `循環 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'all-ports-connected') return `全接続 ${condition.current}/${condition.required}`;
+  if (condition.trigger.kind === 'magic-sigil-level-at-least') return `魔紋 ${condition.current}/${condition.required}`;
   return `直線 ${condition.current}/${condition.required}`;
 };
 
@@ -158,8 +166,29 @@ const CircuitConditionChips = ({ conditions }: { conditions: CircuitConditionSta
     </span>
   ) : null;
 
+const SIGIL_LEVEL_LABELS = ['', 'I', 'II', 'III'];
+
+const MagicSigilMark = ({ level, active = false }: { level: number; active?: boolean }) =>
+  level > 0 ? (
+    <span
+      className={`magic-sigil-mark level-${level} ${active ? 'is-active' : ''}`}
+      data-magic-sigil-mark
+      aria-hidden="true"
+    >
+      <i />
+      <b>{SIGIL_LEVEL_LABELS[level] ?? level}</b>
+    </span>
+  ) : null;
+
 const createInitialPlayerBoard = () => {
   const initial = GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
+  if (magicSigilFixture === 'focus') {
+    initial[2][0] = { blockId: 'guiding-bolt', rotation: 0 };
+    initial[1][0] = { blockId: 'guardian-sigil', rotation: 2 };
+    initial[1][1] = { blockId: 'convergence-sigil', rotation: 0 };
+    initial[2][1] = { blockId: 'deep-sigil-cannon', rotation: 0 };
+    return initial;
+  }
   if (topologyFixture !== 'straight') return initial;
   ['charge-blade', 'charge-coil', 'strike', 'charge-line-lance', 'overcharge-cannon'].forEach((blockId, column) => {
     initial[GAME_DATA.rules.sourceRow][column] = { blockId, rotation: 0 };
@@ -217,6 +246,9 @@ const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplie
   return block.effects
     .map((effect, effectIndex) => {
       const progress = progressByEffect.get(effectIndex);
+      if (effect.kind === 'inscribe-magic-sigil') {
+        return `${effect.offsets.length}マスへ魔紋 +${effect.amount}`;
+      }
       if (effect.kind === 'charge') return `通電するチャージ +${effect.amount}`;
       if (effect.kind === 'release-charge') {
         const output = effect.output === 'damage' ? 'ダメージ' : 'シールド';
@@ -281,11 +313,13 @@ const BlockVisual = ({
   const ports = rotatePorts(block.ports, rotation);
   const traits = axisValuesForBlock(block.id, 'trait');
   const [weapon] = axisValuesForBlock(block.id, 'weapon');
-  const visualEffect = block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
-    ? 'charge'
-    : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
-      ? 'poison'
-      : block.effects[0]?.kind;
+  const visualEffect = block.effects.some((effect) => effect.kind === 'inscribe-magic-sigil')
+    ? 'magic-sigil'
+    : block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
+      ? 'charge'
+      : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
+        ? 'poison'
+        : block.effects[0]?.kind;
   return (
     <span
       className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${traits.length > 1 ? 'is-hybrid-trait' : ''} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
@@ -679,6 +713,14 @@ const BattleCircuitSummary = ({
   const [conditionPreviewKey, setConditionPreviewKey] = useState<string | null>(null);
   const poweredCells = new Set(powered);
   const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+  const magicSigils = analyzeMagicSigils(
+    board,
+    GAME_DATA.blocks,
+    analysis,
+    GAME_DATA.rules.skillFusion,
+    GAME_DATA.rules.magicSigils,
+  );
+  const activeMagicSigilCount = countActiveMagicSigils(board, analysis, magicSigils);
   const chargeByCell = calculateChargeByCell(board, GAME_DATA.blocks, analysis, GAME_DATA.rules.skillFusion);
   const conditionStatusesByCell = new Map<string, CircuitConditionStatus[]>();
   board.forEach((row, rowIndex) =>
@@ -686,7 +728,7 @@ const BattleCircuitSummary = ({
       const block = placed ? blockById.get(placed.blockId) : undefined;
       if (!block) return;
       const position = { row: rowIndex, column: columnIndex };
-      const conditions = circuitConditionsForBlock(board, GAME_DATA.blocks, analysis, position, block);
+      const conditions = circuitConditionsForBlock(board, GAME_DATA.blocks, analysis, position, block, magicSigils);
       if (conditions.length > 0) conditionStatusesByCell.set(`${rowIndex}:${columnIndex}`, conditions);
     }),
   );
@@ -726,7 +768,10 @@ const BattleCircuitSummary = ({
       <header>
         <span>
           <small>{team === 'player' ? 'YOUR CIRCUIT' : 'RIVAL CIRCUIT'}</small>
-          <strong>{label}</strong>
+          <strong>
+            {label}
+            {activeMagicSigilCount > 0 && <i className="battle-sigil-count">魔紋 {activeMagicSigilCount}</i>}
+          </strong>
         </span>
         <em>
           {mergingCells.size > 0
@@ -750,6 +795,7 @@ const BattleCircuitSummary = ({
           {board.flatMap((row, rowIndex) =>
             row.map((placed, columnIndex) => {
               const key = `${rowIndex}:${columnIndex}`;
+              const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
               const baseBlock = placed ? blockById.get(placed.blockId) : undefined;
               const block = baseBlock
                 ? upgradeBlockDefinition(baseBlock, placed?.stars ?? 0, GAME_DATA.rules.skillFusion)
@@ -763,21 +809,21 @@ const BattleCircuitSummary = ({
                     : poweredCells.has(key)
                       ? '接続済み'
                       : '未通電';
+              const magicSigilLabel = magicSigilLevel > 0 ? ` 魔紋位階${SIGIL_LEVEL_LABELS[magicSigilLevel]}` : '';
               const conditions = conditionStatusesByCell.get(key) ?? [];
               const conditionSummary = conditions.map(conditionLabel).join('、');
               if (block && placed) {
                 const position = { row: rowIndex, column: columnIndex };
-                const modifiers = incomingSkillModifiers(
-                  board,
-                  GAME_DATA.blocks,
-                  analysis,
-                  position,
-                  GAME_DATA.rules.skillFusion,
+                const modifiers = combineSkillModifiers(
+                  incomingSkillModifiers(board, GAME_DATA.blocks, analysis, position, GAME_DATA.rules.skillFusion),
+                  magicSigilModifiers(magicSigilLevel, GAME_DATA.rules.magicSigils),
                 );
                 const progress = summarizeSkillProgress(block, buffs[key], modifiers, {
                   enemyPoison,
                   pathLength: analysis.routeLength.get(key) ?? 0,
                   straightLineLength: analysis.straightLineLength.get(key) ?? 0,
+                  magicSigilLevel,
+                  magicSigilCount: activeMagicSigilCount,
                 });
                 const skillBuffs = visibleBuffs(block, progress, modifiers);
                 const badgeLabels = [
@@ -789,14 +835,15 @@ const BattleCircuitSummary = ({
                 return (
                   <button
                     type="button"
-                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${portFlowsByCell.has(key) ? 'is-conducting' : ''} ${activatedCells.has(key) ? 'is-activated' : ''} ${mergingCells.has(key) ? 'is-merging' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
+                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${portFlowsByCell.has(key) ? 'is-conducting' : ''} ${activatedCells.has(key) ? 'is-activated' : ''} ${mergingCells.has(key) ? 'is-merging' : ''} ${magicSigilLevel > 0 ? 'is-magic-sigil' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
                     key={key}
                     data-cell-key={key}
                     data-pulse-step={conductingCells.has(key) ? pulseStep : undefined}
                     data-conducting={portFlowsByCell.has(key) ? 'true' : undefined}
                     data-activated={activatedCells.has(key) ? 'true' : undefined}
                     data-merge={analysis.mergeCells.has(key) ? 'true' : undefined}
-                    aria-label={`${label}の${block.title} ${stateLabel}${conditionSummary ? ` 条件 ${conditionSummary}` : ''}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
+                    data-magic-sigil-level={magicSigilLevel || undefined}
+                    aria-label={`${label}の${block.title} ${stateLabel}${magicSigilLabel}${conditionSummary ? ` 条件 ${conditionSummary}` : ''}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
                     aria-haspopup="dialog"
                     onPointerEnter={() => conditions.length > 0 && setConditionPreviewKey(key)}
                     onPointerLeave={() => setConditionPreviewKey((current) => (current === key ? null : current))}
@@ -811,6 +858,10 @@ const BattleCircuitSummary = ({
                       })
                     }
                   >
+                    <MagicSigilMark
+                      level={magicSigilLevel}
+                      active={conductingCells.has(key) || activatedCells.has(key)}
+                    />
                     <BlockVisual
                       block={block}
                       rotation={placed.rotation}
@@ -843,10 +894,13 @@ const BattleCircuitSummary = ({
               }
               return (
                 <span
-                  className={`battle-circuit-cell ${poweredCells.has(key) ? 'is-powered' : ''}`}
+                  className={`battle-circuit-cell ${poweredCells.has(key) ? 'is-powered' : ''} ${magicSigilLevel > 0 ? 'is-magic-sigil' : ''}`}
                   key={key}
-                  aria-label="空き"
-                />
+                  data-magic-sigil-level={magicSigilLevel || undefined}
+                  aria-label={magicSigilLevel > 0 ? `空き・魔紋位階${SIGIL_LEVEL_LABELS[magicSigilLevel]}` : '空き'}
+                >
+                  <MagicSigilMark level={magicSigilLevel} />
+                </span>
               );
             }),
           )}
@@ -901,6 +955,21 @@ export function App() {
   const ownedBlockIds = useMemo(() => ownedBlockIdsFor(board, rack), [board, rack]);
   const circuitAnalysis = useMemo(() => analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
   const powered = circuitAnalysis.poweredCells;
+  const magicSigils = useMemo(
+    () =>
+      analyzeMagicSigils(
+        board,
+        GAME_DATA.blocks,
+        circuitAnalysis,
+        GAME_DATA.rules.skillFusion,
+        GAME_DATA.rules.magicSigils,
+      ),
+    [board, circuitAnalysis],
+  );
+  const activeMagicSigilCount = useMemo(
+    () => countActiveMagicSigils(board, circuitAnalysis, magicSigils),
+    [board, circuitAnalysis, magicSigils],
+  );
   const conditionStatusesByCell = useMemo(() => {
     const statuses = new Map<string, CircuitConditionStatus[]>();
     board.forEach((row, rowIndex) =>
@@ -908,12 +977,19 @@ export function App() {
         const block = placed ? blockById.get(placed.blockId) : undefined;
         if (!block) return;
         const position = { row: rowIndex, column: columnIndex };
-        const conditions = circuitConditionsForBlock(board, GAME_DATA.blocks, circuitAnalysis, position, block);
+        const conditions = circuitConditionsForBlock(
+          board,
+          GAME_DATA.blocks,
+          circuitAnalysis,
+          position,
+          block,
+          magicSigils,
+        );
         if (conditions.length > 0) statuses.set(`${rowIndex}:${columnIndex}`, conditions);
       }),
     );
     return statuses;
-  }, [board, circuitAnalysis]);
+  }, [board, circuitAnalysis, magicSigils]);
   const selectedConditionKey =
     detail?.location === 'board' && detail.position ? `${detail.position.row}:${detail.position.column}` : null;
   const activeConditionKey = conditionPreviewKey ?? selectedConditionKey;
@@ -926,7 +1002,12 @@ export function App() {
   const maxHpBonus = maxHpBonusForLevel(GAME_DATA, level);
   const shopRarityWeights = useMemo(() => rarityWeightsForLevel(GAME_DATA, level), [level]);
   const enemyBuild = useMemo(
-    () => generateEnemyBuild(GAME_DATA, run, enemySeed, { budget: earnedCoins }),
+    () =>
+      generateEnemyBuild(GAME_DATA, run, enemySeed, {
+        budget: earnedCoins,
+        ...(enemyBuildFixture ? { buildId: enemyBuildFixture } : {}),
+        ...(enemyRequiredBlockFixture ? { requiredBlockId: enemyRequiredBlockFixture } : {}),
+      }),
     [earnedCoins, run, enemySeed],
   );
   const enemyBuildDesign = GAME_DATA.buildDesign.builds.find((build) => build.id === enemyBuild.buildId);
@@ -1364,6 +1445,15 @@ export function App() {
   const detailOwner = detailBattleTeam === 'player' ? player : detailBattleTeam === 'enemy' ? enemy : undefined;
   const detailOpponent = detailBattleTeam === 'player' ? enemy : detailBattleTeam === 'enemy' ? player : undefined;
   const detailAnalysis = analyzeCircuit(detailBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+  const detailMagicSigils = analyzeMagicSigils(
+    detailBoard,
+    GAME_DATA.blocks,
+    detailAnalysis,
+    GAME_DATA.rules.skillFusion,
+    GAME_DATA.rules.magicSigils,
+  );
+  const detailMagicSigilCount = countActiveMagicSigils(detailBoard, detailAnalysis, detailMagicSigils);
+  const detailMagicSigilLevel = detailCellKey ? (detailMagicSigils.levels.get(detailCellKey) ?? 0) : 0;
   const detailChargeByCell = calculateChargeByCell(
     detailBoard,
     GAME_DATA.blocks,
@@ -1372,12 +1462,15 @@ export function App() {
   );
   const detailModifiers =
     detail?.position && detailCellKey && detailPoweredCells.has(detailCellKey)
-      ? incomingSkillModifiers(
-          detailBoard,
-          GAME_DATA.blocks,
-          detailAnalysis,
-          detail.position,
-          GAME_DATA.rules.skillFusion,
+      ? combineSkillModifiers(
+          incomingSkillModifiers(
+            detailBoard,
+            GAME_DATA.blocks,
+            detailAnalysis,
+            detail.position,
+            GAME_DATA.rules.skillFusion,
+          ),
+          magicSigilModifiers(detailMagicSigilLevel, GAME_DATA.rules.magicSigils),
         )
       : { effectPower: 0, cooldownReduction: 0 };
   const detailBuffs =
@@ -1387,6 +1480,8 @@ export function App() {
         enemyPoison: detailOpponent?.poison ?? 0,
         pathLength: detailCellKey ? (detailAnalysis.routeLength.get(detailCellKey) ?? 0) : 0,
         straightLineLength: detailCellKey ? (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) : 0,
+        magicSigilLevel: detailMagicSigilLevel,
+        magicSigilCount: detailMagicSigilCount,
       })
     : undefined;
   const detailVisibleBuffs =
@@ -1402,6 +1497,7 @@ export function App() {
         detailAnalysis.mergeCells.has(detailCellKey) ? '合流' : '',
         detailAnalysis.cyclicCells.has(detailCellKey) ? '循環' : '',
         detailAnalysis.fullyConnectedCells.has(detailCellKey) ? '全接続' : '',
+        detailMagicSigilLevel > 0 ? `魔紋${SIGIL_LEVEL_LABELS[detailMagicSigilLevel]}` : '',
         (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) >= 4
           ? `直線${detailAnalysis.straightLineLength.get(detailCellKey)}`
           : '',
@@ -1467,6 +1563,7 @@ export function App() {
                   </div>
                   <span className="power-count">
                     通電技 <b>{powered.size}</b>
+                    {activeMagicSigilCount > 0 && <i>魔紋 {activeMagicSigilCount}</i>}
                   </span>
                 </header>
 
@@ -1486,12 +1583,14 @@ export function App() {
                         row.map((placed, columnIndex) => {
                           const block = placed ? blockById.get(placed.blockId) : undefined;
                           const key = `${rowIndex}:${columnIndex}`;
+                          const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
                           const conditions = conditionStatusesByCell.get(key) ?? [];
                           const conditionSummary = conditions.map(conditionLabel).join('、');
                           return (
                             <div
-                              className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
+                              className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''} ${magicSigilLevel > 0 ? 'is-magic-sigil' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
                               data-circuit-cell
+                              data-magic-sigil-level={magicSigilLevel || undefined}
                               data-condition-state={
                                 conditions.length > 0
                                   ? conditions.some((condition) => condition.met)
@@ -1504,10 +1603,11 @@ export function App() {
                               role="gridcell"
                               key={key}
                             >
+                              <MagicSigilMark level={magicSigilLevel} active={powered.has(key)} />
                               {block && placed ? (
                                 <button
                                   className="block-button"
-                                  aria-label={`${block.title}${powered.has(key) ? ' 通電中' : ' 未通電'}${conditionSummary ? `。条件 ${conditionSummary}` : ''}。クリックで詳細、長押しで移動`}
+                                  aria-label={`${block.title}${powered.has(key) ? ' 通電中' : ' 未通電'}${magicSigilLevel > 0 ? `。魔紋位階${SIGIL_LEVEL_LABELS[magicSigilLevel]}` : ''}${conditionSummary ? `。条件 ${conditionSummary}` : ''}。クリックで詳細、長押しで移動`}
                                   onPointerEnter={() => conditions.length > 0 && setConditionPreviewKey(key)}
                                   onPointerLeave={() =>
                                     setConditionPreviewKey((current) => (current === key ? null : current))
@@ -1546,7 +1646,14 @@ export function App() {
                                   <CircuitConditionChips conditions={conditions} />
                                 </button>
                               ) : (
-                                <span className="empty-cell" aria-label="空きマス" />
+                                <span
+                                  className="empty-cell"
+                                  aria-label={
+                                    magicSigilLevel > 0
+                                      ? `空きマス、魔紋位階${SIGIL_LEVEL_LABELS[magicSigilLevel]}`
+                                      : '空きマス'
+                                  }
+                                />
                               )}
                             </div>
                           );
@@ -1563,6 +1670,9 @@ export function App() {
                     </span>
                     <span>
                       <i className="legend-condition" /> 条件成立
+                    </span>
+                    <span>
+                      <i className="legend-sigil" /> 魔紋
                     </span>
                     <b>長押しで移動</b>
                   </div>
@@ -1911,6 +2021,15 @@ export function App() {
                   合流時、発動効果 ×{detailMergeMultiplier}
                 </div>
               )}
+              {detailMagicSigilLevel > 0 && (
+                <div className="dialog-magic-sigil-rule">
+                  <span>MAGIC SIGIL · {SIGIL_LEVEL_LABELS[detailMagicSigilLevel]}</span>
+                  発動効果 +{detailMagicSigilLevel * GAME_DATA.rules.magicSigils.effectPowerPerLevel}
+                  {detailMagicSigilLevel >= GAME_DATA.rules.magicSigils.hasteLevel
+                    ? `・発動間隔 -${GAME_DATA.rules.magicSigils.cooldownReduction}拍`
+                    : ''}
+                </div>
+              )}
               {detailBattleTeam && detailProgress && detailVisibleBuffs && detailOwner && (
                 <div
                   className={`battle-buff-panel team-${detailBattleTeam}`}
@@ -1933,7 +2052,7 @@ export function App() {
                           <small>
                             {[
                               value.battle > 0 ? `成長 +${value.battle}` : '',
-                              value.circuit > 0 ? `増幅 +${value.circuit}` : '',
+                              value.circuit > 0 ? `回路 +${value.circuit}` : '',
                             ]
                               .filter(Boolean)
                               .join(' / ')}
@@ -1984,6 +2103,14 @@ export function App() {
                   <div>
                     <dt>チャージ</dt>
                     <dd>{detailChargeByCell.get(detailCellKey) ?? 0}</dd>
+                  </div>
+                )}
+                {detailMagicSigilLevel > 0 && (
+                  <div>
+                    <dt>魔紋</dt>
+                    <dd>
+                      位階{SIGIL_LEVEL_LABELS[detailMagicSigilLevel]}・通電中 {detailMagicSigilCount}マス
+                    </dd>
                   </div>
                 )}
                 {detailBattleTeam && detailProgress && (

@@ -110,6 +110,12 @@ export function conditionAvailability(
       weights.minimum,
     );
   }
+  if (trigger.kind === 'magic-sigil-level-at-least') {
+    return clamp(
+      weights.magicSigilBase - weights.magicSigilPenaltyPerRequiredLevel * Math.max(0, trigger.amount - 1),
+      weights.minimum,
+    );
+  }
   return assertNever(trigger);
 }
 
@@ -120,6 +126,7 @@ const triggerLabel = (trigger: EffectTrigger | undefined, portCount: number) => 
   if (trigger.kind === 'path-length-at-least') return `path>=${trigger.amount}`;
   if (trigger.kind === 'straight-line-at-least') return `straight>=${trigger.amount}`;
   if (trigger.kind === 'all-ports-connected') return `all-${portCount}-ports`;
+  if (trigger.kind === 'magic-sigil-level-at-least') return `magic-sigil>=${trigger.amount}`;
   return assertNever(trigger);
 };
 
@@ -141,7 +148,9 @@ const statUnitValue = (stat: Extract<BlockEffect, { kind: 'growth' }>['stat'], r
 const scalingReference = (scaling: EffectScaling, rules: BalanceFormulaRules) => {
   if (scaling.kind === 'enemy-poison') return rules.reference.enemyPoison;
   if (scaling.kind === 'path-length') return rules.reference.pathLength;
-  return rules.reference.straightLineLength;
+  if (scaling.kind === 'straight-line') return rules.reference.straightLineLength;
+  if (scaling.kind === 'magic-sigil-level') return rules.reference.magicSigilLevel;
+  return rules.reference.magicSigilCount;
 };
 
 const scalingAvailability = (scaling: EffectScaling, portCount: number, rules: BalanceFormulaRules) => {
@@ -154,6 +163,9 @@ const scalingAvailability = (scaling: EffectScaling, portCount: number, rules: B
       portCount,
       rules,
     );
+  }
+  if (scaling.kind === 'magic-sigil-level' || scaling.kind === 'magic-sigil-count') {
+    return rules.resourceAvailability.magicSigil;
   }
   return conditionAvailability(
     { kind: 'straight-line-at-least', amount: rules.reference.straightLineLength },
@@ -345,8 +357,26 @@ const chargePower = (
   };
 };
 
+const magicSigilPower = (
+  effect: Extract<BlockEffect, { kind: 'inscribe-magic-sigil' }>,
+  context: EffectPowerContext,
+): EffectPowerValue => {
+  const targetSeconds = context.rules.reference.targetCooldownBeats * secondsPerBeat(context.data);
+  const rawCvps =
+    (effect.amount * effect.offsets.length * context.data.rules.magicSigils.effectPowerPerLevel) / targetSeconds;
+  return {
+    formula: `level ${effect.amount}*targets ${effect.offsets.length}*effectPower ${context.data.rules.magicSigils.effectPowerPerLevel}/targetSeconds ${targetSeconds}`,
+    conditionAvailability: 1,
+    rewardMultiplier: 1,
+    rawCvps,
+    weightedCvps: rawCvps * context.rules.resourceAvailability.magicSigil,
+    referenceOffensePerSecond: 0,
+    referenceDefensePerSecond: 0,
+  };
+};
+
 const effectPower = (effect: BlockEffect, context: EffectPowerContext): EffectPowerValue => {
-  const trigger = effect.trigger;
+  const trigger = effect.kind === 'inscribe-magic-sigil' ? undefined : effect.trigger;
   const triggerWeight = conditionAvailability(trigger, context.block.ports.length, context.rules);
   if (effect.kind === 'damage' || effect.kind === 'shield' || effect.kind === 'repair' || effect.kind === 'poison') {
     return numericEffectPower(effect, triggerWeight, context);
@@ -357,6 +387,7 @@ const effectPower = (effect: BlockEffect, context: EffectPowerContext): EffectPo
   if (effect.kind === 'amplify') return amplifyPower(effect, triggerWeight, context);
   if (effect.kind === 'haste') return hastePower(effect, triggerWeight, context);
   if (effect.kind === 'charge') return chargePower(effect, triggerWeight, context);
+  if (effect.kind === 'inscribe-magic-sigil') return magicSigilPower(effect, context);
   return assertNever(effect);
 };
 
@@ -368,7 +399,7 @@ const assessBlock = (data: GameData, block: BlockDefinition, marginalChargeCvps:
     return {
       effectIndex,
       kind: effect.kind,
-      condition: triggerLabel(effect.trigger, block.ports.length),
+      condition: triggerLabel(effect.kind === 'inscribe-magic-sigil' ? undefined : effect.trigger, block.ports.length),
       formula: power.formula,
       conditionAvailability: round(power.conditionAvailability),
       rewardMultiplier: round(power.rewardMultiplier),

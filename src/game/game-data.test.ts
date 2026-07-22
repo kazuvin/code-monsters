@@ -161,7 +161,25 @@ describe('game data', () => {
       ['neutral', '#486977'],
       ['poison', '#8bd450'],
       ['charge', '#ffd36a'],
+      ['magic-sigil', '#a987ff'],
     ]);
+  });
+
+  it('defines capped magic sigils that grant power and late-rank haste', () => {
+    expect(GAME_DATA.rules.magicSigils).toEqual({
+      maxLevel: 3,
+      effectPowerPerLevel: 15,
+      hasteLevel: 3,
+      cooldownReduction: 1,
+    });
+
+    const inscribers = GAME_DATA.blocks.filter((block) =>
+      block.effects.some((effect) => effect.kind === 'inscribe-magic-sigil'),
+    );
+    expect(inscribers.map((block) => block.id)).toEqual(
+      expect.arrayContaining(['inscription-stone', 'guiding-bolt', 'twin-inscription', 'convergence-sigil']),
+    );
+    expect(inscribers.length).toBeGreaterThanOrEqual(5);
   });
 
   it('defines a rival generator that attempts to add one affordable node per round', () => {
@@ -203,7 +221,7 @@ describe('game data', () => {
         .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2)
         .map((skill) => skill.id)
         .sort(),
-    ).toEqual(['status-relay', 'toxic-reservoir']);
+    ).toEqual(['resonance-circle', 'status-relay', 'thunder-sigil', 'toxic-reservoir']);
   });
 
   it('replaces poison-only nodes with weapon combinations and cross-trait nodes', () => {
@@ -248,7 +266,19 @@ describe('game data', () => {
     const branchingSkills = GAME_DATA.blocks.filter((block) => block.ports.length >= 3);
 
     expect(branchingSkills.map((block) => block.id).sort()).toEqual(
-      ['accelerator', 'arc-shot', 'barrier', 'charge-arrow', 'poison-needle', 'sealed-junction', 'venom-orbit'].sort(),
+      [
+        'accelerator',
+        'all-sigil-resonance',
+        'arc-shot',
+        'barrier',
+        'charge-arrow',
+        'guiding-bolt',
+        'poison-needle',
+        'resonance-circle',
+        'sealed-junction',
+        'twin-inscription',
+        'venom-orbit',
+      ].sort(),
     );
     branchingSkills.forEach((block) => {
       if (block.cooldown) expect(block.cooldown, `${block.id} should pay a cooldown tax`).toBeGreaterThanOrEqual(2);
@@ -338,6 +368,26 @@ describe('game data', () => {
 
     expect(validateGameData(invalid)).toContain(
       'block "long-route-fang" effect "damage" scaling every must be positive',
+    );
+  });
+
+  it('rejects magic sigils that target their source cell or exceed the configured rank', () => {
+    const invalid = structuredClone(GAME_DATA);
+    const inscription = invalid.blocks
+      .find((block) => block.id === 'inscription-stone')!
+      .effects.find((effect) => effect.kind === 'inscribe-magic-sigil');
+    if (!inscription || inscription.kind !== 'inscribe-magic-sigil') throw new Error('missing inscription fixture');
+    inscription.offsets = [{ row: 0, column: 0 }];
+    const cannon = invalid.blocks.find((block) => block.id === 'deep-sigil-cannon')!;
+    const damage = cannon.effects.find((effect) => effect.kind === 'damage');
+    if (!damage || damage.kind !== 'damage') throw new Error('missing sigil damage fixture');
+    damage.trigger = { kind: 'magic-sigil-level-at-least', amount: 4 };
+
+    expect(validateGameData(invalid)).toEqual(
+      expect.arrayContaining([
+        'block "inscription-stone" cannot inscribe its own cell',
+        'block "deep-sigil-cannon" effect "damage" magic sigil level is invalid',
+      ]),
     );
   });
 

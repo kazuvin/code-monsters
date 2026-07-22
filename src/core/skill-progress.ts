@@ -8,6 +8,7 @@ import type {
   CellPosition,
   CircuitBoard,
   EffectScaling,
+  MagicSigilRules,
   SkillFusionRules,
   SkillBuffState,
 } from './types';
@@ -18,6 +19,8 @@ export type EffectScalingContext = {
   enemyPoison: number;
   pathLength: number;
   straightLineLength: number;
+  magicSigilLevel: number;
+  magicSigilCount: number;
 };
 
 export type SkillModifiers = {
@@ -61,8 +64,30 @@ export function effectScalingBonus(scaling: EffectScaling | undefined, context: 
       ? context.enemyPoison
       : scaling.kind === 'path-length'
         ? context.pathLength
-        : context.straightLineLength;
+        : scaling.kind === 'straight-line'
+          ? context.straightLineLength
+          : scaling.kind === 'magic-sigil-level'
+            ? context.magicSigilLevel
+            : context.magicSigilCount;
   return Math.floor(source / scaling.every) * scaling.amount;
+}
+
+export function magicSigilModifiers(level: number, rules: MagicSigilRules): SkillModifiers {
+  const safeLevel = Math.min(rules.maxLevel, Math.max(0, Math.floor(level)));
+  return {
+    effectPower: safeLevel * rules.effectPowerPerLevel,
+    cooldownReduction: safeLevel >= rules.hasteLevel ? rules.cooldownReduction : 0,
+  };
+}
+
+export function combineSkillModifiers(...values: SkillModifiers[]): SkillModifiers {
+  return values.reduce(
+    (result, value) => ({
+      effectPower: result.effectPower + value.effectPower,
+      cooldownReduction: result.cooldownReduction + value.cooldownReduction,
+    }),
+    { effectPower: 0, cooldownReduction: 0 },
+  );
 }
 
 const modifierTriggerMatches = (
@@ -79,6 +104,7 @@ const modifierTriggerMatches = (
     inCycle: analysis.cyclicCells.has(key),
     allPortsConnected: analysis.fullyConnectedCells.has(key),
     straightLineLength: analysis.straightLineLength.get(key) ?? 0,
+    magicSigilLevel: 0,
   });
 };
 
@@ -126,7 +152,13 @@ export function summarizeSkillProgress(
   block: BlockDefinition,
   buffs: SkillBuffState = {},
   modifiers: SkillModifiers = { effectPower: 0, cooldownReduction: 0 },
-  scalingContext: EffectScalingContext = { enemyPoison: 0, pathLength: 0, straightLineLength: 0 },
+  scalingContext: EffectScalingContext = {
+    enemyPoison: 0,
+    pathLength: 0,
+    straightLineLength: 0,
+    magicSigilLevel: 0,
+    magicSigilCount: 0,
+  },
 ): SkillProgress {
   const normalizedBuffs = Object.fromEntries(
     BUFF_STATS.flatMap((stat) => {

@@ -1,6 +1,21 @@
-import { analyzeCircuit, calculateChargeByCell, cellKey, cloneBoard, matchesCircuitTrigger } from './circuit';
+import {
+  analyzeCircuit,
+  analyzeMagicSigils,
+  calculateChargeByCell,
+  cellKey,
+  cloneBoard,
+  countActiveMagicSigils,
+  matchesCircuitTrigger,
+} from './circuit';
 import { upgradeBlockDefinition } from './fusion';
-import { buffStatForEffect, buffStatsForBlock, effectScalingBonus, incomingSkillModifiers } from './skill-progress';
+import {
+  buffStatForEffect,
+  buffStatsForBlock,
+  combineSkillModifiers,
+  effectScalingBonus,
+  incomingSkillModifiers,
+  magicSigilModifiers,
+} from './skill-progress';
 import type {
   BattleState,
   BattleTraceEvent,
@@ -30,6 +45,8 @@ type PlannedActivation = {
   waveStep: number;
   mergeMultiplier: number;
   charge: number;
+  magicSigilLevel: number;
+  magicSigilCount: number;
   stars: 0 | 1;
 };
 
@@ -104,11 +121,13 @@ export function createBattle(
 }
 
 const hasActivation = (block: BlockDefinition) =>
-  block.effects.some((effect) => !['amplify', 'haste', 'charge'].includes(effect.kind));
+  block.effects.some((effect) => !['amplify', 'haste', 'charge', 'inscribe-magic-sigil'].includes(effect.kind));
 
 function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tick: number): PlannedActivation[] {
   const definitions = new Map(data.blocks.map((block) => [block.id, block]));
   const analysis = analyzeCircuit(board, data.blocks, data.rules.sourceRow);
+  const magicSigils = analyzeMagicSigils(board, data.blocks, analysis, data.rules.skillFusion, data.rules.magicSigils);
+  const magicSigilCount = countActiveMagicSigils(board, analysis, magicSigils);
   const chargeByCell = calculateChargeByCell(board, data.blocks, analysis, data.rules.skillFusion);
   const plans: PlannedActivation[] = [];
 
@@ -123,7 +142,11 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
       const block = upgradeBlockDefinition(baseBlock, stars, data.rules.skillFusion);
       if (!hasActivation(block)) return;
       const upstream = analysis.upstreamCells.get(key) ?? [];
-      const modifiers = incomingSkillModifiers(board, data.blocks, analysis, position, data.rules.skillFusion);
+      const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
+      const modifiers = combineSkillModifiers(
+        incomingSkillModifiers(board, data.blocks, analysis, position, data.rules.skillFusion),
+        magicSigilModifiers(magicSigilLevel, data.rules.magicSigils),
+      );
       const cooldown = Math.max(1, (block.cooldown ?? 1) - modifiers.cooldownReduction);
       if ((tick - 1) % cooldown !== 0) return;
       plans.push({
@@ -140,6 +163,8 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
         waveStep: analysis.waveStep.get(key) ?? 1,
         mergeMultiplier: analysis.mergeCells.has(key) ? data.rules.mergeEffectMultiplier : 1,
         charge: chargeByCell.get(key) ?? 0,
+        magicSigilLevel,
+        magicSigilCount,
         stars,
       });
     }),
@@ -161,6 +186,7 @@ const triggerMatches = (
     inCycle: boolean;
     allPortsConnected: boolean;
     straightLineLength: number;
+    magicSigilLevel: number;
   },
 ) => {
   if (!trigger) return true;
@@ -220,6 +246,8 @@ const numericAmount = (
           enemyPoison: context.enemyPoison,
           pathLength: action.pathLength,
           straightLineLength: action.straightLineLength,
+          magicSigilLevel: action.magicSigilLevel,
+          magicSigilCount: action.magicSigilCount,
         })
       : 0) +
     (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0);
@@ -267,11 +295,18 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
         inCycle: plan.inCycle,
         allPortsConnected: plan.allPortsConnected,
         straightLineLength: plan.straightLineLength,
+        magicSigilLevel: plan.magicSigilLevel,
         selfBuffs: skillBuffs[plan.team][planKey] ?? {},
       };
 
       for (const effect of plan.block.effects) {
-        if (effect.kind === 'amplify' || effect.kind === 'haste' || effect.kind === 'charge') continue;
+        if (
+          effect.kind === 'amplify' ||
+          effect.kind === 'haste' ||
+          effect.kind === 'charge' ||
+          effect.kind === 'inscribe-magic-sigil'
+        )
+          continue;
         if (!triggerMatches(effect.trigger, context)) continue;
 
         if (effect.kind === 'release-charge') {

@@ -3,8 +3,10 @@ import { chromium } from 'playwright-core';
 const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
 const seededTarget = new URL(requestedTarget);
 if (!seededTarget.searchParams.has('shopSeed')) seededTarget.searchParams.set('shopSeed', '73');
+if (!seededTarget.searchParams.has('enemyBuildFixture')) seededTarget.searchParams.set('enemyBuildFixture', 'charge');
 const target = seededTarget.toString();
 const battleBackgroundRatio = 1672 / 941;
+const playableSkillCount = 37;
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: true,
@@ -138,7 +140,7 @@ if (
 
 await desktop.getByRole('button', { name: /カード一覧/ }).click();
 await desktop.locator('.catalog-screen').waitFor();
-if ((await desktop.locator('.catalog-card').count()) !== 26) {
+if ((await desktop.locator('.catalog-card').count()) !== playableSkillCount) {
   throw new Error(`Catalog does not show every card: ${await desktop.locator('.catalog-card').count()}`);
 }
 if ((await desktop.locator('.rarity-legend span').count()) !== 4) {
@@ -183,14 +185,17 @@ const nodeAuras = Object.values(rarityAuraPlacement).map((sample) => sample.node
 if (nodeAuras.some((aura) => aura === 'none' || aura === 'missing') || new Set(nodeAuras).size !== 4) {
   throw new Error(`Rarity aura is not attached to each node frame: ${JSON.stringify(rarityAuraPlacement)}`);
 }
-if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== 26) {
+if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== playableSkillCount) {
   throw new Error('Catalog cards do not expose every weapon axis');
 }
-if ((await desktop.locator('.catalog-card .axis-badge.is-trait').count()) < 26) {
+if ((await desktop.locator('.catalog-card .axis-badge.is-trait').count()) < playableSkillCount) {
   throw new Error('Catalog cards do not expose every trait axis');
 }
 await desktop.locator('.catalog-filters button').filter({ hasText: /^毒/ }).click();
-if ((await desktop.locator('.catalog-card').count()) >= 26 || (await desktop.locator('.catalog-card').count()) === 0) {
+if (
+  (await desktop.locator('.catalog-card').count()) >= playableSkillCount ||
+  (await desktop.locator('.catalog-card').count()) === 0
+) {
   throw new Error('Catalog trait filter did not narrow the card list');
 }
 await desktop.getByRole('button', { name: /すべて/ }).click();
@@ -367,7 +372,8 @@ mobile.on('console', (message) => {
 await mobile.goto(target, { waitUntil: 'networkidle' });
 await mobile.getByRole('button', { name: /カード一覧/ }).click();
 await mobile.locator('.catalog-screen').waitFor();
-if ((await mobile.locator('.catalog-card').count()) !== 26) throw new Error('Mobile catalog does not show every card');
+if ((await mobile.locator('.catalog-card').count()) !== playableSkillCount)
+  throw new Error('Mobile catalog does not show every card');
 await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png', fullPage: true });
 await mobile.getByRole('button', { name: /回路/ }).click();
 const mobileCellBounds = await mobile.locator('.circuit-cell').evaluateAll((cells) =>
@@ -561,7 +567,8 @@ overload.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
 const overloadTarget = new URL(target);
-overloadTarget.searchParams.set('shopSeed', '203');
+overloadTarget.searchParams.set('shopSeed', '324');
+overloadTarget.searchParams.set('enemyRequiredBlockFixture', 'overcharge-cannon');
 await overload.goto(overloadTarget.toString(), { waitUntil: 'networkidle' });
 const overloadChargeOffer = overload.locator('.shop-card').filter({ hasText: '充電矢' });
 const overloadDefenseOffer = overload.locator('.shop-card').filter({ hasText: '帰還コイル' });
@@ -680,11 +687,11 @@ if (
 await lockedRun.getByRole('button', { name: /戦闘開始/ }).click();
 await lockedRun.locator('.battle-screen').waitFor();
 const secondRunRival = (await lockedRun.locator('.rival-readout').textContent()) ?? '';
-if (!secondRunRival.includes('LV.02') || !secondRunRival.includes('7 NODE') || !secondRunRival.includes('40/40 COIN')) {
+if (!secondRunRival.includes('LV.02') || !secondRunRival.includes('8 NODE') || !secondRunRival.includes('40/40 COIN')) {
   throw new Error(`The rival did not grow on run two: ${secondRunRival}`);
 }
-if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 7) {
-  throw new Error('The generated run-two rival circuit does not contain seven affordable powered nodes');
+if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 8) {
+  throw new Error('The generated run-two rival circuit does not contain eight affordable powered nodes');
 }
 if (!(await lockedRun.locator('.arena-fighter.team-enemy .unit-health').getAttribute('aria-label'))?.includes('7500')) {
   throw new Error('The run-two rival did not receive its configured health growth');
@@ -728,6 +735,51 @@ await fusionDialog.waitFor({ state: 'detached' });
 if ((await fusion.locator('.rack-block .skill-star').count()) !== 1) {
   throw new Error('The fused skill is not retained with a star marker');
 }
+
+const magicSigil = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
+magicSigil.on('pageerror', (error) => errors.push(error.message));
+magicSigil.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+const magicSigilTarget = new URL(target);
+magicSigilTarget.searchParams.set('magicSigilFixture', 'focus');
+await magicSigil.goto(magicSigilTarget.toString(), { waitUntil: 'networkidle' });
+const rankThreeSigil = magicSigil.locator('.circuit-cell[data-row="2"][data-column="1"][data-magic-sigil-level="3"]');
+await rankThreeSigil.waitFor();
+if ((await rankThreeSigil.locator('[data-magic-sigil-mark]').count()) !== 1) {
+  throw new Error('Rank III magic sigil is missing its board mark');
+}
+const emptySigil = magicSigil.locator('.circuit-cell[data-row="2"][data-column="2"][data-magic-sigil-level="1"]');
+if (
+  (await emptySigil.locator('.block-button').count()) !== 0 ||
+  (await emptySigil.locator('[data-magic-sigil-mark]').count()) !== 1
+) {
+  throw new Error('An empty inscribed cell does not preserve its magic sigil');
+}
+await rankThreeSigil.locator('.block-button').click();
+const magicSigilRule = magicSigil.locator('.dialog-magic-sigil-rule');
+await magicSigilRule.waitFor();
+const magicSigilRuleText = (await magicSigilRule.textContent()) ?? '';
+if (!magicSigilRuleText.includes('+45') || !magicSigilRuleText.includes('-1拍')) {
+  throw new Error(`Rank III magic sigil detail is incomplete: ${magicSigilRuleText}`);
+}
+await magicSigil.getByRole('button', { name: '詳細を閉じる' }).click();
+await magicSigil.screenshot({ path: '/tmp/code-monsters-magic-sigil-desktop.png', fullPage: true });
+await magicSigil.setViewportSize({ width: 390, height: 844 });
+const magicSigilOverflow = await magicSigil.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+if (magicSigilOverflow > 1) throw new Error(`Magic sigil fixture overflows mobile viewport by ${magicSigilOverflow}px`);
+await magicSigil.screenshot({ path: '/tmp/code-monsters-magic-sigil-mobile.png', fullPage: true });
+await magicSigil.setViewportSize({ width: 1440, height: 1100 });
+await magicSigil.getByRole('button', { name: /戦闘開始/ }).click();
+await magicSigil.locator('.battle-screen').waitFor();
+const battleRankThreeSigil = magicSigil.locator('.battle-circuit-summary.team-player [data-magic-sigil-level="3"]');
+await battleRankThreeSigil.waitFor();
+await magicSigil
+  .locator(
+    '.battle-circuit-summary.team-player [data-magic-sigil-level="3"].is-conducting, .battle-circuit-summary.team-player [data-magic-sigil-level="3"].is-activated',
+  )
+  .waitFor({ timeout: 5000 });
+await magicSigil.screenshot({ path: '/tmp/code-monsters-magic-sigil-battle.png', fullPage: true });
 
 const topology = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 topology.on('pageerror', (error) => errors.push(error.message));
@@ -787,6 +839,9 @@ console.log(
         'loss-reward',
         'fusion-desktop',
         'fusion-mobile',
+        'magic-sigil-desktop',
+        'magic-sigil-mobile',
+        'magic-sigil-battle',
         'topology-desktop',
         'topology-mobile',
       ],

@@ -7,7 +7,7 @@ export type Rotation = 0 | 1 | 2 | 3;
 export type BuildRole = 'starter' | 'grower' | 'cycler' | 'sustain' | 'payoff';
 export type SkillDesignStatus = 'planned' | 'playable';
 export type SkillDesignScope = 'exclusive' | 'shared';
-export type PlacementPatternId = 'free' | 'loop' | 'fully-connected' | 'straight-line';
+export type PlacementPatternId = 'free' | 'loop' | 'fully-connected' | 'straight-line' | 'magic-sigil';
 export type SkillStars = 0 | 1;
 export type BuffStat = 'damage' | 'poison' | 'shield' | 'repair' | 'rupture';
 export type BuffTarget = BuffStat | 'all';
@@ -18,14 +18,17 @@ export type EffectTrigger =
   | { kind: 'path-length-at-least'; amount: number }
   | { kind: 'in-cycle' }
   | { kind: 'all-ports-connected' }
-  | { kind: 'straight-line-at-least'; amount: number };
+  | { kind: 'straight-line-at-least'; amount: number }
+  | { kind: 'magic-sigil-level-at-least'; amount: number };
 
 export type CircuitEffectTrigger = Exclude<EffectTrigger, { kind: 'enemy-poisoned' }>;
 
 export type EffectScaling =
   | { kind: 'enemy-poison'; every: number; amount: number }
   | { kind: 'path-length'; every: number; amount: number }
-  | { kind: 'straight-line'; every: number; amount: number };
+  | { kind: 'straight-line'; every: number; amount: number }
+  | { kind: 'magic-sigil-level'; every: number; amount: number }
+  | { kind: 'magic-sigil-count'; every: number; amount: number };
 
 type NumericEffect = {
   amount: number;
@@ -58,7 +61,12 @@ export type BlockEffect =
     }
   | { kind: 'amplify'; amount: number; trigger?: EffectTrigger }
   | { kind: 'haste'; amount: number; trigger?: EffectTrigger }
-  | { kind: 'charge'; amount: number; trigger?: CircuitEffectTrigger };
+  | { kind: 'charge'; amount: number; trigger?: CircuitEffectTrigger }
+  | {
+      kind: 'inscribe-magic-sigil';
+      amount: number;
+      offsets: Array<{ row: number; column: number }>;
+    };
 
 export type BlockDefinition = {
   id: string;
@@ -168,6 +176,13 @@ export type SkillFusionRules = {
   cooldownReduction: number;
 };
 
+export type MagicSigilRules = {
+  maxLevel: number;
+  effectPowerPerLevel: number;
+  hasteLevel: number;
+  cooldownReduction: number;
+};
+
 export type BalanceFormulaRules = {
   version: number;
   reference: {
@@ -176,6 +191,8 @@ export type BalanceFormulaRules = {
     charge: number;
     pathLength: number;
     straightLineLength: number;
+    magicSigilLevel: number;
+    magicSigilCount: number;
     targetCooldownBeats: number;
     targetEffectAmount: number;
   };
@@ -195,10 +212,13 @@ export type BalanceFormulaRules = {
     straightLinePenaltyPerRequiredNode: number;
     allPortsConnectedBase: number;
     allPortsConnectedPenaltyPerPort: number;
+    magicSigilBase: number;
+    magicSigilPenaltyPerRequiredLevel: number;
   };
   resourceAvailability: {
     charge: number;
     rupturePoison: number;
+    magicSigil: number;
   };
   chargeAttribution: {
     producer: number;
@@ -246,6 +266,7 @@ export type GameData = {
     rarityWeights: RarityWeights;
     levelProgression: LevelProgressionRules;
     skillFusion: SkillFusionRules;
+    magicSigils: MagicSigilRules;
     balanceFormula: BalanceFormulaRules;
     enemyGeneration: {
       startingNodes: number;

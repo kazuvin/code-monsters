@@ -1,4 +1,4 @@
-import { rotatePorts } from './circuit';
+import { rotateCellOffset, rotatePorts } from './circuit';
 import { cumulativeBudgetForRun, levelForRun, maxHpBonusForLevel, rarityWeightsForLevel } from './progression';
 import type {
   BlockDefinition,
@@ -139,6 +139,9 @@ export function generateEnemyBuild(
       -1,
     );
     if (payoffIndex < 0) return null;
+    const activeNodeKeys = new Set(activeNodes.map((position) => `${position.row}:${position.column}`));
+    const payoffPosition = activeNodes[payoffIndex];
+    const payoffKey = `${payoffPosition.row}:${payoffPosition.column}`;
     const candidateSets = activeNodes.map((position, index) => {
       const requiredPorts = [
         ...(index === 0 ? (['west'] as Direction[]) : []),
@@ -161,6 +164,46 @@ export function generateEnemyBuild(
     });
     if (candidateSets.some((candidates) => candidates.length === 0)) return null;
 
+    const payoffNeedsMagicSigil = candidateSets[payoffIndex].every(({ block }) =>
+      block.effects.some((effect) => 'trigger' in effect && effect.trigger?.kind === 'magic-sigil-level-at-least'),
+    );
+    if (payoffNeedsMagicSigil) {
+      const sourceIndex = activeNodes.findIndex((position, index) => {
+        if (index === payoffIndex) return false;
+        return candidateSets[index].some(({ block, rotations }) =>
+          rotations.some((rotation) =>
+            block.effects
+              .filter((effect) => effect.kind === 'inscribe-magic-sigil')
+              .flatMap((effect) => effect.offsets)
+              .some((authoredOffset) => {
+                const offset = rotateCellOffset(authoredOffset, rotation);
+                return (
+                  position.row + offset.row === payoffPosition.row &&
+                  position.column + offset.column === payoffPosition.column
+                );
+              }),
+          ),
+        );
+      });
+      if (sourceIndex < 0) return null;
+      const sourcePosition = activeNodes[sourceIndex];
+      candidateSets[sourceIndex] = candidateSets[sourceIndex].flatMap((candidate) => {
+        const rotations = candidate.rotations.filter((rotation) =>
+          candidate.block.effects
+            .filter((effect) => effect.kind === 'inscribe-magic-sigil')
+            .flatMap((effect) => effect.offsets)
+            .some((authoredOffset) => {
+              const offset = rotateCellOffset(authoredOffset, rotation);
+              return (
+                sourcePosition.row + offset.row === payoffPosition.row &&
+                sourcePosition.column + offset.column === payoffPosition.column
+              );
+            }),
+        );
+        return rotations.length > 0 ? [{ ...candidate, rotations }] : [];
+      });
+    }
+
     const minimumRemainingCost = candidateSets.map((_, index) =>
       candidateSets
         .slice(index + 1)
@@ -171,7 +214,10 @@ export function generateEnemyBuild(
       Array.from({ length: data.rules.boardSize }, () => null),
     );
     const placeNode = (index: number, totalCost: number, placedRequired: boolean): number | null => {
-      if (index >= activeNodes.length) return options.requiredBlockId && !placedRequired ? null : totalCost;
+      if (index >= activeNodes.length) {
+        if (options.requiredBlockId && !placedRequired) return null;
+        return totalCost;
+      }
       const candidates = candidateSets[index].filter(
         ({ block }) => (used.get(block.id) ?? 0) < 2 && totalCost + block.price + minimumRemainingCost[index] <= budget,
       );
@@ -182,25 +228,36 @@ export function generateEnemyBuild(
           Number(right.block.id === options.requiredBlockId) - Number(left.block.id === options.requiredBlockId),
       );
       for (const [candidateIndex, picked] of ordered.entries()) {
-        const rotation =
-          picked.rotations[
-            Math.floor(
-              randomUnit(seed * 43 + safeRun * 31 + index * 71 + candidateIndex * 13) * picked.rotations.length,
-            )
-          ];
         const position = activeNodes[index];
-        board[position.row][position.column] = { blockId: picked.block.id, rotation };
-        used.set(picked.block.id, (used.get(picked.block.id) ?? 0) + 1);
-        const result = placeNode(
-          index + 1,
-          totalCost + picked.block.price,
-          placedRequired || picked.block.id === options.requiredBlockId,
-        );
-        if (result !== null) return result;
-        const remainingCopies = (used.get(picked.block.id) ?? 1) - 1;
-        if (remainingCopies === 0) used.delete(picked.block.id);
-        else used.set(picked.block.id, remainingCopies);
-        board[position.row][position.column] = null;
+        const rotationSeed = seed * 43 + safeRun * 31 + index * 71 + candidateIndex * 13;
+        const orderedRotations = [...picked.rotations].sort((left, right) => {
+          const score = (rotation: Rotation) =>
+            picked.block.effects
+              .filter((effect) => effect.kind === 'inscribe-magic-sigil')
+              .flatMap((effect) => effect.offsets)
+              .reduce((total, authoredOffset) => {
+                const offset = rotateCellOffset(authoredOffset, rotation);
+                const targetKey = `${position.row + offset.row}:${position.column + offset.column}`;
+                return total + (targetKey === payoffKey ? 100 : activeNodeKeys.has(targetKey) ? 10 : 0);
+              }, 0);
+          const scoreDifference = score(right) - score(left);
+          if (scoreDifference !== 0) return scoreDifference;
+          return randomUnit(rotationSeed + left * 19) - randomUnit(rotationSeed + right * 19);
+        });
+        for (const rotation of orderedRotations.slice(0, 1)) {
+          board[position.row][position.column] = { blockId: picked.block.id, rotation };
+          used.set(picked.block.id, (used.get(picked.block.id) ?? 0) + 1);
+          const result = placeNode(
+            index + 1,
+            totalCost + picked.block.price,
+            placedRequired || picked.block.id === options.requiredBlockId,
+          );
+          if (result !== null) return result;
+          const remainingCopies = (used.get(picked.block.id) ?? 1) - 1;
+          if (remainingCopies === 0) used.delete(picked.block.id);
+          else used.set(picked.block.id, remainingCopies);
+          board[position.row][position.column] = null;
+        }
       }
       return null;
     };

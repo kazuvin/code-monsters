@@ -1,5 +1,5 @@
 {
-  "gameSchemaVersion": 18,
+  "gameSchemaVersion": 19,
   "formulaVersion": 1,
   "formula": {
     "version": 1,
@@ -9,6 +9,8 @@
       "charge": 5,
       "pathLength": 5,
       "straightLineLength": 5,
+      "magicSigilLevel": 2,
+      "magicSigilCount": 4,
       "targetCooldownBeats": 3,
       "targetEffectAmount": 220
     },
@@ -27,11 +29,14 @@
       "straightLineBase": 0.95,
       "straightLinePenaltyPerRequiredNode": 0.15,
       "allPortsConnectedBase": 0.95,
-      "allPortsConnectedPenaltyPerPort": 0.15
+      "allPortsConnectedPenaltyPerPort": 0.15,
+      "magicSigilBase": 0.85,
+      "magicSigilPenaltyPerRequiredLevel": 0.15
     },
     "resourceAvailability": {
       "charge": 0.7,
-      "rupturePoison": 0.65
+      "rupturePoison": 0.65,
+      "magicSigil": 0.7
     },
     "chargeAttribution": {
       "producer": 0.65,
@@ -64,9 +69,9 @@
   "referenceWindowSeconds": 10,
   "chargeMarginalCvps": 130,
   "summary": {
-    "skillCount": 26,
+    "skillCount": 37,
     "low": 0,
-    "in-range": 26,
+    "in-range": 37,
     "high": 0
   },
   "skills": [
@@ -116,13 +121,13 @@
       "placementPatternId": "free",
       "cooldownBeats": 2,
       "cooldownSeconds": 1,
-      "referenceOffensePerSecond": 65,
+      "referenceOffensePerSecond": 75,
       "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 210,
-      "weightedCombatValuePerSecond": 139.15,
+      "rawCombatValuePerSecond": 220,
+      "weightedCombatValuePerSecond": 149.15,
       "topologyUtilityCvps": 15,
       "targetCombatValuePerSecond": 133.333333,
-      "budgetRatio": 1.043625,
+      "budgetRatio": 1.118625,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -142,20 +147,70 @@
           "effectIndex": 1,
           "kind": "damage",
           "condition": "always",
-          "formula": "(amount 65)*unit 1/seconds 1",
+          "formula": "(amount 75)*unit 1/seconds 1",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 65,
-          "weightedCvps": 65,
-          "referenceOffensePerSecond": 65,
+          "rawCvps": 75,
+          "weightedCvps": 75,
+          "referenceOffensePerSecond": 75,
           "referenceDefensePerSecond": 0
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 196,
+        "referenceOffensePerSecond": 226,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 329.3,
-        "gainOverNormal": 2.366511
+        "weightedCombatValuePerSecond": 359.3,
+        "gainOverNormal": 2.408984
+      }
+    },
+    {
+      "blockId": "inscription-stone",
+      "title": "刻印碑",
+      "rarity": "common",
+      "price": 4,
+      "placementPatternId": "free",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 81,
+      "rawCombatValuePerSecond": 116,
+      "weightedCombatValuePerSecond": 113,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 133.333333,
+      "budgetRatio": 0.8475,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "inscribe-magic-sigil",
+          "condition": "always",
+          "formula": "level 1*targets 1*effectPower 15/targetSeconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 10,
+          "weightedCvps": 7,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 90)*unit 0.9/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 81,
+          "weightedCvps": 81,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 81
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 243,
+        "weightedCombatValuePerSecond": 282,
+        "gainOverNormal": 2.495575
       }
     },
     {
@@ -285,6 +340,56 @@
       }
     },
     {
+      "blockId": "guiding-bolt",
+      "title": "導刻矢",
+      "rarity": "common",
+      "price": 5,
+      "placementPatternId": "free",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 75,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 135,
+      "weightedCombatValuePerSecond": 129,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 166.666667,
+      "budgetRatio": 0.774,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "inscribe-magic-sigil",
+          "condition": "always",
+          "formula": "level 1*targets 2*effectPower 15/targetSeconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 20,
+          "weightedCvps": 14,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 75)*unit 1/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 75,
+          "weightedCvps": 75,
+          "referenceOffensePerSecond": 75,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 226,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 294,
+        "gainOverNormal": 2.27907
+      }
+    },
+    {
       "blockId": "poison-needle",
       "title": "毒矢",
       "rarity": "common",
@@ -344,6 +449,44 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 528,
         "gainOverNormal": 3.239264
+      }
+    },
+    {
+      "blockId": "sigil-blade",
+      "title": "魔紋刃",
+      "rarity": "common",
+      "price": 5,
+      "placementPatternId": "magic-sigil",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 140,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 165,
+      "weightedCombatValuePerSecond": 147,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 166.666667,
+      "budgetRatio": 0.882,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 80 + floor(2/1)*30)*unit 1/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 140,
+          "weightedCvps": 122,
+          "referenceOffensePerSecond": 140,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 420,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 391,
+        "gainOverNormal": 2.659864
       }
     },
     {
@@ -420,6 +563,56 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 310.75,
         "gainOverNormal": 1.614705
+      }
+    },
+    {
+      "blockId": "guardian-sigil",
+      "title": "守護紋",
+      "rarity": "rare",
+      "price": 7,
+      "placementPatternId": "magic-sigil",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 170,
+      "rawCombatValuePerSecond": 195,
+      "weightedCombatValuePerSecond": 180.6,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 192.5,
+      "budgetRatio": 0.938182,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 150 + floor(2/1)*40)*unit 0.9/seconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 138,
+          "weightedCvps": 123.6,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 138
+        },
+        {
+          "effectIndex": 1,
+          "kind": "repair",
+          "condition": "always",
+          "formula": "(amount 60)*unit 0.8/seconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 32,
+          "weightedCvps": 32,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 32
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 382.5,
+        "weightedCombatValuePerSecond": 375.1,
+        "gainOverNormal": 2.076966
       }
     },
     {
@@ -823,6 +1016,56 @@
       }
     },
     {
+      "blockId": "twin-inscription",
+      "title": "双刻碑",
+      "rarity": "rare",
+      "price": 8,
+      "placementPatternId": "free",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 120,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 180,
+      "weightedCombatValuePerSecond": 174,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 220,
+      "budgetRatio": 0.790909,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "inscribe-magic-sigil",
+          "condition": "always",
+          "formula": "level 1*targets 2*effectPower 15/targetSeconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 20,
+          "weightedCvps": 14,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 180)*unit 1/seconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 120,
+          "weightedCvps": 120,
+          "referenceOffensePerSecond": 120,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 270,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 338,
+        "gainOverNormal": 1.942529
+      }
+    },
+    {
       "blockId": "discharge-bow",
       "title": "放電弓",
       "rarity": "rare",
@@ -858,6 +1101,156 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 585.75,
         "gainOverNormal": 2.25
+      }
+    },
+    {
+      "blockId": "thunder-sigil",
+      "title": "雷紋",
+      "rarity": "rare",
+      "price": 9,
+      "placementPatternId": "free",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 100,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 275,
+      "weightedCombatValuePerSecond": 198.15,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 247.5,
+      "budgetRatio": 0.800606,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "inscribe-magic-sigil",
+          "condition": "always",
+          "formula": "level 1*targets 2*effectPower 15/targetSeconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 20,
+          "weightedCvps": 14,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "charge",
+          "condition": "always",
+          "formula": "charge 1*marginalCVPS 130*producerShare 0.65",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 130,
+          "weightedCvps": 59.15,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 2,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 100)*unit 1/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 100,
+          "weightedCvps": 100,
+          "referenceOffensePerSecond": 100,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 300,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 471.3,
+        "gainOverNormal": 2.378501
+      }
+    },
+    {
+      "blockId": "convergence-sigil",
+      "title": "集束紋",
+      "rarity": "epic",
+      "price": 13,
+      "placementPatternId": "free",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 216,
+      "rawCombatValuePerSecond": 261,
+      "weightedCombatValuePerSecond": 255,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 327.407407,
+      "budgetRatio": 0.778846,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "inscribe-magic-sigil",
+          "condition": "always",
+          "formula": "level 2*targets 1*effectPower 15/targetSeconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 20,
+          "weightedCvps": 14,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 360)*unit 0.9/seconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 216,
+          "weightedCvps": 216,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 216
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 486,
+        "weightedCombatValuePerSecond": 532,
+        "gainOverNormal": 2.086275
+      }
+    },
+    {
+      "blockId": "resonance-circle",
+      "title": "連環陣",
+      "rarity": "epic",
+      "price": 13,
+      "placementPatternId": "magic-sigil",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 340,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 380,
+      "weightedCombatValuePerSecond": 267.8,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 327.407407,
+      "budgetRatio": 0.817941,
+      "budgetStatus": "in-range",
+      "conditions": ["magic-sigil>=1"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "poison",
+          "condition": "magic-sigil>=1",
+          "formula": "(amount 30 + floor(4/1)*18)*unit 5/seconds 1.5",
+          "conditionAvailability": 0.85,
+          "rewardMultiplier": 1.176471,
+          "rawCvps": 340,
+          "weightedCvps": 227.8,
+          "referenceOffensePerSecond": 340,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 765,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 552.55,
+        "gainOverNormal": 2.063294
       }
     },
     {
@@ -1099,6 +1492,44 @@
       }
     },
     {
+      "blockId": "sigil-cannon",
+      "title": "紋章砲",
+      "rarity": "epic",
+      "price": 14,
+      "placementPatternId": "magic-sigil",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 493.333333,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 493.333333,
+      "weightedCombatValuePerSecond": 344.533333,
+      "topologyUtilityCvps": 0,
+      "targetCombatValuePerSecond": 352.592593,
+      "budgetRatio": 0.977143,
+      "budgetStatus": "in-range",
+      "conditions": ["magic-sigil>=1"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "magic-sigil>=1",
+          "formula": "(amount 300 + floor(2/1)*220)*unit 1/seconds 1.5",
+          "conditionAvailability": 0.85,
+          "rewardMultiplier": 1.176471,
+          "rawCvps": 493.333333,
+          "weightedCvps": 344.533333,
+          "referenceOffensePerSecond": 493.333333,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 1110,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 775.2,
+        "gainOverNormal": 2.25
+      }
+    },
+    {
       "blockId": "venom-orbit",
       "title": "輪毒術",
       "rarity": "epic",
@@ -1234,6 +1665,94 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 783.95,
         "gainOverNormal": 1.514075
+      }
+    },
+    {
+      "blockId": "deep-sigil-cannon",
+      "title": "深奥砲",
+      "rarity": "legendary",
+      "price": 21,
+      "placementPatternId": "magic-sigil",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 1000,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 1000,
+      "weightedCombatValuePerSecond": 459.25,
+      "topologyUtilityCvps": 0,
+      "targetCombatValuePerSecond": 520,
+      "budgetRatio": 0.883173,
+      "budgetStatus": "in-range",
+      "conditions": ["magic-sigil>=3"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "magic-sigil>=3",
+          "formula": "(amount 900 + floor(2/1)*550)*unit 1/seconds 2",
+          "conditionAvailability": 0.55,
+          "rewardMultiplier": 1.818182,
+          "rawCvps": 1000,
+          "weightedCvps": 459.25,
+          "referenceOffensePerSecond": 1000,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 2000,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 918.5,
+        "gainOverNormal": 2
+      }
+    },
+    {
+      "blockId": "all-sigil-resonance",
+      "title": "万象連環",
+      "rarity": "legendary",
+      "price": 22,
+      "placementPatternId": "magic-sigil",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 450,
+      "referenceDefensePerSecond": 180,
+      "rawCombatValuePerSecond": 675,
+      "weightedCombatValuePerSecond": 481.05,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 544.761905,
+      "budgetRatio": 0.883046,
+      "budgetStatus": "in-range",
+      "conditions": ["magic-sigil>=1"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "magic-sigil>=1",
+          "formula": "(amount 300 + floor(4/1)*150)*unit 1/seconds 2",
+          "conditionAvailability": 0.85,
+          "rewardMultiplier": 1.176471,
+          "rawCvps": 450,
+          "weightedCvps": 306,
+          "referenceOffensePerSecond": 450,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "shield",
+          "condition": "magic-sigil>=1",
+          "formula": "(amount 200 + floor(4/1)*50)*unit 0.9/seconds 2",
+          "conditionAvailability": 0.85,
+          "rewardMultiplier": 1.176471,
+          "rawCvps": 180,
+          "weightedCvps": 130.05,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 180
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 900,
+        "referenceDefensePerSecond": 360,
+        "weightedCombatValuePerSecond": 917.1,
+        "gainOverNormal": 1.906455
       }
     },
     {

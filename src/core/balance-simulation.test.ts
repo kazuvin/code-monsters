@@ -70,19 +70,20 @@ describe('balance simulation', () => {
     expect(compareBalanceResults(current, baseline).compatible).toBe(false);
   });
 
-  it('keeps poison and charge cross-trait outcomes inside the tuning guardrail', () => {
+  it('keeps cross-build outcomes inside the tuning guardrail', () => {
     const result = runBalanceSimulation(GAME_DATA, {
       ...quickConfig,
-      battles: 400,
+      battles: 600,
       runs: [1, 2, 3, 4, 5, 6, 7, 8, 9],
     });
-    const poisonIntoCharge = result.buildMatchups.find(
-      (matchup) => matchup.playerBuild === 'poison' && matchup.enemyBuild === 'charge',
-    );
+    const crossBuildMatchups = result.buildMatchups.filter((matchup) => matchup.playerBuild !== matchup.enemyBuild);
 
-    expect(poisonIntoCharge?.battles).toBeGreaterThan(50);
-    expect(poisonIntoCharge?.playerScoreRate).toBeGreaterThanOrEqual(0.35);
-    expect(poisonIntoCharge?.playerScoreRate).toBeLessThanOrEqual(0.65);
+    expect(crossBuildMatchups).toHaveLength(6);
+    crossBuildMatchups.forEach((matchup) => {
+      expect(matchup.battles, `${matchup.playerBuild} into ${matchup.enemyBuild}`).toBeGreaterThan(50);
+      expect(matchup.playerScoreRate, `${matchup.playerBuild} into ${matchup.enemyBuild}`).toBeGreaterThanOrEqual(0.25);
+      expect(matchup.playerScoreRate, `${matchup.playerBuild} into ${matchup.enemyBuild}`).toBeLessThanOrEqual(0.75);
+    });
   });
 
   it('runs a connector-compatible counterfactual on both sides', () => {

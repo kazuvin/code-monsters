@@ -82,6 +82,23 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.skillFusion.cooldownReduction < 0) {
     errors.push('skillFusion.cooldownReduction must not be negative');
   }
+  const magicSigils = data.rules.magicSigils;
+  if (!Number.isInteger(magicSigils.maxLevel) || magicSigils.maxLevel < 1) {
+    errors.push('magicSigils.maxLevel must be a positive integer');
+  }
+  if (!Number.isFinite(magicSigils.effectPowerPerLevel) || magicSigils.effectPowerPerLevel <= 0) {
+    errors.push('magicSigils.effectPowerPerLevel must be positive');
+  }
+  if (
+    !Number.isInteger(magicSigils.hasteLevel) ||
+    magicSigils.hasteLevel < 1 ||
+    magicSigils.hasteLevel > magicSigils.maxLevel
+  ) {
+    errors.push('magicSigils.hasteLevel must fit within maxLevel');
+  }
+  if (!Number.isInteger(magicSigils.cooldownReduction) || magicSigils.cooldownReduction < 0) {
+    errors.push('magicSigils.cooldownReduction must not be negative');
+  }
   const balanceFormula = data.rules.balanceFormula;
   const positiveFormulaValue = (label: string, value: number) => {
     if (!Number.isFinite(value) || value <= 0) errors.push(`balanceFormula.${label} must be positive`);
@@ -111,10 +128,12 @@ export function validateGameData(data: GameData): string[] {
     'conditionAvailability.allPortsConnectedBase',
     balanceFormula.conditionAvailability.allPortsConnectedBase,
   );
+  probabilityFormulaValue('conditionAvailability.magicSigilBase', balanceFormula.conditionAvailability.magicSigilBase);
   const conditionPenalties: Array<[string, number]> = [
     ['pathLengthPenaltyPerRequiredNode', balanceFormula.conditionAvailability.pathLengthPenaltyPerRequiredNode],
     ['straightLinePenaltyPerRequiredNode', balanceFormula.conditionAvailability.straightLinePenaltyPerRequiredNode],
     ['allPortsConnectedPenaltyPerPort', balanceFormula.conditionAvailability.allPortsConnectedPenaltyPerPort],
+    ['magicSigilPenaltyPerRequiredLevel', balanceFormula.conditionAvailability.magicSigilPenaltyPerRequiredLevel],
   ];
   conditionPenalties.forEach(([key, value]) => {
     if (!Number.isFinite(value) || value < 0) {
@@ -123,6 +142,7 @@ export function validateGameData(data: GameData): string[] {
   });
   probabilityFormulaValue('resourceAvailability.charge', balanceFormula.resourceAvailability.charge);
   probabilityFormulaValue('resourceAvailability.rupturePoison', balanceFormula.resourceAvailability.rupturePoison);
+  probabilityFormulaValue('resourceAvailability.magicSigil', balanceFormula.resourceAvailability.magicSigil);
   probabilityFormulaValue('chargeAttribution.producer', balanceFormula.chargeAttribution.producer);
   probabilityFormulaValue('chargeAttribution.consumer', balanceFormula.chargeAttribution.consumer);
   if (Math.abs(balanceFormula.chargeAttribution.producer + balanceFormula.chargeAttribution.consumer - 1) > 1e-9) {
@@ -197,7 +217,9 @@ export function validateGameData(data: GameData): string[] {
     ) {
       errors.push(`block "${block.id}" is tagged with charge but has no charge or release effect`);
     }
-    const active = block.effects.some((effect) => !['amplify', 'haste', 'charge'].includes(effect.kind));
+    const active = block.effects.some(
+      (effect) => !['amplify', 'haste', 'charge', 'inscribe-magic-sigil'].includes(effect.kind),
+    );
     if (active && !block.cooldown) errors.push(`active block "${block.id}" must have a cooldown`);
     block.effects.forEach((effect) => {
       if ('amount' in effect && effect.amount <= 0) {
@@ -214,6 +236,31 @@ export function validateGameData(data: GameData): string[] {
       }
       if ('trigger' in effect && effect.trigger?.kind === 'straight-line-at-least' && effect.trigger.amount < 2) {
         errors.push(`block "${block.id}" effect "${effect.kind}" straight line must be at least 2`);
+      }
+      if (
+        'trigger' in effect &&
+        effect.trigger?.kind === 'magic-sigil-level-at-least' &&
+        (effect.trigger.amount < 1 || effect.trigger.amount > magicSigils.maxLevel)
+      ) {
+        errors.push(`block "${block.id}" effect "${effect.kind}" magic sigil level is invalid`);
+      }
+      if (effect.kind === 'inscribe-magic-sigil') {
+        if (effect.offsets.length === 0) errors.push(`block "${block.id}" must inscribe at least one cell`);
+        const offsetKeys = new Set<string>();
+        effect.offsets.forEach((offset) => {
+          const key = `${offset.row}:${offset.column}`;
+          if (!Number.isInteger(offset.row) || !Number.isInteger(offset.column)) {
+            errors.push(`block "${block.id}" magic sigil offsets must be integers`);
+          }
+          if (offset.row === 0 && offset.column === 0) {
+            errors.push(`block "${block.id}" cannot inscribe its own cell`);
+          }
+          if (Math.abs(offset.row) >= data.rules.boardSize || Math.abs(offset.column) >= data.rules.boardSize) {
+            errors.push(`block "${block.id}" magic sigil offset must fit the board`);
+          }
+          if (offsetKeys.has(key)) errors.push(`block "${block.id}" has duplicate magic sigil offsets`);
+          offsetKeys.add(key);
+        });
       }
       if (
         effect.kind === 'growth' &&

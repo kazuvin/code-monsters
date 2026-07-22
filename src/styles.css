@@ -16,6 +16,9 @@
   --coral: #ff786e;
   --amber: #ffd36a;
   --violet: #be8cff;
+  --sigil: #aa88ff;
+  --sigil-bright: #e2d5ff;
+  --sigil-gold: #ffe08a;
   --green: #81f2b2;
 }
 
@@ -261,6 +264,13 @@ button:focus-visible {
   font-size: 17px;
 }
 
+.power-count i {
+  margin-left: 8px;
+  color: var(--sigil-bright);
+  font-size: 9px;
+  font-style: normal;
+}
+
 .circuit-workbench {
   padding: clamp(12px, 2vw, 22px);
   background:
@@ -383,6 +393,115 @@ button:focus-visible {
 .circuit-cell.is-powered {
   border-color: rgb(93 231 242 / 56%);
   background-color: #0d303b;
+}
+
+.circuit-cell.is-magic-sigil,
+.battle-circuit-cell.is-magic-sigil {
+  border-color: color-mix(in srgb, var(--sigil) 66%, var(--line));
+  background:
+    radial-gradient(circle, rgb(170 136 255 / 10%) 0 32%, transparent 34%),
+    linear-gradient(135deg, rgb(170 136 255 / 6%) 25%, transparent 25%) 0 0 / 9px 9px,
+    #0c2531;
+}
+
+.magic-sigil-mark {
+  position: absolute;
+  z-index: 6;
+  inset: 10%;
+  display: grid;
+  place-items: center;
+  color: var(--sigil);
+  filter: drop-shadow(0 0 3px rgb(170 136 255 / 72%));
+  opacity: 0.8;
+  pointer-events: none;
+  transform: rotate(45deg);
+}
+
+.magic-sigil-mark::before,
+.magic-sigil-mark::after,
+.magic-sigil-mark i,
+.magic-sigil-mark i::before,
+.magic-sigil-mark i::after {
+  position: absolute;
+  content: "";
+}
+
+.magic-sigil-mark::before {
+  inset: 5%;
+  border: 1px solid currentcolor;
+  box-shadow: inset 0 0 5px rgb(170 136 255 / 30%);
+}
+
+.magic-sigil-mark::after {
+  inset: 21%;
+  border: 1px solid currentcolor;
+}
+
+.magic-sigil-mark i {
+  inset: 44% 4%;
+  height: 1px;
+  background: currentcolor;
+  box-shadow: 0 0 4px currentcolor;
+}
+
+.magic-sigil-mark i::before {
+  inset: -1px 0 auto;
+  height: 1px;
+  background: currentcolor;
+  transform: rotate(90deg);
+}
+
+.magic-sigil-mark i::after {
+  top: -4px;
+  left: calc(50% - 4px);
+  width: 7px;
+  height: 7px;
+  border: 1px solid currentcolor;
+  background: #0b202b;
+}
+
+.magic-sigil-mark b {
+  z-index: 1;
+  min-width: 13px;
+  padding: 1px 2px;
+  border: 1px solid currentcolor;
+  color: var(--sigil-bright);
+  background: #170f2c;
+  box-shadow: 0 0 5px rgb(170 136 255 / 48%);
+  font:
+    600 7px / 1 "Pixelify Sans",
+    monospace;
+  text-align: center;
+  transform: rotate(-45deg);
+}
+
+.magic-sigil-mark.level-2 {
+  inset: 7%;
+  opacity: 0.9;
+}
+
+.magic-sigil-mark.level-2::after {
+  border-style: dashed;
+}
+
+.magic-sigil-mark.level-3 {
+  inset: 4%;
+  color: var(--sigil-gold);
+  filter: drop-shadow(0 0 3px rgb(170 136 255 / 82%)) drop-shadow(0 0 4px rgb(255 224 138 / 55%));
+  opacity: 1;
+}
+
+.magic-sigil-mark.level-3::before {
+  border-width: 2px;
+}
+
+.magic-sigil-mark.level-3 b {
+  color: #fff6cf;
+  background: #38210f;
+}
+
+.circuit-cell.is-powered .magic-sigil-mark.is-active {
+  filter: drop-shadow(0 0 5px rgb(170 136 255 / 90%));
 }
 
 .circuit-cell.is-merge {
@@ -548,6 +667,11 @@ button:focus-visible {
 
 .block-visual.effect-charge {
   border-left-color: #ffe083;
+}
+
+.block-visual.effect-magic-sigil {
+  border-left-color: var(--sigil);
+  background: linear-gradient(135deg, rgb(226 213 255 / 12%) 0 12%, transparent 12% 88%, rgb(0 0 0 / 16%) 88%), #2b2751;
 }
 
 .block-visual.effect-amplify,
@@ -795,6 +919,15 @@ button:focus-visible {
   border-color: #fff0b2;
   background: var(--amber);
   box-shadow: 0 0 5px rgb(255 200 87 / 60%);
+}
+
+.board-legend .legend-sigil {
+  border-color: var(--sigil-bright);
+  background: var(--sigil);
+  box-shadow:
+    0 0 4px var(--sigil),
+    inset 0 0 0 2px #24163c;
+  transform: rotate(45deg) scale(0.8);
 }
 
 .board-legend b {
@@ -1696,6 +1829,28 @@ button:focus-visible {
   font:
     600 8px / 1 "Pixelify Sans",
     monospace;
+}
+
+.dialog-magic-sigil-rule {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -5px 0 12px;
+  padding: 6px 8px;
+  border: 1px solid #705aa8;
+  border-left: 3px solid var(--sigil);
+  color: var(--sigil-bright);
+  background: #1a1530;
+  box-shadow: inset 0 0 8px rgb(170 136 255 / 10%);
+  font-size: 9px;
+}
+
+.dialog-magic-sigil-rule span {
+  color: var(--sigil-gold);
+  font:
+    600 8px / 1 "Pixelify Sans",
+    monospace;
+  white-space: nowrap;
 }
 
 .battle-buff-panel {
@@ -3879,6 +4034,13 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+.battle-sigil-count {
+  margin-left: 5px;
+  color: var(--sigil-bright);
+  font-size: 6px;
+  font-style: normal;
+}
+
 .battle-circuit-summary > header em {
   overflow: hidden;
   color: var(--amber);
@@ -3982,12 +4144,42 @@ button:focus-visible {
 }
 
 .battle-circuit-cell .block-visual {
+  position: relative;
+  z-index: 2;
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
   border-width: 1px;
   box-shadow: none;
+}
+
+.battle-circuit-cell .magic-sigil-mark {
+  z-index: 5;
+}
+
+.battle-circuit-cell.is-conducting .magic-sigil-mark,
+.battle-circuit-cell.is-activated .magic-sigil-mark {
+  animation: magic-sigil-bloom calc(560ms * var(--battle-motion-scale, 1)) steps(6) both;
+}
+
+@keyframes magic-sigil-bloom {
+  0% {
+    opacity: 0.45;
+    transform: rotate(45deg) scale(0.86);
+  }
+
+  45% {
+    color: #fff6cf;
+    filter: drop-shadow(0 0 4px var(--sigil)) drop-shadow(0 0 8px var(--sigil-gold));
+    opacity: 1;
+    transform: rotate(45deg) scale(1.12);
+  }
+
+  100% {
+    opacity: 0.88;
+    transform: rotate(45deg) scale(1);
+  }
 }
 
 .battle-circuit-cell .block-core {

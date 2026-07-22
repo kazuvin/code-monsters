@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
 import { createBattle } from './battle';
-import { analyzeCircuit } from './circuit';
+import { analyzeCircuit, analyzeMagicSigils, countActiveMagicSigils } from './circuit';
 import { generateEnemyBuild } from './enemy-builder';
 
 describe('enemy build generator', () => {
@@ -55,7 +55,7 @@ describe('enemy build generator', () => {
   it('fills the most affordable nodes before lowering the run target', () => {
     const build = generateEnemyBuild(GAME_DATA, 2, 221, { budget: 40 });
 
-    expect(build.nodeCount).toBe(7);
+    expect(build.nodeCount).toBe(8);
     expect(build.totalCost).toBeLessThanOrEqual(40);
   });
 
@@ -77,6 +77,34 @@ describe('enemy build generator', () => {
       });
       expect(buildLinks.some((link) => link.roles.includes('starter'))).toBe(true);
       expect(buildLinks.some((link) => link.roles.includes('payoff'))).toBe(true);
+    });
+  });
+
+  it('aims magic-sigil inscriptions at powered skills and places its payoff on a mark', () => {
+    [11, 12, 13, 14].forEach((seed) => {
+      const build = generateEnemyBuild(GAME_DATA, 6, seed, { buildId: 'magic-sigil' });
+      const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+      const magicSigils = analyzeMagicSigils(
+        build.board,
+        GAME_DATA.blocks,
+        analysis,
+        GAME_DATA.rules.skillFusion,
+        GAME_DATA.rules.magicSigils,
+      );
+      const payoffCells = build.board.flatMap((row, rowIndex) =>
+        row.flatMap((placed, columnIndex) => {
+          const roles = GAME_DATA.buildDesign.skills
+            .find((skill) => skill.blockId === placed?.blockId)
+            ?.buildLinks.find((link) => link.buildId === 'magic-sigil')?.roles;
+          return roles?.includes('payoff') ? [`${rowIndex}:${columnIndex}`] : [];
+        }),
+      );
+
+      expect(countActiveMagicSigils(build.board, analysis, magicSigils), `seed ${seed}`).toBeGreaterThan(0);
+      expect(
+        payoffCells.some((key) => (magicSigils.levels.get(key) ?? 0) > 0),
+        `seed ${seed}`,
+      ).toBe(true);
     });
   });
 

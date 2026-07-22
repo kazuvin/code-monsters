@@ -4,6 +4,7 @@ import type {
   CircuitEffectTrigger,
   CircuitBoard,
   Direction,
+  MagicSigilRules,
   PlacedBlock,
   Rotation,
   SkillFusionRules,
@@ -104,6 +105,13 @@ export type CircuitTriggerContext = {
   inCycle: boolean;
   allPortsConnected: boolean;
   straightLineLength: number;
+  magicSigilLevel: number;
+};
+
+export type MagicSigilAnalysis = {
+  levels: Map<string, number>;
+  sources: Map<string, string[]>;
+  targets: Map<string, string[]>;
 };
 
 const emptyAnalysis = (): CircuitAnalysis => ({
@@ -250,10 +258,69 @@ export function findPoweredCells(board: CircuitBoard, blocks: ConnectionBlock[],
   return analyzeCircuit(board, blocks, sourceRow).poweredCells;
 }
 
+export const rotateCellOffset = (offset: CellPosition, rotation: Rotation): CellPosition => {
+  let rotated = { ...offset };
+  for (let step = 0; step < rotation; step += 1) {
+    rotated = { row: rotated.column, column: -rotated.row };
+  }
+  return rotated;
+};
+
+export function analyzeMagicSigils(
+  board: CircuitBoard,
+  blocks: BlockDefinition[],
+  circuit: CircuitAnalysis,
+  fusionRules: SkillFusionRules,
+  rules: MagicSigilRules,
+): MagicSigilAnalysis {
+  const definitions = new Map(blocks.map((block) => [block.id, block]));
+  const levels = new Map<string, number>();
+  const sources = new Map<string, string[]>();
+  const targets = new Map<string, string[]>();
+
+  board.forEach((row, rowIndex) =>
+    row.forEach((placed, columnIndex) => {
+      if (!placed) return;
+      const sourceKey = cellKey({ row: rowIndex, column: columnIndex });
+      if (!circuit.poweredCells.has(sourceKey)) return;
+      const block = definitions.get(placed.blockId);
+      if (!block) return;
+      block.effects.forEach((effect) => {
+        if (effect.kind !== 'inscribe-magic-sigil') return;
+        const amount =
+          (placed.stars ?? 0) > 0 ? Math.round(effect.amount * fusionRules.effectMultiplier) : effect.amount;
+        effect.offsets.forEach((authoredOffset) => {
+          const offset = rotateCellOffset(authoredOffset, placed.rotation);
+          const target = { row: rowIndex + offset.row, column: columnIndex + offset.column };
+          if (target.row < 0 || target.row >= board.length || target.column < 0 || target.column >= row.length) return;
+          const targetKey = cellKey(target);
+          levels.set(targetKey, Math.min(rules.maxLevel, (levels.get(targetKey) ?? 0) + amount));
+          sources.set(targetKey, [...new Set([...(sources.get(targetKey) ?? []), sourceKey])].sort());
+          targets.set(sourceKey, [...new Set([...(targets.get(sourceKey) ?? []), targetKey])].sort());
+        });
+      });
+    }),
+  );
+
+  return { levels, sources, targets };
+}
+
+export function countActiveMagicSigils(
+  board: CircuitBoard,
+  circuit: CircuitAnalysis,
+  sigils: MagicSigilAnalysis,
+): number {
+  return [...sigils.levels].filter(([key, level]) => {
+    const position = positionForKey(key);
+    return level > 0 && circuit.poweredCells.has(key) && Boolean(board[position.row]?.[position.column]);
+  }).length;
+}
+
 export const matchesCircuitTrigger = (trigger: CircuitEffectTrigger, context: CircuitTriggerContext) => {
   if (trigger.kind === 'path-length-at-least') return context.pathLength >= trigger.amount;
   if (trigger.kind === 'in-cycle') return context.inCycle;
   if (trigger.kind === 'all-ports-connected') return context.allPortsConnected;
+  if (trigger.kind === 'magic-sigil-level-at-least') return context.magicSigilLevel >= trigger.amount;
   return context.straightLineLength >= trigger.amount;
 };
 
@@ -280,6 +347,8 @@ export function evaluateCircuitCondition(
   analysis: CircuitAnalysis,
   position: CellPosition,
   trigger: CircuitEffectTrigger,
+  magicSigilLevel = 0,
+  magicSigilSources: string[] = [],
 ): CircuitConditionStatus {
   const key = cellKey(position);
   const currentBlock = definitionAt(board, blocks, position);
@@ -295,6 +364,7 @@ export function evaluateCircuitCondition(
     inCycle: analysis.cyclicCells.has(key),
     allPortsConnected: analysis.fullyConnectedCells.has(key),
     straightLineLength: straightLength,
+    magicSigilLevel,
   };
   const met = matchesCircuitTrigger(trigger, context);
 
@@ -325,6 +395,15 @@ export function evaluateCircuitCondition(
       contributingCells: [key, ...connected].sort(),
     };
   }
+  if (trigger.kind === 'magic-sigil-level-at-least') {
+    return {
+      trigger,
+      met,
+      current: magicSigilLevel,
+      required: trigger.amount,
+      contributingCells: [key, ...magicSigilSources].sort(),
+    };
+  }
   return {
     trigger,
     met,
@@ -340,15 +419,26 @@ export function circuitConditionsForBlock(
   analysis: CircuitAnalysis,
   position: CellPosition,
   block: Pick<BlockDefinition, 'effects'>,
+  magicSigils?: MagicSigilAnalysis,
 ): CircuitConditionStatus[] {
   const uniqueTriggers = new Map<string, CircuitEffectTrigger>();
   block.effects.forEach((effect) => {
+    if (effect.kind === 'inscribe-magic-sigil') return;
     const trigger = effect.trigger;
     if (!trigger || trigger.kind === 'enemy-poisoned') return;
     uniqueTriggers.set(JSON.stringify(trigger), trigger);
   });
+  const key = cellKey(position);
   return [...uniqueTriggers.values()].map((trigger) =>
-    evaluateCircuitCondition(board, blocks, analysis, position, trigger),
+    evaluateCircuitCondition(
+      board,
+      blocks,
+      analysis,
+      position,
+      trigger,
+      magicSigils?.levels.get(key) ?? 0,
+      magicSigils?.sources.get(key) ?? [],
+    ),
   );
 }
 

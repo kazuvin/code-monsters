@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 18,
+  "schemaVersion": 19,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -29,6 +29,12 @@
       "effectMultiplier": 1.5,
       "cooldownReduction": 1
     },
+    "magicSigils": {
+      "maxLevel": 3,
+      "effectPowerPerLevel": 15,
+      "hasteLevel": 3,
+      "cooldownReduction": 1
+    },
     "balanceFormula": {
       "version": 1,
       "reference": {
@@ -37,6 +43,8 @@
         "charge": 5,
         "pathLength": 5,
         "straightLineLength": 5,
+        "magicSigilLevel": 2,
+        "magicSigilCount": 4,
         "targetCooldownBeats": 3,
         "targetEffectAmount": 220
       },
@@ -55,11 +63,14 @@
         "straightLineBase": 0.95,
         "straightLinePenaltyPerRequiredNode": 0.15,
         "allPortsConnectedBase": 0.95,
-        "allPortsConnectedPenaltyPerPort": 0.15
+        "allPortsConnectedPenaltyPerPort": 0.15,
+        "magicSigilBase": 0.85,
+        "magicSigilPenaltyPerRequiredLevel": 0.15
       },
       "resourceAvailability": {
         "charge": 0.7,
-        "rupturePoison": 0.65
+        "rupturePoison": 0.65,
+        "magicSigil": 0.7
       },
       "chargeAttribution": {
         "producer": 0.65,
@@ -123,6 +134,11 @@
         "id": "straight-line",
         "title": "長直線",
         "description": "指定数以上の連続した直線へノードを組み込む配置"
+      },
+      {
+        "id": "magic-sigil",
+        "title": "魔紋",
+        "description": "通電した刻印元が作る魔紋マスへノードを置く配置"
       }
     ],
     "axes": [
@@ -148,6 +164,12 @@
             "title": "チャージ",
             "description": "充電ノードで蓄え、遠い解放点で使う",
             "color": "#ffd36a"
+          },
+          {
+            "id": "magic-sigil",
+            "title": "魔紋",
+            "description": "盤面へ魔紋を刻み、重ねるか連ねて技を強化する",
+            "color": "#a987ff"
           }
         ]
       },
@@ -190,6 +212,19 @@
           { "id": "burst", "title": "一括解放", "strategy": "全チャージを大ダメージへ変える" },
           { "id": "guard", "title": "防壁解放", "strategy": "全チャージをシールドへ変える" }
         ]
+      },
+      {
+        "id": "magic-sigil",
+        "axisId": "trait",
+        "title": "魔紋",
+        "placementIdentity": "刻印元の向きを組み合わせ、価値の高い魔紋マスを盤面に作る",
+        "strength": "任意の技を置き換えながら強化先を選べる",
+        "risk": "刻印元と受け手を両方通電させないと盤面投資が働かない",
+        "gamePlan": "同じマスへ魔紋を重ねる重刻か、複数マスを連ねる連環へ展開する",
+        "payoffs": [
+          { "id": "overlap", "title": "重刻", "strategy": "一つの魔紋を位階IIIまで重ねて決め手を強化する" },
+          { "id": "network", "title": "連環", "strategy": "通電した魔紋マスを増やして盤面全体を共鳴させる" }
+        ]
       }
     ],
     "skills": [
@@ -205,7 +240,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["starter", "cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["starter", "cycler"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -220,7 +256,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["starter"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["starter"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["starter"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["starter"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -250,7 +287,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -265,7 +303,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -364,7 +403,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -379,7 +419,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -394,7 +435,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["grower"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -409,7 +451,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["cycler"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -520,7 +563,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] }
         ]
       },
       {
@@ -546,6 +590,172 @@
         "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
         "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
+      },
+      {
+        "id": "inscription-stone",
+        "title": "刻印碑",
+        "summary": "前方のマスへ魔紋を刻み、守りながら強化先を作る",
+        "status": "playable",
+        "blockId": "inscription-stone",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "free",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "magic-sigil", "roles": ["starter", "grower"], "payoffIds": ["overlap", "network"] }
+        ]
+      },
+      {
+        "id": "guiding-bolt",
+        "title": "導刻矢",
+        "summary": "射線の先へ二つの魔紋を刻み、序盤から受け手を増やす",
+        "status": "playable",
+        "blockId": "guiding-bolt",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["magic-sigil"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "buildLinks": [
+          { "buildId": "magic-sigil", "roles": ["starter", "grower", "cycler"], "payoffIds": ["overlap", "network"] }
+        ]
+      },
+      {
+        "id": "sigil-blade",
+        "title": "魔紋刃",
+        "summary": "刻印マスへ置くほど斬撃が強くなる基礎の受け手",
+        "status": "playable",
+        "blockId": "sigil-blade",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "magic-sigil",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil"] },
+          { "axisId": "weapon", "valueIds": ["blade"] }
+        ],
+        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["cycler"], "payoffIds": ["overlap", "network"] }]
+      },
+      {
+        "id": "guardian-sigil",
+        "title": "守護紋",
+        "summary": "刻印マスの位階を防壁と修復へ変える維持技",
+        "status": "playable",
+        "blockId": "guardian-sigil",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "magic-sigil",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] }]
+      },
+      {
+        "id": "twin-inscription",
+        "title": "双刻碑",
+        "summary": "異なる二方向へ魔紋を刻み、連環の面積を広げる",
+        "status": "playable",
+        "blockId": "twin-inscription",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["magic-sigil"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["network"] }]
+      },
+      {
+        "id": "thunder-sigil",
+        "title": "雷紋",
+        "summary": "二つの魔紋を刻みながらチャージを後続へ渡す",
+        "status": "playable",
+        "blockId": "thunder-sigil",
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil", "charge", "long-route"],
+        "placementPatternId": "free",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "magic-sigil", "roles": ["grower", "cycler", "sustain"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "convergence-sigil",
+        "title": "集束紋",
+        "summary": "一つのマスへ二重の魔紋を刻み、重刻を完成へ近づける",
+        "status": "playable",
+        "blockId": "convergence-sigil",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "free",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil"] },
+          { "axisId": "weapon", "valueIds": ["magic"] }
+        ],
+        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["grower", "cycler", "sustain"], "payoffIds": ["overlap"] }]
+      },
+      {
+        "id": "sigil-cannon",
+        "title": "紋章砲",
+        "summary": "自分の魔紋位階を火力へ変える重刻の決め手",
+        "status": "playable",
+        "blockId": "sigil-cannon",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "magic-sigil",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil"] },
+          { "axisId": "weapon", "valueIds": ["cannon"] }
+        ],
+        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["overlap"] }]
+      },
+      {
+        "id": "resonance-circle",
+        "title": "連環陣",
+        "summary": "通電した刻印マスの数を毒へ変える連環の決め手",
+        "status": "playable",
+        "blockId": "resonance-circle",
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil", "poison", "network"],
+        "placementPatternId": "magic-sigil",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil", "poison"] },
+          { "axisId": "weapon", "valueIds": ["magic"] }
+        ],
+        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["network"] }]
+      },
+      {
+        "id": "deep-sigil-cannon",
+        "title": "深奥砲",
+        "summary": "位階IIIの魔紋だけを巨大な一撃へ変える重刻の奥義",
+        "status": "playable",
+        "blockId": "deep-sigil-cannon",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "magic-sigil",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil"] },
+          { "axisId": "weapon", "valueIds": ["cannon"] }
+        ],
+        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["overlap"] }]
+      },
+      {
+        "id": "all-sigil-resonance",
+        "title": "万象連環",
+        "summary": "通電したすべての刻印マスを攻防へ変える連環の奥義",
+        "status": "playable",
+        "blockId": "all-sigil-resonance",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "magic-sigil",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["magic-sigil"] },
+          { "axisId": "weapon", "valueIds": ["magic"] }
+        ],
+        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["network"] }]
       }
     ]
   },
@@ -848,7 +1058,7 @@
       "id": "charge-blade",
       "code": "CHG-B",
       "title": "充電刃",
-      "description": "通電にチャージ1を追加する。2拍ごとに、剣で相手へ65ダメージを与える。",
+      "description": "通電にチャージ1を追加する。2拍ごとに、剣で相手へ75ダメージを与える。",
       "glyph": "充",
       "price": 4,
       "rarity": "common",
@@ -857,7 +1067,7 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 65 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 75 }]
     },
     {
       "id": "charge-arrow",
@@ -1003,6 +1213,230 @@
       "buildIds": ["charge"],
       "cooldown": 5,
       "effects": [{ "kind": "release-charge", "output": "damage", "amount": 940, "perCharge": 400 }]
+    },
+    {
+      "id": "inscription-stone",
+      "code": "RUNE",
+      "title": "刻印碑",
+      "description": "前方1マスへ魔紋を1段階刻み、2拍ごとにシールド90を得る。刻印元が未通電なら魔紋は消える。",
+      "glyph": "刻",
+      "price": 4,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "east"],
+      "buildIds": ["magic-sigil"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "inscribe-magic-sigil", "amount": 1, "offsets": [{ "row": 0, "column": 1 }] },
+        { "kind": "shield", "amount": 90 }
+      ]
+    },
+    {
+      "id": "guiding-bolt",
+      "code": "SCRIBE",
+      "title": "導刻矢",
+      "description": "前方1マス目と2マス目へ魔紋を1段階ずつ刻み、2拍ごとに75ダメージを与える。",
+      "glyph": "導",
+      "price": 5,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["magic-sigil"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "inscribe-magic-sigil",
+          "amount": 1,
+          "offsets": [{ "row": 0, "column": 1 }, { "row": 0, "column": 2 }]
+        },
+        { "kind": "damage", "amount": 75 }
+      ]
+    },
+    {
+      "id": "sigil-blade",
+      "code": "GLYPH",
+      "title": "魔紋刃",
+      "description": "2拍ごとに80ダメージを与え、自分の魔紋位階1段階につきダメージを30増やす。",
+      "glyph": "紋",
+      "price": 5,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "east"],
+      "buildIds": ["magic-sigil"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "damage", "amount": 80, "scaling": { "kind": "magic-sigil-level", "every": 1, "amount": 30 } }
+      ]
+    },
+    {
+      "id": "guardian-sigil",
+      "code": "WARD",
+      "title": "守護紋",
+      "description": "3拍ごとにシールド150と回復60を得て、魔紋位階1段階につきシールドを40増やす。",
+      "glyph": "護",
+      "price": 7,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "north"],
+      "buildIds": ["magic-sigil"],
+      "cooldown": 3,
+      "effects": [
+        { "kind": "shield", "amount": 150, "scaling": { "kind": "magic-sigil-level", "every": 1, "amount": 40 } },
+        { "kind": "repair", "amount": 60 }
+      ]
+    },
+    {
+      "id": "twin-inscription",
+      "code": "TWIN",
+      "title": "双刻碑",
+      "description": "前方と左方の2マスへ魔紋を1段階ずつ刻み、3拍ごとに180ダメージを与える。",
+      "glyph": "双",
+      "price": 8,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["magic-sigil"],
+      "cooldown": 3,
+      "effects": [
+        {
+          "kind": "inscribe-magic-sigil",
+          "amount": 1,
+          "offsets": [{ "row": 0, "column": 1 }, { "row": -1, "column": 0 }]
+        },
+        { "kind": "damage", "amount": 180 }
+      ]
+    },
+    {
+      "id": "thunder-sigil",
+      "code": "THRUNE",
+      "title": "雷紋",
+      "description": "前方2マスへ魔紋を刻み、通電にチャージ1を追加して、2拍ごとに100ダメージを与える。",
+      "glyph": "雷",
+      "price": 9,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "east"],
+      "buildIds": ["magic-sigil", "charge"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "inscribe-magic-sigil",
+          "amount": 1,
+          "offsets": [{ "row": 0, "column": 1 }, { "row": 0, "column": 2 }]
+        },
+        { "kind": "charge", "amount": 1 },
+        { "kind": "damage", "amount": 100 }
+      ]
+    },
+    {
+      "id": "convergence-sigil",
+      "code": "FOCUS",
+      "title": "集束紋",
+      "description": "刻印線の先1マスへ魔紋を2段階刻み、3拍ごとにシールド360を得る。",
+      "glyph": "集",
+      "price": 13,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "south"],
+      "buildIds": ["magic-sigil"],
+      "cooldown": 3,
+      "effects": [
+        { "kind": "inscribe-magic-sigil", "amount": 2, "offsets": [{ "row": 1, "column": 0 }] },
+        { "kind": "shield", "amount": 360 }
+      ]
+    },
+    {
+      "id": "sigil-cannon",
+      "code": "SIGCANN",
+      "title": "紋章砲",
+      "description": "魔紋上で3拍ごとに300ダメージを与え、魔紋位階1段階につきダメージを220増やす。",
+      "glyph": "砲",
+      "price": 14,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west"],
+      "rotatable": false,
+      "buildIds": ["magic-sigil"],
+      "cooldown": 3,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 300,
+          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
+          "scaling": { "kind": "magic-sigil-level", "every": 1, "amount": 220 }
+        }
+      ]
+    },
+    {
+      "id": "resonance-circle",
+      "code": "CIRCLE",
+      "title": "連環陣",
+      "description": "魔紋上で3拍ごとに毒30を与え、通電した刻印マス1つにつき毒を18増やす。",
+      "glyph": "環",
+      "price": 13,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["magic-sigil"],
+      "cooldown": 3,
+      "effects": [
+        {
+          "kind": "poison",
+          "amount": 30,
+          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
+          "scaling": { "kind": "magic-sigil-count", "every": 1, "amount": 18 }
+        }
+      ]
+    },
+    {
+      "id": "deep-sigil-cannon",
+      "code": "ARCANA",
+      "title": "深奥砲",
+      "description": "魔紋位階IIIで4拍ごとに900ダメージを与え、位階1段階につきダメージを550増やす。",
+      "glyph": "奥",
+      "price": 21,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west"],
+      "rotatable": false,
+      "buildIds": ["magic-sigil"],
+      "cooldown": 4,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 900,
+          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 3 },
+          "scaling": { "kind": "magic-sigil-level", "every": 1, "amount": 550 }
+        }
+      ]
+    },
+    {
+      "id": "all-sigil-resonance",
+      "code": "OMNIA",
+      "title": "万象連環",
+      "description": "魔紋上で4拍ごとに攻防を共鳴させ、通電した刻印マスの数に応じて両方を強化する。",
+      "glyph": "万",
+      "price": 22,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["magic-sigil"],
+      "cooldown": 4,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 300,
+          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
+          "scaling": { "kind": "magic-sigil-count", "every": 1, "amount": 150 }
+        },
+        {
+          "kind": "shield",
+          "amount": 200,
+          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
+          "scaling": { "kind": "magic-sigil-count", "every": 1, "amount": 50 }
+        }
+      ]
     }
   ],
   "startingRack": [],

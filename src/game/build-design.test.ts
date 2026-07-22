@@ -14,6 +14,7 @@ describe('build design', () => {
       'neutral',
       'poison',
       'charge',
+      'magic-sigil',
     ]);
     expect(GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'weapon')?.values.map((value) => value.id)).toEqual([
       'blade',
@@ -26,7 +27,12 @@ describe('build design', () => {
     const hybridSkills = GAME_DATA.buildDesign.skills.filter(
       (skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2,
     );
-    expect(hybridSkills.map((skill) => skill.id).sort()).toEqual(['status-relay', 'toxic-reservoir']);
+    expect(hybridSkills.map((skill) => skill.id).sort()).toEqual([
+      'resonance-circle',
+      'status-relay',
+      'thunder-sigil',
+      'toxic-reservoir',
+    ]);
 
     GAME_DATA.buildDesign.skills.forEach((skill) => {
       expect(skill.axisLinks.map((link) => link.axisId).sort(), skill.id).toEqual(['trait', 'weapon']);
@@ -39,6 +45,7 @@ describe('build design', () => {
       'loop',
       'fully-connected',
       'straight-line',
+      'magic-sigil',
     ]);
     expect(GAME_DATA.buildDesign.skills.every((skill) => Boolean(skill.placementPatternId))).toBe(true);
 
@@ -51,6 +58,9 @@ describe('build design', () => {
     ).toBeGreaterThanOrEqual(1);
     expect(
       rows.find((row) => row.placementPatternId === 'straight-line' && row.traitId === 'charge')?.counts.blade,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      rows.find((row) => row.placementPatternId === 'magic-sigil' && row.traitId === 'magic-sigil')?.counts.cannon,
     ).toBeGreaterThanOrEqual(1);
   });
 
@@ -156,7 +166,7 @@ describe('build design', () => {
     const strike = GAME_DATA.buildDesign.skills.find((skill) => skill.id === 'strike')!;
 
     expect(strike.axisLinks.find((link) => link.axisId === 'trait')?.valueIds).toEqual(['neutral']);
-    expect(strike.buildLinks.map((link) => link.buildId).sort()).toEqual(['charge', 'poison']);
+    expect(strike.buildLinks.map((link) => link.buildId).sort()).toEqual(['charge', 'magic-sigil', 'poison']);
     expect(
       validateBuildDesign(
         GAME_DATA.buildDesign,
@@ -177,6 +187,8 @@ describe('build design', () => {
     expect(markdown).toContain('| 培養 | 毒を残して育てる |');
     expect(markdown).toContain('| 破裂 | 毒を一気に破裂させる |');
     expect(markdown).toContain('| 一括解放 | 全チャージを大ダメージへ変える |');
+    expect(markdown).toContain('| 重刻 | 一つの魔紋を位階IIIまで重ねて決め手を強化する |');
+    expect(markdown).toContain('| 連環 | 通電した魔紋マスを増やして盤面全体を共鳴させる |');
     expect(markdown).toContain('`discharge-bow`');
     expect(markdown).toContain('`status-relay`');
   });

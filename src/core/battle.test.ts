@@ -37,6 +37,7 @@ const testData = (): GameData => ({
       effectMultiplier: 1.5,
       cooldownReduction: 1,
     },
+    magicSigils: GAME_DATA.rules.magicSigils,
     balanceFormula: GAME_DATA.rules.balanceFormula,
     enemyGeneration: {
       startingNodes: 2,
