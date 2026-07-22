@@ -172,9 +172,9 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| 配置思想 | 刻印元の向きを組み合わせ、価値の高い魔紋マスを盤面に作る |
+| 配置思想 | 未通電でも刻める刻印元を自由に置き、価値の高い魔紋マスを盤面に重ねる |
 | 得意 | 任意の技を置き換えながら強化先を選べる |
-| リスク | 刻印元と受け手を両方通電させないと盤面投資が働かない |
+| リスク | 刻印元で盤面を使うため、受け手を通電できないと盤面投資が働かない |
 | 戦い方 | 同じマスへ魔紋を重ねる重刻か、複数マスを連ねる連環へ展開する |
 
 ### 役割
@@ -192,7 +192,7 @@
 | 分岐 | 方針 | 育成・循環・活用技 | 固有の決め手 |
 | --- | --- | --- | --- |
 | 重刻 | 一つの魔紋を位階IIIまで重ねて決め手を強化する | `strike`、`breaker`、`barrier`、`repair`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`inscription-stone`、`guiding-bolt`、`sigil-blade`、`guardian-sigil`、`thunder-sigil`、`convergence-sigil`、`sigil-cannon`、`deep-sigil-cannon` | `sigil-cannon`、`deep-sigil-cannon` |
-| 連環 | 通電した魔紋マスを増やして盤面全体を共鳴させる | `strike`、`breaker`、`barrier`、`repair`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`inscription-stone`、`guiding-bolt`、`sigil-blade`、`guardian-sigil`、`twin-inscription`、`thunder-sigil`、`resonance-circle`、`all-sigil-resonance` | `resonance-circle`、`all-sigil-resonance` |
+| 連環 | 刻印元を自由に散らし、通電ノードを置いた魔紋マスを増やして共鳴させる | `strike`、`breaker`、`barrier`、`repair`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`inscription-stone`、`guiding-bolt`、`sigil-blade`、`guardian-sigil`、`twin-inscription`、`thunder-sigil`、`resonance-circle`、`all-sigil-resonance` | `resonance-circle`、`all-sigil-resonance` |
 
 ### 開放性と実装状況
 

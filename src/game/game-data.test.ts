@@ -31,7 +31,7 @@ describe('game data', () => {
     );
   });
 
-  it('defines automatic rarity progression and body upgrades separately from the heart', () => {
+  it('defines rarity progression for paid body upgrades separately from rival run growth and the heart', () => {
     expect(GAME_DATA.rules.levelProgression).toEqual({
       runsPerLevel: 1,
       maxLevel: 9,
@@ -191,6 +191,7 @@ describe('game data', () => {
       expect.arrayContaining(['inscription-stone', 'guiding-bolt', 'twin-inscription', 'convergence-sigil']),
     );
     expect(inscribers.length).toBeGreaterThanOrEqual(5);
+    expect(inscribers.every((block) => !block.description.includes('未通電なら魔紋は消える'))).toBe(true);
   });
 
   it('defines a rival generator that attempts to add one affordable node per round', () => {

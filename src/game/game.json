@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 21,
+  "schemaVersion": 22,
   "rules": {
     "boardSize": 5,
     "heart": {
@@ -149,7 +149,7 @@
       {
         "id": "magic-sigil",
         "title": "魔紋",
-        "description": "通電した刻印元が作る魔紋マスへノードを置く配置"
+        "description": "自由に置いた刻印元で魔紋を重ね、その上の通電ノードを強化する配置"
       },
       {
         "id": "resonance",
@@ -239,13 +239,17 @@
         "id": "magic-sigil",
         "axisId": "trait",
         "title": "魔紋",
-        "placementIdentity": "刻印元の向きを組み合わせ、価値の高い魔紋マスを盤面に作る",
+        "placementIdentity": "未通電でも刻める刻印元を自由に置き、価値の高い魔紋マスを盤面に重ねる",
         "strength": "任意の技を置き換えながら強化先を選べる",
-        "risk": "刻印元と受け手を両方通電させないと盤面投資が働かない",
+        "risk": "刻印元で盤面を使うため、受け手を通電できないと盤面投資が働かない",
         "gamePlan": "同じマスへ魔紋を重ねる重刻か、複数マスを連ねる連環へ展開する",
         "payoffs": [
           { "id": "overlap", "title": "重刻", "strategy": "一つの魔紋を位階IIIまで重ねて決め手を強化する" },
-          { "id": "network", "title": "連環", "strategy": "通電した魔紋マスを増やして盤面全体を共鳴させる" }
+          {
+            "id": "network",
+            "title": "連環",
+            "strategy": "刻印元を自由に散らし、通電ノードを置いた魔紋マスを増やして共鳴させる"
+          }
         ]
       },
       {
@@ -1397,7 +1401,7 @@
       "id": "inscription-stone",
       "code": "RUNE",
       "title": "刻印碑",
-      "description": "前方1マスへ魔紋を1段階刻み、2拍ごとにシールド90を得る。刻印元が未通電なら魔紋は消える。",
+      "description": "通電していなくても前方1マスへ魔紋を1段階刻み、通電中は2拍ごとにシールド90を得る。",
       "glyph": "刻",
       "price": 4,
       "rarity": "common",

@@ -331,7 +331,7 @@ export const rotateCellOffset = (offset: CellPosition, rotation: Rotation): Cell
 export function analyzeMagicSigils(
   board: CircuitBoard,
   blocks: BlockDefinition[],
-  circuit: CircuitAnalysis,
+  _circuit: CircuitAnalysis,
   fusionRules: SkillFusionRules,
   rules: MagicSigilRules,
 ): MagicSigilAnalysis {
@@ -344,7 +344,6 @@ export function analyzeMagicSigils(
     row.forEach((placed, columnIndex) => {
       if (!placed) return;
       const sourceKey = cellKey({ row: rowIndex, column: columnIndex });
-      if (!circuit.poweredCells.has(sourceKey)) return;
       const block = definitions.get(placed.blockId);
       if (!block) return;
       block.effects.forEach((effect) => {

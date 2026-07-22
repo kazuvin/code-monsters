@@ -31,7 +31,7 @@ import {
   maxHpBonusForBodyLevel,
   rarityWeightsForLevel,
 } from './core/progression';
-import { advanceShop, createShop, randomShopSeed, rerollShop } from './core/shop';
+import { advanceShop, createShop, randomShopSeed, rarityRatesForPool, rerollShop } from './core/shop';
 import {
   incomingSkillModifiers,
   combineSkillModifiers,
@@ -143,6 +143,7 @@ const RARITY_COPY: Record<Rarity, { label: string; code: string; color: string; 
   legendary: { label: 'レジェンダリー', code: 'L', color: '#ff9b42', aura: '16px' },
 };
 const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
+const formatRarityRate = (rate: number) => `${(rate * 100).toFixed(1)}%`;
 const WEAPON_MARK: Record<string, string> = { blade: '剣', bow: '弓', cannon: '砲', device: '機', magic: '術' };
 const FEEDBACK_COPY: Record<FeedbackKind, string> = {
   damage: 'ダメージ',
@@ -239,7 +240,6 @@ const createInitialPlayerBoard = () => {
   const initial = GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
   if (magicSigilFixture === 'focus') {
     initial[2][1] = { blockId: 'guiding-bolt', rotation: 0 };
-    initial[1][1] = { blockId: 'guardian-sigil', rotation: 2 };
     initial[1][2] = { blockId: 'convergence-sigil', rotation: 0 };
     initial[2][2] = { blockId: 'deep-sigil-cannon', rotation: 0 };
     return initial;
@@ -1110,7 +1110,15 @@ export function App() {
   const level = levelForRun(GAME_DATA, run);
   const maxHpBonus = maxHpBonusForBodyLevel(GAME_DATA, bodyLevel);
   const nextBodyUpgradeCost = bodyUpgradeCostForLevel(GAME_DATA, bodyLevel);
-  const shopRarityWeights = useMemo(() => rarityWeightsForLevel(GAME_DATA, level), [level]);
+  const shopRarityWeights = useMemo(() => rarityWeightsForLevel(GAME_DATA, bodyLevel), [bodyLevel]);
+  const shopRarityRates = useMemo(() => rarityRatesForPool(shopBlocks, shopRarityWeights), [shopRarityWeights]);
+  const nextBodyRarityRates = useMemo(
+    () =>
+      nextBodyUpgradeCost === null
+        ? null
+        : rarityRatesForPool(shopBlocks, rarityWeightsForLevel(GAME_DATA, bodyLevel + 1)),
+    [bodyLevel, nextBodyUpgradeCost],
+  );
   const enemyBuild = useMemo(
     () =>
       generateEnemyBuild(GAME_DATA, run, enemySeed, {
@@ -1541,20 +1549,10 @@ export function App() {
   const returnToWorkshop = () => {
     const reward = battleReward(GAME_DATA, battle.winner);
     const nextSeed = nextShopSeed(seed, 11);
-    const nextLevel = levelForRun(GAME_DATA, run + 1);
     setCoins((current) => current + reward);
     setEarnedCoins((current) => current + reward);
     setSeed(nextSeed);
-    setShop(
-      advanceShop(
-        shopBlocks,
-        rarityWeightsForLevel(GAME_DATA, nextLevel),
-        shop,
-        nextSeed,
-        GAME_DATA.rules.shopSize,
-        ownedBlockIds,
-      ),
-    );
+    setShop(advanceShop(shopBlocks, shopRarityWeights, shop, nextSeed, GAME_DATA.rules.shopSize, ownedBlockIds));
     setRun((current) => current + 1);
     setEnemySeed((current) => (hasFixtureSeed ? current + 47 : randomShopSeed()));
     setPlayback([]);
@@ -1923,6 +1921,22 @@ export function App() {
                     更新 <b>{GAME_DATA.rules.rerollCost}</b>
                   </button>
                 </header>
+                <section className="shop-rarity-rates" aria-label={`機体LV.${bodyLevel}のレアリティ排出率`}>
+                  <span className="shop-rarity-rates-label">DROP RATE</span>
+                  {RARITY_ORDER.map((rarity) => (
+                    <span
+                      className={`rarity-rate rarity-${rarity}`}
+                      data-rarity-rate={rarity}
+                      data-rate={shopRarityRates[rarity]}
+                      style={{ '--rarity-color': RARITY_COPY[rarity].color } as CSSProperties}
+                      key={rarity}
+                    >
+                      <i />
+                      <small>{RARITY_COPY[rarity].code}</small>
+                      <b>{formatRarityRate(shopRarityRates[rarity])}</b>
+                    </span>
+                  ))}
+                </section>
                 <section className="body-upgrade" aria-label="機体強化">
                   <div className="body-upgrade-mark" aria-hidden="true">
                     <HeartVisual compact />
@@ -1953,6 +1967,29 @@ export function App() {
                       </>
                     )}
                   </button>
+                  {nextBodyRarityRates && (
+                    <div className="body-upgrade-rates" aria-label={`機体LV.${bodyLevel + 1}の排出率`}>
+                      <small>NEXT DROP</small>
+                      {RARITY_ORDER.map((rarity) => {
+                        const delta = nextBodyRarityRates[rarity] - shopRarityRates[rarity];
+                        return (
+                          <span
+                            data-rarity-delta={rarity}
+                            className={`rarity-${rarity} ${delta >= 0 ? 'is-up' : 'is-down'}`}
+                            style={{ '--rarity-color': RARITY_COPY[rarity].color } as CSSProperties}
+                            key={rarity}
+                          >
+                            <b>{RARITY_COPY[rarity].code}</b>
+                            <strong>{formatRarityRate(nextBodyRarityRates[rarity])}</strong>
+                            <em>
+                              {delta >= 0 ? '+' : ''}
+                              {(delta * 100).toFixed(1)}pt
+                            </em>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </section>
                 <div className="shop-list">
                   {Array.from({ length: GAME_DATA.rules.shopSize }, (_, slot) => {

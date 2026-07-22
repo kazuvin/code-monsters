@@ -200,7 +200,7 @@ describe('build design', () => {
     expect(markdown).toContain('| 破裂 | 毒を一気に破裂させる |');
     expect(markdown).toContain('| 一括解放 | 全チャージを大ダメージへ変える |');
     expect(markdown).toContain('| 重刻 | 一つの魔紋を位階IIIまで重ねて決め手を強化する |');
-    expect(markdown).toContain('| 連環 | 通電した魔紋マスを増やして盤面全体を共鳴させる |');
+    expect(markdown).toContain('| 連環 | 刻印元を自由に散らし、通電ノードを置いた魔紋マスを増やして共鳴させる |');
     expect(markdown).toContain('| 集響 | 共鳴度4以上を火力へ集中させる |');
     expect(markdown).toContain('| 交響 | 共鳴度を攻防と回復へ分配する |');
     expect(markdown).toContain('`discharge-bow`');

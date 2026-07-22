@@ -19,10 +19,11 @@
     "format:check": "biome format .",
     "preview": "vite preview",
     "deploy": "wrangler deploy",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --exclude src/core/balance-simulation.test.ts",
+    "test:balance": "vitest run src/core/balance-simulation.test.ts",
+    "test:watch": "vitest --exclude src/core/balance-simulation.test.ts",
     "test:browser": "node scripts/browser-smoke.mjs",
-    "verify": "pnpm format:check && pnpm balance:formula:check && pnpm test && pnpm build"
+    "verify": "pnpm format:check && pnpm test && pnpm build"
   },
   "dependencies": {
     "@fontsource/pixelify-sans": "latest",

@@ -360,20 +360,6 @@ button:focus-visible {
   animation: heart-beat 1400ms steps(2) infinite;
 }
 
-.heart-core::before,
-.heart-core::after {
-  position: absolute;
-  width: 42%;
-  height: 3px;
-  content: "";
-  background: #d88ab8;
-  box-shadow: 0 0 7px #d88ab8;
-}
-
-.heart-core::after {
-  transform: rotate(90deg);
-}
-
 .heart-core > i {
   position: absolute;
   width: 44%;
@@ -1213,6 +1199,61 @@ button:focus-visible {
   box-shadow: inset 0 0 0 2px rgb(7 21 29 / 62%);
 }
 
+.shop-rarity-rates {
+  display: grid;
+  grid-template-columns: auto repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 1px;
+  margin: 10px 14px 0;
+  border: 1px solid #315765;
+  background: #091b23;
+  box-shadow: inset 0 0 0 2px #06141b;
+}
+
+.shop-rarity-rates-label {
+  align-self: stretch;
+  display: grid;
+  padding: 7px 8px;
+  place-items: center;
+  border-right: 1px solid #315765;
+  color: var(--muted);
+  font:
+    600 7px / 1 "Pixelify Sans",
+    monospace;
+  letter-spacing: 0.08em;
+}
+
+.rarity-rate {
+  --rarity-color: var(--paper);
+  display: grid;
+  grid-template-columns: 5px auto;
+  gap: 2px 4px;
+  padding: 6px 4px;
+  border-left: 1px solid rgb(67 104 116 / 42%);
+}
+
+.rarity-rate i {
+  align-self: center;
+  width: 4px;
+  height: 4px;
+  grid-row: 1 / span 2;
+  background: var(--rarity-color);
+  box-shadow: 0 0 5px var(--rarity-color);
+}
+
+.rarity-rate small {
+  color: var(--rarity-color);
+  font-size: 7px;
+  line-height: 1;
+}
+
+.rarity-rate b {
+  color: var(--paper);
+  font:
+    600 10px / 1 "Pixelify Sans",
+    monospace;
+}
+
 .body-upgrade-copy {
   display: grid;
   min-width: 0;
@@ -1269,6 +1310,54 @@ button:focus-visible {
   border-color: #45616b;
   color: var(--muted);
   background: #142b34;
+}
+
+.body-upgrade-rates {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: auto repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  padding-top: 7px;
+  border-top: 1px solid rgb(196 109 130 / 30%);
+}
+
+.body-upgrade-rates > small {
+  align-self: center;
+  color: #e4a2c8;
+  font:
+    600 7px / 1 "Pixelify Sans",
+    monospace;
+}
+
+.body-upgrade-rates span {
+  --rarity-color: var(--paper);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 4px;
+  padding-left: 5px;
+  border-left: 2px solid var(--rarity-color);
+}
+
+.body-upgrade-rates span b {
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--rarity-color);
+  font-size: 8px;
+}
+
+.body-upgrade-rates span strong {
+  color: var(--paper);
+  font-size: 8px;
+}
+
+.body-upgrade-rates span em {
+  color: var(--green);
+  font-size: 6px;
+  font-style: normal;
+}
+
+.body-upgrade-rates span.is-down em {
+  color: #e4a2c8;
 }
 
 .shop-list {
@@ -3215,6 +3304,10 @@ button:focus-visible {
   }
 
   .body-upgrade {
+    margin: 10px 10px 0;
+  }
+
+  .shop-rarity-rates {
     margin: 10px 10px 0;
   }
 

@@ -9,6 +9,7 @@ import {
   rarityWeightsForLevel,
   totalBodyUpgradeCost,
 } from './progression';
+import { rarityRatesForPool } from './shop';
 
 describe('run progression', () => {
   it('levels once per run until the configured cap', () => {
@@ -39,6 +40,19 @@ describe('run progression', () => {
     expect(level9.common).toBeLessThan(level1.common);
     expect(level9.legendary).toBeGreaterThan(level1.legendary);
     expect(highRarityShare(level9)).toBeGreaterThan(highRarityShare(level1));
+  });
+
+  it('improves the actual high-rarity shop rate with each paid body level', () => {
+    const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
+    const rates = [1, 2, 3, 4, 5, 6].map((bodyLevel) =>
+      rarityRatesForPool(shopBlocks, rarityWeightsForLevel(GAME_DATA, bodyLevel)),
+    );
+
+    rates.slice(1).forEach((current, index) => {
+      const previous = rates[index];
+      expect(current.epic + current.legendary).toBeGreaterThan(previous.epic + previous.legendary);
+      expect(current.common).toBeLessThan(previous.common);
+    });
   });
 
   it('uses the average configured battle reward for a standard simulation budget', () => {

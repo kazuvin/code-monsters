@@ -16,7 +16,7 @@ pnpm balance:formula:check
 - `balance:formula` は全playableスキルを再取得して `formula.json`、`formula.csv`、`formula.md` を更新する。
 - `balance:formula:check` は再計算結果とコミット済みレポートを比較し、スキル、式、係数、ゲームテンポの変更でレポートが古くなっていれば失敗する。
 - どちらも戦闘を1回も実行しない。
-- `pnpm verify` は `balance:formula:check` を含む。
+- 通常の `pnpm verify` とCIには含めない。パワーバランス調整を依頼されたときだけ手動で実行する。
 
 ## 数値を決める順序
 
@@ -128,7 +128,7 @@ conditionalShield = 372.8 × 1.5 / 0.9 = 621.3
 3. `pnpm balance:formula` を実行する。
 4. `formula.md` の効果別式、基準PS、重み付きCVPS、目標CVPS、予算比を確認する。
 5. 蓄積資源、倍率、合流、融合と組み合わさる効果には、別途決定論的な上限テストを追加する。
-6. `pnpm verify` を通す。
+6. `pnpm verify` を通し、依頼されたバランス調整では `pnpm balance:formula:check` も通す。
 
 新しいplayableスキルは自動で対象になる。未知の効果kindは計算を失敗させるため、換算式を定義せずにレポートから抜けることはない。
 

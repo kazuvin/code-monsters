@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rotatePorts } from './circuit';
-import { advanceShop, createShop, randomShopSeed, rerollShop } from './shop';
+import { advanceShop, createShop, randomShopSeed, rarityRatesForPool, rerollShop } from './shop';
 import type { BlockDefinition, Rarity, RarityWeights } from './types';
 
 const rarityWeights: RarityWeights = {
@@ -95,5 +95,21 @@ describe('shop', () => {
     expect(counts.common).toBeGreaterThan(counts.rare);
     expect(counts.rare).toBeGreaterThan(counts.epic);
     expect(counts.epic).toBeGreaterThan(counts.legendary);
+  });
+
+  it('summarizes the actual rarity rates across the weighted shop pool', () => {
+    const rarityBlocks = (Object.keys(rarityWeights) as Rarity[]).map((rarity) => ({
+      ...blocks[0],
+      id: rarity,
+      rarity,
+      shopWeight: rarity === 'legendary' ? 2 : 1,
+    }));
+
+    expect(rarityRatesForPool(rarityBlocks, rarityWeights)).toEqual({
+      common: 100 / 210,
+      rare: 50 / 210,
+      epic: 30 / 210,
+      legendary: 30 / 210,
+    });
   });
 });

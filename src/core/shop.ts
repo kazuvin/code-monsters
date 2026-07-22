@@ -1,7 +1,8 @@
-import type { BlockDefinition, RarityWeights, Rotation, ShopOffer } from './types';
+import type { BlockDefinition, Rarity, RarityWeights, Rotation, ShopOffer } from './types';
 import { rotatePorts } from './circuit';
 
 const ROTATIONS: Rotation[] = [0, 1, 2, 3];
+const RARITIES: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 
 const randomUnit = (seed: number) => {
   const value = Math.sin(seed * 9301 + 49297) * 233280;
@@ -12,6 +13,20 @@ export const randomShopSeed = (random: () => number = Math.random) => Math.floor
 
 const effectiveWeight = (block: BlockDefinition, rarityWeights: RarityWeights) =>
   rarityWeights[block.rarity] * (block.shopWeight ?? 1);
+
+export function rarityRatesForPool(blocks: BlockDefinition[], rarityWeights: RarityWeights): Record<Rarity, number> {
+  const weights = Object.fromEntries(
+    RARITIES.map((rarity) => [
+      rarity,
+      blocks
+        .filter((block) => block.rarity === rarity)
+        .reduce((total, block) => total + effectiveWeight(block, rarityWeights), 0),
+    ]),
+  ) as Record<Rarity, number>;
+  const total = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+  if (total <= 0) return Object.fromEntries(RARITIES.map((rarity) => [rarity, 0])) as Record<Rarity, number>;
+  return Object.fromEntries(RARITIES.map((rarity) => [rarity, weights[rarity] / total])) as Record<Rarity, number>;
+}
 
 const offerRotation = (block: BlockDefinition, seed: number, ownedBlockIds: ReadonlySet<string>): Rotation => {
   const candidates = ownedBlockIds.has(block.id)

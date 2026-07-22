@@ -89,14 +89,14 @@ describe('magic sigils', () => {
     expect(countActiveMagicSigils(board(), circuit, sigils)).toBe(1);
   });
 
-  it('ignores inscriptions from a source that is not powered', () => {
+  it('keeps inscriptions from unpowered sources so free placements can overlap sigils', () => {
     const disconnected = board();
     disconnected[0][0] = null;
     const circuit = analyzeCircuit(disconnected, blocks, 1);
     const sigils = analyzeMagicSigils(disconnected, blocks, circuit, fusionRules, sigilRules);
 
-    expect(sigils.levels.get('1:1')).toBe(1);
-    expect(sigils.sources.get('1:1')).toEqual(['1:0']);
+    expect(sigils.levels.get('1:1')).toBe(3);
+    expect(sigils.sources.get('1:1')).toEqual(['0:1', '1:0']);
   });
 
   it('turns each level into effect power and unlocks haste at level three', () => {

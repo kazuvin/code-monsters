@@ -83,10 +83,22 @@ if ((await desktop.locator('.heart-button').count()) !== 1)
 if ((await desktop.locator('.heart-button .heart-port').count()) !== 4) {
   throw new Error('The heart does not expose all four connectors');
 }
+const heartDecoration = await desktop
+  .locator('.heart-button .heart-core')
+  .evaluate((heart) => [getComputedStyle(heart, '::before').content, getComputedStyle(heart, '::after').content]);
+if (heartDecoration.some((content) => content !== 'none')) {
+  throw new Error(`The heart still has decorative crossbars: ${JSON.stringify(heartDecoration)}`);
+}
 if ((await desktop.locator('.power-source').count()) !== 0)
   throw new Error('The fixed external power source still exists');
 if ((await desktop.locator('.body-upgrade').count()) !== 1) {
   throw new Error('Paid body upgrades are not available separately from the heart');
+}
+if ((await desktop.locator('.shop-rarity-rates [data-rarity-rate]').count()) !== 4) {
+  throw new Error('Shop does not summarize all four rarity rates');
+}
+if ((await desktop.locator('.body-upgrade-rates [data-rarity-delta]').count()) !== 4) {
+  throw new Error('Body upgrade does not preview all four next-level rarity rates');
 }
 const shopRarities = await desktop
   .locator('.shop-card')
@@ -333,15 +345,22 @@ if (
 }
 
 const coinsBeforeBodyUpgrade = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
+const legendaryRateBeforeBodyUpgrade = Number(
+  await desktop.locator('.shop-rarity-rates [data-rarity-rate="legendary"]').getAttribute('data-rate'),
+);
 await desktop.locator('.body-upgrade > button').click();
 const coinsAfterBodyUpgrade = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
 const bodyUpgradeText = (await desktop.locator('.body-upgrade-copy').textContent()) ?? '';
+const legendaryRateAfterBodyUpgrade = Number(
+  await desktop.locator('.shop-rarity-rates [data-rarity-rate="legendary"]').getAttribute('data-rate'),
+);
 if (
   coinsBeforeBodyUpgrade - coinsAfterBodyUpgrade !== 6 ||
   !bodyUpgradeText.includes('LV.2') ||
-  !bodyUpgradeText.includes('7500')
+  !bodyUpgradeText.includes('7500') ||
+  !(legendaryRateAfterBodyUpgrade > legendaryRateBeforeBodyUpgrade)
 ) {
-  throw new Error(`Paid body upgrade did not increase max HP separately: ${bodyUpgradeText}`);
+  throw new Error(`Paid body upgrade did not increase max HP and shop rarity rates: ${bodyUpgradeText}`);
 }
 
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-desktop.png', fullPage: true });
@@ -793,6 +812,9 @@ magicSigilTarget.searchParams.set('magicSigilFixture', 'focus');
 await magicSigil.goto(magicSigilTarget.toString(), { waitUntil: 'networkidle' });
 const rankThreeSigil = magicSigil.locator('.circuit-cell[data-row="2"][data-column="2"][data-magic-sigil-level="3"]');
 await rankThreeSigil.waitFor();
+if ((await magicSigil.locator('.circuit-cell[data-row="1"][data-column="2"].is-powered').count()) !== 0) {
+  throw new Error('The free-placement magic sigil source unexpectedly requires power');
+}
 if ((await rankThreeSigil.locator('[data-magic-sigil-mark]').count()) !== 1) {
   throw new Error('Rank III magic sigil is missing its board mark');
 }
