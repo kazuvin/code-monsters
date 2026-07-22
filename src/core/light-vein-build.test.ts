@@ -40,7 +40,7 @@ const damageAt = (board: CircuitBoard, blockId: string) => {
 };
 
 describe('light vein circuit core', () => {
-  it('keeps generic topology nodes neutral and hybrid outputs tied to their effect build', () => {
+  it('exposes light vein as a visible trait while hybrid outputs retain their effect trait', () => {
     const core = GAME_DATA.buildDesign.placementPatterns.find((candidate) => candidate.id === 'light-vein');
     const designs = GAME_DATA.buildDesign.skills.filter((skill) => skill.placementPatternId === 'light-vein');
 
@@ -49,9 +49,9 @@ describe('light vein circuit core', () => {
     expect(designs.filter((skill) => skill.status === 'playable')).toHaveLength(10);
     const traits = (blockId: string) =>
       designs.find((skill) => skill.blockId === blockId)?.axisLinks.find((link) => link.axisId === 'trait')?.valueIds;
-    expect(traits('light-vein-blade')).toEqual(['neutral']);
-    expect(traits('thunder-prism')).toEqual(['charge']);
-    expect(traits('venom-ray')).toEqual(['poison']);
+    expect(traits('light-vein-blade')).toEqual(['light-vein']);
+    expect(traits('thunder-prism')).toEqual(['charge', 'light-vein']);
+    expect(traits('venom-ray')).toEqual(['poison', 'light-vein']);
   });
 
   it('caps the fused three-branch payoff below one enemy health bar', () => {

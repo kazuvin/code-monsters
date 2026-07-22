@@ -133,7 +133,7 @@ describe('enemy build generator', () => {
       designs.forEach((skill) => {
         const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
         expect(
-          traits.some((trait) => trait === 'neutral' || trait === build.buildId),
+          traits.some((trait) => trait === 'neutral' || trait === build.buildId || trait === build.circuitCoreId),
           skill.id,
         ).toBe(true);
       });

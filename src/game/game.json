@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 24,
+  "schemaVersion": 25,
   "rules": {
     "boardSize": 5,
     "heart": {
@@ -215,12 +215,12 @@
       {
         "id": "trait",
         "title": "特性",
-        "description": "ノード固有の効果コア。無特性は回路コアを問わず組み込める",
+        "description": "ノードの効果と回路上の個性を示す。複数特性は混成を表す",
         "values": [
           {
             "id": "neutral",
-            "title": "無特性",
-            "description": "毒やチャージを持たず、どのビルドにも組み込める",
+            "title": "汎用",
+            "description": "固有の効果や回路コアを持たず、どの構成にも組み込める",
             "color": "#486977"
           },
           {
@@ -234,6 +234,24 @@
             "title": "チャージ",
             "description": "充電ノードで蓄え、遠い解放点で使う",
             "color": "#ffd36a"
+          },
+          {
+            "id": "magic-sigil",
+            "title": "魔紋",
+            "description": "魔紋を刻み、その上の通電ノードを強化する",
+            "color": "#aa88ff"
+          },
+          {
+            "id": "resonance",
+            "title": "霊響",
+            "description": "周囲の通電ノード数を共鳴度へ変える",
+            "color": "#ff9bd7"
+          },
+          {
+            "id": "light-vein",
+            "title": "光脈",
+            "description": "通電経路の分岐と合流を出力へ変える",
+            "color": "#5de7f2"
           }
         ]
       },
@@ -1281,7 +1299,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1314,7 +1332,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1347,7 +1365,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1380,7 +1398,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1413,7 +1431,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1446,7 +1464,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge"]
+            "valueIds": ["charge", "magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1474,7 +1492,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1507,7 +1525,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1540,7 +1558,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison"]
+            "valueIds": ["poison", "magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1568,7 +1586,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1601,7 +1619,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["magic-sigil"]
           },
           {
             "axisId": "weapon",
@@ -1634,7 +1652,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["resonance"]
           },
           {
             "axisId": "weapon",
@@ -1667,7 +1685,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["resonance"]
           },
           {
             "axisId": "weapon",
@@ -1700,7 +1718,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["resonance"]
           },
           {
             "axisId": "weapon",
@@ -1733,7 +1751,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["resonance"]
           },
           {
             "axisId": "weapon",
@@ -1766,7 +1784,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge"]
+            "valueIds": ["charge", "resonance"]
           },
           {
             "axisId": "weapon",
@@ -1794,7 +1812,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison"]
+            "valueIds": ["poison", "resonance"]
           },
           {
             "axisId": "weapon",
@@ -1822,7 +1840,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["resonance"]
           },
           {
             "axisId": "weapon",
@@ -1855,7 +1873,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["resonance"]
           },
           {
             "axisId": "weapon",
@@ -1888,7 +1906,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["resonance"]
           },
           {
             "axisId": "weapon",
@@ -1921,7 +1939,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["resonance"]
           },
           {
             "axisId": "weapon",
@@ -1954,7 +1972,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["light-vein"]
           },
           {
             "axisId": "weapon",
@@ -1987,7 +2005,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["light-vein"]
           },
           {
             "axisId": "weapon",
@@ -2020,7 +2038,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["light-vein"]
           },
           {
             "axisId": "weapon",
@@ -2053,7 +2071,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge"]
+            "valueIds": ["charge", "light-vein"]
           },
           {
             "axisId": "weapon",
@@ -2081,7 +2099,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison"]
+            "valueIds": ["poison", "light-vein"]
           },
           {
             "axisId": "weapon",
@@ -2109,7 +2127,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["light-vein"]
           },
           {
             "axisId": "weapon",
@@ -2142,7 +2160,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["light-vein"]
           },
           {
             "axisId": "weapon",
@@ -2175,7 +2193,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["light-vein"]
           },
           {
             "axisId": "weapon",
@@ -2208,7 +2226,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["light-vein"]
           },
           {
             "axisId": "weapon",
@@ -2241,7 +2259,7 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["light-vein"]
           },
           {
             "axisId": "weapon",

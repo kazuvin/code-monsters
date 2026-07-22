@@ -453,11 +453,10 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
     }
 
     const finalStep = pulseStep === pulseStepCount;
-    let winner: Winner = null;
+    let winner: Winner = winnerOf(fighters);
     let overloadLevel = state.overloadLevel;
     let overloadDamage = 0;
     if (finalStep) {
-      winner = winnerOf(fighters);
       const poisonTickInterval = Math.max(
         1,
         Math.ceil((data.rules.poisonTickSeconds * 1000) / data.rules.battleStepMs),
@@ -515,6 +514,7 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
       overloadDamage,
       winner,
     });
+    if (winner) break;
   }
 
   return frames;

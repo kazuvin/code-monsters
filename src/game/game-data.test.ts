@@ -218,7 +218,11 @@ describe('game data', () => {
       ['neutral', '#486977'],
       ['poison', '#8bd450'],
       ['charge', '#ffd36a'],
+      ['magic-sigil', '#aa88ff'],
+      ['resonance', '#ff9bd7'],
+      ['light-vein', '#5de7f2'],
     ]);
+    expect(trait?.values.find((value) => value.id === 'neutral')?.title).toBe('汎用');
   });
 
   it('defines capped magic sigils that grant power and late-rank haste', () => {
@@ -247,7 +251,7 @@ describe('game data', () => {
     });
   });
 
-  it('uses neutral for generic nodes and reserves mixed traits for real mixed mechanics', () => {
+  it('uses neutral for generic nodes and visible circuit traits for core nodes', () => {
     const traitIds = (blockId: string) =>
       GAME_DATA.buildDesign.skills
         .find((skill) => skill.blockId === blockId)
@@ -278,7 +282,19 @@ describe('game data', () => {
         .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2)
         .map((skill) => skill.id)
         .sort(),
-    ).toEqual(['status-relay', 'toxic-reservoir']);
+    ).toEqual([
+      'resonance-circle',
+      'status-relay',
+      'thunder-echo',
+      'thunder-prism',
+      'thunder-sigil',
+      'toxic-reservoir',
+      'venom-chorus',
+      'venom-ray',
+    ]);
+    expect(traitIds('sigil-blade')).toEqual(['magic-sigil']);
+    expect(traitIds('spirit-blade')).toEqual(['resonance']);
+    expect(traitIds('light-vein-blade')).toEqual(['light-vein']);
   });
 
   it('replaces poison-only nodes with weapon combinations and cross-trait nodes', () => {
@@ -286,9 +302,11 @@ describe('game data', () => {
       skill.buildLinks.some((link) => link.buildId === 'poison'),
     );
     const poisonBlocks = GAME_DATA.blocks.filter((block) => block.buildIds?.includes('poison'));
+    const effectBuildIds = new Set(GAME_DATA.buildDesign.builds.map((build) => build.id));
     const poisonOnly = poisonDesigns.filter((skill) => {
-      const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds;
-      return traits?.length === 1 && traits[0] === 'poison';
+      const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
+      const effectTraits = traits.filter((trait) => effectBuildIds.has(trait));
+      return effectTraits.length === 1 && effectTraits[0] === 'poison';
     });
 
     expect(poisonOnly).toHaveLength(8);

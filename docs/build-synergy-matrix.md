@@ -6,7 +6,7 @@
 
 | 軸 | 目的 | 値 |
 | --- | --- | --- |
-| 特性 | ノード固有の効果コア。無特性は回路コアを問わず組み込める | 無特性（`neutral`）、毒（`poison`）、チャージ（`charge`） |
+| 特性 | ノードの効果と回路上の個性を示す。複数特性は混成を表す | 汎用（`neutral`）、毒（`poison`）、チャージ（`charge`）、魔紋（`magic-sigil`）、霊響（`resonance`）、光脈（`light-vein`） |
 | 武器・装置 | 特性を運び、攻撃や防御へ変換する手段 | 剣（`blade`）、弓（`bow`）、砲（`cannon`）、装置（`device`）、魔法（`magic`） |
 
 ## 回路コア
@@ -57,37 +57,37 @@
 | `bridge-core` | `neutral` | `magic` | 条件なし |
 | `charge-line-lance` | `charge` | `blade` | 長直線 |
 | `overcharge-cannon` | `charge` | `cannon` | 条件なし |
-| `inscription-stone` | `neutral` | `device` | 魔紋 |
-| `guiding-bolt` | `neutral` | `bow` | 魔紋 |
-| `sigil-blade` | `neutral` | `blade` | 魔紋 |
-| `guardian-sigil` | `neutral` | `device` | 魔紋 |
-| `twin-inscription` | `neutral` | `bow` | 魔紋 |
-| `thunder-sigil` | `charge` | `device` | 魔紋 |
-| `convergence-sigil` | `neutral` | `magic` | 魔紋 |
-| `sigil-cannon` | `neutral` | `cannon` | 魔紋 |
-| `resonance-circle` | `poison` | `magic` | 魔紋 |
-| `deep-sigil-cannon` | `neutral` | `cannon` | 魔紋 |
-| `all-sigil-resonance` | `neutral` | `magic` | 魔紋 |
-| `spirit-blade` | `neutral` | `blade` | 霊響 |
-| `echo-arrow` | `neutral` | `bow` | 霊響 |
-| `tuning-stone` | `neutral` | `magic` | 霊響 |
-| `harmony-ward` | `neutral` | `device` | 霊響 |
-| `thunder-echo` | `charge` | `device` | 霊響 |
-| `venom-chorus` | `poison` | `bow` | 霊響 |
-| `resonance-cannon` | `neutral` | `cannon` | 霊響 |
-| `harmonic-sanctuary` | `neutral` | `magic` | 霊響 |
-| `celestial-echo-cannon` | `neutral` | `cannon` | 霊響 |
-| `grand-harmony` | `neutral` | `magic` | 霊響 |
-| `light-vein-blade` | `neutral` | `blade` | 光脈 |
-| `prism-arrow` | `neutral` | `bow` | 光脈 |
-| `light-guide` | `neutral` | `device` | 光脈 |
-| `thunder-prism` | `charge` | `device` | 光脈 |
-| `venom-ray` | `poison` | `bow` | 光脈 |
-| `radiant-fork` | `neutral` | `magic` | 光脈 |
-| `branchlight-barrage` | `neutral` | `bow` | 光脈 |
-| `convergence-cannon` | `neutral` | `cannon` | 光脈 |
-| `myriad-light-array` | `neutral` | `magic` | 光脈 |
-| `solar-convergence` | `neutral` | `cannon` | 光脈 |
+| `inscription-stone` | `magic-sigil` | `device` | 魔紋 |
+| `guiding-bolt` | `magic-sigil` | `bow` | 魔紋 |
+| `sigil-blade` | `magic-sigil` | `blade` | 魔紋 |
+| `guardian-sigil` | `magic-sigil` | `device` | 魔紋 |
+| `twin-inscription` | `magic-sigil` | `bow` | 魔紋 |
+| `thunder-sigil` | `charge`、`magic-sigil` | `device` | 魔紋 |
+| `convergence-sigil` | `magic-sigil` | `magic` | 魔紋 |
+| `sigil-cannon` | `magic-sigil` | `cannon` | 魔紋 |
+| `resonance-circle` | `poison`、`magic-sigil` | `magic` | 魔紋 |
+| `deep-sigil-cannon` | `magic-sigil` | `cannon` | 魔紋 |
+| `all-sigil-resonance` | `magic-sigil` | `magic` | 魔紋 |
+| `spirit-blade` | `resonance` | `blade` | 霊響 |
+| `echo-arrow` | `resonance` | `bow` | 霊響 |
+| `tuning-stone` | `resonance` | `magic` | 霊響 |
+| `harmony-ward` | `resonance` | `device` | 霊響 |
+| `thunder-echo` | `charge`、`resonance` | `device` | 霊響 |
+| `venom-chorus` | `poison`、`resonance` | `bow` | 霊響 |
+| `resonance-cannon` | `resonance` | `cannon` | 霊響 |
+| `harmonic-sanctuary` | `resonance` | `magic` | 霊響 |
+| `celestial-echo-cannon` | `resonance` | `cannon` | 霊響 |
+| `grand-harmony` | `resonance` | `magic` | 霊響 |
+| `light-vein-blade` | `light-vein` | `blade` | 光脈 |
+| `prism-arrow` | `light-vein` | `bow` | 光脈 |
+| `light-guide` | `light-vein` | `device` | 光脈 |
+| `thunder-prism` | `charge`、`light-vein` | `device` | 光脈 |
+| `venom-ray` | `poison`、`light-vein` | `bow` | 光脈 |
+| `radiant-fork` | `light-vein` | `magic` | 光脈 |
+| `branchlight-barrage` | `light-vein` | `bow` | 光脈 |
+| `convergence-cannon` | `light-vein` | `cannon` | 光脈 |
+| `myriad-light-array` | `light-vein` | `magic` | 光脈 |
+| `solar-convergence` | `light-vein` | `cannon` | 光脈 |
 
 ## 配置条件 × 特性 × 武器・装置（スキル数）
 
@@ -95,27 +95,48 @@
 
 | 配置条件 × 特性 | 剣 | 弓 | 砲 | 装置 | 魔法 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 条件なし × 無特性 | 3 | 2 | 1 | 4 | 2 |
+| 条件なし × 汎用 | 3 | 2 | 1 | 4 | 2 |
 | 条件なし × 毒 | 1 | 1 | 1 | 3 | 0 |
 | 条件なし × チャージ | 1 | 2 | 2 | 5 | 0 |
-| 循環 × 無特性 | 0 | 0 | 0 | 1 | 0 |
+| 条件なし × 魔紋 | 0 | 0 | 0 | 0 | 0 |
+| 条件なし × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 条件なし × 光脈 | 0 | 0 | 0 | 0 | 0 |
+| 循環 × 汎用 | 0 | 0 | 0 | 1 | 0 |
 | 循環 × 毒 | 0 | 0 | 0 | 0 | 1 |
 | 循環 × チャージ | 0 | 0 | 0 | 0 | 0 |
-| 全接続 × 無特性 | 0 | 0 | 0 | 0 | 2 |
+| 循環 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
+| 循環 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 循環 × 光脈 | 0 | 0 | 0 | 0 | 0 |
+| 全接続 × 汎用 | 0 | 0 | 0 | 0 | 2 |
 | 全接続 × 毒 | 0 | 0 | 0 | 0 | 0 |
 | 全接続 × チャージ | 0 | 0 | 0 | 0 | 0 |
-| 長直線 × 無特性 | 1 | 0 | 0 | 0 | 0 |
+| 全接続 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
+| 全接続 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 全接続 × 光脈 | 0 | 0 | 0 | 0 | 0 |
+| 長直線 × 汎用 | 1 | 0 | 0 | 0 | 0 |
 | 長直線 × 毒 | 0 | 0 | 0 | 0 | 0 |
 | 長直線 × チャージ | 1 | 0 | 0 | 0 | 0 |
-| 魔紋 × 無特性 | 1 | 2 | 2 | 2 | 2 |
+| 長直線 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
+| 長直線 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 長直線 × 光脈 | 0 | 0 | 0 | 0 | 0 |
+| 魔紋 × 汎用 | 0 | 0 | 0 | 0 | 0 |
 | 魔紋 × 毒 | 0 | 0 | 0 | 0 | 1 |
 | 魔紋 × チャージ | 0 | 0 | 0 | 1 | 0 |
-| 霊響 × 無特性 | 1 | 1 | 2 | 1 | 3 |
+| 魔紋 × 魔紋 | 1 | 2 | 2 | 3 | 3 |
+| 魔紋 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 魔紋 × 光脈 | 0 | 0 | 0 | 0 | 0 |
+| 霊響 × 汎用 | 0 | 0 | 0 | 0 | 0 |
 | 霊響 × 毒 | 0 | 1 | 0 | 0 | 0 |
 | 霊響 × チャージ | 0 | 0 | 0 | 1 | 0 |
-| 光脈 × 無特性 | 1 | 2 | 2 | 1 | 2 |
+| 霊響 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
+| 霊響 × 霊響 | 1 | 2 | 2 | 2 | 3 |
+| 霊響 × 光脈 | 0 | 0 | 0 | 0 | 0 |
+| 光脈 × 汎用 | 0 | 0 | 0 | 0 | 0 |
 | 光脈 × 毒 | 0 | 1 | 0 | 0 | 0 |
 | 光脈 × チャージ | 0 | 0 | 0 | 1 | 0 |
+| 光脈 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
+| 光脈 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 光脈 × 光脈 | 1 | 3 | 2 | 2 | 2 |
 
 ## 毒（`poison`）
 
@@ -146,7 +167,7 @@
 ### 開放性と実装状況
 
 - 開放スキル: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`inscription-stone`、`guiding-bolt`、`sigil-blade`、`guardian-sigil`、`twin-inscription`、`convergence-sigil`、`sigil-cannon`、`resonance-circle`、`deep-sigil-cannon`、`all-sigil-resonance`、`spirit-blade`、`echo-arrow`、`tuning-stone`、`harmony-ward`、`venom-chorus`、`resonance-cannon`、`harmonic-sanctuary`、`celestial-echo-cannon`、`grand-harmony`、`light-vein-blade`、`prism-arrow`、`light-guide`、`venom-ray`、`radiant-fork`、`branchlight-barrage`、`convergence-cannon`、`myriad-light-array`、`solar-convergence`
-- 複合特性スキル: `toxic-reservoir`、`status-relay`
+- 複合特性スキル: `toxic-reservoir`、`status-relay`、`resonance-circle`、`venom-chorus`、`venom-ray`
 - 武器・装置の幅: `blade`、`bow`、`device`、`cannon`、`magic`
 - 専用技率: 10%（上限 50%）
 - 計画中: —
@@ -181,7 +202,7 @@
 ### 開放性と実装状況
 
 - 開放スキル: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`inscription-stone`、`guiding-bolt`、`sigil-blade`、`guardian-sigil`、`twin-inscription`、`thunder-sigil`、`convergence-sigil`、`sigil-cannon`、`deep-sigil-cannon`、`all-sigil-resonance`、`spirit-blade`、`echo-arrow`、`tuning-stone`、`harmony-ward`、`thunder-echo`、`resonance-cannon`、`harmonic-sanctuary`、`celestial-echo-cannon`、`grand-harmony`、`light-vein-blade`、`prism-arrow`、`light-guide`、`thunder-prism`、`radiant-fork`、`branchlight-barrage`、`convergence-cannon`、`myriad-light-array`、`solar-convergence`
-- 複合特性スキル: `toxic-reservoir`、`status-relay`
+- 複合特性スキル: `toxic-reservoir`、`status-relay`、`thunder-sigil`、`thunder-echo`、`thunder-prism`
 - 武器・装置の幅: `blade`、`bow`、`device`、`magic`、`cannon`
 - 専用技率: 16%（上限 50%）
 - 計画中: —

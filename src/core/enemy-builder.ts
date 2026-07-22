@@ -266,7 +266,17 @@ const axisValues = (skill: SkillDesignDefinition, axisId: string) =>
 const supportsBuild = (skill: SkillDesignDefinition, build: BuildDefinition) => {
   if (!skill.buildLinks.some((link) => link.buildId === build.id)) return false;
   const values = axisValues(skill, build.axisId);
-  return values.includes(build.id) || (build.axisId === 'trait' && values.includes('neutral'));
+  const isCircuitCoreOnlySharedSkill =
+    build.axisId === 'trait' &&
+    skill.scope === 'shared' &&
+    Boolean(skill.circuitCoreRoles?.length) &&
+    values.includes(skill.placementPatternId) &&
+    !skill.buildLinks.some((link) => values.includes(link.buildId));
+  return (
+    values.includes(build.id) ||
+    (build.axisId === 'trait' && values.includes('neutral')) ||
+    isCircuitCoreOnlySharedSkill
+  );
 };
 
 const adjacentPoweredRequirement = (block: BlockDefinition) =>

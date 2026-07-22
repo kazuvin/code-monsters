@@ -14,6 +14,9 @@ describe('build design', () => {
       'neutral',
       'poison',
       'charge',
+      'magic-sigil',
+      'resonance',
+      'light-vein',
     ]);
     expect(GAME_DATA.buildDesign.builds.map((build) => build.id)).toEqual(['poison', 'charge']);
     expect(GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'weapon')?.values.map((value) => value.id)).toEqual([
@@ -27,7 +30,16 @@ describe('build design', () => {
     const hybridSkills = GAME_DATA.buildDesign.skills.filter(
       (skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2,
     );
-    expect(hybridSkills.map((skill) => skill.id).sort()).toEqual(['status-relay', 'toxic-reservoir']);
+    expect(hybridSkills.map((skill) => skill.id).sort()).toEqual([
+      'resonance-circle',
+      'status-relay',
+      'thunder-echo',
+      'thunder-prism',
+      'thunder-sigil',
+      'toxic-reservoir',
+      'venom-chorus',
+      'venom-ray',
+    ]);
 
     GAME_DATA.buildDesign.skills.forEach((skill) => {
       expect(skill.axisLinks.map((link) => link.axisId).sort(), skill.id).toEqual(['trait', 'weapon']);
@@ -62,14 +74,27 @@ describe('build design', () => {
       rows.find((row) => row.placementPatternId === 'straight-line' && row.traitId === 'charge')?.counts.blade,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      rows.find((row) => row.placementPatternId === 'magic-sigil' && row.traitId === 'neutral')?.counts.cannon,
+      rows.find((row) => row.placementPatternId === 'magic-sigil' && row.traitId === 'magic-sigil')?.counts.cannon,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'neutral')?.counts.magic,
+      rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'resonance')?.counts.magic,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      rows.find((row) => row.placementPatternId === 'light-vein' && row.traitId === 'neutral')?.counts.cannon,
+      rows.find((row) => row.placementPatternId === 'light-vein' && row.traitId === 'light-vein')?.counts.cannon,
     ).toBeGreaterThanOrEqual(1);
+
+    const circuitCoreIds = new Set(
+      GAME_DATA.buildDesign.placementPatterns
+        .filter((pattern) => pattern.category === 'core')
+        .map((pattern) => pattern.id),
+    );
+    GAME_DATA.buildDesign.skills
+      .filter((skill) => circuitCoreIds.has(skill.placementPatternId))
+      .forEach((skill) => {
+        const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
+        expect(traits, skill.id).toContain(skill.placementPatternId);
+        expect(traits, skill.id).not.toContain('neutral');
+      });
   });
 
   it('adds charge while keeping poison open to weapon and cross-trait combinations', () => {
@@ -183,11 +208,37 @@ describe('build design', () => {
     ).toEqual([]);
   });
 
+  it('allows a shared circuit-core node to support effect builds without pretending to own their traits', () => {
+    const sigilBlade = GAME_DATA.buildDesign.skills.find((skill) => skill.id === 'sigil-blade')!;
+
+    expect(sigilBlade.axisLinks.find((link) => link.axisId === 'trait')?.valueIds).toEqual(['magic-sigil']);
+    expect(sigilBlade.buildLinks.map((link) => link.buildId).sort()).toEqual(['charge', 'poison']);
+    expect(
+      validateBuildDesign(
+        GAME_DATA.buildDesign,
+        GAME_DATA.blocks.map((block) => block.id),
+      ),
+    ).toEqual([]);
+  });
+
+  it('requires every circuit-core node to expose its core as a visible trait', () => {
+    const invalid = structuredClone(GAME_DATA.buildDesign);
+    const sigilBlade = invalid.skills.find((skill) => skill.id === 'sigil-blade')!;
+    sigilBlade.axisLinks.find((link) => link.axisId === 'trait')!.valueIds = ['neutral'];
+
+    expect(
+      validateBuildDesign(
+        invalid,
+        GAME_DATA.blocks.map((block) => block.id),
+      ),
+    ).toContain('circuit core skill design "sigil-blade" needs trait "magic-sigil"');
+  });
+
   it('renders a compact Japanese matrix for design review', () => {
     const markdown = renderBuildMatrixMarkdown(GAME_DATA.buildDesign);
 
     expect(markdown).toContain('# ビルド・シナジーマトリクス');
-    expect(markdown).toContain('| 特性 | ノード固有の効果コア。無特性は回路コアを問わず組み込める |');
+    expect(markdown).toContain('| 特性 | ノードの効果と回路上の個性を示す。複数特性は混成を表す |');
     expect(markdown).toContain('| `poison-needle` | `poison` | `bow` |');
     expect(markdown).toContain('## 配置条件 × 特性 × 武器・装置（スキル数）');
     expect(markdown).toContain('| 循環 × 毒 |');

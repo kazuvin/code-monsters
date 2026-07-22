@@ -265,6 +265,18 @@ describe('1vs1 circuit battle', () => {
     expect(result.fighters.every((fighter) => fighter.hp === 0)).toBe(true);
   });
 
+  it('ends the wave when lethal damage lands before the opponent repair step', () => {
+    const data = testData();
+    data.units = data.units.map((unit) => ({ ...unit, maxHp: 3 }));
+    const frames = resolveWave(data, createBattle(data, route('strike'), route('amp', 'repair')), 1);
+    const result = frames.at(-1)!;
+
+    expect(frames).toHaveLength(1);
+    expect(result.winner).toBe('player');
+    expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(0);
+    expect(result.trace.some((event) => event.kind === 'repair' && event.team === 'enemy')).toBe(false);
+  });
+
   it('continues past a fixed beat count and applies exponential overload damage', () => {
     const data = testData();
     const playback = createPlayback(data, route('guard'), route('guard'));

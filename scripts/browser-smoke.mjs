@@ -237,6 +237,16 @@ if ((await desktop.locator('.catalog-card .block-weapon-mark').count()) !== play
 if ((await desktop.locator('.catalog-card .axis-badge.is-trait').count()) < playableSkillCount) {
   throw new Error('Catalog cards do not expose every trait axis');
 }
+for (const trait of ['汎用', '毒', 'チャージ', '魔紋', '霊響', '光脈']) {
+  if (
+    (await desktop
+      .locator('.catalog-filters button')
+      .filter({ hasText: new RegExp(`^${trait}`) })
+      .count()) !== 1
+  ) {
+    throw new Error(`Catalog is missing the visible ${trait} trait filter`);
+  }
+}
 await desktop.locator('.catalog-filters button').filter({ hasText: /^毒/ }).click();
 if (
   (await desktop.locator('.catalog-card').count()) >= playableSkillCount ||
@@ -906,6 +916,9 @@ if (
   throw new Error('An empty inscribed cell does not preserve its magic sigil');
 }
 await rankThreeSigil.locator('.block-button').click();
+if ((await magicSigil.getByRole('dialog').locator('.axis-badge.is-trait').filter({ hasText: '魔紋' }).count()) !== 1) {
+  throw new Error('Magic sigil card detail does not expose its visible trait');
+}
 const magicSigilRule = magicSigil.locator('.dialog-magic-sigil-rule');
 await magicSigilRule.waitFor();
 const magicSigilRuleText = (await magicSigilRule.textContent()) ?? '';
@@ -950,6 +963,9 @@ if ((await resonanceCondition.textContent())?.trim() !== '✓ 共鳴 8/8') {
   throw new Error(`Eight-direction resonance condition is incorrect: ${await resonanceCondition.textContent()}`);
 }
 await fullResonance.locator('.block-button').click();
+if ((await resonance.getByRole('dialog').locator('.axis-badge.is-trait').filter({ hasText: '霊響' }).count()) !== 1) {
+  throw new Error('Resonance card detail does not expose its visible trait');
+}
 const resonanceRule = resonance.locator('.dialog-resonance-rule');
 await resonanceRule.waitFor();
 const resonanceRuleText = (await resonanceRule.textContent()) ?? '';
@@ -997,6 +1013,9 @@ if ((await mergeCondition.textContent())?.trim() !== '✓ 合流 3/3') {
   throw new Error(`Three-route light vein condition is incorrect: ${await mergeCondition.textContent()}`);
 }
 await lightVeinPayoff.locator('.block-button').click();
+if ((await lightVein.getByRole('dialog').locator('.axis-badge.is-trait').filter({ hasText: '光脈' }).count()) !== 1) {
+  throw new Error('Light vein card detail does not expose its visible trait');
+}
 const lightVeinRule = lightVein.locator('.dialog-light-vein-rule');
 await lightVeinRule.waitFor();
 const lightVeinRuleText = (await lightVeinRule.textContent()) ?? '';

@@ -165,6 +165,9 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
   const axisIds = new Set(design.axes.map((axis) => axis.id));
   const axisValues = new Map(design.axes.map((axis) => [axis.id, new Set(axis.values.map((value) => value.id))]));
   const placementPatternIds = new Set(design.placementPatterns.map((pattern) => pattern.id));
+  const circuitCoreIds = new Set(
+    design.placementPatterns.filter((pattern) => pattern.category === 'core').map((pattern) => pattern.id),
+  );
 
   pushDuplicateErrors(
     'placement pattern',
@@ -313,6 +316,17 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
     if (traitValues.includes('neutral') && (traitValues.length !== 1 || skill.scope !== 'shared')) {
       errors.push(`skill design "${skill.id}" must use neutral as its only trait and remain shared`);
     }
+    if (placementPattern?.category === 'core' && !traitValues.includes(skill.placementPatternId)) {
+      errors.push(`circuit core skill design "${skill.id}" needs trait "${skill.placementPatternId}"`);
+    }
+    const mismatchedCircuitTraits = traitValues.filter(
+      (valueId) =>
+        circuitCoreIds.has(valueId as SkillDesignDefinition['placementPatternId']) &&
+        valueId !== skill.placementPatternId,
+    );
+    mismatchedCircuitTraits.forEach((valueId) => {
+      errors.push(`skill design "${skill.id}" cannot use circuit trait "${valueId}" outside that core`);
+    });
     skill.buildLinks.forEach((link) => {
       const build = design.builds.find((candidate) => candidate.id === link.buildId);
       if (!buildIds.has(link.buildId) || !build) {
@@ -322,7 +336,13 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
       const buildAxisValues = axisLinkFor(skill, build.axisId)?.valueIds ?? [];
       const isNeutralSharedSkill =
         build.axisId === 'trait' && skill.scope === 'shared' && buildAxisValues[0] === 'neutral';
-      if (!buildAxisValues.includes(build.id) && !isNeutralSharedSkill) {
+      const isCircuitCoreOnlySharedSkill =
+        build.axisId === 'trait' &&
+        skill.scope === 'shared' &&
+        placementPattern?.category === 'core' &&
+        buildAxisValues.includes(skill.placementPatternId) &&
+        !buildAxisValues.some((valueId) => buildIds.has(valueId));
+      if (!buildAxisValues.includes(build.id) && !isNeutralSharedSkill && !isCircuitCoreOnlySharedSkill) {
         errors.push(`skill design "${skill.id}" does not tag linked build "${build.axisId}/${build.id}"`);
       }
       link.roles.forEach((role) => {
