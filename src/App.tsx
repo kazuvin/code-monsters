@@ -1123,10 +1123,11 @@ export function App() {
     () =>
       generateEnemyBuild(GAME_DATA, run, enemySeed, {
         budget: earnedCoins,
+        bodyLevel,
         ...(enemyBuildFixture ? { buildId: enemyBuildFixture } : {}),
         ...(enemyRequiredBlockFixture ? { requiredBlockId: enemyRequiredBlockFixture } : {}),
       }),
-    [earnedCoins, run, enemySeed],
+    [bodyLevel, earnedCoins, run, enemySeed],
   );
   const enemyBuildDesign = GAME_DATA.buildDesign.builds.find((build) => build.id === enemyBuild.buildId);
   const preview = useMemo(
@@ -2064,7 +2065,7 @@ export function App() {
             </div>
             <div className="battle-hud-tools">
               <div className="rival-readout">
-                <small>RIVAL LV.{String(level).padStart(2, '0')}</small>
+                <small>RIVAL BODY LV.{String(enemyBuild.bodyLevel).padStart(2, '0')}</small>
                 <b>{enemyBuildDesign?.title ?? enemyBuild.buildId}</b>
                 <i>
                   {enemyBuild.nodeCount} NODE · {enemyBuild.totalCost}/{enemyBuild.budget} COIN
@@ -2450,7 +2451,7 @@ export function App() {
                 自機 <b>{player.hp}</b>
               </span>
               <span>
-                相手 LV.{level} <b>{enemy.hp}</b>
+                相手 機体LV.{enemyBuild.bodyLevel} <b>{enemy.hp}</b>
               </span>
             </div>
             <p className="result-reward">報酬 COIN +{battleReward(GAME_DATA, battle.winner)}</p>

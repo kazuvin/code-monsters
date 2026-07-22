@@ -413,6 +413,12 @@ if (
 ) {
   throw new Error('Compact health or status UI is missing from battle units');
 }
+const paidUpgradeHealth = await desktop
+  .locator('.unit-health')
+  .evaluateAll((healthBars) => healthBars.map((health) => health.getAttribute('aria-label')));
+if (paidUpgradeHealth.some((label) => !label?.includes('7500 / 7500'))) {
+  throw new Error(`The rival did not match the player's paid body level: ${JSON.stringify(paidUpgradeHealth)}`);
+}
 const desktopUnitVisual = await desktop.locator('.arena-unit-visual').first().boundingBox();
 const desktopHealth = await desktop.locator('.unit-health').first().boundingBox();
 if (!desktopUnitVisual || desktopUnitVisual.height > 100) throw new Error('Desktop battle character is too prominent');
@@ -776,19 +782,21 @@ if (
 await lockedRun.getByRole('button', { name: /戦闘開始/ }).click();
 await lockedRun.locator('.battle-screen').waitFor();
 const secondRunRival = (await lockedRun.locator('.rival-readout').textContent()) ?? '';
-if (!secondRunRival.includes('LV.02') || !secondRunRival.includes('7 NODE') || !secondRunRival.includes('40/40 COIN')) {
+if (
+  !secondRunRival.includes('BODY LV.01') ||
+  !secondRunRival.includes('8 NODE') ||
+  !secondRunRival.includes('40/40 COIN')
+) {
   throw new Error(`The rival did not grow on run two: ${secondRunRival}`);
 }
-if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 7) {
-  throw new Error('The generated run-two rival circuit did not reserve coins for its body upgrade');
+if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 8) {
+  throw new Error('The generated run-two rival circuit did not stay within the shared coin budget');
 }
-if (!(await lockedRun.locator('.arena-fighter.team-enemy .unit-health').getAttribute('aria-label'))?.includes('7500')) {
-  throw new Error('The run-two rival did not receive its configured health growth');
-}
-if (
-  !(await lockedRun.locator('.arena-fighter.team-player .unit-health').getAttribute('aria-label'))?.includes('5000')
-) {
-  throw new Error('The run-two player received an automatic body upgrade without paying for it');
+const unupgradedHealth = await lockedRun
+  .locator('.unit-health')
+  .evaluateAll((healthBars) => healthBars.map((health) => health.getAttribute('aria-label')));
+if (unupgradedHealth.some((label) => !label?.includes('5000 / 5000'))) {
+  throw new Error(`The rival received an unpaid body upgrade: ${JSON.stringify(unupgradedHealth)}`);
 }
 
 const fusion = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });

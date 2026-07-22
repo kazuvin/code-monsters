@@ -35,6 +35,7 @@ export type EnemyBuild = {
 
 export type EnemyBuildOptions = {
   budget?: number;
+  bodyLevel?: number;
   buildId?: string;
   requiredBlockId?: string;
   excludedBlockIds?: string[];
@@ -258,8 +259,11 @@ export function generateEnemyBuild(
   const safeRun = Math.max(1, Math.floor(run));
   const rules = data.rules.enemyGeneration;
   const targetNodeCount = Math.min(rules.maxNodes, rules.startingNodes + (safeRun - 1) * rules.nodesPerRun);
-  const level = levelForRun(data, safeRun);
-  const bodyLevel = bodyLevelForRun(data, safeRun);
+  const bodyLevel =
+    options.bodyLevel === undefined
+      ? bodyLevelForRun(data, safeRun)
+      : Math.min(data.rules.bodyUpgrades.maxLevel, Math.max(1, Math.floor(options.bodyLevel)));
+  const level = options.bodyLevel === undefined ? levelForRun(data, safeRun) : bodyLevel;
   const budget = Math.max(0, Math.floor(options.budget ?? cumulativeBudgetForRun(data, safeRun)));
   const bodyUpgradeCost = totalBodyUpgradeCost(data, bodyLevel);
   const skillBudget = Math.max(0, budget - bodyUpgradeCost);
@@ -267,23 +271,17 @@ export function generateEnemyBuild(
   const layout = LAYOUTS[Math.floor(randomUnit(seed * 47 + safeRun * 13) * LAYOUTS.length)];
   const builds = data.buildDesign.builds;
   if (builds.length === 0) throw new Error('Enemy generator requires at least one build');
-  const build = options.buildId
-    ? builds.find((candidate) => candidate.id === options.buildId)
-    : builds[Math.floor(randomUnit(seed * 17 + safeRun * 31) * builds.length)];
-  if (!build) throw new Error(`Unknown enemy build "${options.buildId}"`);
+  const selectedBuildIndex = options.buildId
+    ? builds.findIndex((candidate) => candidate.id === options.buildId)
+    : Math.floor(randomUnit(seed * 17 + safeRun * 31) * builds.length);
+  const firstBuild = builds[selectedBuildIndex];
+  if (!firstBuild) throw new Error(`Unknown enemy build "${options.buildId}"`);
+  const buildCandidates = options.buildId
+    ? [firstBuild]
+    : builds.map((_, offset) => builds[(selectedBuildIndex + offset) % builds.length]);
   const blocksById = new Map(data.blocks.map((block) => [block.id, block]));
-  const designs = data.buildDesign.skills.filter(
-    (skill) =>
-      skill.status === 'playable' &&
-      skill.blockId &&
-      !options.excludedBlockIds?.includes(skill.blockId) &&
-      supportsBuild(skill, build),
-  );
-  if (options.requiredBlockId && !designs.some((skill) => skill.blockId === options.requiredBlockId)) {
-    throw new Error(`Playable skill "${options.requiredBlockId}" is not linked to build "${build.id}"`);
-  }
 
-  const tryBuild = (nodeCount: number) => {
+  const tryBuild = (build: BuildDefinition, designs: SkillDesignDefinition[], nodeCount: number) => {
     const activeNodes = layout.nodes.slice(0, nodeCount);
     const neighborIndexesByNode = activeNodes.map((_, index) =>
       layout.edges.flatMap(([left, right]) => {
@@ -502,23 +500,40 @@ export function generateEnemyBuild(
     return { board, skillCost: totalCost };
   };
 
-  for (let nodeCount = targetNodeCount; nodeCount >= 2; nodeCount -= 1) {
-    const result = tryBuild(nodeCount);
-    if (!result) continue;
-    return {
-      ...result,
-      heartPosition: { ...layout.heartPosition },
-      buildId: build.id,
-      nodeCount,
-      level,
-      bodyLevel,
-      budget,
-      bodyUpgradeCost,
-      totalCost: result.skillCost + bodyUpgradeCost,
-      maxHpBonus: maxHpBonusForBodyLevel(data, bodyLevel),
-    };
+  for (const build of buildCandidates) {
+    const designs = data.buildDesign.skills.filter(
+      (skill) =>
+        skill.status === 'playable' &&
+        skill.blockId &&
+        !options.excludedBlockIds?.includes(skill.blockId) &&
+        supportsBuild(skill, build),
+    );
+    if (options.requiredBlockId && !designs.some((skill) => skill.blockId === options.requiredBlockId)) {
+      if (options.buildId) {
+        throw new Error(`Playable skill "${options.requiredBlockId}" is not linked to build "${build.id}"`);
+      }
+      continue;
+    }
+
+    for (let nodeCount = targetNodeCount; nodeCount >= 2; nodeCount -= 1) {
+      const result = tryBuild(build, designs, nodeCount);
+      if (!result) continue;
+      return {
+        ...result,
+        heartPosition: { ...layout.heartPosition },
+        buildId: build.id,
+        nodeCount,
+        level,
+        bodyLevel,
+        budget,
+        bodyUpgradeCost,
+        totalCost: result.skillCost + bodyUpgradeCost,
+        maxHpBonus: maxHpBonusForBodyLevel(data, bodyLevel),
+      };
+    }
   }
 
   const required = options.requiredBlockId ? ` containing ${options.requiredBlockId}` : '';
-  throw new Error(`No ${build.id} enemy build${required} fits budget ${budget} on run ${safeRun}`);
+  const requestedBuild = options.buildId ?? 'configured';
+  throw new Error(`No ${requestedBuild} enemy build${required} fits budget ${budget} on run ${safeRun}`);
 }
