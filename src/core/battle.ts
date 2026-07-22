@@ -2,7 +2,7 @@ import {
   analyzeCircuit,
   analyzeMagicSigils,
   axisValueCountKey,
-  adjacentPoweredBuildNeighbors,
+  adjacentPoweredNeighbors,
   calculateChargeByCell,
   cellKey,
   cloneBoard,
@@ -50,7 +50,7 @@ type PlannedActivation = {
   charge: number;
   magicSigilLevel: number;
   magicSigilCount: number;
-  adjacentBuildCounts: Readonly<Record<string, number>>;
+  adjacentPoweredCount: number;
   poweredAxisCounts: Readonly<Record<string, number>>;
   stars: 0 | 1;
 };
@@ -137,17 +137,12 @@ export function createBattle(
 const hasActivation = (block: BlockDefinition) =>
   block.effects.some((effect) => !['amplify', 'haste', 'charge', 'inscribe-magic-sigil'].includes(effect.kind));
 
-const adjacentBuildIdsFor = (block: BlockDefinition) => [
-  ...new Set(
-    block.effects.flatMap((effect) => {
-      const triggerBuildId =
-        'trigger' in effect && effect.trigger?.kind === 'adjacent-build-at-least' ? [effect.trigger.buildId] : [];
-      const scalingBuildId =
-        'scaling' in effect && effect.scaling?.kind === 'adjacent-build' ? [effect.scaling.buildId] : [];
-      return [...triggerBuildId, ...scalingBuildId];
-    }),
-  ),
-];
+const usesAdjacentPoweredCount = (block: BlockDefinition) =>
+  block.effects.some(
+    (effect) =>
+      ('trigger' in effect && effect.trigger?.kind === 'adjacent-powered-at-least') ||
+      ('scaling' in effect && effect.scaling?.kind === 'adjacent-powered'),
+  );
 
 const poweredAxisValuesFor = (block: BlockDefinition) => [
   ...new Map(
@@ -185,12 +180,9 @@ function plannedActivations(
       if (!hasActivation(block)) return;
       const upstream = analysis.upstreamCells.get(key) ?? [];
       const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
-      const adjacentBuildCounts = Object.fromEntries(
-        adjacentBuildIdsFor(block).map((buildId) => [
-          buildId,
-          adjacentPoweredBuildNeighbors(board, data.blocks, analysis, position, buildId).length,
-        ]),
-      );
+      const adjacentPoweredCount = usesAdjacentPoweredCount(block)
+        ? adjacentPoweredNeighbors(board, data.blocks, analysis, position).length
+        : 0;
       const poweredAxisCounts = Object.fromEntries(
         poweredAxisValuesFor(block).map((scaling) => [
           axisValueCountKey(scaling.axisId, scaling.valueId),
@@ -219,7 +211,7 @@ function plannedActivations(
         charge: chargeByCell.get(key) ?? 0,
         magicSigilLevel,
         magicSigilCount,
-        adjacentBuildCounts,
+        adjacentPoweredCount,
         poweredAxisCounts,
         stars,
       });
@@ -243,7 +235,7 @@ const triggerMatches = (
     allPortsConnected: boolean;
     straightLineLength: number;
     magicSigilLevel: number;
-    adjacentBuildCounts: Readonly<Record<string, number>>;
+    adjacentPoweredCount: number;
     downstreamCount: number;
     upstreamCount: number;
   },
@@ -307,7 +299,7 @@ const numericAmount = (
           straightLineLength: action.straightLineLength,
           magicSigilLevel: action.magicSigilLevel,
           magicSigilCount: action.magicSigilCount,
-          adjacentBuildCounts: action.adjacentBuildCounts,
+          adjacentPoweredCount: action.adjacentPoweredCount,
           downstreamCount: action.downstream.length,
           upstreamCount: action.upstream.length,
           poweredAxisCounts: action.poweredAxisCounts,
@@ -364,7 +356,7 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
         allPortsConnected: plan.allPortsConnected,
         straightLineLength: plan.straightLineLength,
         magicSigilLevel: plan.magicSigilLevel,
-        adjacentBuildCounts: plan.adjacentBuildCounts,
+        adjacentPoweredCount: plan.adjacentPoweredCount,
         downstreamCount: plan.downstream.length,
         upstreamCount: plan.upstream.length,
         selfBuffs: skillBuffs[plan.team][planKey] ?? {},

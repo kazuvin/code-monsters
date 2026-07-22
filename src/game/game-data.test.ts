@@ -218,9 +218,6 @@ describe('game data', () => {
       ['neutral', '#486977'],
       ['poison', '#8bd450'],
       ['charge', '#ffd36a'],
-      ['magic-sigil', '#a987ff'],
-      ['resonance', '#ff9bd7'],
-      ['light-vein', '#5de7f2'],
     ]);
   });
 
@@ -281,16 +278,7 @@ describe('game data', () => {
         .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2)
         .map((skill) => skill.id)
         .sort(),
-    ).toEqual([
-      'resonance-circle',
-      'status-relay',
-      'thunder-echo',
-      'thunder-prism',
-      'thunder-sigil',
-      'toxic-reservoir',
-      'venom-chorus',
-      'venom-ray',
-    ]);
+    ).toEqual(['status-relay', 'toxic-reservoir']);
   });
 
   it('replaces poison-only nodes with weapon combinations and cross-trait nodes', () => {
@@ -303,13 +291,20 @@ describe('game data', () => {
       return traits?.length === 1 && traits[0] === 'poison';
     });
 
-    expect(poisonOnly).toHaveLength(5);
+    expect(poisonOnly).toHaveLength(8);
     expect(poisonDesigns.length).toBeGreaterThan(poisonOnly.length);
     expect(poisonBlocks).toHaveLength(poisonDesigns.length);
     expect(poisonDesigns.every((skill) => skill.status === 'playable' && skill.blockId)).toBe(true);
     expect(
-      poisonOnly.every((skill) => GAME_DATA.blocks.find((block) => block.id === skill.blockId)?.rotatable === false),
+      poisonOnly
+        .filter((skill) => skill.placementPatternId === 'free')
+        .every((skill) => GAME_DATA.blocks.find((block) => block.id === skill.blockId)?.rotatable === false),
     ).toBe(true);
+    expect(
+      poisonOnly
+        .filter((skill) => ['magic-sigil', 'resonance', 'light-vein'].includes(skill.placementPatternId))
+        .map((skill) => skill.id),
+    ).toEqual(['resonance-circle', 'venom-chorus', 'venom-ray']);
     expect(new Set(poisonDesigns.map((skill) => skill.blockId))).toEqual(
       new Set(poisonBlocks.map((block) => block.id)),
     );

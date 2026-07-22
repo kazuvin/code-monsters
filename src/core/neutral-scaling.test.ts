@@ -22,7 +22,7 @@ describe('neutral high-rarity scaling ceilings', () => {
             straightLineLength: 0,
             magicSigilLevel: 0,
             magicSigilCount: 0,
-            adjacentBuildCounts: {},
+            adjacentPoweredCount: 0,
             poweredAxisCounts: { 'trait:neutral': 8 },
           });
           const fullBoard = effectScalingBonus(effect.scaling, {
@@ -31,7 +31,7 @@ describe('neutral high-rarity scaling ceilings', () => {
             straightLineLength: 0,
             magicSigilLevel: 0,
             magicSigilCount: 0,
-            adjacentBuildCounts: {},
+            adjacentPoweredCount: 0,
             poweredAxisCounts: { 'trait:neutral': 24 },
           });
           expect(fullBoard, `${blockId} full-board scaling`).toBe(atEight);

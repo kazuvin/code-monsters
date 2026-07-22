@@ -1,4 +1,4 @@
-import { adjacentPoweredBuildNeighbors, cellKey, matchesCircuitTrigger, type CircuitAnalysis } from './circuit';
+import { adjacentPoweredNeighbors, cellKey, matchesCircuitTrigger, type CircuitAnalysis } from './circuit';
 import { upgradeBlockDefinition } from './fusion';
 import type {
   ActiveEffect,
@@ -21,7 +21,7 @@ export type EffectScalingContext = {
   straightLineLength: number;
   magicSigilLevel: number;
   magicSigilCount: number;
-  adjacentBuildCounts: Readonly<Record<string, number>>;
+  adjacentPoweredCount: number;
   downstreamCount?: number;
   upstreamCount?: number;
   poweredAxisCounts?: Readonly<Record<string, number>>;
@@ -76,8 +76,8 @@ export function effectScalingBonus(scaling: EffectScaling | undefined, context: 
               ? context.magicSigilCount
               : scaling.kind === 'powered-axis'
                 ? (context.poweredAxisCounts?.[`${scaling.axisId}:${scaling.valueId}`] ?? 0)
-                : scaling.kind === 'adjacent-build'
-                  ? (context.adjacentBuildCounts[scaling.buildId] ?? 0)
+                : scaling.kind === 'adjacent-powered'
+                  ? context.adjacentPoweredCount
                   : scaling.kind === 'downstream-count'
                     ? (context.downstreamCount ?? 0)
                     : (context.upstreamCount ?? 0);
@@ -114,19 +114,17 @@ const modifierTriggerMatches = (
   const key = cellKey(position);
   if (!trigger) return true;
   if (trigger.kind === 'enemy-poisoned') return false;
-  const adjacentBuildCounts =
-    trigger.kind === 'adjacent-build-at-least'
-      ? {
-          [trigger.buildId]: adjacentPoweredBuildNeighbors(board, blocks, analysis, position, trigger.buildId).length,
-        }
-      : {};
+  const adjacentPoweredCount =
+    trigger.kind === 'adjacent-powered-at-least'
+      ? adjacentPoweredNeighbors(board, blocks, analysis, position).length
+      : 0;
   return matchesCircuitTrigger(trigger, {
     pathLength: analysis.routeLength.get(key) ?? 0,
     inCycle: analysis.cyclicCells.has(key),
     allPortsConnected: analysis.fullyConnectedCells.has(key),
     straightLineLength: analysis.straightLineLength.get(key) ?? 0,
     magicSigilLevel: 0,
-    adjacentBuildCounts,
+    adjacentPoweredCount,
     downstreamCount: analysis.downstreamCells.get(key)?.length ?? 0,
     upstreamCount: analysis.upstreamCells.get(key)?.length ?? 0,
   });
@@ -182,7 +180,7 @@ export function summarizeSkillProgress(
     straightLineLength: 0,
     magicSigilLevel: 0,
     magicSigilCount: 0,
-    adjacentBuildCounts: {},
+    adjacentPoweredCount: 0,
     downstreamCount: 0,
     upstreamCount: 0,
     poweredAxisCounts: {},

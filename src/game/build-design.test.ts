@@ -14,10 +14,8 @@ describe('build design', () => {
       'neutral',
       'poison',
       'charge',
-      'magic-sigil',
-      'resonance',
-      'light-vein',
     ]);
+    expect(GAME_DATA.buildDesign.builds.map((build) => build.id)).toEqual(['poison', 'charge']);
     expect(GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'weapon')?.values.map((value) => value.id)).toEqual([
       'blade',
       'bow',
@@ -29,16 +27,7 @@ describe('build design', () => {
     const hybridSkills = GAME_DATA.buildDesign.skills.filter(
       (skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2,
     );
-    expect(hybridSkills.map((skill) => skill.id).sort()).toEqual([
-      'resonance-circle',
-      'status-relay',
-      'thunder-echo',
-      'thunder-prism',
-      'thunder-sigil',
-      'toxic-reservoir',
-      'venom-chorus',
-      'venom-ray',
-    ]);
+    expect(hybridSkills.map((skill) => skill.id).sort()).toEqual(['status-relay', 'toxic-reservoir']);
 
     GAME_DATA.buildDesign.skills.forEach((skill) => {
       expect(skill.axisLinks.map((link) => link.axisId).sort(), skill.id).toEqual(['trait', 'weapon']);
@@ -55,6 +44,11 @@ describe('build design', () => {
       'resonance',
       'light-vein',
     ]);
+    expect(
+      GAME_DATA.buildDesign.placementPatterns
+        .filter((pattern) => pattern.category === 'core')
+        .map((pattern) => pattern.id),
+    ).toEqual(['magic-sigil', 'resonance', 'light-vein']);
     expect(GAME_DATA.buildDesign.skills.every((skill) => Boolean(skill.placementPatternId))).toBe(true);
 
     const rows = createSkillCoverageMatrix(GAME_DATA.buildDesign);
@@ -68,13 +62,13 @@ describe('build design', () => {
       rows.find((row) => row.placementPatternId === 'straight-line' && row.traitId === 'charge')?.counts.blade,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      rows.find((row) => row.placementPatternId === 'magic-sigil' && row.traitId === 'magic-sigil')?.counts.cannon,
+      rows.find((row) => row.placementPatternId === 'magic-sigil' && row.traitId === 'neutral')?.counts.cannon,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'resonance')?.counts.magic,
+      rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'neutral')?.counts.magic,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      rows.find((row) => row.placementPatternId === 'light-vein' && row.traitId === 'light-vein')?.counts.cannon,
+      rows.find((row) => row.placementPatternId === 'light-vein' && row.traitId === 'neutral')?.counts.cannon,
     ).toBeGreaterThanOrEqual(1);
   });
 
@@ -180,12 +174,7 @@ describe('build design', () => {
     const strike = GAME_DATA.buildDesign.skills.find((skill) => skill.id === 'strike')!;
 
     expect(strike.axisLinks.find((link) => link.axisId === 'trait')?.valueIds).toEqual(['neutral']);
-    expect(strike.buildLinks.map((link) => link.buildId).sort()).toEqual([
-      'charge',
-      'magic-sigil',
-      'poison',
-      'resonance',
-    ]);
+    expect(strike.buildLinks.map((link) => link.buildId).sort()).toEqual(['charge', 'poison']);
     expect(
       validateBuildDesign(
         GAME_DATA.buildDesign,
@@ -198,7 +187,7 @@ describe('build design', () => {
     const markdown = renderBuildMatrixMarkdown(GAME_DATA.buildDesign);
 
     expect(markdown).toContain('# ビルド・シナジーマトリクス');
-    expect(markdown).toContain('| 特性 | ノード固有の蓄積・変換。無特性はどのビルドにも属さない |');
+    expect(markdown).toContain('| 特性 | ノード固有の効果コア。無特性は回路コアを問わず組み込める |');
     expect(markdown).toContain('| `poison-needle` | `poison` | `bow` |');
     expect(markdown).toContain('## 配置条件 × 特性 × 武器・装置（スキル数）');
     expect(markdown).toContain('| 循環 × 毒 |');
@@ -206,10 +195,10 @@ describe('build design', () => {
     expect(markdown).toContain('| 培養 | 毒を残して育てる |');
     expect(markdown).toContain('| 破裂 | 毒を一気に破裂させる |');
     expect(markdown).toContain('| 一括解放 | 全チャージを大ダメージへ変える |');
-    expect(markdown).toContain('| 重刻 | 一つの魔紋を位階IIIまで重ねて決め手を強化する |');
-    expect(markdown).toContain('| 連環 | 刻印元を自由に散らし、通電ノードを置いた魔紋マスを増やして共鳴させる |');
-    expect(markdown).toContain('| 集響 | 共鳴度4以上を火力へ集中させる |');
-    expect(markdown).toContain('| 交響 | 共鳴度を攻防と回復へ分配する |');
+    expect(markdown).toContain('## 回路コア');
+    expect(markdown).toContain('| 魔紋 | 回路コア |');
+    expect(markdown).toContain('| 霊響 | 回路コア |');
+    expect(markdown).toContain('| 光脈 | 回路コア |');
     expect(markdown).toContain('`discharge-bow`');
     expect(markdown).toContain('`status-relay`');
   });

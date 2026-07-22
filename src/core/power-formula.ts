@@ -116,9 +116,9 @@ export function conditionAvailability(
       weights.minimum,
     );
   }
-  if (trigger.kind === 'adjacent-build-at-least') {
+  if (trigger.kind === 'adjacent-powered-at-least') {
     return clamp(
-      weights.adjacentBuildBase - weights.adjacentBuildPenaltyPerRequiredNode * Math.max(0, trigger.amount - 1),
+      weights.adjacentPoweredBase - weights.adjacentPoweredPenaltyPerRequiredNode * Math.max(0, trigger.amount - 1),
       weights.minimum,
     );
   }
@@ -145,7 +145,7 @@ const triggerLabel = (trigger: EffectTrigger | undefined, portCount: number) => 
   if (trigger.kind === 'straight-line-at-least') return `straight>=${trigger.amount}`;
   if (trigger.kind === 'all-ports-connected') return `all-${portCount}-ports`;
   if (trigger.kind === 'magic-sigil-level-at-least') return `magic-sigil>=${trigger.amount}`;
-  if (trigger.kind === 'adjacent-build-at-least') return `adjacent-${trigger.buildId}>=${trigger.amount}`;
+  if (trigger.kind === 'adjacent-powered-at-least') return `adjacent-powered>=${trigger.amount}`;
   if (trigger.kind === 'branch-at-least') return `branches>=${trigger.amount}`;
   if (trigger.kind === 'merge-at-least') return `inputs>=${trigger.amount}`;
   return assertNever(trigger);
@@ -175,7 +175,7 @@ const scalingReference = (scaling: EffectScaling, rules: BalanceFormulaRules) =>
   if (scaling.kind === 'powered-axis') return rules.reference.poweredAxisCount;
   if (scaling.kind === 'downstream-count') return rules.reference.downstreamCount;
   if (scaling.kind === 'upstream-count') return rules.reference.upstreamCount;
-  return rules.reference.adjacentBuildCount;
+  return rules.reference.adjacentPoweredCount;
 };
 
 const scalingAvailability = (scaling: EffectScaling, portCount: number, rules: BalanceFormulaRules) => {
@@ -203,12 +203,11 @@ const scalingAvailability = (scaling: EffectScaling, portCount: number, rules: B
   if (scaling.kind === 'upstream-count') {
     return conditionAvailability({ kind: 'merge-at-least', amount: rules.reference.upstreamCount }, portCount, rules);
   }
-  if (scaling.kind === 'adjacent-build') {
+  if (scaling.kind === 'adjacent-powered') {
     return conditionAvailability(
       {
-        kind: 'adjacent-build-at-least',
-        buildId: scaling.buildId,
-        amount: rules.reference.adjacentBuildCount,
+        kind: 'adjacent-powered-at-least',
+        amount: rules.reference.adjacentPoweredCount,
       },
       portCount,
       rules,

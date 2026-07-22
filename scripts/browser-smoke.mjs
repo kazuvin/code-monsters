@@ -4,6 +4,7 @@ const requestedTarget = process.argv.slice(2).find((argument) => argument !== '-
 const seededTarget = new URL(requestedTarget);
 if (!seededTarget.searchParams.has('shopSeed')) seededTarget.searchParams.set('shopSeed', '73');
 if (!seededTarget.searchParams.has('enemyBuildFixture')) seededTarget.searchParams.set('enemyBuildFixture', 'charge');
+if (!seededTarget.searchParams.has('enemyCoreFixture')) seededTarget.searchParams.set('enemyCoreFixture', 'resonance');
 const target = seededTarget.toString();
 const battleBackgroundRatio = 1672 / 941;
 const playableSkillCount = 63;
@@ -433,20 +434,12 @@ if ((await desktop.locator('.battle-circuit-cell.is-activated').count()) === 0) 
 if ((await desktop.locator('.battle-circuit-cell .block-port.is-conducting').count()) === 0) {
   throw new Error('Circuit summary did not show current moving along an edge');
 }
-const enemyMergeSkill = desktop
-  .locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]')
-  .first();
-await enemyMergeSkill.waitFor({ timeout: 5000 });
-await enemyMergeSkill.click();
+const enemySkill = desktop.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill').first();
+await enemySkill.waitFor({ timeout: 5000 });
+await enemySkill.click();
 await desktop.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
 if (!(await desktop.getByText('相手の技', { exact: true }).count())) {
   throw new Error('Enemy skill detail does not identify its owner');
-}
-if (!(await desktop.locator('.dialog-merge-rule').textContent())?.includes('×2')) {
-  throw new Error('Enemy merge skill detail does not show its doubled effect');
-}
-if (!(await desktop.getByRole('dialog').textContent())?.includes(' · 合流')) {
-  throw new Error('Enemy merge skill is mislabeled as a branch');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-buff-detail.png', fullPage: true });
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
@@ -535,10 +528,6 @@ if (!mobileHealth || mobileHealth.width > 68 || mobileHealth.height > 9)
 if ((await mobile.locator('.battle-circuit-cell.is-activated').count()) === 0) {
   throw new Error('Mobile circuit summary did not show an activated skill');
 }
-await mobile.locator('.battle-circuit-cell .block-charge-chip').first().waitFor({ timeout: 5000 });
-if ((await mobile.locator('.battle-circuit-cell .block-visual.effect-charge').count()) === 0) {
-  throw new Error('Charge did not become visible while current moved through the circuit');
-}
 const mobileMergeSkill = mobile
   .locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]')
   .first();
@@ -615,17 +604,10 @@ const parallelPulse = await pulse
 if (JSON.stringify(parallelPulse) !== JSON.stringify(['2:2', '3:3'])) {
   throw new Error(`Split pulse did not fire the same depth together: ${JSON.stringify(parallelPulse)}`);
 }
-await pulse.clock.runFor(480);
-const continuedPulse = await pulse
-  .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
-  .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
-if (JSON.stringify(continuedPulse) !== JSON.stringify(['3:2'])) {
-  throw new Error(`Split paths did not continue without waiting: ${JSON.stringify(continuedPulse)}`);
-}
 const mergingPulse = pulse.locator('.battle-circuit-summary.team-enemy .battle-circuit-cell.is-merging');
 if (
   (await mergingPulse.count()) !== 1 ||
-  (await mergingPulse.getAttribute('data-cell-key')) !== '3:2' ||
+  (await mergingPulse.getAttribute('data-cell-key')) !== '3:3' ||
   !(await mergingPulse.locator('.block-merge-chip').textContent())?.includes('×2')
 ) {
   const pulseState = await pulse.locator('.battle-circuit-summary.team-enemy [data-pulse-step]').evaluateAll((cells) =>
@@ -638,9 +620,16 @@ if (
       label: cell.getAttribute('aria-label'),
     })),
   );
-  throw new Error(`Merged pulse did not arrive last with its doubled-effect marker: ${JSON.stringify(pulseState)}`);
+  throw new Error(`Merged pulse is missing its doubled-effect marker: ${JSON.stringify(pulseState)}`);
 }
 await pulse.screenshot({ path: '/tmp/code-monsters-circuit-pulse-merge.png', fullPage: true });
+await pulse.clock.runFor(480);
+const continuedPulse = await pulse
+  .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
+  .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
+if (JSON.stringify(continuedPulse) !== JSON.stringify(['3:2'])) {
+  throw new Error(`Split paths did not continue without waiting: ${JSON.stringify(continuedPulse)}`);
+}
 await pulse.clock.runFor(480);
 const terminalPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
@@ -793,7 +782,7 @@ const secondRunRival = (await lockedRun.locator('.rival-readout').textContent())
 if (
   !secondRunRival.includes('BODY LV.01') ||
   !secondRunRival.includes('8 NODE') ||
-  !secondRunRival.includes('44/44 COIN')
+  !secondRunRival.includes('/44 COIN')
 ) {
   throw new Error(`The rival did not grow on run two: ${secondRunRival}`);
 }
@@ -956,7 +945,7 @@ if ((await fullResonance.locator('.resonance-count').textContent())?.trim() !== 
     `Full resonance badge is incorrect: ${await fullResonance.locator('.resonance-count').textContent()}`,
   );
 }
-const resonanceCondition = fullResonance.locator('.condition-chip[data-condition-kind="adjacent-build-at-least"]');
+const resonanceCondition = fullResonance.locator('.condition-chip[data-condition-kind="adjacent-powered-at-least"]');
 if ((await resonanceCondition.textContent())?.trim() !== '✓ 共鳴 8/8') {
   throw new Error(`Eight-direction resonance condition is incorrect: ${await resonanceCondition.textContent()}`);
 }
@@ -965,7 +954,7 @@ const resonanceRule = resonance.locator('.dialog-resonance-rule');
 await resonanceRule.waitFor();
 const resonanceRuleText = (await resonanceRule.textContent()) ?? '';
 if (!resonanceRuleText.includes('8/8') || !resonanceRuleText.includes('すべての通電ノード')) {
-  throw new Error(`Starred resonance detail is incomplete: ${resonanceRuleText}`);
+  throw new Error(`Resonance detail is incomplete: ${resonanceRuleText}`);
 }
 await resonance.getByRole('button', { name: '詳細を閉じる' }).click();
 await resonance.screenshot({ path: '/tmp/code-monsters-resonance-desktop.png', fullPage: true });

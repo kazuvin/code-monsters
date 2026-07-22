@@ -14,6 +14,7 @@ import type {
   CircuitBoard,
   Direction,
   GameData,
+  PlacementPatternId,
   RarityWeights,
   Rotation,
   SkillDesignDefinition,
@@ -23,6 +24,7 @@ export type EnemyBuild = {
   board: CircuitBoard;
   heartPosition: CellPosition;
   buildId: string;
+  circuitCoreId: PlacementPatternId;
   nodeCount: number;
   level: number;
   bodyLevel: number;
@@ -37,6 +39,7 @@ export type EnemyBuildOptions = {
   budget?: number;
   bodyLevel?: number;
   buildId?: string;
+  circuitCoreId?: PlacementPatternId;
   requiredBlockId?: string;
   excludedBlockIds?: string[];
 };
@@ -266,13 +269,11 @@ const supportsBuild = (skill: SkillDesignDefinition, build: BuildDefinition) => 
   return values.includes(build.id) || (build.axisId === 'trait' && values.includes('neutral'));
 };
 
-const adjacentBuildRequirement = (block: BlockDefinition, buildId: string) =>
+const adjacentPoweredRequirement = (block: BlockDefinition) =>
   Math.max(
     0,
     ...block.effects.flatMap((effect) =>
-      'trigger' in effect && effect.trigger?.kind === 'adjacent-build-at-least' && effect.trigger.buildId === buildId
-        ? [effect.trigger.amount]
-        : [],
+      'trigger' in effect && effect.trigger?.kind === 'adjacent-powered-at-least' ? [effect.trigger.amount] : [],
     ),
   );
 
@@ -316,8 +317,29 @@ export function generateEnemyBuild(
   const bodyUpgradeCost = totalBodyUpgradeCost(data, bodyLevel);
   const skillBudget = Math.max(0, budget - bodyUpgradeCost);
   const rarityWeights = rarityWeightsForLevel(data, level);
+  const corePatterns = data.buildDesign.placementPatterns.filter((pattern) => pattern.category === 'core');
+  if (corePatterns.length === 0) throw new Error('Enemy generator requires at least one circuit core');
+  const corePatternIds = new Set(corePatterns.map((pattern) => pattern.id));
+  const requiredDesign = options.requiredBlockId
+    ? data.buildDesign.skills.find((skill) => skill.blockId === options.requiredBlockId)
+    : undefined;
+  const requiredCoreId =
+    requiredDesign && corePatternIds.has(requiredDesign.placementPatternId)
+      ? requiredDesign.placementPatternId
+      : undefined;
+  if (options.circuitCoreId && requiredCoreId && options.circuitCoreId !== requiredCoreId) {
+    throw new Error(
+      `Playable skill "${options.requiredBlockId}" belongs to circuit core "${requiredCoreId}", not "${options.circuitCoreId}"`,
+    );
+  }
+  const selectedCoreId = options.circuitCoreId ?? requiredCoreId;
+  const selectedCoreIndex = selectedCoreId
+    ? corePatterns.findIndex((pattern) => pattern.id === selectedCoreId)
+    : Math.floor(randomUnit(seed * 29 + safeRun * 43) * corePatterns.length);
+  const circuitCore = corePatterns[selectedCoreIndex];
+  if (!circuitCore) throw new Error(`Unknown circuit core "${selectedCoreId}"`);
   const layout =
-    options.buildId === 'light-vein'
+    circuitCore.id === 'light-vein'
       ? LIGHT_VEIN_LAYOUT
       : LAYOUTS[Math.floor(randomUnit(seed * 47 + safeRun * 13) * LAYOUTS.length)];
   const builds = data.buildDesign.builds;
@@ -369,18 +391,16 @@ export function generateEnemyBuild(
     const downstreamIndexesByNode = neighborIndexesByNode.map((neighbors, index) =>
       neighbors.filter((neighborIndex) => distanceByIndex.get(neighborIndex) === (distanceByIndex.get(index) ?? 0) + 1),
     );
+    const requiredUsesCorePayoff = requiredDesign?.circuitCoreRoles?.includes('payoff') ?? false;
     const payoffDesigns = designs.filter((design) => {
-      const link = design.buildLinks.find((candidate) => candidate.buildId === build.id);
-      if (!link?.roles.includes('payoff')) return false;
+      if (options.requiredBlockId && !requiredUsesCorePayoff) return design.blockId === options.requiredBlockId;
+      if (!design.circuitCoreRoles?.includes('payoff')) return false;
       return (
         !options.requiredBlockId ||
         options.requiredBlockId === design.blockId ||
         !designs.some(
           (candidate) =>
-            candidate.blockId === options.requiredBlockId &&
-            candidate.buildLinks.some(
-              (candidateLink) => candidateLink.buildId === build.id && candidateLink.roles.includes('payoff'),
-            ),
+            candidate.blockId === options.requiredBlockId && candidate.circuitCoreRoles?.includes('payoff'),
         )
       );
     });
@@ -400,11 +420,7 @@ export function generateEnemyBuild(
     });
     const hasAdjacentPayoff = designs.some((design) => {
       const block = design.blockId ? blocksById.get(design.blockId) : undefined;
-      return (
-        block &&
-        design.buildLinks.some((link) => link.buildId === build.id && link.roles.includes('payoff')) &&
-        adjacentBuildRequirement(block, build.id) > 0
-      );
+      return block && design.circuitCoreRoles?.includes('payoff') && adjacentPoweredRequirement(block) > 0;
     });
     const payoffIndex =
       topologyPayoffIndexes.length > 0
@@ -433,12 +449,12 @@ export function generateEnemyBuild(
         const block = design.blockId ? blocksById.get(design.blockId) : undefined;
         const buildLink = design.buildLinks.find((link) => link.buildId === build.id);
         if (!block || !buildLink) return [];
-        if (desiredRole && !buildLink.roles.includes(desiredRole)) return [];
-        if (!desiredRole && buildLink.roles.includes('payoff')) return [];
-        if (
-          index === payoffIndex &&
-          adjacentBuildRequirement(block, build.id) > surroundingIndexesByNode[index].length
-        ) {
+        const isRequiredFallbackPayoff =
+          desiredRole === 'payoff' && !requiredUsesCorePayoff && design.blockId === options.requiredBlockId;
+        if (desiredRole && !design.circuitCoreRoles?.includes(desiredRole) && !isRequiredFallbackPayoff) return [];
+        if (desiredRole && design.placementPatternId !== circuitCore.id && !isRequiredFallbackPayoff) return [];
+        if (!desiredRole && design.circuitCoreRoles?.includes('payoff')) return [];
+        if (index === payoffIndex && adjacentPoweredRequirement(block) > surroundingIndexesByNode[index].length) {
           return [];
         }
         if (
@@ -453,7 +469,6 @@ export function generateEnemyBuild(
         ) {
           return [];
         }
-        if (index === 0 && !axisValues(design, build.axisId).includes(build.id)) return [];
         const rotations = ROTATIONS.filter((rotation) => {
           const ports = rotatePorts(block.ports, rotation);
           return requiredPorts.every((required) => ports.includes(required));
@@ -479,26 +494,23 @@ export function generateEnemyBuild(
         : undefined;
     const selectedPayoff =
       forcedPayoff ?? weightedPick(candidateSets[payoffIndex], rarityWeights, seed * 101 + safeRun * 59);
-    const payoffAdjacentBuildRequirement = adjacentBuildRequirement(selectedPayoff.block, build.id);
-    if (payoffAdjacentBuildRequirement > 0) {
+    const payoffAdjacentPoweredRequirement = adjacentPoweredRequirement(selectedPayoff.block);
+    if (payoffAdjacentPoweredRequirement > 0) {
       candidateSets[payoffIndex] = candidateSets[payoffIndex].filter(
         ({ block }) =>
-          adjacentBuildRequirement(block, build.id) === payoffAdjacentBuildRequirement &&
+          adjacentPoweredRequirement(block) === payoffAdjacentPoweredRequirement &&
           (!forcedPayoff || block.id === forcedPayoff.block.id),
       );
-      const requiredNeighborIndexes = new Set(
-        surroundingIndexesByNode[payoffIndex].slice(0, payoffAdjacentBuildRequirement),
-      );
-      surroundingIndexesByNode[payoffIndex].forEach((index) => {
-        candidateSets[index] = candidateSets[index].filter(({ block }) =>
-          requiredNeighborIndexes.has(index) ? block.buildIds?.includes(build.id) : !block.buildIds?.includes(build.id),
-        );
-      });
       if (candidateSets.some((candidates) => candidates.length === 0)) return null;
     }
 
     const payoffNeedsMagicSigil = candidateSets[payoffIndex].every(({ block }) =>
-      block.effects.some((effect) => 'trigger' in effect && effect.trigger?.kind === 'magic-sigil-level-at-least'),
+      block.effects.some(
+        (effect) =>
+          ('trigger' in effect && effect.trigger?.kind === 'magic-sigil-level-at-least') ||
+          ('scaling' in effect &&
+            (effect.scaling?.kind === 'magic-sigil-level' || effect.scaling?.kind === 'magic-sigil-count')),
+      ),
     );
     if (payoffNeedsMagicSigil) {
       const sourceIndex = activeNodes.findIndex((position, index) => {
@@ -620,7 +632,8 @@ export function generateEnemyBuild(
         skill.status === 'playable' &&
         skill.blockId &&
         !options.excludedBlockIds?.includes(skill.blockId) &&
-        supportsBuild(skill, build),
+        supportsBuild(skill, build) &&
+        (!corePatternIds.has(skill.placementPatternId) || skill.placementPatternId === circuitCore.id),
     );
     if (options.requiredBlockId && !designs.some((skill) => skill.blockId === options.requiredBlockId)) {
       if (options.buildId) {
@@ -636,6 +649,7 @@ export function generateEnemyBuild(
         ...result,
         heartPosition: { ...layout.heartPosition },
         buildId: build.id,
+        circuitCoreId: circuitCore.id,
         nodeCount,
         level,
         bodyLevel,
@@ -649,5 +663,7 @@ export function generateEnemyBuild(
 
   const required = options.requiredBlockId ? ` containing ${options.requiredBlockId}` : '';
   const requestedBuild = options.buildId ?? 'configured';
-  throw new Error(`No ${requestedBuild} enemy build${required} fits budget ${budget} on run ${safeRun}`);
+  throw new Error(
+    `No ${requestedBuild} + ${circuitCore.id} enemy build${required} fits budget ${budget} on run ${safeRun}`,
+  );
 }

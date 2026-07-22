@@ -27,8 +27,8 @@ const surroundedGrandHarmony = (stars: SkillStars): CircuitBoard => {
   return board;
 };
 
-describe('spirit resonance build', () => {
-  it('uses a fused payoff to count all eight powered neighbors without multiplying the count itself', () => {
+describe('spirit resonance circuit core', () => {
+  it('counts all eight powered neighbors for normal and fused payoffs', () => {
     const data = structuredClone(GAME_DATA);
     data.rules.heart.initialPosition = { row: 2, column: -1 };
     data.rules.mergeEffectMultiplier = 1;
@@ -37,6 +37,8 @@ describe('spirit resonance build', () => {
     const normalGrandHarmony = normal.trace.filter(
       (event) => 'blockId' in event && event.blockId === 'grand-harmony' && event.row === 2 && event.column === 1,
     );
+    const normalDamage = normalGrandHarmony.find((event) => event.kind === 'damage');
+    const normalShield = normalGrandHarmony.find((event) => event.kind === 'shield');
     const fusedDamage = fused.trace.find(
       (event) =>
         'blockId' in event &&
@@ -54,9 +56,10 @@ describe('spirit resonance build', () => {
         event.kind === 'shield',
     );
 
-    expect(normalGrandHarmony).toEqual([]);
-    expect(fusedDamage).toMatchObject({ value: 2340, stars: 1 });
-    expect(fusedShield).toMatchObject({ value: 1170, stars: 1 });
+    expect(normalDamage).toMatchObject({ value: 1560 });
+    expect(normalShield).toMatchObject({ value: 780 });
+    expect(fusedDamage).toMatchObject({ value: 1950, stars: 1 });
+    expect(fusedShield).toMatchObject({ value: 975, stars: 1 });
     expect(fusedDamage && 'value' in fusedDamage ? fusedDamage.value : 0).toBeLessThan(GAME_DATA.units[1].maxHp);
   });
 });

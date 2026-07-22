@@ -110,7 +110,7 @@ describe('light vein topology', () => {
       straightLineLength: 0,
       magicSigilLevel: 0,
       magicSigilCount: 0,
-      adjacentBuildCounts: {},
+      adjacentPoweredCount: 0,
       upstreamCount: 3,
       downstreamCount: 2,
     };

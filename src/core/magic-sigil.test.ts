@@ -105,7 +105,7 @@ describe('magic sigils', () => {
     expect(magicSigilModifiers(3, sigilRules)).toEqual({ effectPower: 45, cooldownReduction: 1 });
   });
 
-  it('boosts any active skill placed on an inscribed cell', () => {
+  it('boosts a neutral receiver without a magic-sigil build link', () => {
     const playerBoard: CircuitBoard = Array.from({ length: GAME_DATA.rules.boardSize }, () =>
       Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
     );
@@ -113,14 +113,17 @@ describe('magic sigils', () => {
       Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
     );
     playerBoard[2][0] = { blockId: 'inscription-stone', rotation: 0 };
-    playerBoard[2][1] = { blockId: 'sigil-blade', rotation: 0 };
+    playerBoard[2][1] = { blockId: 'strike', rotation: 0 };
 
     const result = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, playerBoard, enemyBoard), 1);
-    const blade = result.trace.find(
-      (event) => 'blockId' in event && event.blockId === 'sigil-blade' && event.kind === 'damage',
+    const strike = result.trace.find(
+      (event) => 'blockId' in event && event.blockId === 'strike' && event.kind === 'damage',
     );
 
-    expect(blade).toMatchObject({ value: 125, row: 2, column: 1 });
+    expect(
+      GAME_DATA.buildDesign.skills.find((skill) => skill.blockId === 'strike')?.buildLinks.map((link) => link.buildId),
+    ).not.toContain('magic-sigil');
+    expect(strike).toMatchObject({ value: 85, row: 2, column: 1 });
   });
 
   it('keeps the fused level-three focus finisher below a deterministic ceiling', () => {
@@ -149,7 +152,7 @@ describe('magic sigils', () => {
     );
 
     expect(sigils.levels.get('2:1')).toBe(3);
-    expect(finisher).toMatchObject({ value: 3870, stars: 1 });
+    expect(finisher).toMatchObject({ value: 3234, stars: 1 });
     expect(finisher && 'value' in finisher ? finisher.value : 0).toBeLessThan(GAME_DATA.units[1].maxHp);
   });
 
@@ -188,7 +191,7 @@ describe('magic sigils', () => {
       (event) => 'blockId' in event && event.blockId === 'sigil-cannon' && event.kind === 'damage',
     );
 
-    expect(cannon).toMatchObject({ value: 795, stars: 1 });
+    expect(cannon).toMatchObject({ value: 665, stars: 1 });
     expect(cannon && 'value' in cannon ? cannon.value : 0).toBeLessThan(1000);
   });
 
@@ -228,8 +231,8 @@ describe('magic sigils', () => {
 
     expect(resonance).toMatchObject({ value: 141, stars: 1 });
     expect(resonance && 'value' in resonance ? resonance.value : 0).toBeLessThan(250);
-    expect(allDamage).toMatchObject({ value: 1140, stars: 1 });
-    expect(allShield).toMatchObject({ value: 540, stars: 1 });
+    expect(allDamage).toMatchObject({ value: 954, stars: 1 });
+    expect(allShield).toMatchObject({ value: 454, stars: 1 });
     expect(
       (allDamage && 'value' in allDamage ? allDamage.value : 0) +
         (allShield && 'value' in allShield ? allShield.value : 0),

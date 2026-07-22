@@ -1,9 +1,12 @@
 {
-  "schemaVersion": 23,
+  "schemaVersion": 24,
   "rules": {
     "boardSize": 5,
     "heart": {
-      "initialPosition": { "row": 2, "column": 2 },
+      "initialPosition": {
+        "row": 2,
+        "column": 2
+      },
       "ports": ["north", "east", "south", "west"]
     },
     "bodyUpgrades": {
@@ -25,11 +28,21 @@
     "retryReward": 12,
     "rerollCost": 3,
     "shopSize": 6,
-    "rarityWeights": { "common": 100, "rare": 50, "epic": 30, "legendary": 15 },
+    "rarityWeights": {
+      "common": 100,
+      "rare": 50,
+      "epic": 30,
+      "legendary": 15
+    },
     "levelProgression": {
       "runsPerLevel": 1,
       "maxLevel": 9,
-      "rarityWeightMultiplierPerLevel": { "common": 0.96, "rare": 1.02, "epic": 1.08, "legendary": 1.14 }
+      "rarityWeightMultiplierPerLevel": {
+        "common": 0.96,
+        "rare": 1.02,
+        "epic": 1.08,
+        "legendary": 1.14
+      }
     },
     "skillFusion": {
       "copiesRequired": 3,
@@ -53,12 +66,12 @@
         "straightLineLength": 5,
         "magicSigilLevel": 2,
         "magicSigilCount": 4,
-        "adjacentBuildCount": 4,
         "downstreamCount": 2,
         "upstreamCount": 2,
         "poweredAxisCount": 4,
         "targetCooldownBeats": 3,
-        "targetEffectAmount": 220
+        "targetEffectAmount": 220,
+        "adjacentPoweredCount": 4
       },
       "effectValue": {
         "shield": 0.9,
@@ -79,12 +92,12 @@
         "allPortsConnectedPenaltyPerPort": 0.15,
         "magicSigilBase": 0.85,
         "magicSigilPenaltyPerRequiredLevel": 0.15,
-        "adjacentBuildBase": 1,
-        "adjacentBuildPenaltyPerRequiredNode": 0.04,
         "branchBase": 0.9,
         "branchPenaltyPerRequiredRoute": 0.1,
         "mergeBase": 0.85,
-        "mergePenaltyPerRequiredRoute": 0.1
+        "mergePenaltyPerRequiredRoute": 0.1,
+        "adjacentPoweredBase": 1,
+        "adjacentPoweredPenaltyPerRequiredNode": 0.04
       },
       "resourceAvailability": {
         "charge": 0.7,
@@ -124,8 +137,20 @@
     }
   },
   "units": [
-    { "id": "volt", "name": "ヴォルト", "code": "V-01", "maxHp": 5000, "color": "#5de7f2" },
-    { "id": "rust", "name": "ラスト", "code": "R-09", "maxHp": 5000, "color": "#ff786e" }
+    {
+      "id": "volt",
+      "name": "ヴォルト",
+      "code": "V-01",
+      "maxHp": 5000,
+      "color": "#5de7f2"
+    },
+    {
+      "id": "rust",
+      "name": "ラスト",
+      "code": "R-09",
+      "maxHp": 5000,
+      "color": "#ff786e"
+    }
   ],
   "playerUnitId": "volt",
   "enemyUnitId": "rust",
@@ -143,39 +168,54 @@
       "requireSkillDesignForEveryBlock": true
     },
     "placementPatterns": [
-      { "id": "free", "title": "条件なし", "description": "接続できれば効果を発揮する基礎配置" },
-      { "id": "loop", "title": "循環", "description": "ノードが閉じた輪の一部として通電する配置" },
+      {
+        "id": "free",
+        "title": "条件なし",
+        "description": "接続できれば効果を発揮する基礎配置",
+        "category": "condition"
+      },
+      {
+        "id": "loop",
+        "title": "循環",
+        "description": "ノードが閉じた輪の一部として通電する配置",
+        "category": "condition"
+      },
       {
         "id": "fully-connected",
         "title": "全接続",
-        "description": "ノードが持つ接続部をすべて相互接続する配置"
+        "description": "ノードが持つ接続部をすべて相互接続する配置",
+        "category": "condition"
       },
       {
         "id": "straight-line",
         "title": "長直線",
-        "description": "指定数以上の連続した直線へノードを組み込む配置"
+        "description": "指定数以上の連続した直線へノードを組み込む配置",
+        "category": "condition"
       },
       {
         "id": "magic-sigil",
         "title": "魔紋",
-        "description": "自由に置いた刻印元で魔紋を重ね、その上の通電ノードを強化する配置"
+        "description": "刻印元で魔紋を重ね、特性を問わずその上の通電ノードを強化する回路コア",
+        "category": "core"
       },
       {
         "id": "resonance",
         "title": "霊響",
-        "description": "周囲8マスへ通電ノードを密集させ、共鳴度を高める配置"
+        "description": "中心の周囲8マスにある通電ノード数を共鳴度へ変える回路コア",
+        "category": "core"
       },
       {
         "id": "light-vein",
         "title": "光脈",
-        "description": "通電信号を複数の枝へ分け、異なる経路を一点へ合流させる配置"
+        "description": "通電信号を複数の枝へ分け、異なる経路を一点へ合流させる回路コア",
+        "category": "core"
       }
     ],
     "axes": [
       {
         "id": "trait",
         "title": "特性",
-        "description": "ノード固有の蓄積・変換。無特性はどのビルドにも属さない",
+        "description": "ノード固有の効果コア。無特性は回路コアを問わず組み込める",
         "values": [
           {
             "id": "neutral",
@@ -194,24 +234,6 @@
             "title": "チャージ",
             "description": "充電ノードで蓄え、遠い解放点で使う",
             "color": "#ffd36a"
-          },
-          {
-            "id": "magic-sigil",
-            "title": "魔紋",
-            "description": "盤面へ魔紋を刻み、重ねるか連ねて技を強化する",
-            "color": "#a987ff"
-          },
-          {
-            "id": "resonance",
-            "title": "霊響",
-            "description": "周囲8マスの通電した霊響を集め、技の効果へ変える",
-            "color": "#ff9bd7"
-          },
-          {
-            "id": "light-vein",
-            "title": "光脈",
-            "description": "光を枝へ分けて手数を増やすか、合流させて一撃へ変える",
-            "color": "#5de7f2"
           }
         ]
       },
@@ -220,11 +242,31 @@
         "title": "武器・装置",
         "description": "特性を運び、攻撃や防御へ変換する手段",
         "values": [
-          { "id": "blade", "title": "剣", "description": "短い間隔で攻撃しながら次へつなぐ" },
-          { "id": "bow", "title": "弓", "description": "分岐しやすい射撃で複数の経路を作る" },
-          { "id": "cannon", "title": "砲", "description": "終端で蓄積を大きな一撃へ変換する" },
-          { "id": "device", "title": "装置", "description": "特性の育成、循環、維持を支える" },
-          { "id": "magic", "title": "魔法", "description": "難しい配置条件を満たして効果を跳ね上げる" }
+          {
+            "id": "blade",
+            "title": "剣",
+            "description": "短い間隔で攻撃しながら次へつなぐ"
+          },
+          {
+            "id": "bow",
+            "title": "弓",
+            "description": "分岐しやすい射撃で複数の経路を作る"
+          },
+          {
+            "id": "cannon",
+            "title": "砲",
+            "description": "終端で蓄積を大きな一撃へ変換する"
+          },
+          {
+            "id": "device",
+            "title": "装置",
+            "description": "特性の育成、循環、維持を支える"
+          },
+          {
+            "id": "magic",
+            "title": "魔法",
+            "description": "難しい配置条件を満たして効果を跳ね上げる"
+          }
         ]
       }
     ],
@@ -238,8 +280,16 @@
         "risk": "立ち上がりが遅い",
         "gamePlan": "剣・弓・砲へ毒を組み込み、毒を残す培養か消費する破裂へつなぐ",
         "payoffs": [
-          { "id": "cultivate", "title": "培養", "strategy": "毒を残して育てる" },
-          { "id": "burst", "title": "破裂", "strategy": "毒を一気に破裂させる" }
+          {
+            "id": "cultivate",
+            "title": "培養",
+            "strategy": "毒を残して育てる"
+          },
+          {
+            "id": "burst",
+            "title": "破裂",
+            "strategy": "毒を一気に破裂させる"
+          }
         ]
       },
       {
@@ -251,51 +301,16 @@
         "risk": "充電ノードが足りないか経路が切れると弱い",
         "gamePlan": "充電ノードを通るたびにチャージし、砲撃か防壁として終端でまとめて解放する",
         "payoffs": [
-          { "id": "burst", "title": "一括解放", "strategy": "全チャージを大ダメージへ変える" },
-          { "id": "guard", "title": "防壁解放", "strategy": "全チャージをシールドへ変える" }
-        ]
-      },
-      {
-        "id": "magic-sigil",
-        "axisId": "trait",
-        "title": "魔紋",
-        "placementIdentity": "未通電でも刻める刻印元を自由に置き、価値の高い魔紋マスを盤面に重ねる",
-        "strength": "任意の技を置き換えながら強化先を選べる",
-        "risk": "刻印元で盤面を使うため、受け手を通電できないと盤面投資が働かない",
-        "gamePlan": "同じマスへ魔紋を重ねる重刻か、複数マスを連ねる連環へ展開する",
-        "payoffs": [
-          { "id": "overlap", "title": "重刻", "strategy": "一つの魔紋を位階IIIまで重ねて決め手を強化する" },
           {
-            "id": "network",
-            "title": "連環",
-            "strategy": "刻印元を自由に散らし、通電ノードを置いた魔紋マスを増やして共鳴させる"
+            "id": "burst",
+            "title": "一括解放",
+            "strategy": "全チャージを大ダメージへ変える"
+          },
+          {
+            "id": "guard",
+            "title": "防壁解放",
+            "strategy": "全チャージをシールドへ変える"
           }
-        ]
-      },
-      {
-        "id": "resonance",
-        "axisId": "trait",
-        "title": "霊響",
-        "placementIdentity": "決め手の周囲8マスへ通電した霊響を集め、共鳴度を高める",
-        "strength": "密集した盤面から攻撃か防御へ大きな出力を得る",
-        "risk": "中心と周囲を同時に通電させる必要があり、盤面の空きと経路を圧迫する",
-        "gamePlan": "小さな響きを斜めにも重ね、中央へ集める集響か全周を満たす交響へ展開する",
-        "payoffs": [
-          { "id": "focus", "title": "集響", "strategy": "共鳴度4以上を火力へ集中させる" },
-          { "id": "harmony", "title": "交響", "strategy": "共鳴度を攻防と回復へ分配する" }
-        ]
-      },
-      {
-        "id": "light-vein",
-        "axisId": "trait",
-        "title": "光脈",
-        "placementIdentity": "分岐器から複数の通電経路を伸ばし、枝のまま活かすか一点へ合流させる",
-        "strength": "広い回路から手数と合流火力のどちらも選べる",
-        "risk": "一つでも枝が途切れると条件を失い、広い盤面も必要になる",
-        "gamePlan": "光を複数経路へ分ける枝光か、異なる経路を砲へ戻す収光へ展開する",
-        "payoffs": [
-          { "id": "branching", "title": "枝光", "strategy": "通電した複数の枝を維持して手数を増やす" },
-          { "id": "convergence", "title": "収光", "strategy": "異なる光路を一点へ合流させて大出力へ変える" }
         ]
       }
     ],
@@ -309,12 +324,27 @@
         "scope": "shared",
         "sharedSynergies": ["foundation", "blade"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["starter", "cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["starter", "cycler"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["starter", "cycler"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["starter", "cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["starter", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -326,12 +356,27 @@
         "scope": "shared",
         "sharedSynergies": ["foundation", "blade"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["starter"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["starter"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["starter"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["starter"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["starter"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["starter"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -343,11 +388,27 @@
         "scope": "shared",
         "sharedSynergies": ["foundation", "bow", "branch"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "resonance", "roles": ["cycler"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -359,12 +420,27 @@
         "scope": "shared",
         "sharedSynergies": ["foundation", "sustain"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["sustain"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["sustain"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -376,12 +452,27 @@
         "scope": "shared",
         "sharedSynergies": ["foundation", "sustain"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["sustain"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["sustain"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -393,12 +484,27 @@
         "scope": "shared",
         "sharedSynergies": ["economy", "foundation", "blade"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["starter", "cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["starter", "cycler"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["starter", "cycler"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["starter", "cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["starter", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -410,12 +516,27 @@
         "scope": "shared",
         "sharedSynergies": ["economy", "bow", "branch"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["cycler"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["cycler"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -427,12 +548,27 @@
         "scope": "shared",
         "sharedSynergies": ["economy", "sustain", "device"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["sustain"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["sustain"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -444,8 +580,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
-        "buildLinks": [{ "buildId": "poison", "roles": ["starter", "grower"], "payoffIds": ["cultivate", "burst"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["poison"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": ["starter", "grower"],
+            "payoffIds": ["cultivate", "burst"]
+          }
+        ]
       },
       {
         "id": "cultivation-blade",
@@ -456,8 +607,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
-        "buildLinks": [{ "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["poison"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": ["grower"],
+            "payoffIds": ["cultivate"]
+          }
+        ]
       },
       {
         "id": "toxic-reservoir",
@@ -469,12 +635,26 @@
         "sharedSynergies": ["poison", "charge", "sustain"],
         "placementPatternId": "free",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["poison", "charge"] },
-          { "axisId": "weapon", "valueIds": ["device"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["poison", "charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
         ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["cycler", "sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["grower", "cycler", "sustain"], "payoffIds": ["burst", "guard"] }
+          {
+            "buildId": "poison",
+            "roles": ["cycler", "sustain"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["grower", "cycler", "sustain"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -486,8 +666,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["device"] }],
-        "buildLinks": [{ "buildId": "poison", "roles": ["payoff"], "payoffIds": ["cultivate"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["poison"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": ["payoff"],
+            "payoffIds": ["cultivate"]
+          }
+        ]
       },
       {
         "id": "rupture-stake",
@@ -498,8 +693,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
-        "buildLinks": [{ "buildId": "poison", "roles": ["payoff"], "payoffIds": ["burst"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["poison"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": ["payoff"],
+            "payoffIds": ["burst"]
+          }
+        ]
       },
       {
         "id": "status-relay",
@@ -511,12 +721,26 @@
         "sharedSynergies": ["status-effect", "charge", "combat-growth"],
         "placementPatternId": "free",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["poison", "charge"] },
-          { "axisId": "weapon", "valueIds": ["device"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["poison", "charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
         ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] }
+          {
+            "buildId": "poison",
+            "roles": ["grower"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["grower"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -528,12 +752,27 @@
         "scope": "shared",
         "sharedSynergies": ["cycle", "combat-growth"],
         "placementPatternId": "loop",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["grower", "cycler"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -545,12 +784,27 @@
         "scope": "shared",
         "sharedSynergies": ["long-route", "combat-growth"],
         "placementPatternId": "straight-line",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["grower", "cycler"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -562,12 +816,27 @@
         "scope": "shared",
         "sharedSynergies": ["effect-power"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["grower"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["grower"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["grower"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["grower"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -579,12 +848,27 @@
         "scope": "shared",
         "sharedSynergies": ["cooldown"],
         "placementPatternId": "fully-connected",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["cycler"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["cycler"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -596,8 +880,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["device"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["grower", "sustain"], "payoffIds": ["burst", "guard"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["grower", "sustain"],
+            "payoffIds": ["burst", "guard"]
+          }
+        ]
       },
       {
         "id": "charge-blade",
@@ -608,8 +907,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["starter", "grower"], "payoffIds": ["burst", "guard"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["starter", "grower"],
+            "payoffIds": ["burst", "guard"]
+          }
+        ]
       },
       {
         "id": "charge-arrow",
@@ -620,8 +934,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["starter", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
+        ]
       },
       {
         "id": "charge-coil",
@@ -632,8 +961,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["device"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
+        ]
       },
       {
         "id": "discharge-bow",
@@ -644,8 +988,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["payoff"],
+            "payoffIds": ["burst"]
+          }
+        ]
       },
       {
         "id": "rail-cannon",
@@ -656,8 +1015,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["payoff"],
+            "payoffIds": ["burst"]
+          }
+        ]
       },
       {
         "id": "charge-bastion",
@@ -668,8 +1042,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["device"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["sustain", "payoff"], "payoffIds": ["guard"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["sustain", "payoff"],
+            "payoffIds": ["guard"]
+          }
+        ]
       },
       {
         "id": "venom-orbit",
@@ -680,8 +1069,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "loop",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["poison"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
-        "buildLinks": [{ "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["poison"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          }
+        ]
       },
       {
         "id": "sealed-junction",
@@ -692,12 +1096,27 @@
         "scope": "shared",
         "sharedSynergies": ["fully-connected", "sustain", "magic"],
         "placementPatternId": "fully-connected",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["sustain"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["sustain"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -709,12 +1128,27 @@
         "scope": "shared",
         "sharedSynergies": ["neutral-count", "cannon", "bridge"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["grower"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["grower"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["grower"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["grower"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -726,12 +1160,27 @@
         "scope": "shared",
         "sharedSynergies": ["neutral-count", "sustain", "bridge"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["sustain"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["sustain"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -743,12 +1192,27 @@
         "scope": "shared",
         "sharedSynergies": ["neutral-count", "sustain", "bridge", "magic"],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "poison", "roles": ["grower", "sustain"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["grower", "sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["grower", "sustain"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "resonance", "roles": ["grower", "sustain"], "payoffIds": ["focus", "harmony"] }
+          {
+            "buildId": "poison",
+            "roles": ["grower", "sustain"],
+            "payoffIds": ["cultivate", "burst"]
+          },
+          {
+            "buildId": "charge",
+            "roles": ["grower", "sustain"],
+            "payoffIds": ["burst", "guard"]
+          }
         ]
       },
       {
@@ -760,8 +1224,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "straight-line",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
+        ]
       },
       {
         "id": "overcharge-cannon",
@@ -772,8 +1251,23 @@
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["payoff"], "payoffIds": ["burst"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "charge",
+            "roles": ["payoff"],
+            "payoffIds": ["burst"]
+          }
+        ]
       },
       {
         "id": "inscription-stone",
@@ -781,16 +1275,32 @@
         "summary": "前方のマスへ魔紋を刻み、守りながら強化先を作る",
         "status": "playable",
         "blockId": "inscription-stone",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
+        "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil"] },
-          { "axisId": "weapon", "valueIds": ["device"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
         ],
         "buildLinks": [
-          { "buildId": "magic-sigil", "roles": ["starter", "grower"], "payoffIds": ["overlap", "network"] }
-        ]
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["starter", "grower"]
       },
       {
         "id": "guiding-bolt",
@@ -798,13 +1308,32 @@
         "summary": "射線の先へ二つの魔紋を刻み、序盤から受け手を増やす",
         "status": "playable",
         "blockId": "guiding-bolt",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["magic-sigil"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
+        "placementPatternId": "magic-sigil",
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "magic-sigil", "roles": ["starter", "grower", "cycler"], "payoffIds": ["overlap", "network"] }
-        ]
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["starter", "grower", "cycler"]
       },
       {
         "id": "sigil-blade",
@@ -812,14 +1341,32 @@
         "summary": "刻印マスへ置くほど斬撃が強くなる基礎の受け手",
         "status": "playable",
         "blockId": "sigil-blade",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
         "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil"] },
-          { "axisId": "weapon", "valueIds": ["blade"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
         ],
-        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["cycler"], "payoffIds": ["overlap", "network"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["cycler", "payoff"]
       },
       {
         "id": "guardian-sigil",
@@ -827,14 +1374,32 @@
         "summary": "刻印マスの位階を防壁と修復へ変える維持技",
         "status": "playable",
         "blockId": "guardian-sigil",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
         "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil"] },
-          { "axisId": "weapon", "valueIds": ["device"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
         ],
-        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["sustain"]
       },
       {
         "id": "twin-inscription",
@@ -842,11 +1407,32 @@
         "summary": "異なる二方向へ魔紋を刻み、連環の面積を広げる",
         "status": "playable",
         "blockId": "twin-inscription",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["magic-sigil"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
-        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["network"] }]
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
+        "placementPatternId": "magic-sigil",
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["grower", "cycler"]
       },
       {
         "id": "thunder-sigil",
@@ -856,15 +1442,25 @@
         "blockId": "thunder-sigil",
         "scope": "shared",
         "sharedSynergies": ["magic-sigil", "charge", "long-route"],
-        "placementPatternId": "free",
+        "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil", "charge"] },
-          { "axisId": "weapon", "valueIds": ["device"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
         ],
         "buildLinks": [
-          { "buildId": "magic-sigil", "roles": ["grower", "cycler", "sustain"], "payoffIds": ["overlap", "network"] },
-          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }
-        ]
+          {
+            "buildId": "charge",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
+        ],
+        "circuitCoreRoles": ["grower", "cycler", "sustain"]
       },
       {
         "id": "convergence-sigil",
@@ -872,14 +1468,32 @@
         "summary": "一つのマスへ二重の魔紋を刻み、重刻を完成へ近づける",
         "status": "playable",
         "blockId": "convergence-sigil",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
+        "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil"] },
-          { "axisId": "weapon", "valueIds": ["magic"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
         ],
-        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["grower", "cycler", "sustain"], "payoffIds": ["overlap"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["grower", "cycler", "sustain"]
       },
       {
         "id": "sigil-cannon",
@@ -887,14 +1501,32 @@
         "summary": "自分の魔紋位階を火力へ変える重刻の決め手",
         "status": "playable",
         "blockId": "sigil-cannon",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
         "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil"] },
-          { "axisId": "weapon", "valueIds": ["cannon"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
         ],
-        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["overlap"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       },
       {
         "id": "resonance-circle",
@@ -906,10 +1538,23 @@
         "sharedSynergies": ["magic-sigil", "poison", "network"],
         "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil", "poison"] },
-          { "axisId": "weapon", "valueIds": ["magic"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["poison"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
         ],
-        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["network"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       },
       {
         "id": "deep-sigil-cannon",
@@ -917,14 +1562,32 @@
         "summary": "位階IIIの魔紋だけを巨大な一撃へ変える重刻の奥義",
         "status": "playable",
         "blockId": "deep-sigil-cannon",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
         "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil"] },
-          { "axisId": "weapon", "valueIds": ["cannon"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
         ],
-        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["overlap"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       },
       {
         "id": "all-sigil-resonance",
@@ -932,14 +1595,32 @@
         "summary": "通電したすべての刻印マスを攻防へ変える連環の奥義",
         "status": "playable",
         "blockId": "all-sigil-resonance",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["magic-sigil"],
         "placementPatternId": "magic-sigil",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["magic-sigil"] },
-          { "axisId": "weapon", "valueIds": ["magic"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
         ],
-        "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["network"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       },
       {
         "id": "spirit-blade",
@@ -947,13 +1628,32 @@
         "summary": "周囲8マスの霊響を刃へ集め、素早く斬り込む",
         "status": "playable",
         "blockId": "spirit-blade",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["resonance"],
         "placementPatternId": "resonance",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "resonance", "roles": ["starter", "grower", "cycler"], "payoffIds": ["focus", "harmony"] }
-        ]
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["starter", "grower", "cycler", "payoff"]
       },
       {
         "id": "echo-arrow",
@@ -961,11 +1661,32 @@
         "summary": "斜めの霊響も拾いながら経路を分岐する矢",
         "status": "playable",
         "blockId": "echo-arrow",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["resonance"],
         "placementPatternId": "resonance",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
-        "buildLinks": [{ "buildId": "resonance", "roles": ["starter", "cycler"], "payoffIds": ["focus", "harmony"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["starter", "cycler"]
       },
       {
         "id": "tuning-stone",
@@ -973,11 +1694,32 @@
         "summary": "周囲の響きを整えて防壁へ変える基礎の魔法碑",
         "status": "playable",
         "blockId": "tuning-stone",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["resonance"],
         "placementPatternId": "resonance",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
-        "buildLinks": [{ "buildId": "resonance", "roles": ["grower", "sustain"], "payoffIds": ["focus", "harmony"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["grower", "sustain"]
       },
       {
         "id": "harmony-ward",
@@ -985,11 +1727,32 @@
         "summary": "三つ以上の響きで回復まで目覚める守護装置",
         "status": "playable",
         "blockId": "harmony-ward",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["resonance"],
         "placementPatternId": "resonance",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["device"] }],
-        "buildLinks": [{ "buildId": "resonance", "roles": ["grower", "sustain"], "payoffIds": ["harmony"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["grower", "sustain"]
       },
       {
         "id": "thunder-echo",
@@ -1001,13 +1764,23 @@
         "sharedSynergies": ["resonance", "charge", "cycler"],
         "placementPatternId": "resonance",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["resonance", "charge"] },
-          { "axisId": "weapon", "valueIds": ["device"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
         ],
         "buildLinks": [
-          { "buildId": "resonance", "roles": ["grower", "cycler"], "payoffIds": ["focus", "harmony"] },
-          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }
-        ]
+          {
+            "buildId": "charge",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
+        ],
+        "circuitCoreRoles": ["grower", "cycler"]
       },
       {
         "id": "venom-chorus",
@@ -1019,13 +1792,23 @@
         "sharedSynergies": ["resonance", "poison", "branch"],
         "placementPatternId": "resonance",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["resonance", "poison"] },
-          { "axisId": "weapon", "valueIds": ["bow"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["poison"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
         ],
         "buildLinks": [
-          { "buildId": "resonance", "roles": ["grower", "cycler"], "payoffIds": ["focus", "harmony"] },
-          { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] }
-        ]
+          {
+            "buildId": "poison",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          }
+        ],
+        "circuitCoreRoles": ["grower", "cycler"]
       },
       {
         "id": "resonance-cannon",
@@ -1033,11 +1816,32 @@
         "summary": "共鳴度4以上を一撃へ集中させる集響の決め手",
         "status": "playable",
         "blockId": "resonance-cannon",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["resonance"],
         "placementPatternId": "resonance",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
-        "buildLinks": [{ "buildId": "resonance", "roles": ["payoff"], "payoffIds": ["focus"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       },
       {
         "id": "harmonic-sanctuary",
@@ -1045,11 +1849,32 @@
         "summary": "共鳴度4以上を防壁と回復へ分ける交響の決め手",
         "status": "playable",
         "blockId": "harmonic-sanctuary",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["resonance"],
         "placementPatternId": "resonance",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
-        "buildLinks": [{ "buildId": "resonance", "roles": ["sustain", "payoff"], "payoffIds": ["harmony"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["sustain", "payoff"]
       },
       {
         "id": "celestial-echo-cannon",
@@ -1057,11 +1882,32 @@
         "summary": "六つ以上の響きを天へ束ねる集響の奥義",
         "status": "playable",
         "blockId": "celestial-echo-cannon",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["resonance"],
         "placementPatternId": "resonance",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
-        "buildLinks": [{ "buildId": "resonance", "roles": ["payoff"], "payoffIds": ["focus"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       },
       {
         "id": "grand-harmony",
@@ -1069,11 +1915,32 @@
         "summary": "周囲8マスすべての響きを攻防へ変える交響の奥義",
         "status": "playable",
         "blockId": "grand-harmony",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["resonance"],
         "placementPatternId": "resonance",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
-        "buildLinks": [{ "buildId": "resonance", "roles": ["sustain", "payoff"], "payoffIds": ["harmony"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["sustain", "payoff"]
       },
       {
         "id": "light-vein-blade",
@@ -1083,11 +1950,30 @@
         "blockId": "light-vein-blade",
         "scope": "shared",
         "sharedSynergies": ["starter", "blade", "light-vein"],
-        "placementPatternId": "free",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "placementPatternId": "light-vein",
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["blade"]
+          }
+        ],
         "buildLinks": [
-          { "buildId": "light-vein", "roles": ["starter", "cycler"], "payoffIds": ["branching", "convergence"] }
-        ]
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["starter", "cycler"]
       },
       {
         "id": "prism-arrow",
@@ -1098,14 +1984,29 @@
         "scope": "shared",
         "sharedSynergies": ["bow", "branch", "light-vein"],
         "placementPatternId": "light-vein",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
         "buildLinks": [
           {
-            "buildId": "light-vein",
-            "roles": ["starter", "grower", "cycler"],
-            "payoffIds": ["branching", "convergence"]
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
           }
-        ]
+        ],
+        "circuitCoreRoles": ["starter", "grower", "cycler", "payoff"]
       },
       {
         "id": "light-guide",
@@ -1113,14 +2014,32 @@
         "summary": "光路を曲げながら防壁と回復を維持する装置",
         "status": "playable",
         "blockId": "light-guide",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
+        "scope": "shared",
+        "sharedSynergies": ["light-vein"],
+        "placementPatternId": "light-vein",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["light-vein"] },
-          { "axisId": "weapon", "valueIds": ["device"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
         ],
-        "buildLinks": [{ "buildId": "light-vein", "roles": ["sustain"], "payoffIds": ["branching", "convergence"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["sustain"]
       },
       {
         "id": "thunder-prism",
@@ -1132,13 +2051,23 @@
         "sharedSynergies": ["light-vein", "charge", "branch"],
         "placementPatternId": "light-vein",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["light-vein", "charge"] },
-          { "axisId": "weapon", "valueIds": ["device"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["charge"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["device"]
+          }
         ],
         "buildLinks": [
-          { "buildId": "light-vein", "roles": ["grower", "cycler"], "payoffIds": ["branching", "convergence"] },
-          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }
-        ]
+          {
+            "buildId": "charge",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["burst", "guard"]
+          }
+        ],
+        "circuitCoreRoles": ["grower", "cycler"]
       },
       {
         "id": "venom-ray",
@@ -1150,13 +2079,23 @@
         "sharedSynergies": ["light-vein", "poison", "bow", "branch"],
         "placementPatternId": "light-vein",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["light-vein", "poison"] },
-          { "axisId": "weapon", "valueIds": ["bow"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["poison"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
         ],
         "buildLinks": [
-          { "buildId": "light-vein", "roles": ["grower", "cycler"], "payoffIds": ["branching"] },
-          { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] }
-        ]
+          {
+            "buildId": "poison",
+            "roles": ["grower", "cycler"],
+            "payoffIds": ["cultivate", "burst"]
+          }
+        ],
+        "circuitCoreRoles": ["grower", "cycler"]
       },
       {
         "id": "radiant-fork",
@@ -1167,14 +2106,29 @@
         "scope": "shared",
         "sharedSynergies": ["light-vein", "magic", "branch", "sustain"],
         "placementPatternId": "light-vein",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
         "buildLinks": [
           {
-            "buildId": "light-vein",
-            "roles": ["grower", "cycler", "sustain"],
-            "payoffIds": ["branching", "convergence"]
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
           }
-        ]
+        ],
+        "circuitCoreRoles": ["grower", "cycler", "sustain"]
       },
       {
         "id": "branchlight-barrage",
@@ -1182,11 +2136,32 @@
         "summary": "二本以上の枝を維持して連射へ変える枝光の決め手",
         "status": "playable",
         "blockId": "branchlight-barrage",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["light-vein"],
         "placementPatternId": "light-vein",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
-        "buildLinks": [{ "buildId": "light-vein", "roles": ["payoff"], "payoffIds": ["branching"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["bow"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       },
       {
         "id": "convergence-cannon",
@@ -1194,14 +2169,32 @@
         "summary": "二つ以上の光路を一撃へ束ねる収光の決め手",
         "status": "playable",
         "blockId": "convergence-cannon",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["light-vein"],
         "placementPatternId": "light-vein",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["light-vein"] },
-          { "axisId": "weapon", "valueIds": ["cannon"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
         ],
-        "buildLinks": [{ "buildId": "light-vein", "roles": ["payoff"], "payoffIds": ["convergence"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       },
       {
         "id": "myriad-light-array",
@@ -1209,11 +2202,32 @@
         "summary": "三本の枝すべてを攻防へ変える枝光の奥義",
         "status": "playable",
         "blockId": "myriad-light-array",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["light-vein"],
         "placementPatternId": "light-vein",
-        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
-        "buildLinks": [{ "buildId": "light-vein", "roles": ["sustain", "payoff"], "payoffIds": ["branching"] }]
+        "axisLinks": [
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["magic"]
+          }
+        ],
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["sustain", "payoff"]
       },
       {
         "id": "solar-convergence",
@@ -1221,14 +2235,32 @@
         "summary": "三つの光路を一点へ戻して撃ち出す収光の奥義",
         "status": "playable",
         "blockId": "solar-convergence",
-        "scope": "exclusive",
-        "sharedSynergies": [],
+        "scope": "shared",
+        "sharedSynergies": ["light-vein"],
         "placementPatternId": "light-vein",
         "axisLinks": [
-          { "axisId": "trait", "valueIds": ["light-vein"] },
-          { "axisId": "weapon", "valueIds": ["cannon"] }
+          {
+            "axisId": "trait",
+            "valueIds": ["neutral"]
+          },
+          {
+            "axisId": "weapon",
+            "valueIds": ["cannon"]
+          }
         ],
-        "buildLinks": [{ "buildId": "light-vein", "roles": ["payoff"], "payoffIds": ["convergence"] }]
+        "buildLinks": [
+          {
+            "buildId": "poison",
+            "roles": [],
+            "payoffIds": []
+          },
+          {
+            "buildId": "charge",
+            "roles": [],
+            "payoffIds": []
+          }
+        ],
+        "circuitCoreRoles": ["payoff"]
       }
     ]
   },
@@ -1245,11 +2277,25 @@
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 1,
-      "effects": [{ "kind": "damage", "amount": 70 }],
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 70
+        }
+      ],
       "fusion": {
         "title": "攻防連斬",
         "description": "1拍ごとに90ダメージを与え、シールド30を得る。",
-        "effects": [{ "kind": "damage", "amount": 90 }, { "kind": "shield", "amount": 30 }]
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 90
+          },
+          {
+            "kind": "shield",
+            "amount": 30
+          }
+        ]
       }
     },
     {
@@ -1264,11 +2310,25 @@
       "ports": ["west", "north"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "damage", "amount": 160 }],
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 160
+        }
+      ],
       "fusion": {
         "title": "破砕防衛",
         "description": "2拍ごとに200ダメージを与え、シールド70を得る。",
-        "effects": [{ "kind": "damage", "amount": 200 }, { "kind": "shield", "amount": 70 }]
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 200
+          },
+          {
+            "kind": "shield",
+            "amount": 70
+          }
+        ]
       }
     },
     {
@@ -1283,11 +2343,25 @@
       "ports": ["west", "north", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "damage", "amount": 190 }],
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 190
+        }
+      ],
       "fusion": {
         "title": "分岐弾幕",
         "description": "2拍ごとに240ダメージを与え、シールド55を得る。",
-        "effects": [{ "kind": "damage", "amount": 240 }, { "kind": "shield", "amount": 55 }]
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 240
+          },
+          {
+            "kind": "shield",
+            "amount": 55
+          }
+        ]
       }
     },
     {
@@ -1302,11 +2376,25 @@
       "ports": ["west", "north", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "shield", "amount": 130 }],
+      "effects": [
+        {
+          "kind": "shield",
+          "amount": 130
+        }
+      ],
       "fusion": {
         "title": "反射障壁",
         "description": "2拍ごとにシールド165を得て、相手へ45ダメージを返す。",
-        "effects": [{ "kind": "shield", "amount": 165 }, { "kind": "damage", "amount": 45 }]
+        "effects": [
+          {
+            "kind": "shield",
+            "amount": 165
+          },
+          {
+            "kind": "damage",
+            "amount": 45
+          }
+        ]
       }
     },
     {
@@ -1321,12 +2409,26 @@
       "ports": ["west", "north"],
       "buildIds": ["poison", "charge"],
       "cooldown": 3,
-      "effects": [{ "kind": "repair", "amount": 260 }],
+      "effects": [
+        {
+          "kind": "repair",
+          "amount": 260
+        }
+      ],
       "fusion": {
         "title": "再生機構",
         "description": "2拍ごとにHPを230回復し、シールド80を得る。",
         "cooldown": 2,
-        "effects": [{ "kind": "repair", "amount": 230 }, { "kind": "shield", "amount": 80 }]
+        "effects": [
+          {
+            "kind": "repair",
+            "amount": 230
+          },
+          {
+            "kind": "shield",
+            "amount": 80
+          }
+        ]
       }
     },
     {
@@ -1341,15 +2443,33 @@
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 4,
-      "effects": [{ "kind": "damage", "amount": 110 }, { "kind": "coin", "amount": 1 }],
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 110
+        },
+        {
+          "kind": "coin",
+          "amount": 1
+        }
+      ],
       "fusion": {
         "title": "分配刃",
         "description": "3拍ごとに140ダメージを与えてコインを1枚回収し、この先の技の各効果を45増やす。",
         "cooldown": 3,
         "effects": [
-          { "kind": "damage", "amount": 140 },
-          { "kind": "coin", "amount": 1 },
-          { "kind": "amplify", "amount": 45 }
+          {
+            "kind": "damage",
+            "amount": 140
+          },
+          {
+            "kind": "coin",
+            "amount": 1
+          },
+          {
+            "kind": "amplify",
+            "amount": 45
+          }
         ]
       }
     },
@@ -1365,15 +2485,33 @@
       "ports": ["west", "north", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 5,
-      "effects": [{ "kind": "damage", "amount": 240 }, { "kind": "coin", "amount": 1 }],
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 240
+        },
+        {
+          "kind": "coin",
+          "amount": 1
+        }
+      ],
       "fusion": {
         "title": "護衛賞金矢",
         "description": "4拍ごとに300ダメージを与え、コインを1枚回収し、シールド80を得る。",
         "cooldown": 4,
         "effects": [
-          { "kind": "damage", "amount": 300 },
-          { "kind": "coin", "amount": 1 },
-          { "kind": "shield", "amount": 80 }
+          {
+            "kind": "damage",
+            "amount": 300
+          },
+          {
+            "kind": "coin",
+            "amount": 1
+          },
+          {
+            "kind": "shield",
+            "amount": 80
+          }
         ]
       }
     },
@@ -1390,18 +2528,36 @@
       "buildIds": ["poison", "charge"],
       "cooldown": 5,
       "effects": [
-        { "kind": "shield", "amount": 240 },
-        { "kind": "repair", "amount": 160 },
-        { "kind": "coin", "amount": 1 }
+        {
+          "kind": "shield",
+          "amount": 240
+        },
+        {
+          "kind": "repair",
+          "amount": 160
+        },
+        {
+          "kind": "coin",
+          "amount": 1
+        }
       ],
       "fusion": {
         "title": "複利修復機",
         "description": "4拍ごとにシールド300と回復240を得て、コインを1枚回収する。",
         "cooldown": 4,
         "effects": [
-          { "kind": "shield", "amount": 300 },
-          { "kind": "repair", "amount": 240 },
-          { "kind": "coin", "amount": 1 }
+          {
+            "kind": "shield",
+            "amount": 300
+          },
+          {
+            "kind": "repair",
+            "amount": 240
+          },
+          {
+            "kind": "coin",
+            "amount": 1
+          }
         ]
       }
     },
@@ -1418,7 +2574,14 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 3,
-      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 298, "perCharge": 210 }]
+      "effects": [
+        {
+          "kind": "release-charge",
+          "output": "damage",
+          "amount": 298,
+          "perCharge": 210
+        }
+      ]
     },
     {
       "id": "amplifier",
@@ -1431,11 +2594,25 @@
       "shopWeight": 1,
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
-      "effects": [{ "kind": "amplify", "amount": 290 }],
+      "effects": [
+        {
+          "kind": "amplify",
+          "amount": 290
+        }
+      ],
       "fusion": {
         "title": "可変増幅術",
         "description": "この先の技の各効果を250増やし、発動間隔を1拍短くする。",
-        "effects": [{ "kind": "amplify", "amount": 250 }, { "kind": "haste", "amount": 1 }]
+        "effects": [
+          {
+            "kind": "amplify",
+            "amount": 250
+          },
+          {
+            "kind": "haste",
+            "amount": 1
+          }
+        ]
       }
     },
     {
@@ -1450,15 +2627,36 @@
       "ports": ["west", "east", "south"],
       "buildIds": ["poison", "charge"],
       "effects": [
-        { "kind": "haste", "amount": 1, "trigger": { "kind": "all-ports-connected" } },
-        { "kind": "amplify", "amount": 305, "trigger": { "kind": "all-ports-connected" } }
+        {
+          "kind": "haste",
+          "amount": 1,
+          "trigger": {
+            "kind": "all-ports-connected"
+          }
+        },
+        {
+          "kind": "amplify",
+          "amount": 305,
+          "trigger": {
+            "kind": "all-ports-connected"
+          }
+        }
       ],
       "fusion": {
         "title": "常動加速術",
         "description": "接続状態を問わず、この先の技の発動間隔を1拍短くする。全接続なら各効果も360増やす。",
         "effects": [
-          { "kind": "haste", "amount": 1 },
-          { "kind": "amplify", "amount": 360, "trigger": { "kind": "all-ports-connected" } }
+          {
+            "kind": "haste",
+            "amount": 1
+          },
+          {
+            "kind": "amplify",
+            "amount": 360,
+            "trigger": {
+              "kind": "all-ports-connected"
+            }
+          }
         ]
       }
     },
@@ -1476,14 +2674,22 @@
       "buildIds": ["poison"],
       "cooldown": 2,
       "effects": [
-        { "kind": "damage", "amount": 35 },
-        { "kind": "poison", "amount": 16 },
+        {
+          "kind": "damage",
+          "amount": 35
+        },
+        {
+          "kind": "poison",
+          "amount": 16
+        },
         {
           "kind": "growth",
           "amount": 1,
           "target": "self",
           "stat": "poison",
-          "trigger": { "kind": "enemy-poisoned" }
+          "trigger": {
+            "kind": "enemy-poisoned"
+          }
         }
       ]
     },
@@ -1501,13 +2707,18 @@
       "buildIds": ["poison"],
       "cooldown": 2,
       "effects": [
-        { "kind": "damage", "amount": 170 },
+        {
+          "kind": "damage",
+          "amount": 170
+        },
         {
           "kind": "growth",
           "amount": 15,
           "target": "downstream",
           "stat": "all",
-          "trigger": { "kind": "enemy-poisoned" }
+          "trigger": {
+            "kind": "enemy-poisoned"
+          }
         }
       ]
     },
@@ -1525,9 +2736,18 @@
       "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
-        { "kind": "charge", "amount": 4 },
-        { "kind": "poison", "amount": 16 },
-        { "kind": "shield", "amount": 35 }
+        {
+          "kind": "charge",
+          "amount": 4
+        },
+        {
+          "kind": "poison",
+          "amount": 16
+        },
+        {
+          "kind": "shield",
+          "amount": 35
+        }
       ]
     },
     {
@@ -1544,7 +2764,15 @@
       "buildIds": ["poison"],
       "cooldown": 3,
       "effects": [
-        { "kind": "poison", "amount": 100, "scaling": { "kind": "enemy-poison", "every": 250, "amount": 55 } }
+        {
+          "kind": "poison",
+          "amount": 100,
+          "scaling": {
+            "kind": "enemy-poison",
+            "every": 250,
+            "amount": 55
+          }
+        }
       ]
     },
     {
@@ -1560,7 +2788,13 @@
       "rotatable": false,
       "buildIds": ["poison"],
       "cooldown": 4,
-      "effects": [{ "kind": "rupture-poison", "fraction": 0.35, "damagePerStack": 17 }]
+      "effects": [
+        {
+          "kind": "rupture-poison",
+          "fraction": 0.35,
+          "damagePerStack": 17
+        }
+      ]
     },
     {
       "id": "status-relay",
@@ -1576,14 +2810,22 @@
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "charge", "amount": 1 },
-        { "kind": "damage", "amount": 120 },
+        {
+          "kind": "charge",
+          "amount": 1
+        },
+        {
+          "kind": "damage",
+          "amount": 120
+        },
         {
           "kind": "growth",
           "amount": 8,
           "target": "downstream",
           "stat": "all",
-          "trigger": { "kind": "enemy-poisoned" }
+          "trigger": {
+            "kind": "enemy-poisoned"
+          }
         }
       ]
     },
@@ -1601,30 +2843,59 @@
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "shield", "amount": 170 },
+        {
+          "kind": "shield",
+          "amount": 170
+        },
         {
           "kind": "growth",
           "amount": 15,
           "target": "self",
           "stat": "shield",
-          "trigger": { "kind": "in-cycle" }
+          "trigger": {
+            "kind": "in-cycle"
+          }
         },
         {
           "kind": "growth",
           "amount": 15,
           "target": "downstream",
           "stat": "all",
-          "trigger": { "kind": "in-cycle" }
+          "trigger": {
+            "kind": "in-cycle"
+          }
         }
       ],
       "fusion": {
         "title": "回生コイル",
         "description": "2拍ごとにシールド200と回復60を得る。循環中は自身とこの先の技を18ずつ強化する。",
         "effects": [
-          { "kind": "shield", "amount": 200 },
-          { "kind": "repair", "amount": 60 },
-          { "kind": "growth", "amount": 18, "target": "self", "stat": "shield", "trigger": { "kind": "in-cycle" } },
-          { "kind": "growth", "amount": 18, "target": "downstream", "stat": "all", "trigger": { "kind": "in-cycle" } }
+          {
+            "kind": "shield",
+            "amount": 200
+          },
+          {
+            "kind": "repair",
+            "amount": 60
+          },
+          {
+            "kind": "growth",
+            "amount": 18,
+            "target": "self",
+            "stat": "shield",
+            "trigger": {
+              "kind": "in-cycle"
+            }
+          },
+          {
+            "kind": "growth",
+            "amount": 18,
+            "target": "downstream",
+            "stat": "all",
+            "trigger": {
+              "kind": "in-cycle"
+            }
+          }
         ]
       }
     },
@@ -1642,21 +2913,43 @@
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "damage", "amount": 130, "scaling": { "kind": "straight-line", "every": 1, "amount": 15 } },
+        {
+          "kind": "damage",
+          "amount": 130,
+          "scaling": {
+            "kind": "straight-line",
+            "every": 1,
+            "amount": 15
+          }
+        },
         {
           "kind": "growth",
           "amount": 13,
           "target": "self",
           "stat": "damage",
-          "trigger": { "kind": "straight-line-at-least", "amount": 4 }
+          "trigger": {
+            "kind": "straight-line-at-least",
+            "amount": 4
+          }
         }
       ],
       "fusion": {
         "title": "護路の牙",
         "description": "2拍ごとに160ダメージとシールド70を得る。直線上の技1個につきダメージが18増える。",
         "effects": [
-          { "kind": "damage", "amount": 160, "scaling": { "kind": "straight-line", "every": 1, "amount": 18 } },
-          { "kind": "shield", "amount": 70 }
+          {
+            "kind": "damage",
+            "amount": 160,
+            "scaling": {
+              "kind": "straight-line",
+              "every": 1,
+              "amount": 18
+            }
+          },
+          {
+            "kind": "shield",
+            "amount": 70
+          }
         ]
       }
     },
@@ -1673,7 +2966,16 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 75 }]
+      "effects": [
+        {
+          "kind": "charge",
+          "amount": 1
+        },
+        {
+          "kind": "damage",
+          "amount": 75
+        }
+      ]
     },
     {
       "id": "charge-arrow",
@@ -1688,7 +2990,16 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 80 }]
+      "effects": [
+        {
+          "kind": "charge",
+          "amount": 1
+        },
+        {
+          "kind": "damage",
+          "amount": 80
+        }
+      ]
     },
     {
       "id": "charge-coil",
@@ -1702,7 +3013,12 @@
       "ports": ["west", "east"],
       "rotatable": false,
       "buildIds": ["charge"],
-      "effects": [{ "kind": "charge", "amount": 3 }]
+      "effects": [
+        {
+          "kind": "charge",
+          "amount": 3
+        }
+      ]
     },
     {
       "id": "discharge-bow",
@@ -1717,7 +3033,14 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 3,
-      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 170, "perCharge": 180 }]
+      "effects": [
+        {
+          "kind": "release-charge",
+          "output": "damage",
+          "amount": 170,
+          "perCharge": 180
+        }
+      ]
     },
     {
       "id": "charge-guard",
@@ -1732,7 +3055,16 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "shield", "amount": 175 }]
+      "effects": [
+        {
+          "kind": "charge",
+          "amount": 1
+        },
+        {
+          "kind": "shield",
+          "amount": 175
+        }
+      ]
     },
     {
       "id": "charge-bastion",
@@ -1748,8 +3080,16 @@
       "buildIds": ["charge"],
       "cooldown": 3,
       "effects": [
-        { "kind": "release-charge", "output": "shield", "amount": 210, "perCharge": 200 },
-        { "kind": "repair", "amount": 175 }
+        {
+          "kind": "release-charge",
+          "output": "shield",
+          "amount": 210,
+          "perCharge": 200
+        },
+        {
+          "kind": "repair",
+          "amount": 175
+        }
       ]
     },
     {
@@ -1766,8 +3106,17 @@
       "buildIds": ["poison"],
       "cooldown": 3,
       "effects": [
-        { "kind": "poison", "amount": 50 },
-        { "kind": "poison", "amount": 100, "trigger": { "kind": "in-cycle" } }
+        {
+          "kind": "poison",
+          "amount": 50
+        },
+        {
+          "kind": "poison",
+          "amount": 100,
+          "trigger": {
+            "kind": "in-cycle"
+          }
+        }
       ]
     },
     {
@@ -1784,17 +3133,41 @@
       "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
-        { "kind": "shield", "amount": 160 },
-        { "kind": "shield", "amount": 720, "trigger": { "kind": "all-ports-connected" } }
+        {
+          "kind": "shield",
+          "amount": 160
+        },
+        {
+          "kind": "shield",
+          "amount": 720,
+          "trigger": {
+            "kind": "all-ports-connected"
+          }
+        }
       ],
       "fusion": {
         "title": "転換結界",
         "description": "2拍ごとにシールド160を得る。全接続ならシールド600とダメージ280を追加する。",
         "cooldown": 2,
         "effects": [
-          { "kind": "shield", "amount": 160 },
-          { "kind": "shield", "amount": 600, "trigger": { "kind": "all-ports-connected" } },
-          { "kind": "damage", "amount": 280, "trigger": { "kind": "all-ports-connected" } }
+          {
+            "kind": "shield",
+            "amount": 160
+          },
+          {
+            "kind": "shield",
+            "amount": 600,
+            "trigger": {
+              "kind": "all-ports-connected"
+            }
+          },
+          {
+            "kind": "damage",
+            "amount": 280,
+            "trigger": {
+              "kind": "all-ports-connected"
+            }
+          }
         ]
       }
     },
@@ -1840,7 +3213,10 @@
               "maxStacks": 4
             }
           },
-          { "kind": "amplify", "amount": 100 }
+          {
+            "kind": "amplify",
+            "amount": 100
+          }
         ]
       }
     },
@@ -1888,7 +3264,10 @@
               "maxStacks": 3
             }
           },
-          { "kind": "repair", "amount": 180 }
+          {
+            "kind": "repair",
+            "amount": 180
+          }
         ]
       }
     },
@@ -1960,7 +3339,10 @@
               "maxStacks": 4
             }
           },
-          { "kind": "repair", "amount": 80 }
+          {
+            "kind": "repair",
+            "amount": 80
+          }
         ]
       }
     },
@@ -1977,8 +3359,18 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "effects": [
-        { "kind": "charge", "amount": 6 },
-        { "kind": "charge", "amount": 5, "trigger": { "kind": "straight-line-at-least", "amount": 5 } }
+        {
+          "kind": "charge",
+          "amount": 6
+        },
+        {
+          "kind": "charge",
+          "amount": 5,
+          "trigger": {
+            "kind": "straight-line-at-least",
+            "amount": 5
+          }
+        }
       ]
     },
     {
@@ -1994,7 +3386,14 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 5,
-      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 940, "perCharge": 400 }]
+      "effects": [
+        {
+          "kind": "release-charge",
+          "output": "damage",
+          "amount": 940,
+          "perCharge": 400
+        }
+      ]
     },
     {
       "id": "inscription-stone",
@@ -2006,12 +3405,44 @@
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "east"],
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "inscribe-magic-sigil", "amount": 1, "offsets": [{ "row": 0, "column": 1 }] },
-        { "kind": "shield", "amount": 90 }
-      ]
+        {
+          "kind": "inscribe-magic-sigil",
+          "amount": 1,
+          "offsets": [
+            {
+              "row": 0,
+              "column": 1
+            }
+          ]
+        },
+        {
+          "kind": "shield",
+          "amount": 90
+        }
+      ],
+      "fusion": {
+        "title": "刻印碑・改",
+        "description": "「刻印碑」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "inscribe-magic-sigil",
+            "amount": 1,
+            "offsets": [
+              {
+                "row": 0,
+                "column": 1
+              }
+            ]
+          },
+          {
+            "kind": "shield",
+            "amount": 113
+          }
+        ]
+      }
     },
     {
       "id": "guiding-bolt",
@@ -2023,16 +3454,52 @@
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "inscribe-magic-sigil",
           "amount": 1,
-          "offsets": [{ "row": 0, "column": 1 }, { "row": 0, "column": 2 }]
+          "offsets": [
+            {
+              "row": 0,
+              "column": 1
+            },
+            {
+              "row": 0,
+              "column": 2
+            }
+          ]
         },
-        { "kind": "damage", "amount": 75 }
-      ]
+        {
+          "kind": "damage",
+          "amount": 75
+        }
+      ],
+      "fusion": {
+        "title": "導刻矢・改",
+        "description": "「導刻矢」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "inscribe-magic-sigil",
+            "amount": 1,
+            "offsets": [
+              {
+                "row": 0,
+                "column": 1
+              },
+              {
+                "row": 0,
+                "column": 2
+              }
+            ]
+          },
+          {
+            "kind": "damage",
+            "amount": 94
+          }
+        ]
+      }
     },
     {
       "id": "sigil-blade",
@@ -2044,11 +3511,34 @@
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "east"],
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "damage", "amount": 80, "scaling": { "kind": "magic-sigil-level", "every": 1, "amount": 30 } }
-      ]
+        {
+          "kind": "damage",
+          "amount": 80,
+          "scaling": {
+            "kind": "magic-sigil-level",
+            "every": 1,
+            "amount": 30
+          }
+        }
+      ],
+      "fusion": {
+        "title": "魔紋刃・改",
+        "description": "「魔紋刃」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 100,
+            "scaling": {
+              "kind": "magic-sigil-level",
+              "every": 1,
+              "amount": 38
+            }
+          }
+        ]
+      }
     },
     {
       "id": "guardian-sigil",
@@ -2060,12 +3550,42 @@
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "north"],
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
-        { "kind": "shield", "amount": 150, "scaling": { "kind": "magic-sigil-level", "every": 1, "amount": 40 } },
-        { "kind": "repair", "amount": 60 }
-      ]
+        {
+          "kind": "shield",
+          "amount": 150,
+          "scaling": {
+            "kind": "magic-sigil-level",
+            "every": 1,
+            "amount": 40
+          }
+        },
+        {
+          "kind": "repair",
+          "amount": 60
+        }
+      ],
+      "fusion": {
+        "title": "守護紋・改",
+        "description": "「守護紋」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "shield",
+            "amount": 188,
+            "scaling": {
+              "kind": "magic-sigil-level",
+              "every": 1,
+              "amount": 50
+            }
+          },
+          {
+            "kind": "repair",
+            "amount": 75
+          }
+        ]
+      }
     },
     {
       "id": "twin-inscription",
@@ -2077,16 +3597,52 @@
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
         {
           "kind": "inscribe-magic-sigil",
           "amount": 1,
-          "offsets": [{ "row": 0, "column": 1 }, { "row": -1, "column": 0 }]
+          "offsets": [
+            {
+              "row": 0,
+              "column": 1
+            },
+            {
+              "row": -1,
+              "column": 0
+            }
+          ]
         },
-        { "kind": "damage", "amount": 180 }
-      ]
+        {
+          "kind": "damage",
+          "amount": 180
+        }
+      ],
+      "fusion": {
+        "title": "双刻碑・改",
+        "description": "「双刻碑」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "inscribe-magic-sigil",
+            "amount": 1,
+            "offsets": [
+              {
+                "row": 0,
+                "column": 1
+              },
+              {
+                "row": -1,
+                "column": 0
+              }
+            ]
+          },
+          {
+            "kind": "damage",
+            "amount": 225
+          }
+        ]
+      }
     },
     {
       "id": "thunder-sigil",
@@ -2098,16 +3654,31 @@
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "east"],
-      "buildIds": ["magic-sigil", "charge"],
+      "buildIds": ["charge"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "inscribe-magic-sigil",
           "amount": 1,
-          "offsets": [{ "row": 0, "column": 1 }, { "row": 0, "column": 2 }]
+          "offsets": [
+            {
+              "row": 0,
+              "column": 1
+            },
+            {
+              "row": 0,
+              "column": 2
+            }
+          ]
         },
-        { "kind": "charge", "amount": 1 },
-        { "kind": "damage", "amount": 100 }
+        {
+          "kind": "charge",
+          "amount": 1
+        },
+        {
+          "kind": "damage",
+          "amount": 100
+        }
       ]
     },
     {
@@ -2120,12 +3691,44 @@
       "rarity": "epic",
       "shopWeight": 1,
       "ports": ["west", "south"],
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
-        { "kind": "inscribe-magic-sigil", "amount": 2, "offsets": [{ "row": 1, "column": 0 }] },
-        { "kind": "shield", "amount": 360 }
-      ]
+        {
+          "kind": "inscribe-magic-sigil",
+          "amount": 2,
+          "offsets": [
+            {
+              "row": 1,
+              "column": 0
+            }
+          ]
+        },
+        {
+          "kind": "shield",
+          "amount": 360
+        }
+      ],
+      "fusion": {
+        "title": "集束紋・改",
+        "description": "「集束紋」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "inscribe-magic-sigil",
+            "amount": 3,
+            "offsets": [
+              {
+                "row": 1,
+                "column": 0
+              }
+            ]
+          },
+          {
+            "kind": "shield",
+            "amount": 450
+          }
+        ]
+      }
     },
     {
       "id": "sigil-cannon",
@@ -2138,16 +3741,42 @@
       "shopWeight": 1,
       "ports": ["west"],
       "rotatable": false,
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
         {
           "kind": "damage",
           "amount": 300,
-          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
-          "scaling": { "kind": "magic-sigil-level", "every": 1, "amount": 220 }
+          "trigger": {
+            "kind": "magic-sigil-level-at-least",
+            "amount": 1
+          },
+          "scaling": {
+            "kind": "magic-sigil-level",
+            "every": 1,
+            "amount": 220
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "紋章砲・改",
+        "description": "「紋章砲」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 375,
+            "trigger": {
+              "kind": "magic-sigil-level-at-least",
+              "amount": 1
+            },
+            "scaling": {
+              "kind": "magic-sigil-level",
+              "every": 1,
+              "amount": 275
+            }
+          }
+        ]
+      }
     },
     {
       "id": "resonance-circle",
@@ -2159,14 +3788,21 @@
       "rarity": "epic",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison"],
       "cooldown": 3,
       "effects": [
         {
           "kind": "poison",
           "amount": 30,
-          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
-          "scaling": { "kind": "magic-sigil-count", "every": 1, "amount": 18 }
+          "trigger": {
+            "kind": "magic-sigil-level-at-least",
+            "amount": 1
+          },
+          "scaling": {
+            "kind": "magic-sigil-count",
+            "every": 1,
+            "amount": 18
+          }
         }
       ]
     },
@@ -2181,16 +3817,42 @@
       "shopWeight": 1,
       "ports": ["west"],
       "rotatable": false,
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 4,
       "effects": [
         {
           "kind": "damage",
           "amount": 900,
-          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 3 },
-          "scaling": { "kind": "magic-sigil-level", "every": 1, "amount": 550 }
+          "trigger": {
+            "kind": "magic-sigil-level-at-least",
+            "amount": 3
+          },
+          "scaling": {
+            "kind": "magic-sigil-level",
+            "every": 1,
+            "amount": 550
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "深奥砲・改",
+        "description": "「深奥砲」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 1125,
+            "trigger": {
+              "kind": "magic-sigil-level-at-least",
+              "amount": 3
+            },
+            "scaling": {
+              "kind": "magic-sigil-level",
+              "every": 1,
+              "amount": 688
+            }
+          }
+        ]
+      }
     },
     {
       "id": "all-sigil-resonance",
@@ -2203,126 +3865,266 @@
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["magic-sigil"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 4,
       "effects": [
         {
           "kind": "damage",
           "amount": 300,
-          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
-          "scaling": { "kind": "magic-sigil-count", "every": 1, "amount": 150 }
+          "trigger": {
+            "kind": "magic-sigil-level-at-least",
+            "amount": 1
+          },
+          "scaling": {
+            "kind": "magic-sigil-count",
+            "every": 1,
+            "amount": 150
+          }
         },
         {
           "kind": "shield",
           "amount": 200,
-          "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
-          "scaling": { "kind": "magic-sigil-count", "every": 1, "amount": 50 }
+          "trigger": {
+            "kind": "magic-sigil-level-at-least",
+            "amount": 1
+          },
+          "scaling": {
+            "kind": "magic-sigil-count",
+            "every": 1,
+            "amount": 50
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "万象連環・改",
+        "description": "「万象連環」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 375,
+            "trigger": {
+              "kind": "magic-sigil-level-at-least",
+              "amount": 1
+            },
+            "scaling": {
+              "kind": "magic-sigil-count",
+              "every": 1,
+              "amount": 188
+            }
+          },
+          {
+            "kind": "shield",
+            "amount": 250,
+            "trigger": {
+              "kind": "magic-sigil-level-at-least",
+              "amount": 1
+            },
+            "scaling": {
+              "kind": "magic-sigil-count",
+              "every": 1,
+              "amount": 63
+            }
+          }
+        ]
+      }
     },
     {
       "id": "spirit-blade",
       "code": "ECHO-B",
       "title": "霊響刃",
-      "description": "1拍ごとに20ダメージを与え、周囲8マスの通電した霊響1個につきダメージを9増やす。★はすべての特性を数える。",
+      "description": "1拍ごとに20ダメージを与え、周囲8マスの通電ノード1個につきダメージを9増やす。",
       "glyph": "響",
       "price": 4,
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "east"],
-      "buildIds": ["resonance"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 1,
       "effects": [
         {
           "kind": "damage",
           "amount": 20,
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 9 }
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 9
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "霊響刃・改",
+        "description": "「霊響刃」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 25,
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 11
+            }
+          }
+        ]
+      }
     },
     {
       "id": "echo-arrow",
       "code": "ECHO-A",
       "title": "残響矢",
-      "description": "2拍ごとに60ダメージを与え、周囲8マスの通電した霊響1個につきダメージを15増やす。★はすべての特性を数える。",
+      "description": "2拍ごとに60ダメージを与え、周囲8マスの通電ノード1個につきダメージを15増やす。",
       "glyph": "残",
       "price": 5,
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
-      "buildIds": ["resonance"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "damage",
           "amount": 60,
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 15 }
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 15
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "残響矢・改",
+        "description": "「残響矢」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 75,
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 19
+            }
+          }
+        ]
+      }
     },
     {
       "id": "tuning-stone",
       "code": "TUNE",
       "title": "調律碑",
-      "description": "2拍ごとにシールド60を得て、周囲8マスの通電した霊響1個につきシールドを16増やす。★はすべての特性を数える。",
+      "description": "2拍ごとにシールド60を得て、周囲8マスの通電ノード1個につきシールドを16増やす。",
       "glyph": "律",
       "price": 5,
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "north"],
-      "buildIds": ["resonance"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "shield",
           "amount": 60,
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 16 }
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 16
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "調律碑・改",
+        "description": "「調律碑」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "shield",
+            "amount": 75,
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 20
+            }
+          }
+        ]
+      }
     },
     {
       "id": "harmony-ward",
       "code": "H-WARD",
       "title": "響護壁",
-      "description": "2拍ごとにシールド85を得て、共鳴度1につき20増やす。共鳴度3以上ならHPを60回復する。★はすべての特性を数える。",
+      "description": "2拍ごとにシールド85を得て、共鳴度1につき20増やす。共鳴度3以上ならHPを60回復する。",
       "glyph": "護",
       "price": 7,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "south"],
-      "buildIds": ["resonance"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "shield",
           "amount": 85,
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 20 }
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 20
+          }
         },
         {
           "kind": "repair",
           "amount": 60,
-          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 3 }
+          "trigger": {
+            "kind": "adjacent-powered-at-least",
+            "amount": 3
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "響護壁・改",
+        "description": "「響護壁」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "shield",
+            "amount": 106,
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 25
+            }
+          },
+          {
+            "kind": "repair",
+            "amount": 75,
+            "trigger": {
+              "kind": "adjacent-powered-at-least",
+              "amount": 3
+            }
+          }
+        ]
+      }
     },
     {
       "id": "thunder-echo",
       "code": "TH-ECHO",
       "title": "雷響器",
-      "description": "通電にチャージ1を追加する。2拍ごとに50ダメージを与え、共鳴度1につき15増やす。★はすべての特性を数える。",
+      "description": "通電にチャージ1を追加する。2拍ごとに50ダメージを与え、共鳴度1につき15増やす。",
       "glyph": "雷",
       "price": 8,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "east"],
-      "buildIds": ["resonance", "charge"],
+      "buildIds": ["charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "charge", "amount": 1 },
+        {
+          "kind": "charge",
+          "amount": 1
+        },
         {
           "kind": "damage",
           "amount": 50,
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 15 }
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 15
+          }
         }
       ]
     },
@@ -2330,19 +4132,23 @@
       "id": "venom-chorus",
       "code": "V-CHOIR",
       "title": "蝕響矢",
-      "description": "2拍ごとに毒12を与え、共鳴度1につき毒を6増やす。★はすべての特性を数える。",
+      "description": "2拍ごとに毒12を与え、共鳴度1につき毒を6増やす。",
       "glyph": "蝕",
       "price": 8,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
-      "buildIds": ["resonance", "poison"],
+      "buildIds": ["poison"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "poison",
           "amount": 12,
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 6 }
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 6
+          }
         }
       ]
     },
@@ -2350,100 +4156,235 @@
       "id": "resonance-cannon",
       "code": "ECHO-C",
       "title": "霊響砲",
-      "description": "共鳴度4以上で3拍ごとに200ダメージを与え、共鳴度1につき80増やす。★はすべての特性を数える。",
+      "description": "共鳴度4以上で3拍ごとに200ダメージを与え、共鳴度1につき80増やす。",
       "glyph": "砲",
       "price": 14,
       "rarity": "epic",
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["resonance"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
         {
           "kind": "damage",
           "amount": 200,
-          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 4 },
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 80 }
+          "trigger": {
+            "kind": "adjacent-powered-at-least",
+            "amount": 4
+          },
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 80
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "霊響砲・改",
+        "description": "「霊響砲」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 250,
+            "trigger": {
+              "kind": "adjacent-powered-at-least",
+              "amount": 4
+            },
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 100
+            }
+          }
+        ]
+      }
     },
     {
       "id": "harmonic-sanctuary",
       "code": "CHORUS",
       "title": "交響結界",
-      "description": "共鳴度4以上で3拍ごとにシールド150と回復120を得て、共鳴度1につきシールドを60増やす。★はすべての特性を数える。",
+      "description": "共鳴度4以上で3拍ごとにシールド150と回復120を得て、共鳴度1につきシールドを60増やす。",
       "glyph": "奏",
       "price": 13,
       "rarity": "epic",
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["resonance"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
         {
           "kind": "shield",
           "amount": 150,
-          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 4 },
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 60 }
+          "trigger": {
+            "kind": "adjacent-powered-at-least",
+            "amount": 4
+          },
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 60
+          }
         },
         {
           "kind": "repair",
           "amount": 120,
-          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 4 }
+          "trigger": {
+            "kind": "adjacent-powered-at-least",
+            "amount": 4
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "交響結界・改",
+        "description": "「交響結界」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "shield",
+            "amount": 188,
+            "trigger": {
+              "kind": "adjacent-powered-at-least",
+              "amount": 4
+            },
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 75
+            }
+          },
+          {
+            "kind": "repair",
+            "amount": 150,
+            "trigger": {
+              "kind": "adjacent-powered-at-least",
+              "amount": 4
+            }
+          }
+        ]
+      }
     },
     {
       "id": "celestial-echo-cannon",
       "code": "CELEST",
       "title": "天響砲",
-      "description": "共鳴度6以上で4拍ごとに600ダメージを与え、共鳴度1につき160増やす。★はすべての特性を数える。",
+      "description": "共鳴度6以上で4拍ごとに600ダメージを与え、共鳴度1につき160増やす。",
       "glyph": "天",
       "price": 21,
       "rarity": "legendary",
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["resonance"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 4,
       "effects": [
         {
           "kind": "damage",
           "amount": 600,
-          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 6 },
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 160 }
+          "trigger": {
+            "kind": "adjacent-powered-at-least",
+            "amount": 6
+          },
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 160
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "天響砲・改",
+        "description": "「天響砲」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 750,
+            "trigger": {
+              "kind": "adjacent-powered-at-least",
+              "amount": 6
+            },
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 200
+            }
+          }
+        ]
+      }
     },
     {
       "id": "grand-harmony",
       "code": "GRAND",
       "title": "万象交響",
-      "description": "共鳴度8で4拍ごとに攻防を奏で、共鳴度に応じて両方を強化する。★は周囲8マスのすべての特性を数える。",
+      "description": "共鳴度8で4拍ごとに攻防を奏で、共鳴度に応じて両方を強化する。",
       "glyph": "響",
       "price": 22,
       "rarity": "legendary",
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["resonance"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 4,
       "effects": [
         {
           "kind": "damage",
           "amount": 600,
-          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 8 },
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 120 }
+          "trigger": {
+            "kind": "adjacent-powered-at-least",
+            "amount": 8
+          },
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 120
+          }
         },
         {
           "kind": "shield",
           "amount": 300,
-          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 8 },
-          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 60 }
+          "trigger": {
+            "kind": "adjacent-powered-at-least",
+            "amount": 8
+          },
+          "scaling": {
+            "kind": "adjacent-powered",
+            "every": 1,
+            "amount": 60
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "万象交響・改",
+        "description": "「万象交響」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 750,
+            "trigger": {
+              "kind": "adjacent-powered-at-least",
+              "amount": 8
+            },
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 150
+            }
+          },
+          {
+            "kind": "shield",
+            "amount": 375,
+            "trigger": {
+              "kind": "adjacent-powered-at-least",
+              "amount": 8
+            },
+            "scaling": {
+              "kind": "adjacent-powered",
+              "every": 1,
+              "amount": 75
+            }
+          }
+        ]
+      }
     },
     {
       "id": "light-vein-blade",
@@ -2455,9 +4396,24 @@
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "east"],
-      "buildIds": ["light-vein"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 1,
-      "effects": [{ "kind": "damage", "amount": 70 }]
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 70
+        }
+      ],
+      "fusion": {
+        "title": "光脈刃・改",
+        "description": "「光脈刃」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 88
+          }
+        ]
+      }
     },
     {
       "id": "prism-arrow",
@@ -2469,16 +4425,44 @@
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
-      "buildIds": ["light-vein"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "damage",
           "amount": 90,
-          "trigger": { "kind": "branch-at-least", "amount": 2 },
-          "scaling": { "kind": "downstream-count", "every": 1, "amount": 40, "maxStacks": 3 }
+          "trigger": {
+            "kind": "branch-at-least",
+            "amount": 2
+          },
+          "scaling": {
+            "kind": "downstream-count",
+            "every": 1,
+            "amount": 40,
+            "maxStacks": 3
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "枝光矢・改",
+        "description": "「枝光矢」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 113,
+            "trigger": {
+              "kind": "branch-at-least",
+              "amount": 2
+            },
+            "scaling": {
+              "kind": "downstream-count",
+              "every": 1,
+              "amount": 50,
+              "maxStacks": 3
+            }
+          }
+        ]
+      }
     },
     {
       "id": "light-guide",
@@ -2490,9 +4474,32 @@
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "south"],
-      "buildIds": ["light-vein"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "shield", "amount": 100 }, { "kind": "repair", "amount": 50 }]
+      "effects": [
+        {
+          "kind": "shield",
+          "amount": 100
+        },
+        {
+          "kind": "repair",
+          "amount": 50
+        }
+      ],
+      "fusion": {
+        "title": "導光器・改",
+        "description": "「導光器」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "shield",
+            "amount": 125
+          },
+          {
+            "kind": "repair",
+            "amount": 63
+          }
+        ]
+      }
     },
     {
       "id": "thunder-prism",
@@ -2504,15 +4511,30 @@
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
-      "buildIds": ["light-vein", "charge"],
+      "buildIds": ["charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "charge", "amount": 1, "trigger": { "kind": "branch-at-least", "amount": 2 } },
+        {
+          "kind": "charge",
+          "amount": 1,
+          "trigger": {
+            "kind": "branch-at-least",
+            "amount": 2
+          }
+        },
         {
           "kind": "damage",
           "amount": 80,
-          "trigger": { "kind": "branch-at-least", "amount": 2 },
-          "scaling": { "kind": "downstream-count", "every": 1, "amount": 30, "maxStacks": 3 }
+          "trigger": {
+            "kind": "branch-at-least",
+            "amount": 2
+          },
+          "scaling": {
+            "kind": "downstream-count",
+            "every": 1,
+            "amount": 30,
+            "maxStacks": 3
+          }
         }
       ]
     },
@@ -2526,14 +4548,22 @@
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
-      "buildIds": ["light-vein", "poison"],
+      "buildIds": ["poison"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "poison",
           "amount": 18,
-          "trigger": { "kind": "branch-at-least", "amount": 2 },
-          "scaling": { "kind": "downstream-count", "every": 1, "amount": 9, "maxStacks": 3 }
+          "trigger": {
+            "kind": "branch-at-least",
+            "amount": 2
+          },
+          "scaling": {
+            "kind": "downstream-count",
+            "every": 1,
+            "amount": 9,
+            "maxStacks": 3
+          }
         }
       ]
     },
@@ -2548,17 +4578,60 @@
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["light-vein"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
         {
           "kind": "shield",
           "amount": 90,
-          "trigger": { "kind": "branch-at-least", "amount": 2 },
-          "scaling": { "kind": "downstream-count", "every": 1, "amount": 30, "maxStacks": 3 }
+          "trigger": {
+            "kind": "branch-at-least",
+            "amount": 2
+          },
+          "scaling": {
+            "kind": "downstream-count",
+            "every": 1,
+            "amount": 30,
+            "maxStacks": 3
+          }
         },
-        { "kind": "amplify", "amount": 90, "trigger": { "kind": "branch-at-least", "amount": 2 } }
-      ]
+        {
+          "kind": "amplify",
+          "amount": 90,
+          "trigger": {
+            "kind": "branch-at-least",
+            "amount": 2
+          }
+        }
+      ],
+      "fusion": {
+        "title": "輝叉術・改",
+        "description": "「輝叉術」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "shield",
+            "amount": 113,
+            "trigger": {
+              "kind": "branch-at-least",
+              "amount": 2
+            },
+            "scaling": {
+              "kind": "downstream-count",
+              "every": 1,
+              "amount": 38,
+              "maxStacks": 3
+            }
+          },
+          {
+            "kind": "amplify",
+            "amount": 113,
+            "trigger": {
+              "kind": "branch-at-least",
+              "amount": 2
+            }
+          }
+        ]
+      }
     },
     {
       "id": "branchlight-barrage",
@@ -2571,16 +4644,44 @@
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["light-vein"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
         {
           "kind": "damage",
           "amount": 420,
-          "trigger": { "kind": "branch-at-least", "amount": 2 },
-          "scaling": { "kind": "downstream-count", "every": 1, "amount": 110, "maxStacks": 3 }
+          "trigger": {
+            "kind": "branch-at-least",
+            "amount": 2
+          },
+          "scaling": {
+            "kind": "downstream-count",
+            "every": 1,
+            "amount": 110,
+            "maxStacks": 3
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "枝光連弩・改",
+        "description": "「枝光連弩」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 525,
+            "trigger": {
+              "kind": "branch-at-least",
+              "amount": 2
+            },
+            "scaling": {
+              "kind": "downstream-count",
+              "every": 1,
+              "amount": 138,
+              "maxStacks": 3
+            }
+          }
+        ]
+      }
     },
     {
       "id": "convergence-cannon",
@@ -2592,16 +4693,44 @@
       "rarity": "epic",
       "shopWeight": 1,
       "ports": ["north", "south", "east"],
-      "buildIds": ["light-vein"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 3,
       "effects": [
         {
           "kind": "damage",
           "amount": 220,
-          "trigger": { "kind": "merge-at-least", "amount": 2 },
-          "scaling": { "kind": "upstream-count", "every": 1, "amount": 75, "maxStacks": 3 }
+          "trigger": {
+            "kind": "merge-at-least",
+            "amount": 2
+          },
+          "scaling": {
+            "kind": "upstream-count",
+            "every": 1,
+            "amount": 75,
+            "maxStacks": 3
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "収光砲・改",
+        "description": "「収光砲」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 275,
+            "trigger": {
+              "kind": "merge-at-least",
+              "amount": 2
+            },
+            "scaling": {
+              "kind": "upstream-count",
+              "every": 1,
+              "amount": 94,
+              "maxStacks": 3
+            }
+          }
+        ]
+      }
     },
     {
       "id": "myriad-light-array",
@@ -2614,16 +4743,44 @@
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["light-vein"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 4,
       "effects": [
         {
           "kind": "damage",
           "amount": 1000,
-          "trigger": { "kind": "branch-at-least", "amount": 3 },
-          "scaling": { "kind": "downstream-count", "every": 1, "amount": 240, "maxStacks": 3 }
+          "trigger": {
+            "kind": "branch-at-least",
+            "amount": 3
+          },
+          "scaling": {
+            "kind": "downstream-count",
+            "every": 1,
+            "amount": 240,
+            "maxStacks": 3
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "万条光陣・改",
+        "description": "「万条光陣」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 1250,
+            "trigger": {
+              "kind": "branch-at-least",
+              "amount": 3
+            },
+            "scaling": {
+              "kind": "downstream-count",
+              "every": 1,
+              "amount": 300,
+              "maxStacks": 3
+            }
+          }
+        ]
+      }
     },
     {
       "id": "solar-convergence",
@@ -2636,16 +4793,44 @@
       "shopWeight": 1,
       "ports": ["west", "north", "east", "south"],
       "rotatable": false,
-      "buildIds": ["light-vein"],
+      "buildIds": ["poison", "charge"],
       "cooldown": 4,
       "effects": [
         {
           "kind": "damage",
           "amount": 500,
-          "trigger": { "kind": "merge-at-least", "amount": 3 },
-          "scaling": { "kind": "upstream-count", "every": 1, "amount": 160, "maxStacks": 3 }
+          "trigger": {
+            "kind": "merge-at-least",
+            "amount": 3
+          },
+          "scaling": {
+            "kind": "upstream-count",
+            "every": 1,
+            "amount": 160,
+            "maxStacks": 3
+          }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "天光収束砲・改",
+        "description": "「天光収束砲」の数値効果を1.25倍にする。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 625,
+            "trigger": {
+              "kind": "merge-at-least",
+              "amount": 3
+            },
+            "scaling": {
+              "kind": "upstream-count",
+              "every": 1,
+              "amount": 200,
+              "maxStacks": 3
+            }
+          }
+        ]
+      }
     }
   ],
   "startingRack": [],

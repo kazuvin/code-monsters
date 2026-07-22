@@ -11,7 +11,7 @@ import type {
   SkillFusionRules,
 } from './types';
 
-type ConnectionBlock = Pick<BlockDefinition, 'id' | 'ports' | 'buildIds'>;
+type ConnectionBlock = Pick<BlockDefinition, 'id' | 'ports'>;
 
 const DIRECTIONS: Direction[] = ['north', 'east', 'south', 'west'];
 const VECTORS: Record<Direction, CellPosition> = {
@@ -110,22 +110,20 @@ export function connectedNeighbors(
   });
 }
 
-export function adjacentPoweredBuildNeighbors(
+export function adjacentPoweredNeighbors(
   board: CircuitBoard,
   blocks: ConnectionBlock[],
   analysis: Pick<CircuitAnalysis, 'poweredCells'>,
   position: CellPosition,
-  buildId: string,
 ): CellPosition[] {
   const current = definitionAt(board, blocks, position);
   const key = cellKey(position);
   if (!current || !analysis.poweredCells.has(key)) return [];
-  const countsEveryBuild = (current.placed.stars ?? 0) > 0;
   return SURROUNDING_VECTORS.flatMap((vector) => {
     const neighborPosition = { row: position.row + vector.row, column: position.column + vector.column };
     const neighbor = definitionAt(board, blocks, neighborPosition);
     if (!neighbor || !analysis.poweredCells.has(cellKey(neighborPosition))) return [];
-    return countsEveryBuild || neighbor.definition.buildIds?.includes(buildId) ? [neighborPosition] : [];
+    return [neighborPosition];
   }).sort((left, right) => cellKey(left).localeCompare(cellKey(right)));
 }
 
@@ -158,7 +156,7 @@ export type CircuitTriggerContext = {
   allPortsConnected: boolean;
   straightLineLength: number;
   magicSigilLevel: number;
-  adjacentBuildCounts: Readonly<Record<string, number>>;
+  adjacentPoweredCount: number;
   downstreamCount: number;
   upstreamCount: number;
 };
@@ -406,9 +404,7 @@ export const matchesCircuitTrigger = (trigger: CircuitEffectTrigger, context: Ci
   if (trigger.kind === 'in-cycle') return context.inCycle;
   if (trigger.kind === 'all-ports-connected') return context.allPortsConnected;
   if (trigger.kind === 'magic-sigil-level-at-least') return context.magicSigilLevel >= trigger.amount;
-  if (trigger.kind === 'adjacent-build-at-least') {
-    return (context.adjacentBuildCounts[trigger.buildId] ?? 0) >= trigger.amount;
-  }
+  if (trigger.kind === 'adjacent-powered-at-least') return context.adjacentPoweredCount >= trigger.amount;
   if (trigger.kind === 'branch-at-least') return context.downstreamCount >= trigger.amount;
   if (trigger.kind === 'merge-at-least') return context.upstreamCount >= trigger.amount;
   return context.straightLineLength >= trigger.amount;
@@ -449,18 +445,15 @@ export function evaluateCircuitCondition(
   const straightLength = analysis.straightLineLength.get(key) ?? 0;
   const downstream = analysis.downstreamCells.get(key) ?? [];
   const upstream = analysis.upstreamCells.get(key) ?? [];
-  const adjacentBuildNeighbors =
-    trigger.kind === 'adjacent-build-at-least'
-      ? adjacentPoweredBuildNeighbors(board, blocks, analysis, position, trigger.buildId)
-      : [];
+  const adjacentPowered =
+    trigger.kind === 'adjacent-powered-at-least' ? adjacentPoweredNeighbors(board, blocks, analysis, position) : [];
   const context: CircuitTriggerContext = {
     pathLength,
     inCycle: analysis.cyclicCells.has(key),
     allPortsConnected: analysis.fullyConnectedCells.has(key),
     straightLineLength: straightLength,
     magicSigilLevel,
-    adjacentBuildCounts:
-      trigger.kind === 'adjacent-build-at-least' ? { [trigger.buildId]: adjacentBuildNeighbors.length } : {},
+    adjacentPoweredCount: adjacentPowered.length,
     downstreamCount: downstream.length,
     upstreamCount: upstream.length,
   };
@@ -502,13 +495,13 @@ export function evaluateCircuitCondition(
       contributingCells: [key, ...magicSigilSources].sort(),
     };
   }
-  if (trigger.kind === 'adjacent-build-at-least') {
+  if (trigger.kind === 'adjacent-powered-at-least') {
     return {
       trigger,
       met,
-      current: adjacentBuildNeighbors.length,
+      current: adjacentPowered.length,
       required: trigger.amount,
-      contributingCells: [key, ...adjacentBuildNeighbors.map(cellKey)].sort(),
+      contributingCells: [key, ...adjacentPowered.map(cellKey)].sort(),
     };
   }
   if (trigger.kind === 'branch-at-least') {

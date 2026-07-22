@@ -162,8 +162,8 @@ export function validateGameData(data: GameData): string[] {
   );
   probabilityFormulaValue('conditionAvailability.magicSigilBase', balanceFormula.conditionAvailability.magicSigilBase);
   probabilityFormulaValue(
-    'conditionAvailability.adjacentBuildBase',
-    balanceFormula.conditionAvailability.adjacentBuildBase,
+    'conditionAvailability.adjacentPoweredBase',
+    balanceFormula.conditionAvailability.adjacentPoweredBase,
   );
   probabilityFormulaValue('conditionAvailability.branchBase', balanceFormula.conditionAvailability.branchBase);
   probabilityFormulaValue('conditionAvailability.mergeBase', balanceFormula.conditionAvailability.mergeBase);
@@ -172,7 +172,10 @@ export function validateGameData(data: GameData): string[] {
     ['straightLinePenaltyPerRequiredNode', balanceFormula.conditionAvailability.straightLinePenaltyPerRequiredNode],
     ['allPortsConnectedPenaltyPerPort', balanceFormula.conditionAvailability.allPortsConnectedPenaltyPerPort],
     ['magicSigilPenaltyPerRequiredLevel', balanceFormula.conditionAvailability.magicSigilPenaltyPerRequiredLevel],
-    ['adjacentBuildPenaltyPerRequiredNode', balanceFormula.conditionAvailability.adjacentBuildPenaltyPerRequiredNode],
+    [
+      'adjacentPoweredPenaltyPerRequiredNode',
+      balanceFormula.conditionAvailability.adjacentPoweredPenaltyPerRequiredNode,
+    ],
     ['branchPenaltyPerRequiredRoute', balanceFormula.conditionAvailability.branchPenaltyPerRequiredRoute],
     ['mergePenaltyPerRequiredRoute', balanceFormula.conditionAvailability.mergePenaltyPerRequiredRoute],
   ];
@@ -332,19 +335,10 @@ export function validateGameData(data: GameData): string[] {
       }
       if (
         'trigger' in effect &&
-        effect.trigger?.kind === 'adjacent-build-at-least' &&
+        effect.trigger?.kind === 'adjacent-powered-at-least' &&
         (effect.trigger.amount < 1 || effect.trigger.amount > 8)
       ) {
-        errors.push(`block "${block.id}" effect "${effect.kind}" adjacent build count must be between 1 and 8`);
-      }
-      if (
-        'trigger' in effect &&
-        effect.trigger?.kind === 'adjacent-build-at-least' &&
-        !buildIds.has(effect.trigger.buildId)
-      ) {
-        errors.push(
-          `block "${block.id}" effect "${effect.kind}" references unknown adjacent build "${effect.trigger.buildId}"`,
-        );
+        errors.push(`block "${block.id}" effect "${effect.kind}" adjacent powered count must be between 1 and 8`);
       }
       if (
         'trigger' in effect &&
@@ -352,11 +346,6 @@ export function validateGameData(data: GameData): string[] {
         (effect.trigger.amount < 2 || effect.trigger.amount > 3)
       ) {
         errors.push(`block "${block.id}" effect "${effect.kind}" light route count must be between 2 and 3`);
-      }
-      if ('scaling' in effect && effect.scaling?.kind === 'adjacent-build' && !buildIds.has(effect.scaling.buildId)) {
-        errors.push(
-          `block "${block.id}" effect "${effect.kind}" references unknown adjacent build "${effect.scaling.buildId}"`,
-        );
       }
       if (effect.kind === 'inscribe-magic-sigil') {
         if (effect.offsets.length === 0) errors.push(`block "${block.id}" must inscribe at least one cell`);

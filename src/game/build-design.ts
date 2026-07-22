@@ -174,6 +174,9 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
   design.placementPatterns.forEach((pattern) => {
     if (!pattern.title.trim()) errors.push(`placement pattern "${pattern.id}" needs a title`);
     if (!pattern.description.trim()) errors.push(`placement pattern "${pattern.id}" needs a description`);
+    if (!['condition', 'core'].includes(pattern.category)) {
+      errors.push(`placement pattern "${pattern.id}" has invalid category "${pattern.category}"`);
+    }
   });
 
   pushDuplicateErrors(
@@ -267,6 +270,16 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
     if (!placementPatternIds.has(skill.placementPatternId)) {
       errors.push(`skill design "${skill.id}" references unknown placement pattern "${skill.placementPatternId}"`);
     }
+    const placementPattern = design.placementPatterns.find((pattern) => pattern.id === skill.placementPatternId);
+    if (placementPattern?.category === 'core' && !skill.circuitCoreRoles?.length) {
+      errors.push(`skill design "${skill.id}" needs a circuit core role`);
+    }
+    if (placementPattern?.category !== 'core' && skill.circuitCoreRoles) {
+      errors.push(`skill design "${skill.id}" cannot use circuit core roles outside a core`);
+    }
+    skill.circuitCoreRoles?.forEach((role) => {
+      if (!validRoles.has(role)) errors.push(`skill design "${skill.id}" contains unknown circuit core role "${role}"`);
+    });
     if (skill.status === 'playable' && !skill.blockId) {
       errors.push(`playable skill design "${skill.id}" needs a blockId`);
     }
@@ -327,6 +340,17 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
   design.placementPatterns.forEach((pattern) => {
     if (!design.skills.some((skill) => skill.placementPatternId === pattern.id)) {
       errors.push(`placement pattern "${pattern.id}" needs at least one skill`);
+    }
+    if (pattern.category === 'core') {
+      (['starter', 'payoff'] as BuildRole[]).forEach((role) => {
+        if (
+          !design.skills.some(
+            (skill) => skill.placementPatternId === pattern.id && skill.circuitCoreRoles?.includes(role),
+          )
+        ) {
+          errors.push(`circuit core "${pattern.id}" needs role "${role}"`);
+        }
+      });
     }
   });
 
@@ -400,6 +424,15 @@ export function renderBuildMatrixMarkdown(design: BuildDesign): string {
     ...design.axes.map(
       (axis) =>
         `| ${axis.title} | ${axis.description} | ${axis.values.map((value) => `${value.title}（\`${value.id}\`）`).join('、')} |`,
+    ),
+    '',
+    '## 回路コア',
+    '',
+    '| 配置 | 分類 | 役割 |',
+    '| --- | --- | --- |',
+    ...design.placementPatterns.map(
+      (pattern) =>
+        `| ${pattern.title} | ${pattern.category === 'core' ? '回路コア' : '配置条件'} | ${pattern.description} |`,
     ),
     '',
     '## ノードの組み合わせ',

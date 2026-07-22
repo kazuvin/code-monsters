@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adjacentPoweredBuildNeighbors, circuitConditionsForBlock, type CircuitAnalysis } from './circuit';
+import { adjacentPoweredNeighbors, circuitConditionsForBlock, type CircuitAnalysis } from './circuit';
 import { effectScalingBonus } from './skill-progress';
 import type { BlockDefinition, CircuitBoard } from './types';
 
@@ -13,14 +13,13 @@ const blocks: BlockDefinition[] = [
     price: 4,
     rarity: 'common',
     ports: ['west', 'east'],
-    buildIds: ['resonance'],
     cooldown: 1,
     effects: [
       {
         kind: 'damage',
         amount: 10,
-        trigger: { kind: 'adjacent-build-at-least', buildId: 'resonance', amount: 2 },
-        scaling: { kind: 'adjacent-build', buildId: 'resonance', every: 1, amount: 5 },
+        trigger: { kind: 'adjacent-powered-at-least', amount: 2 },
+        scaling: { kind: 'adjacent-powered', every: 1, amount: 5 },
       },
     ],
   },
@@ -33,7 +32,6 @@ const blocks: BlockDefinition[] = [
     price: 4,
     rarity: 'common',
     ports: ['west', 'east'],
-    buildIds: ['resonance'],
     cooldown: 1,
     effects: [{ kind: 'damage', amount: 1 }],
   },
@@ -46,7 +44,6 @@ const blocks: BlockDefinition[] = [
     price: 4,
     rarity: 'common',
     ports: ['west', 'east'],
-    buildIds: ['poison'],
     cooldown: 1,
     effects: [{ kind: 'damage', amount: 1 }],
   },
@@ -86,17 +83,9 @@ const analysis: CircuitAnalysis = {
 };
 
 describe('spirit resonance adjacency', () => {
-  it('counts powered members of the configured build in all eight surrounding cells', () => {
+  it('counts every powered node in all eight surrounding cells regardless of trait', () => {
     expect(
-      adjacentPoweredBuildNeighbors(boardFor(0), blocks, analysis, { row: 1, column: 1 }, 'resonance').map(
-        ({ row, column }) => `${row}:${column}`,
-      ),
-    ).toEqual(['0:0', '0:1', '1:2', '2:0', '2:2']);
-  });
-
-  it('lets a starred skill count every powered node in all eight surrounding cells', () => {
-    expect(
-      adjacentPoweredBuildNeighbors(boardFor(1), blocks, analysis, { row: 1, column: 1 }, 'resonance').map(
+      adjacentPoweredNeighbors(boardFor(0), blocks, analysis, { row: 1, column: 1 }).map(
         ({ row, column }) => `${row}:${column}`,
       ),
     ).toEqual(['0:0', '0:1', '0:2', '1:0', '1:2', '2:0', '2:1', '2:2']);
@@ -106,25 +95,25 @@ describe('spirit resonance adjacency', () => {
     const [condition] = circuitConditionsForBlock(boardFor(0), blocks, analysis, { row: 1, column: 1 }, blocks[0]);
 
     expect(condition).toEqual({
-      trigger: { kind: 'adjacent-build-at-least', buildId: 'resonance', amount: 2 },
+      trigger: { kind: 'adjacent-powered-at-least', amount: 2 },
       met: true,
-      current: 5,
+      current: 8,
       required: 2,
-      contributingCells: ['0:0', '0:1', '1:1', '1:2', '2:0', '2:2'],
+      contributingCells: ['0:0', '0:1', '0:2', '1:0', '1:1', '1:2', '2:0', '2:1', '2:2'],
     });
   });
 
   it('uses the requested build count for effect scaling', () => {
     expect(
       effectScalingBonus(
-        { kind: 'adjacent-build', buildId: 'resonance', every: 1, amount: 5 },
+        { kind: 'adjacent-powered', every: 1, amount: 5 },
         {
           enemyPoison: 0,
           pathLength: 0,
           straightLineLength: 0,
           magicSigilLevel: 0,
           magicSigilCount: 0,
-          adjacentBuildCounts: { resonance: 8 },
+          adjacentPoweredCount: 8,
         },
       ),
     ).toBe(40);

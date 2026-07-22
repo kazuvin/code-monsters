@@ -9,7 +9,7 @@ import {
 import { createBattle, createPlayback } from './core/battle';
 import { createBattleReport, type BattleReport, type TeamBattleReport } from './core/battle-report';
 import {
-  adjacentPoweredBuildNeighbors,
+  adjacentPoweredNeighbors,
   analyzeCircuit,
   analyzeMagicSigils,
   axisValueCountKey,
@@ -51,6 +51,7 @@ import type {
   CircuitBoard,
   Direction,
   FighterState,
+  PlacementPatternId,
   PlacedBlock,
   Rotation,
   Rarity,
@@ -119,6 +120,12 @@ const magicSigilFixture = query.get('magicSigilFixture');
 const resonanceFixture = query.get('resonanceFixture');
 const lightVeinFixture = query.get('lightVeinFixture');
 const enemyBuildFixture = query.get('enemyBuildFixture');
+const requestedEnemyCoreFixture = query.get('enemyCoreFixture');
+const enemyCoreFixture = GAME_DATA.buildDesign.placementPatterns.some(
+  (pattern) => pattern.category === 'core' && pattern.id === requestedEnemyCoreFixture,
+)
+  ? (requestedEnemyCoreFixture as PlacementPatternId)
+  : null;
 const enemyRequiredBlockFixture = query.get('enemyRequiredBlockFixture');
 const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
@@ -161,36 +168,26 @@ const conditionLabel = (condition: CircuitConditionStatus) => {
   if (condition.trigger.kind === 'in-cycle') return `循環 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'all-ports-connected') return `全接続 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'magic-sigil-level-at-least') return `魔紋 ${condition.current}/${condition.required}`;
-  if (condition.trigger.kind === 'adjacent-build-at-least') return `共鳴 ${condition.current}/${condition.required}`;
+  if (condition.trigger.kind === 'adjacent-powered-at-least') return `共鳴 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'branch-at-least') return `分岐 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'merge-at-least') return `合流 ${condition.current}/${condition.required}`;
   return `直線 ${condition.current}/${condition.required}`;
 };
 
-const adjacentBuildIdsForBlock = (block: BlockDefinition) => [
-  ...new Set(
-    block.effects.flatMap((effect) => {
-      const triggerBuildId =
-        'trigger' in effect && effect.trigger?.kind === 'adjacent-build-at-least' ? [effect.trigger.buildId] : [];
-      const scalingBuildId =
-        'scaling' in effect && effect.scaling?.kind === 'adjacent-build' ? [effect.scaling.buildId] : [];
-      return [...triggerBuildId, ...scalingBuildId];
-    }),
-  ),
-];
+const usesAdjacentPoweredCount = (block: BlockDefinition) =>
+  block.effects.some(
+    (effect) =>
+      ('trigger' in effect && effect.trigger?.kind === 'adjacent-powered-at-least') ||
+      ('scaling' in effect && effect.scaling?.kind === 'adjacent-powered'),
+  );
 
-const adjacentBuildCountsForBlock = (
+const adjacentPoweredCountForBlock = (
   board: CircuitBoard,
   analysis: CircuitAnalysis,
   position: CellPosition,
   block: BlockDefinition,
 ) =>
-  Object.fromEntries(
-    adjacentBuildIdsForBlock(block).map((buildId) => [
-      buildId,
-      adjacentPoweredBuildNeighbors(board, GAME_DATA.blocks, analysis, position, buildId).length,
-    ]),
-  );
+  usesAdjacentPoweredCount(block) ? adjacentPoweredNeighbors(board, GAME_DATA.blocks, analysis, position).length : 0;
 
 const poweredAxisCountsForBlock = (board: CircuitBoard, poweredCells: ReadonlySet<string>, block: BlockDefinition) =>
   Object.fromEntries(
@@ -429,17 +426,19 @@ const BlockVisual = ({
   const ports = rotatePorts(block.ports, rotation);
   const traits = axisValuesForBlock(block.id, 'trait');
   const [weapon] = axisValuesForBlock(block.id, 'weapon');
-  const visualEffect = traits.some((trait) => trait.id === 'light-vein')
-    ? 'light-vein'
-    : adjacentBuildIdsForBlock(block).length > 0
-      ? 'resonance'
-      : block.effects.some((effect) => effect.kind === 'inscribe-magic-sigil')
-        ? 'magic-sigil'
-        : block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
-          ? 'charge'
-          : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
-            ? 'poison'
-            : block.effects[0]?.kind;
+  const placementPatternId = skillDesignByBlockId.get(block.id)?.placementPatternId;
+  const visualEffect =
+    placementPatternId === 'light-vein'
+      ? 'light-vein'
+      : placementPatternId === 'resonance'
+        ? 'resonance'
+        : placementPatternId === 'magic-sigil'
+          ? 'magic-sigil'
+          : block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
+            ? 'charge'
+            : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
+              ? 'poison'
+              : block.effects[0]?.kind;
   return (
     <span
       className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${traits.length > 1 ? 'is-hybrid-trait' : ''} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
@@ -955,11 +954,8 @@ const BattleCircuitSummary = ({
                 ? upgradeBlockDefinition(baseBlock, placed?.stars ?? 0, GAME_DATA.rules.skillFusion)
                 : undefined;
               const position = { row: rowIndex, column: columnIndex };
-              const adjacentBuildCounts = block ? adjacentBuildCountsForBlock(board, analysis, position, block) : {};
-              const resonanceCount =
-                block && adjacentBuildIdsForBlock(block).includes('resonance')
-                  ? (adjacentBuildCounts.resonance ?? 0)
-                  : undefined;
+              const adjacentPoweredCount = block ? adjacentPoweredCountForBlock(board, analysis, position, block) : 0;
+              const resonanceCount = block && usesAdjacentPoweredCount(block) ? adjacentPoweredCount : undefined;
               const stateLabel = mergingCells.has(key)
                 ? `合流 効果${GAME_DATA.rules.mergeEffectMultiplier}倍`
                 : activatedCells.has(key)
@@ -983,7 +979,7 @@ const BattleCircuitSummary = ({
                   straightLineLength: analysis.straightLineLength.get(key) ?? 0,
                   magicSigilLevel,
                   magicSigilCount: activeMagicSigilCount,
-                  adjacentBuildCounts,
+                  adjacentPoweredCount,
                   downstreamCount: analysis.downstreamCells.get(key)?.length ?? 0,
                   upstreamCount: analysis.upstreamCells.get(key)?.length ?? 0,
                   poweredAxisCounts: poweredAxisCountsForBlock(board, poweredCells, block),
@@ -1192,11 +1188,15 @@ export function App() {
         budget: earnedCoins,
         bodyLevel,
         ...(enemyBuildFixture ? { buildId: enemyBuildFixture } : {}),
+        ...(enemyCoreFixture ? { circuitCoreId: enemyCoreFixture } : {}),
         ...(enemyRequiredBlockFixture ? { requiredBlockId: enemyRequiredBlockFixture } : {}),
       }),
     [bodyLevel, earnedCoins, run, enemySeed],
   );
   const enemyBuildDesign = GAME_DATA.buildDesign.builds.find((build) => build.id === enemyBuild.buildId);
+  const enemyCoreDesign = GAME_DATA.buildDesign.placementPatterns.find(
+    (pattern) => pattern.id === enemyBuild.circuitCoreId,
+  );
   const preview = useMemo(
     () =>
       createBattle(GAME_DATA, board, enemyBuild.board, {
@@ -1673,16 +1673,14 @@ export function App() {
   );
   const detailMagicSigilCount = countActiveMagicSigils(detailBoard, detailAnalysis, detailMagicSigils);
   const detailMagicSigilLevel = detailCellKey ? (detailMagicSigils.levels.get(detailCellKey) ?? 0) : 0;
-  const detailAdjacentBuildCounts =
+  const detailAdjacentPoweredCount =
     detailBlock && detail?.position
-      ? adjacentBuildCountsForBlock(detailBoard, detailAnalysis, detail.position, detailBlock)
-      : {};
+      ? adjacentPoweredCountForBlock(detailBoard, detailAnalysis, detail.position, detailBlock)
+      : 0;
   const detailResonanceCount =
-    detailBlock && adjacentBuildIdsForBlock(detailBlock).includes('resonance')
-      ? (detailAdjacentBuildCounts.resonance ?? 0)
-      : undefined;
+    detailBlock && usesAdjacentPoweredCount(detailBlock) ? detailAdjacentPoweredCount : undefined;
   const detailIsLightVein = detailBlock
-    ? axisValuesForBlock(detailBlock.id, 'trait').some((value) => value.id === 'light-vein')
+    ? skillDesignByBlockId.get(detailBlock.id)?.placementPatternId === 'light-vein'
     : false;
   const detailDownstreamCount = detailCellKey ? (detailAnalysis.downstreamCells.get(detailCellKey)?.length ?? 0) : 0;
   const detailUpstreamCount = detailCellKey ? (detailAnalysis.upstreamCells.get(detailCellKey)?.length ?? 0) : 0;
@@ -1714,7 +1712,7 @@ export function App() {
         straightLineLength: detailCellKey ? (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) : 0,
         magicSigilLevel: detailMagicSigilLevel,
         magicSigilCount: detailMagicSigilCount,
-        adjacentBuildCounts: detailAdjacentBuildCounts,
+        adjacentPoweredCount: detailAdjacentPoweredCount,
         downstreamCount: detailDownstreamCount,
         upstreamCount: detailUpstreamCount,
         poweredAxisCounts: poweredAxisCountsForBlock(detailBoard, detailPoweredCells, detailBlock),
@@ -1820,13 +1818,13 @@ export function App() {
                           const conditions = conditionStatusesByCell.get(key) ?? [];
                           const conditionSummary = conditions.map(conditionLabel).join('、');
                           const resonanceCount =
-                            block && adjacentBuildIdsForBlock(block).includes('resonance')
-                              ? (adjacentBuildCountsForBlock(
+                            block && usesAdjacentPoweredCount(block)
+                              ? adjacentPoweredCountForBlock(
                                   board,
                                   circuitAnalysis,
                                   { row: rowIndex, column: columnIndex },
                                   block,
-                                ).resonance ?? 0)
+                                )
                               : undefined;
                           return (
                             <div
@@ -2160,7 +2158,9 @@ export function App() {
             <div className="battle-hud-tools">
               <div className="rival-readout">
                 <small>RIVAL BODY LV.{String(enemyBuild.bodyLevel).padStart(2, '0')}</small>
-                <b>{enemyBuildDesign?.title ?? enemyBuild.buildId}</b>
+                <b>
+                  {enemyBuildDesign?.title ?? enemyBuild.buildId} × {enemyCoreDesign?.title ?? enemyBuild.circuitCoreId}
+                </b>
                 <i>
                   {enemyBuild.nodeCount} NODE · {enemyBuild.totalCost}/{enemyBuild.budget} COIN
                 </i>
@@ -2372,7 +2372,7 @@ export function App() {
               {detailResonanceCount !== undefined && (
                 <div className="dialog-resonance-rule">
                   <span>SPIRIT RESONANCE · {detailResonanceCount}/8</span>
-                  周囲8マスの通電した霊響を数える。★は特性を問わず、すべての通電ノードを数える。
+                  周囲8マスにある、特性を問わないすべての通電ノードを数える。
                 </div>
               )}
               {detailIsLightVein && detail?.position && (

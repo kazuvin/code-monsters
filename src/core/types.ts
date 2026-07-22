@@ -27,7 +27,7 @@ export type EffectTrigger =
   | { kind: 'all-ports-connected' }
   | { kind: 'straight-line-at-least'; amount: number }
   | { kind: 'magic-sigil-level-at-least'; amount: number }
-  | { kind: 'adjacent-build-at-least'; buildId: string; amount: number }
+  | { kind: 'adjacent-powered-at-least'; amount: number }
   | { kind: 'branch-at-least'; amount: number }
   | { kind: 'merge-at-least'; amount: number };
 
@@ -40,7 +40,7 @@ export type EffectScaling = (
   | { kind: 'magic-sigil-level' }
   | { kind: 'magic-sigil-count' }
   | { kind: 'powered-axis'; axisId: string; valueId: string }
-  | { kind: 'adjacent-build'; buildId: string }
+  | { kind: 'adjacent-powered' }
   | { kind: 'downstream-count' }
   | { kind: 'upstream-count' }
 ) & { every: number; amount: number; maxStacks?: number };
@@ -151,6 +151,7 @@ export type SkillDesignDefinition = {
   scope: SkillDesignScope;
   sharedSynergies: string[];
   placementPatternId: PlacementPatternId;
+  circuitCoreRoles?: BuildRole[];
   axisLinks: SkillAxisLink[];
   buildLinks: SkillBuildLink[];
 };
@@ -172,6 +173,7 @@ export type BuildDesign = {
     id: PlacementPatternId;
     title: string;
     description: string;
+    category: 'condition' | 'core';
   }>;
   axes: BuildAxisDefinition[];
   builds: BuildDefinition[];
@@ -216,7 +218,7 @@ export type BalanceFormulaRules = {
     straightLineLength: number;
     magicSigilLevel: number;
     magicSigilCount: number;
-    adjacentBuildCount: number;
+    adjacentPoweredCount: number;
     downstreamCount: number;
     upstreamCount: number;
     poweredAxisCount: number;
@@ -242,8 +244,8 @@ export type BalanceFormulaRules = {
     allPortsConnectedPenaltyPerPort: number;
     magicSigilBase: number;
     magicSigilPenaltyPerRequiredLevel: number;
-    adjacentBuildBase: number;
-    adjacentBuildPenaltyPerRequiredNode: number;
+    adjacentPoweredBase: number;
+    adjacentPoweredPenaltyPerRequiredNode: number;
     branchBase: number;
     branchPenaltyPerRequiredRoute: number;
     mergeBase: number;
