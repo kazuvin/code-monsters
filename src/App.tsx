@@ -858,6 +858,12 @@ const BattleCircuitSummary = ({
   const conductingCells = new Set(pulseCells);
   const activatedCells = new Set(skillEvents.map((event) => `${event.row}:${event.column}`));
   const mergingCells = new Set([...analysis.mergeCells].filter((key) => activatedCells.has(key)));
+  const coinEarnedByCell = new Map<string, number>();
+  skillEvents.forEach((event) => {
+    if (event.kind !== 'coin') return;
+    const key = `${event.row}:${event.column}`;
+    coinEarnedByCell.set(key, (coinEarnedByCell.get(key) ?? 0) + event.value);
+  });
   const portFlowsByCell = new Map<string, Partial<Record<Direction, PortFlow>>>();
   const setPortFlow = (key: string, direction: Direction, flow: PortFlow) => {
     const current = portFlowsByCell.get(key) ?? {};
@@ -921,6 +927,7 @@ const BattleCircuitSummary = ({
                 );
               }
               const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
+              const coinEarned = coinEarnedByCell.get(key) ?? 0;
               const baseBlock = placed ? blockById.get(placed.blockId) : undefined;
               const block = baseBlock
                 ? upgradeBlockDefinition(baseBlock, placed?.stars ?? 0, GAME_DATA.rules.skillFusion)
@@ -976,7 +983,7 @@ const BattleCircuitSummary = ({
                     data-merge={analysis.mergeCells.has(key) ? 'true' : undefined}
                     data-magic-sigil-level={magicSigilLevel || undefined}
                     data-resonance-count={resonanceCount}
-                    aria-label={`${label}の${block.title} ${stateLabel}${magicSigilLabel}${conditionSummary ? ` 条件 ${conditionSummary}` : ''}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
+                    aria-label={`${label}の${block.title} ${stateLabel}${magicSigilLabel}${coinEarned > 0 ? ` コイン +${coinEarned}` : ''}${conditionSummary ? ` 条件 ${conditionSummary}` : ''}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
                     aria-haspopup="dialog"
                     onPointerEnter={() => conditions.length > 0 && setConditionPreviewKey(key)}
                     onPointerLeave={() => setConditionPreviewKey((current) => (current === key ? null : current))}
@@ -1006,6 +1013,11 @@ const BattleCircuitSummary = ({
                     />
                     {mergingCells.has(key) && (
                       <b className="block-merge-chip">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
+                    )}
+                    {coinEarned > 0 && (
+                      <b className="block-coin-chip" aria-hidden="true">
+                        +{coinEarned}
+                      </b>
                     )}
                     {conductingCells.has(key) && (chargeByCell.get(key) ?? 0) > 0 && (
                       <b className="block-charge-chip">CHG {chargeByCell.get(key)}</b>

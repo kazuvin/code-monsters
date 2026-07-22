@@ -4690,6 +4690,23 @@ button:focus-visible {
   box-shadow: 2px 2px 0 #07161d;
 }
 
+.block-coin-chip {
+  position: absolute;
+  z-index: 10;
+  top: -3px;
+  right: -3px;
+  min-width: 13px;
+  padding: 1px 2px;
+  border: 1px solid #ffe083;
+  color: #171006;
+  background: var(--amber);
+  font-size: 6px;
+  line-height: 1;
+  text-align: center;
+  box-shadow: 1px 1px 0 #4a2c0d;
+  pointer-events: none;
+}
+
 @keyframes circuit-arrival {
   0% {
     filter: brightness(0.55);

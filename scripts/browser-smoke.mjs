@@ -841,6 +841,58 @@ if ((await fusion.locator('.rack-block .skill-star').count()) !== 1) {
   throw new Error('The fused skill is not retained with a star marker');
 }
 
+const economy = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
+economy.on('pageerror', (error) => errors.push(error.message));
+economy.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+const economyTarget = new URL(target);
+economyTarget.searchParams.set('fusionFixture', 'salvage-blade');
+await economy.goto(economyTarget.toString(), { waitUntil: 'networkidle' });
+await longDrag(
+  economy,
+  economy.locator('.rack-block').filter({ hasText: '回収刃' }),
+  economy.locator('[data-row="2"][data-column="3"]'),
+);
+const placedEconomyNode = economy.locator('[data-row="2"][data-column="3"] .block-button');
+if ((await placedEconomyNode.count()) !== 1 || !(await placedEconomyNode.textContent())?.includes('収')) {
+  throw new Error('Coin skill fixture was not placed next to the heart');
+}
+await economy.clock.install();
+await economy.getByRole('button', { name: /戦闘開始/ }).click();
+await economy.locator('.battle-screen').waitFor();
+await economy.clock.runFor(481);
+const coinChip = economy.locator('.battle-circuit-summary.team-player [data-cell-key="2:3"] .block-coin-chip');
+if ((await coinChip.count()) !== 1) {
+  const battleCell = economy.locator('.battle-circuit-summary.team-player [data-cell-key="2:3"]');
+  throw new Error(
+    `Coin skill activation did not show an earned amount: ${JSON.stringify({
+      label: await battleCell.getAttribute('aria-label'),
+      pulseStep: await battleCell.getAttribute('data-pulse-step'),
+      activated: await battleCell.getAttribute('data-activated'),
+    })}`,
+  );
+}
+if ((await coinChip.textContent())?.trim() !== '+1') {
+  throw new Error(`Coin skill does not show its earned amount: ${await coinChip.textContent()}`);
+}
+const coinChipPosition = await economy
+  .locator('.battle-circuit-summary.team-player [data-cell-key="2:3"]')
+  .evaluate((cell) => {
+    const cellBox = cell.getBoundingClientRect();
+    const chipBox = cell.querySelector('.block-coin-chip')?.getBoundingClientRect();
+    return chipBox
+      ? {
+          rightOfCenter: chipBox.left + chipBox.width / 2 > cellBox.left + cellBox.width / 2,
+          aboveCenter: chipBox.top + chipBox.height / 2 < cellBox.top + cellBox.height / 2,
+        }
+      : null;
+  });
+if (!coinChipPosition?.rightOfCenter || !coinChipPosition.aboveCenter) {
+  throw new Error(`Coin earned amount is not in the node's top-right corner: ${JSON.stringify(coinChipPosition)}`);
+}
+await economy.screenshot({ path: '/tmp/code-monsters-coin-chip.png', fullPage: true });
+
 const magicSigil = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 magicSigil.on('pageerror', (error) => errors.push(error.message));
 magicSigil.on('console', (message) => {
@@ -999,6 +1051,7 @@ console.log(
         'loss-reward',
         'fusion-desktop',
         'fusion-mobile',
+        'coin-chip',
         'magic-sigil-desktop',
         'magic-sigil-mobile',
         'magic-sigil-battle',
