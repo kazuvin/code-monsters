@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeCircuit, findPoweredCells, rotatePorts } from './circuit';
+import {
+  analyzeCircuit,
+  circuitConditionsForBlock,
+  evaluateCircuitCondition,
+  findPoweredCells,
+  rotatePorts,
+} from './circuit';
 import type { CircuitBoard, Direction } from './types';
 import { GAME_DATA } from '../game/game-data';
 
@@ -122,6 +128,98 @@ describe('circuit connectivity', () => {
     expect(analysis.fullyConnectedCells).toContain('1:1');
     expect(analysis.straightLineLength.get('1:1')).toBe(3);
     expect(analysis.straightLineLength.get('0:1')).toBe(2);
+  });
+
+  it('reports topology-condition progress and the cells that satisfy it', () => {
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'line', ports: ['west', 'east'] },
+      { id: 'junction', ports: ['west', 'north', 'east'] },
+      { id: 'cap', ports: ['south'] },
+    ];
+    const board: CircuitBoard = [
+      [null, { blockId: 'cap', rotation: 0 }, null],
+      [
+        { blockId: 'line', rotation: 0 },
+        { blockId: 'junction', rotation: 0 },
+        { blockId: 'line', rotation: 0 },
+      ],
+      [null, null, null],
+    ];
+    const analysis = analyzeCircuit(board, blocks, 1);
+
+    expect(
+      evaluateCircuitCondition(
+        board,
+        blocks,
+        analysis,
+        { row: 1, column: 1 },
+        {
+          kind: 'straight-line-at-least',
+          amount: 3,
+        },
+      ),
+    ).toEqual({
+      trigger: { kind: 'straight-line-at-least', amount: 3 },
+      met: true,
+      current: 3,
+      required: 3,
+      contributingCells: ['1:0', '1:1', '1:2'],
+    });
+    expect(
+      evaluateCircuitCondition(
+        board,
+        blocks,
+        analysis,
+        { row: 1, column: 1 },
+        {
+          kind: 'all-ports-connected',
+        },
+      ),
+    ).toEqual({
+      trigger: { kind: 'all-ports-connected' },
+      met: true,
+      current: 3,
+      required: 3,
+      contributingCells: ['0:1', '1:0', '1:1', '1:2'],
+    });
+    expect(
+      circuitConditionsForBlock(
+        board,
+        blocks,
+        analysis,
+        { row: 1, column: 1 },
+        {
+          effects: [
+            { kind: 'damage', amount: 1, trigger: { kind: 'straight-line-at-least', amount: 3 } },
+            { kind: 'shield', amount: 1, trigger: { kind: 'straight-line-at-least', amount: 3 } },
+            { kind: 'damage', amount: 1, trigger: { kind: 'enemy-poisoned' } },
+          ],
+        },
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('keeps an incomplete straight-line condition visible as progress', () => {
+    const blocks: Array<{ id: string; ports: Direction[] }> = [{ id: 'line', ports: ['west', 'east'] }];
+    const board: CircuitBoard = [
+      [null, null, null],
+      [{ blockId: 'line', rotation: 0 }, { blockId: 'line', rotation: 0 }, null],
+      [null, null, null],
+    ];
+    const analysis = analyzeCircuit(board, blocks, 1);
+
+    expect(
+      evaluateCircuitCondition(
+        board,
+        blocks,
+        analysis,
+        { row: 1, column: 1 },
+        {
+          kind: 'straight-line-at-least',
+          amount: 3,
+        },
+      ),
+    ).toMatchObject({ met: false, current: 2, required: 3, contributingCells: ['1:0', '1:1'] });
   });
 
   it('can build a reachable cycle from the playable poison skills', () => {

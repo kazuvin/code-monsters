@@ -8,7 +8,13 @@ import {
 } from 'react';
 import { createBattle, createPlayback } from './core/battle';
 import { createBattleReport, type BattleReport, type TeamBattleReport } from './core/battle-report';
-import { analyzeCircuit, calculateChargeByCell, rotatePorts } from './core/circuit';
+import {
+  analyzeCircuit,
+  calculateChargeByCell,
+  circuitConditionsForBlock,
+  rotatePorts,
+  type CircuitConditionStatus,
+} from './core/circuit';
 import { damageTierFor, type DamageTier } from './core/combat-presentation';
 import { battleReward } from './core/economy';
 import { generateEnemyBuild } from './core/enemy-builder';
@@ -92,6 +98,7 @@ const hasFixtureSeed = Number.isInteger(fixtureSeed) && fixtureSeed > 0;
 const initialSeed = hasFixtureSeed ? fixtureSeed : randomShopSeed();
 const nextShopSeed = (current: number, step = 1) => (hasFixtureSeed ? current + step : randomShopSeed());
 const fusionFixtureBlockId = query.get('fusionFixture');
+const topologyFixture = query.get('topologyFixture');
 const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
@@ -126,6 +133,39 @@ const FEEDBACK_COPY: Record<FeedbackKind, string> = {
   repair: '回復',
 };
 const FEEDBACK_TIER_ORDER: DamageTier[] = ['small', 'medium', 'large'];
+
+const conditionLabel = (condition: CircuitConditionStatus) => {
+  if (condition.trigger.kind === 'path-length-at-least') return `経路 ${condition.current}/${condition.required}`;
+  if (condition.trigger.kind === 'in-cycle') return `循環 ${condition.current}/${condition.required}`;
+  if (condition.trigger.kind === 'all-ports-connected') return `全接続 ${condition.current}/${condition.required}`;
+  return `直線 ${condition.current}/${condition.required}`;
+};
+
+const CircuitConditionChips = ({ conditions }: { conditions: CircuitConditionStatus[] }) =>
+  conditions.length > 0 ? (
+    <span className="condition-chip-list" aria-hidden="true">
+      {conditions.map((condition) => (
+        <b
+          className={`condition-chip ${condition.met ? 'is-ready' : 'is-pending'}`}
+          data-condition-kind={condition.trigger.kind}
+          data-condition-state={condition.met ? 'ready' : 'pending'}
+          key={JSON.stringify(condition.trigger)}
+        >
+          {condition.met ? '✓ ' : ''}
+          {conditionLabel(condition)}
+        </b>
+      ))}
+    </span>
+  ) : null;
+
+const createInitialPlayerBoard = () => {
+  const initial = GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
+  if (topologyFixture !== 'straight') return initial;
+  ['charge-blade', 'charge-coil', 'strike', 'charge-line-lance', 'overcharge-cannon'].forEach((blockId, column) => {
+    initial[GAME_DATA.rules.sourceRow][column] = { blockId, rotation: 0 };
+  });
+  return initial;
+};
 
 const axisValuesForBlock = (blockId: string, axisId: string) => {
   const valueIds = skillDesignByBlockId.get(blockId)?.axisLinks.find((link) => link.axisId === axisId)?.valueIds ?? [];
@@ -636,9 +676,25 @@ const BattleCircuitSummary = ({
   enemyPoison: number;
   onSelect: (target: DetailTarget) => void;
 }) => {
+  const [conditionPreviewKey, setConditionPreviewKey] = useState<string | null>(null);
   const poweredCells = new Set(powered);
   const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
   const chargeByCell = calculateChargeByCell(board, GAME_DATA.blocks, analysis, GAME_DATA.rules.skillFusion);
+  const conditionStatusesByCell = new Map<string, CircuitConditionStatus[]>();
+  board.forEach((row, rowIndex) =>
+    row.forEach((placed, columnIndex) => {
+      const block = placed ? blockById.get(placed.blockId) : undefined;
+      if (!block) return;
+      const position = { row: rowIndex, column: columnIndex };
+      const conditions = circuitConditionsForBlock(board, GAME_DATA.blocks, analysis, position, block);
+      if (conditions.length > 0) conditionStatusesByCell.set(`${rowIndex}:${columnIndex}`, conditions);
+    }),
+  );
+  const conditionPreviewCells = new Set(
+    conditionPreviewKey
+      ? (conditionStatusesByCell.get(conditionPreviewKey) ?? []).flatMap((condition) => condition.contributingCells)
+      : [],
+  );
   const skillEvents = events.filter(
     (event): event is Extract<BattleTraceEvent, { blockId: string }> =>
       event.kind !== 'overload' && event.kind !== 'poison-tick' && event.team === team,
@@ -707,6 +763,8 @@ const BattleCircuitSummary = ({
                     : poweredCells.has(key)
                       ? '接続済み'
                       : '未通電';
+              const conditions = conditionStatusesByCell.get(key) ?? [];
+              const conditionSummary = conditions.map(conditionLabel).join('、');
               if (block && placed) {
                 const position = { row: rowIndex, column: columnIndex };
                 const modifiers = incomingSkillModifiers(
@@ -731,15 +789,19 @@ const BattleCircuitSummary = ({
                 return (
                   <button
                     type="button"
-                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${portFlowsByCell.has(key) ? 'is-conducting' : ''} ${activatedCells.has(key) ? 'is-activated' : ''} ${mergingCells.has(key) ? 'is-merging' : ''}`}
+                    className={`battle-circuit-cell battle-circuit-skill ${poweredCells.has(key) ? 'is-powered' : ''} ${portFlowsByCell.has(key) ? 'is-conducting' : ''} ${activatedCells.has(key) ? 'is-activated' : ''} ${mergingCells.has(key) ? 'is-merging' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
                     key={key}
                     data-cell-key={key}
                     data-pulse-step={conductingCells.has(key) ? pulseStep : undefined}
                     data-conducting={portFlowsByCell.has(key) ? 'true' : undefined}
                     data-activated={activatedCells.has(key) ? 'true' : undefined}
                     data-merge={analysis.mergeCells.has(key) ? 'true' : undefined}
-                    aria-label={`${label}の${block.title} ${stateLabel}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
+                    aria-label={`${label}の${block.title} ${stateLabel}${conditionSummary ? ` 条件 ${conditionSummary}` : ''}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
                     aria-haspopup="dialog"
+                    onPointerEnter={() => conditions.length > 0 && setConditionPreviewKey(key)}
+                    onPointerLeave={() => setConditionPreviewKey((current) => (current === key ? null : current))}
+                    onFocus={() => conditions.length > 0 && setConditionPreviewKey(key)}
+                    onBlur={() => setConditionPreviewKey((current) => (current === key ? null : current))}
                     onClick={() =>
                       onSelect({
                         blockId: block.id,
@@ -763,6 +825,7 @@ const BattleCircuitSummary = ({
                     {conductingCells.has(key) && (chargeByCell.get(key) ?? 0) > 0 && (
                       <b className="block-charge-chip">CHG {chargeByCell.get(key)}</b>
                     )}
+                    <CircuitConditionChips conditions={conditions} />
                     {badgeLabels.length > 0 && (
                       <span className="block-buff-list" aria-hidden="true">
                         {skillBuffs.stats.slice(0, 2).map(([stat, value]) => (
@@ -810,9 +873,7 @@ export function App() {
         : []),
     ].map((blockId) => ({ blockId, rotation: 0 })),
   );
-  const [board, setBoard] = useState<CircuitBoard>(() =>
-    GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null))),
-  );
+  const [board, setBoard] = useState<CircuitBoard>(createInitialPlayerBoard);
   const [shop, setShop] = useState(() =>
     createShop(
       shopBlocks,
@@ -831,6 +892,7 @@ export function App() {
   const [reportTeam, setReportTeam] = useState<Team>('player');
   const [fusionReward, setFusionReward] = useState<FusionRewardState | null>(null);
   const [message, setMessage] = useState('ショップで技を選ぶ');
+  const [conditionPreviewKey, setConditionPreviewKey] = useState<string | null>(null);
   const holdTimer = useRef<number | null>(null);
   const pendingDrag = useRef<PendingDrag | null>(null);
   const suppressClick = useRef(false);
@@ -839,6 +901,27 @@ export function App() {
   const ownedBlockIds = useMemo(() => ownedBlockIdsFor(board, rack), [board, rack]);
   const circuitAnalysis = useMemo(() => analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
   const powered = circuitAnalysis.poweredCells;
+  const conditionStatusesByCell = useMemo(() => {
+    const statuses = new Map<string, CircuitConditionStatus[]>();
+    board.forEach((row, rowIndex) =>
+      row.forEach((placed, columnIndex) => {
+        const block = placed ? blockById.get(placed.blockId) : undefined;
+        if (!block) return;
+        const position = { row: rowIndex, column: columnIndex };
+        const conditions = circuitConditionsForBlock(board, GAME_DATA.blocks, circuitAnalysis, position, block);
+        if (conditions.length > 0) statuses.set(`${rowIndex}:${columnIndex}`, conditions);
+      }),
+    );
+    return statuses;
+  }, [board, circuitAnalysis]);
+  const selectedConditionKey =
+    detail?.location === 'board' && detail.position ? `${detail.position.row}:${detail.position.column}` : null;
+  const activeConditionKey = conditionPreviewKey ?? selectedConditionKey;
+  const conditionPreviewCells = new Set(
+    activeConditionKey
+      ? (conditionStatusesByCell.get(activeConditionKey) ?? []).flatMap((condition) => condition.contributingCells)
+      : [],
+  );
   const level = levelForRun(GAME_DATA, run);
   const maxHpBonus = maxHpBonusForLevel(GAME_DATA, level);
   const shopRarityWeights = useMemo(() => rarityWeightsForLevel(GAME_DATA, level), [level]);
@@ -1403,10 +1486,19 @@ export function App() {
                         row.map((placed, columnIndex) => {
                           const block = placed ? blockById.get(placed.blockId) : undefined;
                           const key = `${rowIndex}:${columnIndex}`;
+                          const conditions = conditionStatusesByCell.get(key) ?? [];
+                          const conditionSummary = conditions.map(conditionLabel).join('、');
                           return (
                             <div
-                              className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''}`}
+                              className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
                               data-circuit-cell
+                              data-condition-state={
+                                conditions.length > 0
+                                  ? conditions.some((condition) => condition.met)
+                                    ? 'ready'
+                                    : 'pending'
+                                  : undefined
+                              }
                               data-row={rowIndex}
                               data-column={columnIndex}
                               role="gridcell"
@@ -1415,7 +1507,13 @@ export function App() {
                               {block && placed ? (
                                 <button
                                   className="block-button"
-                                  aria-label={`${block.title}${powered.has(key) ? ' 通電中' : ' 未通電'}。クリックで詳細、長押しで移動`}
+                                  aria-label={`${block.title}${powered.has(key) ? ' 通電中' : ' 未通電'}${conditionSummary ? `。条件 ${conditionSummary}` : ''}。クリックで詳細、長押しで移動`}
+                                  onPointerEnter={() => conditions.length > 0 && setConditionPreviewKey(key)}
+                                  onPointerLeave={() =>
+                                    setConditionPreviewKey((current) => (current === key ? null : current))
+                                  }
+                                  onFocus={() => conditions.length > 0 && setConditionPreviewKey(key)}
+                                  onBlur={() => setConditionPreviewKey((current) => (current === key ? null : current))}
                                   onClick={() =>
                                     openDetail({
                                       blockId: block.id,
@@ -1445,6 +1543,7 @@ export function App() {
                                   {circuitAnalysis.mergeCells.has(key) && (
                                     <b className="merge-preview">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
                                   )}
+                                  <CircuitConditionChips conditions={conditions} />
                                 </button>
                               ) : (
                                 <span className="empty-cell" aria-label="空きマス" />
@@ -1461,6 +1560,9 @@ export function App() {
                     </span>
                     <span>
                       <i className="legend-off" /> 未接続
+                    </span>
+                    <span>
+                      <i className="legend-condition" /> 条件成立
                     </span>
                     <b>長押しで移動</b>
                   </div>

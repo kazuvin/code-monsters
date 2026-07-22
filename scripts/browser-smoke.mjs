@@ -728,6 +728,40 @@ await fusionDialog.waitFor({ state: 'detached' });
 if ((await fusion.locator('.rack-block .skill-star').count()) !== 1) {
   throw new Error('The fused skill is not retained with a star marker');
 }
+
+const topology = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
+topology.on('pageerror', (error) => errors.push(error.message));
+topology.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+const topologyTarget = new URL(target);
+topologyTarget.searchParams.set('topologyFixture', 'straight');
+await topology.goto(topologyTarget.toString(), { waitUntil: 'networkidle' });
+const readyStraightCondition = topology.locator(
+  '.circuit-cell[data-condition-state="ready"] .condition-chip[data-condition-kind="straight-line-at-least"]',
+);
+await readyStraightCondition.waitFor();
+if ((await readyStraightCondition.textContent())?.trim() !== '✓ 直線 5/5') {
+  throw new Error(`Straight-line condition progress is incorrect: ${await readyStraightCondition.textContent()}`);
+}
+const topologySkill = topology.getByRole('button', { name: /^雷路槍/ });
+await topologySkill.hover();
+if ((await topology.locator('.circuit-cell.is-condition-path').count()) !== 5) {
+  throw new Error('Hovering the topology skill does not highlight its five-cell straight line');
+}
+await topology.screenshot({ path: '/tmp/code-monsters-topology-desktop.png', fullPage: true });
+await topology.setViewportSize({ width: 390, height: 844 });
+await topologySkill.focus();
+if ((await topology.locator('.circuit-cell.is-condition-path').count()) !== 5) {
+  throw new Error('Focusing the topology skill does not retain its circuit highlight on mobile');
+}
+const topologyHorizontalOverflow = await topology.evaluate(
+  () => document.documentElement.scrollWidth - window.innerWidth,
+);
+if (topologyHorizontalOverflow > 1) {
+  throw new Error(`Topology fixture overflows mobile viewport by ${topologyHorizontalOverflow}px`);
+}
+await topology.screenshot({ path: '/tmp/code-monsters-topology-mobile.png', fullPage: true });
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
 console.log(
@@ -753,6 +787,8 @@ console.log(
         'loss-reward',
         'fusion-desktop',
         'fusion-mobile',
+        'topology-desktop',
+        'topology-mobile',
       ],
     },
     null,

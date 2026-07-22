@@ -1,4 +1,4 @@
-import { cellKey, type CircuitAnalysis } from './circuit';
+import { cellKey, matchesCircuitTrigger, type CircuitAnalysis } from './circuit';
 import { upgradeBlockDefinition } from './fusion';
 import type {
   ActiveEffect,
@@ -74,10 +74,12 @@ const modifierTriggerMatches = (
   const key = cellKey(position);
   if (!trigger) return true;
   if (trigger.kind === 'enemy-poisoned') return false;
-  if (trigger.kind === 'path-length-at-least') return (analysis.routeLength.get(key) ?? 0) >= trigger.amount;
-  if (trigger.kind === 'in-cycle') return analysis.cyclicCells.has(key);
-  if (trigger.kind === 'all-ports-connected') return analysis.fullyConnectedCells.has(key);
-  return (analysis.straightLineLength.get(key) ?? 0) >= trigger.amount;
+  return matchesCircuitTrigger(trigger, {
+    pathLength: analysis.routeLength.get(key) ?? 0,
+    inCycle: analysis.cyclicCells.has(key),
+    allPortsConnected: analysis.fullyConnectedCells.has(key),
+    straightLineLength: analysis.straightLineLength.get(key) ?? 0,
+  });
 };
 
 export function incomingSkillModifiers(

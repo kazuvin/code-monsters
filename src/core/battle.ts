@@ -1,4 +1,4 @@
-import { analyzeCircuit, calculateChargeByCell, cellKey, cloneBoard } from './circuit';
+import { analyzeCircuit, calculateChargeByCell, cellKey, cloneBoard, matchesCircuitTrigger } from './circuit';
 import { upgradeBlockDefinition } from './fusion';
 import { buffStatForEffect, buffStatsForBlock, effectScalingBonus, incomingSkillModifiers } from './skill-progress';
 import type {
@@ -165,10 +165,7 @@ const triggerMatches = (
 ) => {
   if (!trigger) return true;
   if (trigger.kind === 'enemy-poisoned') return context.enemyPoison > 0;
-  if (trigger.kind === 'path-length-at-least') return context.pathLength >= trigger.amount;
-  if (trigger.kind === 'in-cycle') return context.inCycle;
-  if (trigger.kind === 'all-ports-connected') return context.allPortsConnected;
-  return context.straightLineLength >= trigger.amount;
+  return matchesCircuitTrigger(trigger, context);
 };
 
 const traceEvent = (

@@ -86,8 +86,24 @@ export type CircuitAnalysis = {
   branchCells: Set<string>;
   fullyConnectedCells: Set<string>;
   straightLineLength: Map<string, number>;
+  straightLineCells: Map<string, string[]>;
   upstreamCells: Map<string, CellPosition[]>;
   downstreamCells: Map<string, CellPosition[]>;
+};
+
+export type CircuitConditionStatus = {
+  trigger: CircuitEffectTrigger;
+  met: boolean;
+  current: number;
+  required: number;
+  contributingCells: string[];
+};
+
+export type CircuitTriggerContext = {
+  pathLength: number;
+  inCycle: boolean;
+  allPortsConnected: boolean;
+  straightLineLength: number;
 };
 
 const emptyAnalysis = (): CircuitAnalysis => ({
@@ -99,6 +115,7 @@ const emptyAnalysis = (): CircuitAnalysis => ({
   branchCells: new Set(),
   fullyConnectedCells: new Set(),
   straightLineLength: new Map(),
+  straightLineCells: new Map(),
   upstreamCells: new Map(),
   downstreamCells: new Map(),
 });
@@ -193,22 +210,25 @@ export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], s
     }),
   );
   const straightLineLength = new Map<string, number>();
-  const segmentLength = (key: string, direction: Direction) => {
-    let length = 0;
+  const straightLineCells = new Map<string, string[]>();
+  const segmentCells = (key: string, direction: Direction) => {
+    const cells: string[] = [];
     let position = positionForKey(key);
     while (true) {
       const vector = VECTORS[direction];
       const next = { row: position.row + vector.row, column: position.column + vector.column };
       const nextKey = cellKey(next);
-      if (!(neighborsByKey.get(cellKey(position)) ?? []).includes(nextKey)) return length;
-      length += 1;
+      if (!(neighborsByKey.get(cellKey(position)) ?? []).includes(nextKey)) return cells;
+      cells.push(nextKey);
       position = next;
     }
   };
   poweredCells.forEach((key) => {
-    const horizontal = 1 + segmentLength(key, 'west') + segmentLength(key, 'east');
-    const vertical = 1 + segmentLength(key, 'north') + segmentLength(key, 'south');
-    straightLineLength.set(key, Math.max(horizontal, vertical));
+    const horizontal = [...segmentCells(key, 'west').reverse(), key, ...segmentCells(key, 'east')];
+    const vertical = [...segmentCells(key, 'north').reverse(), key, ...segmentCells(key, 'south')];
+    const longest = horizontal.length >= vertical.length ? horizontal : vertical;
+    straightLineLength.set(key, longest.length);
+    straightLineCells.set(key, longest);
   });
 
   return {
@@ -220,6 +240,7 @@ export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], s
     branchCells,
     fullyConnectedCells,
     straightLineLength,
+    straightLineCells,
     upstreamCells,
     downstreamCells,
   };
@@ -229,13 +250,107 @@ export function findPoweredCells(board: CircuitBoard, blocks: ConnectionBlock[],
   return analyzeCircuit(board, blocks, sourceRow).poweredCells;
 }
 
-const matchesChargeTrigger = (trigger: CircuitEffectTrigger | undefined, key: string, analysis: CircuitAnalysis) => {
-  if (!trigger) return true;
-  if (trigger.kind === 'path-length-at-least') return (analysis.routeLength.get(key) ?? 1) >= trigger.amount;
-  if (trigger.kind === 'in-cycle') return analysis.cyclicCells.has(key);
-  if (trigger.kind === 'all-ports-connected') return analysis.fullyConnectedCells.has(key);
-  return (analysis.straightLineLength.get(key) ?? 1) >= trigger.amount;
+export const matchesCircuitTrigger = (trigger: CircuitEffectTrigger, context: CircuitTriggerContext) => {
+  if (trigger.kind === 'path-length-at-least') return context.pathLength >= trigger.amount;
+  if (trigger.kind === 'in-cycle') return context.inCycle;
+  if (trigger.kind === 'all-ports-connected') return context.allPortsConnected;
+  return context.straightLineLength >= trigger.amount;
 };
+
+const pathCellsFor = (key: string, analysis: CircuitAnalysis) => {
+  const path = [key];
+  let current = key;
+  while ((analysis.routeLength.get(current) ?? 0) > 1) {
+    const upstream = (analysis.upstreamCells.get(current) ?? [])
+      .map(cellKey)
+      .sort(
+        (left, right) =>
+          (analysis.routeLength.get(right) ?? 0) - (analysis.routeLength.get(left) ?? 0) || left.localeCompare(right),
+      )[0];
+    if (!upstream) break;
+    path.unshift(upstream);
+    current = upstream;
+  }
+  return path;
+};
+
+export function evaluateCircuitCondition(
+  board: CircuitBoard,
+  blocks: ConnectionBlock[],
+  analysis: CircuitAnalysis,
+  position: CellPosition,
+  trigger: CircuitEffectTrigger,
+): CircuitConditionStatus {
+  const key = cellKey(position);
+  const currentBlock = definitionAt(board, blocks, position);
+  const rotatedPorts = currentBlock ? rotatePorts(currentBlock.definition.ports, currentBlock.placed.rotation) : [];
+  const connected = connectedNeighbors(board, blocks, position).map(cellKey);
+  const connectedPortCount =
+    connected.length +
+    ((analysis.routeLength.get(key) ?? 0) === 1 && position.column === 0 && rotatedPorts.includes('west') ? 1 : 0);
+  const pathLength = analysis.routeLength.get(key) ?? 0;
+  const straightLength = analysis.straightLineLength.get(key) ?? 0;
+  const context: CircuitTriggerContext = {
+    pathLength,
+    inCycle: analysis.cyclicCells.has(key),
+    allPortsConnected: analysis.fullyConnectedCells.has(key),
+    straightLineLength: straightLength,
+  };
+  const met = matchesCircuitTrigger(trigger, context);
+
+  if (trigger.kind === 'path-length-at-least') {
+    return {
+      trigger,
+      met,
+      current: pathLength,
+      required: trigger.amount,
+      contributingCells: pathCellsFor(key, analysis),
+    };
+  }
+  if (trigger.kind === 'in-cycle') {
+    return {
+      trigger,
+      met,
+      current: met ? 1 : 0,
+      required: 1,
+      contributingCells: met ? [...analysis.cyclicCells].sort() : [key],
+    };
+  }
+  if (trigger.kind === 'all-ports-connected') {
+    return {
+      trigger,
+      met,
+      current: Math.min(connectedPortCount, rotatedPorts.length),
+      required: rotatedPorts.length,
+      contributingCells: [key, ...connected].sort(),
+    };
+  }
+  return {
+    trigger,
+    met,
+    current: straightLength,
+    required: trigger.amount,
+    contributingCells: analysis.straightLineCells.get(key) ?? [key],
+  };
+}
+
+export function circuitConditionsForBlock(
+  board: CircuitBoard,
+  blocks: ConnectionBlock[],
+  analysis: CircuitAnalysis,
+  position: CellPosition,
+  block: Pick<BlockDefinition, 'effects'>,
+): CircuitConditionStatus[] {
+  const uniqueTriggers = new Map<string, CircuitEffectTrigger>();
+  block.effects.forEach((effect) => {
+    const trigger = effect.trigger;
+    if (!trigger || trigger.kind === 'enemy-poisoned') return;
+    uniqueTriggers.set(JSON.stringify(trigger), trigger);
+  });
+  return [...uniqueTriggers.values()].map((trigger) =>
+    evaluateCircuitCondition(board, blocks, analysis, position, trigger),
+  );
+}
 
 export function calculateChargeByCell(
   board: CircuitBoard,
@@ -263,7 +378,8 @@ export function calculateChargeByCell(
       block?.effects.reduce(
         (total, effect) =>
           total +
-          (effect.kind === 'charge' && matchesChargeTrigger(effect.trigger, key, analysis)
+          (effect.kind === 'charge' &&
+          (!effect.trigger || evaluateCircuitCondition(board, blocks, analysis, position, effect.trigger).met)
             ? (placed?.stars ?? 0) > 0 && fusionRules
               ? Math.round(effect.amount * fusionRules.effectMultiplier)
               : effect.amount
