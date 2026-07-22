@@ -73,6 +73,43 @@ describe('skill fusion', () => {
     });
   });
 
+  it('can replace the fused identity, cooldown, and effect kinds instead of only buffing numbers', () => {
+    const block = {
+      id: 'salvage-blade',
+      code: 'SLV',
+      title: '回収刃',
+      description: '攻撃しながらコインを回収する。',
+      glyph: '収',
+      price: 5,
+      rarity: 'common',
+      ports: ['west', 'east'],
+      cooldown: 3,
+      effects: [
+        { kind: 'damage', amount: 90 },
+        { kind: 'coin', amount: 1 },
+      ],
+      fusion: {
+        title: '分配刃',
+        description: '攻撃と回収に加えて、この先の技も強化する。',
+        cooldown: 2,
+        effects: [
+          { kind: 'damage', amount: 120 },
+          { kind: 'coin', amount: 1 },
+          { kind: 'amplify', amount: 60 },
+        ],
+      },
+    } as unknown as BlockDefinition;
+
+    const upgraded = upgradeBlockDefinition(block, 1, rules);
+
+    expect(upgraded).toMatchObject({ title: '分配刃', cooldown: 2 });
+    expect(upgraded.effects).toEqual([
+      { kind: 'damage', amount: 120 },
+      { kind: 'coin', amount: 1 },
+      { kind: 'amplify', amount: 60 },
+    ]);
+  });
+
   it('offers three deterministic unique rewards from the fused rarity', () => {
     const blocks = Array.from(
       { length: 5 },

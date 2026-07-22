@@ -12,15 +12,17 @@ import {
   adjacentPoweredBuildNeighbors,
   analyzeCircuit,
   analyzeMagicSigils,
+  axisValueCountKey,
   calculateChargeByCell,
   circuitConditionsForBlock,
   countActiveMagicSigils,
+  countPoweredAxisValue,
   rotatePorts,
   type CircuitAnalysis,
   type CircuitConditionStatus,
 } from './core/circuit';
 import { damageTierFor, type DamageTier } from './core/combat-presentation';
-import { battleReward } from './core/economy';
+import { battleCoinsEarned, battleReward } from './core/economy';
 import { generateEnemyBuild } from './core/enemy-builder';
 import { fuseSkillCopies, pickFusionRewardIds, upgradeBlockDefinition } from './core/fusion';
 import { moveBlock, moveHeart, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
@@ -187,6 +189,22 @@ const adjacentBuildCountsForBlock = (
     ]),
   );
 
+const poweredAxisCountsForBlock = (board: CircuitBoard, poweredCells: ReadonlySet<string>, block: BlockDefinition) =>
+  Object.fromEntries(
+    [
+      ...new Map(
+        block.effects.flatMap((effect) =>
+          'scaling' in effect && effect.scaling?.kind === 'powered-axis'
+            ? [[axisValueCountKey(effect.scaling.axisId, effect.scaling.valueId), effect.scaling] as const]
+            : [],
+        ),
+      ).values(),
+    ].map((scaling) => [
+      axisValueCountKey(scaling.axisId, scaling.valueId),
+      countPoweredAxisValue(board, poweredCells, GAME_DATA.buildDesign, scaling.axisId, scaling.valueId),
+    ]),
+  );
+
 const CircuitConditionChips = ({ conditions }: { conditions: CircuitConditionStatus[] }) =>
   conditions.length > 0 ? (
     <span className="condition-chip-list" aria-hidden="true">
@@ -337,6 +355,7 @@ const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplie
       if (effect.kind === 'shield') return amountLabel('シールド');
       if (effect.kind === 'repair') return amountLabel('回復');
       if (effect.kind === 'poison') return amountLabel('毒');
+      if (effect.kind === 'coin') return `コイン +${effect.amount}`;
       if (effect.kind === 'rupture-poison') return `毒を半分消費・1毒につき${currentAmount}ダメージ`;
       if (effect.kind === 'growth') {
         const target = effect.target === 'self' ? '自身' : effect.target === 'upstream' ? '前の技' : '次の技';
@@ -670,7 +689,7 @@ const BattleReportDialog = ({
         <header className="report-head">
           <small>AFTER ACTION / RUN {String(run).padStart(2, '0')}</small>
           <h2 id="battle-report-title">戦闘レポート</h2>
-          <p>技の出力と毒による継続ダメージを記録。</p>
+          <p>技の出力、毒による継続ダメージ、回収コインを記録。</p>
         </header>
         <nav className="report-tabs" role="tablist" aria-label="レポート対象">
           {(['player', 'enemy'] as Team[]).map((candidate) => (
@@ -710,6 +729,10 @@ const BattleReportDialog = ({
           <article>
             <small>回復</small>
             <b>{metricValue(selected.totals.repair)}</b>
+          </article>
+          <article className="is-coin">
+            <small>回収コイン</small>
+            <b>{metricValue(selected.totals.coinsEarned)}</b>
           </article>
         </section>
         <section className="report-ledger" aria-label={`${labels[team].side}の技別記録`}>
@@ -754,13 +777,17 @@ const BattleReportDialog = ({
                     <small>回復</small>
                     <b>{metricValue(skill.repair)}</b>
                   </span>
+                  <span>
+                    <small>COIN</small>
+                    <b>{metricValue(skill.coinsEarned)}</b>
+                  </span>
                 </div>
               </article>
             ))
           )}
         </section>
         <footer className="report-note">
-          <b>POISON DMG</b> 毒ダメージは付与後に実際に発生した継続ダメージです。
+          <b>COIN</b> 回収コインは戦闘終了後、通常報酬に加算されます。
         </footer>
       </section>
     </div>
@@ -811,8 +838,9 @@ const BattleCircuitSummary = ({
   const conditionStatusesByCell = new Map<string, CircuitConditionStatus[]>();
   board.forEach((row, rowIndex) =>
     row.forEach((placed, columnIndex) => {
-      const block = placed ? blockById.get(placed.blockId) : undefined;
-      if (!block) return;
+      const baseBlock = placed ? blockById.get(placed.blockId) : undefined;
+      if (!baseBlock || !placed) return;
+      const block = upgradeBlockDefinition(baseBlock, placed.stars ?? 0, GAME_DATA.rules.skillFusion);
       const position = { row: rowIndex, column: columnIndex };
       const conditions = circuitConditionsForBlock(board, GAME_DATA.blocks, analysis, position, block, magicSigils);
       if (conditions.length > 0) conditionStatusesByCell.set(`${rowIndex}:${columnIndex}`, conditions);
@@ -848,7 +876,10 @@ const BattleCircuitSummary = ({
     }
   }
   const firingLabels = skillEvents
-    .map((event) => blockById.get(event.blockId)?.title)
+    .map((event) => {
+      const block = blockById.get(event.blockId);
+      return block ? upgradeBlockDefinition(block, event.stars ?? 0, GAME_DATA.rules.skillFusion).title : undefined;
+    })
     .filter((title): title is string => Boolean(title));
 
   return (
@@ -895,11 +926,9 @@ const BattleCircuitSummary = ({
                 ? upgradeBlockDefinition(baseBlock, placed?.stars ?? 0, GAME_DATA.rules.skillFusion)
                 : undefined;
               const position = { row: rowIndex, column: columnIndex };
-              const adjacentBuildCounts = baseBlock
-                ? adjacentBuildCountsForBlock(board, analysis, position, baseBlock)
-                : {};
+              const adjacentBuildCounts = block ? adjacentBuildCountsForBlock(board, analysis, position, block) : {};
               const resonanceCount =
-                baseBlock && adjacentBuildIdsForBlock(baseBlock).includes('resonance')
+                block && adjacentBuildIdsForBlock(block).includes('resonance')
                   ? (adjacentBuildCounts.resonance ?? 0)
                   : undefined;
               const stateLabel = mergingCells.has(key)
@@ -926,6 +955,7 @@ const BattleCircuitSummary = ({
                   magicSigilLevel,
                   magicSigilCount: activeMagicSigilCount,
                   adjacentBuildCounts,
+                  poweredAxisCounts: poweredAxisCountsForBlock(board, poweredCells, block),
                 });
                 const skillBuffs = visibleBuffs(block, progress, modifiers);
                 const badgeLabels = [
@@ -1083,8 +1113,9 @@ export function App() {
     const statuses = new Map<string, CircuitConditionStatus[]>();
     board.forEach((row, rowIndex) =>
       row.forEach((placed, columnIndex) => {
-        const block = placed ? blockById.get(placed.blockId) : undefined;
-        if (!block) return;
+        const baseBlock = placed ? blockById.get(placed.blockId) : undefined;
+        if (!baseBlock || !placed) return;
+        const block = upgradeBlockDefinition(baseBlock, placed.stars ?? 0, GAME_DATA.rules.skillFusion);
         const position = { row: rowIndex, column: columnIndex };
         const conditions = circuitConditionsForBlock(
           board,
@@ -1145,6 +1176,9 @@ export function App() {
   const player = fighters.find((fighter) => fighter.team === 'player')!;
   const enemy = fighters.find((fighter) => fighter.team === 'enemy')!;
   const battleReport = useMemo(() => createBattleReport(GAME_DATA, battle.trace), [battle.trace]);
+  const baseBattleReward = battleReward(GAME_DATA, battle.winner);
+  const skillCoinReward = battleCoinsEarned(battle.trace, 'player');
+  const totalBattleReward = baseBattleReward + skillCoinReward;
   const rackGroups = useMemo(() => {
     const groups = new Map<string, { block: BlockDefinition; placed: PlacedBlock; count: number }>();
     rack.forEach((placed) => {
@@ -1548,7 +1582,7 @@ export function App() {
   };
 
   const returnToWorkshop = () => {
-    const reward = battleReward(GAME_DATA, battle.winner);
+    const reward = totalBattleReward;
     const nextSeed = nextShopSeed(seed, 11);
     setCoins((current) => current + reward);
     setEarnedCoins((current) => current + reward);
@@ -1604,11 +1638,11 @@ export function App() {
   const detailMagicSigilCount = countActiveMagicSigils(detailBoard, detailAnalysis, detailMagicSigils);
   const detailMagicSigilLevel = detailCellKey ? (detailMagicSigils.levels.get(detailCellKey) ?? 0) : 0;
   const detailAdjacentBuildCounts =
-    detailBaseBlock && detail?.position
-      ? adjacentBuildCountsForBlock(detailBoard, detailAnalysis, detail.position, detailBaseBlock)
+    detailBlock && detail?.position
+      ? adjacentBuildCountsForBlock(detailBoard, detailAnalysis, detail.position, detailBlock)
       : {};
   const detailResonanceCount =
-    detailBaseBlock && adjacentBuildIdsForBlock(detailBaseBlock).includes('resonance')
+    detailBlock && adjacentBuildIdsForBlock(detailBlock).includes('resonance')
       ? (detailAdjacentBuildCounts.resonance ?? 0)
       : undefined;
   const detailChargeByCell = calculateChargeByCell(
@@ -1640,6 +1674,7 @@ export function App() {
         magicSigilLevel: detailMagicSigilLevel,
         magicSigilCount: detailMagicSigilCount,
         adjacentBuildCounts: detailAdjacentBuildCounts,
+        poweredAxisCounts: poweredAxisCountsForBlock(detailBoard, detailPoweredCells, detailBlock),
       })
     : undefined;
   const detailVisibleBuffs =
@@ -1731,7 +1766,11 @@ export function App() {
                     <div className="circuit-board" role="grid" aria-label="5×5 回路ボード">
                       {board.flatMap((row, rowIndex) =>
                         row.map((placed, columnIndex) => {
-                          const block = placed ? blockById.get(placed.blockId) : undefined;
+                          const baseBlock = placed ? blockById.get(placed.blockId) : undefined;
+                          const block =
+                            baseBlock && placed
+                              ? upgradeBlockDefinition(baseBlock, placed.stars ?? 0, GAME_DATA.rules.skillFusion)
+                              : undefined;
                           const key = `${rowIndex}:${columnIndex}`;
                           const isHeart = rowIndex === heartPosition.row && columnIndex === heartPosition.column;
                           const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
@@ -1863,40 +1902,52 @@ export function App() {
                     {rackGroups.length === 0 ? (
                       <span className="rack-empty">ショップで補充</span>
                     ) : (
-                      rackGroups.map(({ block, placed, count }) => (
-                        <button
-                          className="rack-block"
-                          key={`${block.id}-${placed.rotation}-${placed.stars ?? 0}`}
-                          aria-label={`${block.title}${(placed.stars ?? 0) > 0 ? ' 星1' : ''} ${count}個。クリックで詳細、長押しで配置`}
-                          onClick={() =>
-                            openDetail({
-                              blockId: block.id,
-                              rotation: placed.rotation,
-                              stars: placed.stars ?? 0,
-                              location: 'rack',
-                            })
-                          }
-                          onPointerDown={(event) =>
-                            beginHold(
-                              event,
-                              { kind: 'rack', block: placed },
-                              block.id,
-                              placed.rotation,
-                              placed.stars ?? 0,
-                            )
-                          }
-                          onPointerMove={moveHold}
-                          onPointerUp={endHold}
-                          onPointerCancel={cancelHold}
-                        >
-                          <BlockVisual block={block} rotation={placed.rotation} stars={placed.stars ?? 0} compact />
-                          <span>
-                            {block.title}
-                            {(placed.stars ?? 0) > 0 ? ' ★' : ''}
-                          </span>
-                          <em>×{count}</em>
-                        </button>
-                      ))
+                      rackGroups.map(({ block, placed, count }) => {
+                        const displayBlock = upgradeBlockDefinition(
+                          block,
+                          placed.stars ?? 0,
+                          GAME_DATA.rules.skillFusion,
+                        );
+                        return (
+                          <button
+                            className="rack-block"
+                            key={`${block.id}-${placed.rotation}-${placed.stars ?? 0}`}
+                            aria-label={`${displayBlock.title}${(placed.stars ?? 0) > 0 ? ' 星1' : ''} ${count}個。クリックで詳細、長押しで配置`}
+                            onClick={() =>
+                              openDetail({
+                                blockId: block.id,
+                                rotation: placed.rotation,
+                                stars: placed.stars ?? 0,
+                                location: 'rack',
+                              })
+                            }
+                            onPointerDown={(event) =>
+                              beginHold(
+                                event,
+                                { kind: 'rack', block: placed },
+                                block.id,
+                                placed.rotation,
+                                placed.stars ?? 0,
+                              )
+                            }
+                            onPointerMove={moveHold}
+                            onPointerUp={endHold}
+                            onPointerCancel={cancelHold}
+                          >
+                            <BlockVisual
+                              block={displayBlock}
+                              rotation={placed.rotation}
+                              stars={placed.stars ?? 0}
+                              compact
+                            />
+                            <span>
+                              {displayBlock.title}
+                              {(placed.stars ?? 0) > 0 ? ' ★' : ''}
+                            </span>
+                            <em>×{count}</em>
+                          </button>
+                        );
+                      })
                     )}
                   </div>
                   {fusibleBlocks.length > 0 && (
@@ -2185,7 +2236,17 @@ export function App() {
             <header>
               <small>SKILL FUSION</small>
               <h2 id="fusion-dialog-title">
-                {blockById.get(fusionReward.fusedBlockId)?.title} <b>★</b>
+                {blockById.get(fusionReward.fusedBlockId)?.title}
+                {blockById.get(fusionReward.fusedBlockId)?.fusion && (
+                  <small>
+                    {' → '}
+                    {
+                      upgradeBlockDefinition(blockById.get(fusionReward.fusedBlockId)!, 1, GAME_DATA.rules.skillFusion)
+                        .title
+                    }
+                  </small>
+                )}{' '}
+                <b>★</b>
               </h2>
             </header>
             {fusionReward.stage === 'fusing' ? (
@@ -2260,8 +2321,9 @@ export function App() {
               {detailStars > 0 && (
                 <div className="dialog-star-rule">
                   <span>STAR UPGRADE</span>
-                  全効果 ×{GAME_DATA.rules.skillFusion.effectMultiplier}・発動間隔 -
-                  {GAME_DATA.rules.skillFusion.cooldownReduction}拍
+                  {detailBaseBlock?.fusion
+                    ? `「${detailBaseBlock.title}」から「${detailBlock.title}」へ効果変化`
+                    : `全効果 ×${GAME_DATA.rules.skillFusion.effectMultiplier}・発動間隔 -${GAME_DATA.rules.skillFusion.cooldownReduction}拍`}
                 </div>
               )}
               {detailResonanceCount !== undefined && (
@@ -2430,7 +2492,11 @@ export function App() {
             <HeartVisual />
           ) : (
             <BlockVisual
-              block={blockById.get(dragging.blockId!)!}
+              block={upgradeBlockDefinition(
+                blockById.get(dragging.blockId!)!,
+                dragging.stars,
+                GAME_DATA.rules.skillFusion,
+              )}
               rotation={dragging.rotation}
               stars={dragging.stars}
               powered
@@ -2454,7 +2520,14 @@ export function App() {
                 相手 機体LV.{enemyBuild.bodyLevel} <b>{enemy.hp}</b>
               </span>
             </div>
-            <p className="result-reward">報酬 COIN +{battleReward(GAME_DATA, battle.winner)}</p>
+            <div className="result-reward">
+              <b>報酬 COIN +{totalBattleReward}</b>
+              {skillCoinReward > 0 && (
+                <small>
+                  戦闘報酬 +{baseBattleReward} / スキル回収 +{skillCoinReward}
+                </small>
+              )}
+            </div>
             <div className="result-actions">
               <button
                 className="is-report"

@@ -26,7 +26,7 @@ describe('enemy build generator', () => {
       expect(analysis.poweredCells.size).toBe(build.nodeCount);
       expect(build.nodeCount).toBeLessThanOrEqual(targetNodes);
       expect(build.totalCost).toBeLessThanOrEqual(build.budget);
-      expect(build.budget).toBe(32 + index * 10);
+      expect(build.budget).toBe(32 + index * 14);
     });
   });
 

@@ -6,7 +6,7 @@ if (!seededTarget.searchParams.has('shopSeed')) seededTarget.searchParams.set('s
 if (!seededTarget.searchParams.has('enemyBuildFixture')) seededTarget.searchParams.set('enemyBuildFixture', 'charge');
 const target = seededTarget.toString();
 const battleBackgroundRatio = 1672 / 941;
-const playableSkillCount = 47;
+const playableSkillCount = 53;
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: true,
@@ -562,7 +562,9 @@ pulse.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
 await pulse.clock.install();
-await pulse.goto(target, { waitUntil: 'networkidle' });
+const pulseTarget = new URL(target);
+pulseTarget.searchParams.set('shopSeed', '840');
+await pulse.goto(pulseTarget.toString(), { waitUntil: 'networkidle' });
 await pulse.getByRole('button', { name: /戦闘開始/ }).click();
 await pulse.locator('.battle-screen').waitFor();
 if ((await pulse.getByRole('group', { name: '戦闘速度' }).getByRole('button').count()) !== 3) {
@@ -626,11 +628,16 @@ if (
   (await mergingPulse.getAttribute('data-cell-key')) !== '3:2' ||
   !(await mergingPulse.locator('.block-merge-chip').textContent())?.includes('×2')
 ) {
-  const pulseState = await pulse
-    .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
-    .evaluateAll((cells) =>
-      cells.map((cell) => ({ key: cell.getAttribute('data-cell-key'), step: cell.getAttribute('data-pulse-step') })),
-    );
+  const pulseState = await pulse.locator('.battle-circuit-summary.team-enemy [data-pulse-step]').evaluateAll((cells) =>
+    cells.map((cell) => ({
+      key: cell.getAttribute('data-cell-key'),
+      step: cell.getAttribute('data-pulse-step'),
+      merge: cell.getAttribute('data-merge'),
+      activated: cell.getAttribute('data-activated'),
+      className: cell.className,
+      label: cell.getAttribute('aria-label'),
+    })),
+  );
   throw new Error(`Merged pulse did not arrive last with its doubled-effect marker: ${JSON.stringify(pulseState)}`);
 }
 await pulse.screenshot({ path: '/tmp/code-monsters-circuit-pulse-merge.png', fullPage: true });
@@ -662,7 +669,7 @@ overload.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
 const overloadTarget = new URL(target);
-overloadTarget.searchParams.set('shopSeed', '121');
+overloadTarget.searchParams.set('shopSeed', '550');
 overloadTarget.searchParams.set('enemyRequiredBlockFixture', 'overcharge-cannon');
 await overload.goto(overloadTarget.toString(), { waitUntil: 'networkidle' });
 const overloadChargeOffer = overload.locator('.shop-card').filter({ hasText: '充電矢' });
@@ -735,7 +742,7 @@ await lockedRun.locator('.battle-screen').waitFor();
 await lockedRun.getByRole('button', { name: '3倍' }).click();
 await advanceClock(lockedRun, 50_000, 160);
 await lockedRun.locator('.result-panel').waitFor();
-if (!(await lockedRun.locator('.result-reward').textContent())?.includes('COIN +8')) {
+if (!(await lockedRun.locator('.result-reward').textContent())?.includes('COIN +12')) {
   throw new Error('Defeat result does not show its coin reward');
 }
 await lockedRun.getByRole('button', { name: '戦闘レポート' }).click();
@@ -743,7 +750,8 @@ await lockedRun.locator('.battle-report-dialog').waitFor();
 if (
   (await lockedRun.getByText('総ダメージ', { exact: true }).count()) !== 1 ||
   (await lockedRun.getByText('毒ダメージ', { exact: true }).count()) !== 1 ||
-  (await lockedRun.getByText('毒付与', { exact: true }).count()) !== 1
+  (await lockedRun.getByText('毒付与', { exact: true }).count()) !== 1 ||
+  (await lockedRun.getByText('回収コイン', { exact: true }).count()) !== 1
 ) {
   throw new Error('Battle report is missing damage or poison metrics');
 }
@@ -770,7 +778,7 @@ await lockedRun.screenshot({ path: '/tmp/code-monsters-circuit-loss-reward.png',
 await lockedRun.getByRole('button', { name: '工房へ戻る' }).click();
 const coinsAfterLoss = Number((await lockedRun.locator('.coin-readout b').textContent())?.trim());
 const retainedAcrossRun = lockedRun.locator('.shop-card').last();
-if (coinsAfterLoss !== coinsBeforeLoss + 8) {
+if (coinsAfterLoss !== coinsBeforeLoss + 12) {
   throw new Error(`Defeat reward was not granted: ${coinsBeforeLoss} -> ${coinsAfterLoss}`);
 }
 if (
@@ -785,7 +793,7 @@ const secondRunRival = (await lockedRun.locator('.rival-readout').textContent())
 if (
   !secondRunRival.includes('BODY LV.01') ||
   !secondRunRival.includes('8 NODE') ||
-  !secondRunRival.includes('40/40 COIN')
+  !secondRunRival.includes('43/44 COIN')
 ) {
   throw new Error(`The rival did not grow on run two: ${secondRunRival}`);
 }
@@ -921,6 +929,16 @@ await resonance
     '.battle-circuit-summary.team-player [data-resonance-count="8"].is-conducting, .battle-circuit-summary.team-player [data-resonance-count="8"].is-activated',
   )
   .waitFor({ timeout: 5000 });
+const battleStarSize = await resonance
+  .locator('.battle-circuit-summary.team-player .skill-star')
+  .first()
+  .evaluate((star) => {
+    const style = getComputedStyle(star);
+    return { width: Number.parseFloat(style.width), height: Number.parseFloat(style.height) };
+  });
+if (battleStarSize.width > 12 || battleStarSize.height > 12) {
+  throw new Error(`Battle star is larger than the other circuit marks: ${JSON.stringify(battleStarSize)}`);
+}
 await resonance.screenshot({ path: '/tmp/code-monsters-resonance-battle.png', fullPage: true });
 
 const topology = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });

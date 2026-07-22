@@ -75,6 +75,53 @@ describe('game data', () => {
     });
   });
 
+  it('gives every neutral node an explicit effect-changing fusion', () => {
+    const neutralBlockIds = GAME_DATA.buildDesign.skills
+      .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.includes('neutral'))
+      .map((skill) => skill.blockId);
+    const neutralBlocks = neutralBlockIds.map((blockId) => GAME_DATA.blocks.find((block) => block.id === blockId)!);
+
+    expect(neutralBlocks).not.toHaveLength(0);
+    expect(
+      neutralBlocks.filter((block) => !(block as typeof block & { fusion?: unknown }).fusion).map((block) => block.id),
+    ).toEqual([]);
+  });
+
+  it('adds neutral economy skills and restrained high-rarity neutral-count payoffs', () => {
+    const neutralBlockIds = new Set(
+      GAME_DATA.buildDesign.skills
+        .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.includes('neutral'))
+        .map((skill) => skill.blockId),
+    );
+    const neutralBlocks = GAME_DATA.blocks.filter((block) => neutralBlockIds.has(block.id));
+    const economy = neutralBlocks.filter((block) =>
+      block.effects.some((effect) => (effect as { kind: string }).kind === 'coin'),
+    );
+    const neutralPayoffs = neutralBlocks.filter(
+      (block) =>
+        (block.rarity === 'epic' || block.rarity === 'legendary') &&
+        block.effects.some(
+          (effect) =>
+            'scaling' in effect &&
+            effect.scaling?.kind === ('powered-axis' as never) &&
+            (effect.scaling as unknown as { axisId: string; valueId: string }).axisId === 'trait' &&
+            (effect.scaling as unknown as { axisId: string; valueId: string }).valueId === 'neutral',
+        ),
+    );
+
+    expect(economy).toHaveLength(3);
+    expect(economy.every((block) => (block.shopWeight ?? 1) < 1)).toBe(true);
+    expect(neutralPayoffs).toHaveLength(3);
+    expect(new Set(neutralPayoffs.map((block) => block.rarity))).toEqual(new Set(['epic', 'legendary']));
+    expect(
+      neutralPayoffs
+        .find((block) => block.id === 'adaptive-bulwark')
+        ?.effects.flatMap((effect) =>
+          'scaling' in effect && effect.scaling?.kind === 'powered-axis' ? [effect.scaling] : [],
+        )[0]?.maxStacks,
+    ).toBe(3);
+  });
+
   it('uses difficult circuit conditions for stronger existing and new skills', () => {
     const skill = (blockId: string) => GAME_DATA.buildDesign.skills.find((candidate) => candidate.blockId === blockId)!;
     const block = (blockId: string) => GAME_DATA.blocks.find((candidate) => candidate.id === blockId)!;
@@ -280,9 +327,13 @@ describe('game data', () => {
     expect(branchingSkills.map((block) => block.id).sort()).toEqual(
       [
         'accelerator',
+        'adaptive-arsenal',
+        'adaptive-bulwark',
         'all-sigil-resonance',
         'arc-shot',
         'barrier',
+        'bounty-arrow',
+        'bridge-core',
         'celestial-echo-cannon',
         'charge-arrow',
         'echo-arrow',
@@ -386,6 +437,26 @@ describe('game data', () => {
 
     expect(validateGameData(invalid)).toContain(
       'block "long-route-fang" effect "damage" scaling every must be positive',
+    );
+  });
+
+  it('rejects an unknown powered axis, an invalid cap, or a neutral node without a fusion transform', () => {
+    const invalid = structuredClone(GAME_DATA);
+    const arsenal = invalid.blocks.find((block) => block.id === 'adaptive-arsenal')!;
+    const damage = arsenal.effects.find((effect) => effect.kind === 'damage');
+    if (!damage || damage.kind !== 'damage' || damage.scaling?.kind !== 'powered-axis') {
+      throw new Error('missing powered-axis fixture');
+    }
+    damage.scaling.valueId = 'missing';
+    damage.scaling.maxStacks = 0;
+    delete invalid.blocks.find((block) => block.id === 'strike')!.fusion;
+
+    expect(validateGameData(invalid)).toEqual(
+      expect.arrayContaining([
+        'block "adaptive-arsenal" effect "damage" references unknown powered axis "trait/missing"',
+        'block "adaptive-arsenal" effect "damage" scaling maxStacks must be a positive integer',
+        'neutral block "strike" needs an explicit fusion transformation',
+      ]),
     );
   });
 

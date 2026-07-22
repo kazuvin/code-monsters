@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 22,
+  "schemaVersion": 23,
   "rules": {
     "boardSize": 5,
     "heart": {
@@ -21,8 +21,8 @@
     "poisonDecay": 15,
     "mergeEffectMultiplier": 2,
     "startingCoins": 32,
-    "winReward": 12,
-    "retryReward": 8,
+    "winReward": 16,
+    "retryReward": 12,
     "rerollCost": 3,
     "shopSize": 6,
     "rarityWeights": { "common": 100, "rare": 50, "epic": 30, "legendary": 15 },
@@ -54,6 +54,7 @@
         "magicSigilLevel": 2,
         "magicSigilCount": 4,
         "adjacentBuildCount": 4,
+        "poweredAxisCount": 4,
         "targetCooldownBeats": 3,
         "targetEffectAmount": 220
       },
@@ -61,7 +62,8 @@
         "shield": 0.9,
         "repair": 0.8,
         "poisonTicks": 5,
-        "supportPoint": 1
+        "supportPoint": 1,
+        "coin": 160
       },
       "conditionAvailability": {
         "minimum": 0.25,
@@ -81,7 +83,8 @@
       "resourceAvailability": {
         "charge": 0.7,
         "rupturePoison": 0.65,
-        "magicSigil": 0.7
+        "magicSigil": 0.7,
+        "poweredAxis": 0.7
       },
       "chargeAttribution": {
         "producer": 0.65,
@@ -342,6 +345,57 @@
         "blockId": "repair",
         "scope": "shared",
         "sharedSynergies": ["foundation", "sustain"],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
+        ]
+      },
+      {
+        "id": "salvage-blade",
+        "title": "回収刃",
+        "summary": "攻撃を続けながらコインを回収する序盤向けの共有剣技",
+        "status": "playable",
+        "blockId": "salvage-blade",
+        "scope": "shared",
+        "sharedSynergies": ["economy", "foundation", "blade"],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["starter", "cycler"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["starter", "cycler"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["starter", "cycler"], "payoffIds": ["focus", "harmony"] }
+        ]
+      },
+      {
+        "id": "bounty-arrow",
+        "title": "賞金矢",
+        "summary": "分岐を作りながらコインを得る中盤向けの共有弓技",
+        "status": "playable",
+        "blockId": "bounty-arrow",
+        "scope": "shared",
+        "sharedSynergies": ["economy", "bow", "branch"],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["cycler"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["cycler"], "payoffIds": ["focus", "harmony"] }
+        ]
+      },
+      {
+        "id": "repair-dividend",
+        "title": "配当修復機",
+        "summary": "防護と回復を行いながらコインを得る共有装置",
+        "status": "playable",
+        "blockId": "repair-dividend",
+        "scope": "shared",
+        "sharedSynergies": ["economy", "sustain", "device"],
         "placementPatternId": "free",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
         "buildLinks": [
@@ -614,6 +668,57 @@
           { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
           { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
           { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
+        ]
+      },
+      {
+        "id": "adaptive-arsenal",
+        "title": "汎用兵装",
+        "summary": "通電した無特性を数えて火力へ変えつつ、どのビルドにも接続できる共有砲",
+        "status": "playable",
+        "blockId": "adaptive-arsenal",
+        "scope": "shared",
+        "sharedSynergies": ["neutral-count", "cannon", "bridge"],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["grower"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["grower"], "payoffIds": ["focus", "harmony"] }
+        ]
+      },
+      {
+        "id": "adaptive-bulwark",
+        "title": "汎用防壁",
+        "summary": "通電した無特性を数えて防護へ変えつつ、他ビルドの完成を待つ共有装置",
+        "status": "playable",
+        "blockId": "adaptive-bulwark",
+        "scope": "shared",
+        "sharedSynergies": ["neutral-count", "sustain", "bridge"],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
+        ]
+      },
+      {
+        "id": "bridge-core",
+        "title": "架橋中枢",
+        "summary": "通電した無特性を攻防へ変換し、混成回路の中央を担う共有魔法",
+        "status": "playable",
+        "blockId": "bridge-core",
+        "scope": "shared",
+        "sharedSynergies": ["neutral-count", "sustain", "bridge", "magic"],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "buildLinks": [
+          { "buildId": "poison", "roles": ["grower", "sustain"], "payoffIds": ["cultivate", "burst"] },
+          { "buildId": "charge", "roles": ["grower", "sustain"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "magic-sigil", "roles": ["grower", "sustain"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["grower", "sustain"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -955,7 +1060,12 @@
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 1,
-      "effects": [{ "kind": "damage", "amount": 70 }]
+      "effects": [{ "kind": "damage", "amount": 70 }],
+      "fusion": {
+        "title": "攻防連斬",
+        "description": "1拍ごとに90ダメージを与え、シールド30を得る。",
+        "effects": [{ "kind": "damage", "amount": 90 }, { "kind": "shield", "amount": 30 }]
+      }
     },
     {
       "id": "breaker",
@@ -969,7 +1079,12 @@
       "ports": ["west", "north"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "damage", "amount": 160 }]
+      "effects": [{ "kind": "damage", "amount": 160 }],
+      "fusion": {
+        "title": "破砕防衛",
+        "description": "2拍ごとに200ダメージを与え、シールド70を得る。",
+        "effects": [{ "kind": "damage", "amount": 200 }, { "kind": "shield", "amount": 70 }]
+      }
     },
     {
       "id": "arc-shot",
@@ -983,7 +1098,12 @@
       "ports": ["west", "north", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "damage", "amount": 190 }]
+      "effects": [{ "kind": "damage", "amount": 190 }],
+      "fusion": {
+        "title": "分岐弾幕",
+        "description": "2拍ごとに240ダメージを与え、シールド55を得る。",
+        "effects": [{ "kind": "damage", "amount": 240 }, { "kind": "shield", "amount": 55 }]
+      }
     },
     {
       "id": "barrier",
@@ -997,7 +1117,12 @@
       "ports": ["west", "north", "east"],
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "shield", "amount": 130 }]
+      "effects": [{ "kind": "shield", "amount": 130 }],
+      "fusion": {
+        "title": "反射障壁",
+        "description": "2拍ごとにシールド165を得て、相手へ45ダメージを返す。",
+        "effects": [{ "kind": "shield", "amount": 165 }, { "kind": "damage", "amount": 45 }]
+      }
     },
     {
       "id": "repair",
@@ -1011,7 +1136,89 @@
       "ports": ["west", "north"],
       "buildIds": ["poison", "charge"],
       "cooldown": 3,
-      "effects": [{ "kind": "repair", "amount": 260 }]
+      "effects": [{ "kind": "repair", "amount": 260 }],
+      "fusion": {
+        "title": "再生機構",
+        "description": "2拍ごとにHPを230回復し、シールド80を得る。",
+        "cooldown": 2,
+        "effects": [{ "kind": "repair", "amount": 230 }, { "kind": "shield", "amount": 80 }]
+      }
+    },
+    {
+      "id": "salvage-blade",
+      "code": "SALVAGE",
+      "title": "回収刃",
+      "description": "4拍ごとに110ダメージを与え、コインを1枚回収する。",
+      "glyph": "収",
+      "price": 5,
+      "rarity": "common",
+      "shopWeight": 0.65,
+      "ports": ["west", "east"],
+      "buildIds": ["poison", "charge"],
+      "cooldown": 4,
+      "effects": [{ "kind": "damage", "amount": 110 }, { "kind": "coin", "amount": 1 }],
+      "fusion": {
+        "title": "分配刃",
+        "description": "3拍ごとに140ダメージを与えてコインを1枚回収し、この先の技の各効果を45増やす。",
+        "cooldown": 3,
+        "effects": [
+          { "kind": "damage", "amount": 140 },
+          { "kind": "coin", "amount": 1 },
+          { "kind": "amplify", "amount": 45 }
+        ]
+      }
+    },
+    {
+      "id": "bounty-arrow",
+      "code": "BOUNTY",
+      "title": "賞金矢",
+      "description": "5拍ごとに240ダメージを与え、コインを1枚回収する。3本のエッジを持つ。",
+      "glyph": "賞",
+      "price": 8,
+      "rarity": "rare",
+      "shopWeight": 0.72,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["poison", "charge"],
+      "cooldown": 5,
+      "effects": [{ "kind": "damage", "amount": 240 }, { "kind": "coin", "amount": 1 }],
+      "fusion": {
+        "title": "護衛賞金矢",
+        "description": "4拍ごとに300ダメージを与え、コインを1枚回収し、シールド80を得る。",
+        "cooldown": 4,
+        "effects": [
+          { "kind": "damage", "amount": 300 },
+          { "kind": "coin", "amount": 1 },
+          { "kind": "shield", "amount": 80 }
+        ]
+      }
+    },
+    {
+      "id": "repair-dividend",
+      "code": "DIVIDEND",
+      "title": "配当修復機",
+      "description": "5拍ごとにシールド240と回復160を得て、コインを1枚回収する。",
+      "glyph": "配",
+      "price": 9,
+      "rarity": "rare",
+      "shopWeight": 0.72,
+      "ports": ["west", "north"],
+      "buildIds": ["poison", "charge"],
+      "cooldown": 5,
+      "effects": [
+        { "kind": "shield", "amount": 240 },
+        { "kind": "repair", "amount": 160 },
+        { "kind": "coin", "amount": 1 }
+      ],
+      "fusion": {
+        "title": "複利修復機",
+        "description": "4拍ごとにシールド300と回復240を得て、コインを1枚回収する。",
+        "cooldown": 4,
+        "effects": [
+          { "kind": "shield", "amount": 300 },
+          { "kind": "repair", "amount": 240 },
+          { "kind": "coin", "amount": 1 }
+        ]
+      }
     },
     {
       "id": "rail-cannon",
@@ -1039,7 +1246,12 @@
       "shopWeight": 1,
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
-      "effects": [{ "kind": "amplify", "amount": 290 }]
+      "effects": [{ "kind": "amplify", "amount": 290 }],
+      "fusion": {
+        "title": "可変増幅術",
+        "description": "この先の技の各効果を250増やし、発動間隔を1拍短くする。",
+        "effects": [{ "kind": "amplify", "amount": 250 }, { "kind": "haste", "amount": 1 }]
+      }
     },
     {
       "id": "accelerator",
@@ -1055,7 +1267,15 @@
       "effects": [
         { "kind": "haste", "amount": 1, "trigger": { "kind": "all-ports-connected" } },
         { "kind": "amplify", "amount": 305, "trigger": { "kind": "all-ports-connected" } }
-      ]
+      ],
+      "fusion": {
+        "title": "常動加速術",
+        "description": "接続状態を問わず、この先の技の発動間隔を1拍短くする。全接続なら各効果も360増やす。",
+        "effects": [
+          { "kind": "haste", "amount": 1 },
+          { "kind": "amplify", "amount": 360, "trigger": { "kind": "all-ports-connected" } }
+        ]
+      }
     },
     {
       "id": "poison-needle",
@@ -1211,7 +1431,17 @@
           "stat": "all",
           "trigger": { "kind": "in-cycle" }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "回生コイル",
+        "description": "2拍ごとにシールド200と回復60を得る。循環中は自身とこの先の技を18ずつ強化する。",
+        "effects": [
+          { "kind": "shield", "amount": 200 },
+          { "kind": "repair", "amount": 60 },
+          { "kind": "growth", "amount": 18, "target": "self", "stat": "shield", "trigger": { "kind": "in-cycle" } },
+          { "kind": "growth", "amount": 18, "target": "downstream", "stat": "all", "trigger": { "kind": "in-cycle" } }
+        ]
+      }
     },
     {
       "id": "long-route-fang",
@@ -1235,7 +1465,15 @@
           "stat": "damage",
           "trigger": { "kind": "straight-line-at-least", "amount": 4 }
         }
-      ]
+      ],
+      "fusion": {
+        "title": "護路の牙",
+        "description": "2拍ごとに160ダメージとシールド70を得る。直線上の技1個につきダメージが18増える。",
+        "effects": [
+          { "kind": "damage", "amount": 160, "scaling": { "kind": "straight-line", "every": 1, "amount": 18 } },
+          { "kind": "shield", "amount": 70 }
+        ]
+      }
     },
     {
       "id": "charge-blade",
@@ -1363,7 +1601,183 @@
       "effects": [
         { "kind": "shield", "amount": 160 },
         { "kind": "shield", "amount": 720, "trigger": { "kind": "all-ports-connected" } }
-      ]
+      ],
+      "fusion": {
+        "title": "転換結界",
+        "description": "2拍ごとにシールド160を得る。全接続ならシールド600とダメージ280を追加する。",
+        "cooldown": 2,
+        "effects": [
+          { "kind": "shield", "amount": 160 },
+          { "kind": "shield", "amount": 600, "trigger": { "kind": "all-ports-connected" } },
+          { "kind": "damage", "amount": 280, "trigger": { "kind": "all-ports-connected" } }
+        ]
+      }
+    },
+    {
+      "id": "adaptive-arsenal",
+      "code": "ADAPT",
+      "title": "汎用兵装",
+      "description": "3拍ごとに220ダメージを与え、通電した無特性2個につきダメージが110増える。増加は4回まで。",
+      "glyph": "汎",
+      "price": 13,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["poison", "charge"],
+      "cooldown": 3,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 220,
+          "scaling": {
+            "kind": "powered-axis",
+            "axisId": "trait",
+            "valueId": "neutral",
+            "every": 2,
+            "amount": 110,
+            "maxStacks": 4
+          }
+        }
+      ],
+      "fusion": {
+        "title": "連携兵装",
+        "description": "3拍ごとに250ダメージを与え、通電した無特性2個につき120増やす。増加は4回までで、この先の技も100強化する。",
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 250,
+            "scaling": {
+              "kind": "powered-axis",
+              "axisId": "trait",
+              "valueId": "neutral",
+              "every": 2,
+              "amount": 120,
+              "maxStacks": 4
+            }
+          },
+          { "kind": "amplify", "amount": 100 }
+        ]
+      }
+    },
+    {
+      "id": "adaptive-bulwark",
+      "code": "BULWARK",
+      "title": "汎用防壁",
+      "description": "4拍ごとにシールド250を得て、通電した無特性2個につきシールドが180増える。増加は3回まで。",
+      "glyph": "汎",
+      "price": 14,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["poison", "charge"],
+      "cooldown": 4,
+      "effects": [
+        {
+          "kind": "shield",
+          "amount": 250,
+          "scaling": {
+            "kind": "powered-axis",
+            "axisId": "trait",
+            "valueId": "neutral",
+            "every": 2,
+            "amount": 180,
+            "maxStacks": 3
+          }
+        }
+      ],
+      "fusion": {
+        "title": "汎用要塞",
+        "description": "3拍ごとにシールド280と回復180を得て、通電した無特性2個につきシールドが190増える。増加は3回まで。",
+        "cooldown": 3,
+        "effects": [
+          {
+            "kind": "shield",
+            "amount": 280,
+            "scaling": {
+              "kind": "powered-axis",
+              "axisId": "trait",
+              "valueId": "neutral",
+              "every": 2,
+              "amount": 190,
+              "maxStacks": 3
+            }
+          },
+          { "kind": "repair", "amount": 180 }
+        ]
+      }
+    },
+    {
+      "id": "bridge-core",
+      "code": "BRIDGE",
+      "title": "架橋中枢",
+      "description": "5拍ごとにダメージ380とシールド200を得る。通電した無特性2個につきそれぞれ210と110増え、増加は4回まで。",
+      "glyph": "架",
+      "price": 21,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["poison", "charge"],
+      "cooldown": 5,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 380,
+          "scaling": {
+            "kind": "powered-axis",
+            "axisId": "trait",
+            "valueId": "neutral",
+            "every": 2,
+            "amount": 210,
+            "maxStacks": 4
+          }
+        },
+        {
+          "kind": "shield",
+          "amount": 200,
+          "scaling": {
+            "kind": "powered-axis",
+            "axisId": "trait",
+            "valueId": "neutral",
+            "every": 2,
+            "amount": 110,
+            "maxStacks": 4
+          }
+        }
+      ],
+      "fusion": {
+        "title": "架橋主機",
+        "description": "4拍ごとにダメージ420、シールド240、回復80を得る。通電した無特性2個につき攻防が増え、増加は4回まで。",
+        "cooldown": 4,
+        "effects": [
+          {
+            "kind": "damage",
+            "amount": 420,
+            "scaling": {
+              "kind": "powered-axis",
+              "axisId": "trait",
+              "valueId": "neutral",
+              "every": 2,
+              "amount": 220,
+              "maxStacks": 4
+            }
+          },
+          {
+            "kind": "shield",
+            "amount": 240,
+            "scaling": {
+              "kind": "powered-axis",
+              "axisId": "trait",
+              "valueId": "neutral",
+              "every": 2,
+              "amount": 120,
+              "maxStacks": 4
+            }
+          },
+          { "kind": "repair", "amount": 80 }
+        ]
+      }
     },
     {
       "id": "charge-line-lance",

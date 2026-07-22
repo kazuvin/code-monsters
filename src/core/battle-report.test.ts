@@ -93,6 +93,17 @@ const trace: BattleTraceEvent[] = [
     value: 120,
     targetId: 'player-volt',
   },
+  {
+    id: '1-player-0-0-8',
+    tick: 1,
+    team: 'player',
+    kind: 'coin',
+    blockId: 'salvage-blade',
+    row: 0,
+    column: 0,
+    value: 1,
+    targetId: 'player-volt',
+  },
   { id: '2-poison-tick-enemy', tick: 2, team: 'enemy', kind: 'poison-tick', value: 300, targetId: 'enemy-rust' },
   { id: '2-poison-tick-player', tick: 2, team: 'player', kind: 'poison-tick', value: 20, targetId: 'player-volt' },
   { id: '40-overload-player', tick: 40, team: 'player', kind: 'overload', value: 250, targetId: 'player-volt' },
@@ -109,6 +120,7 @@ describe('battle report', () => {
       poisonApplied: 35,
       shield: 130,
       repair: 50,
+      coinsEarned: 1,
     });
     expect(report.enemy.totals).toEqual({
       totalDamage: 210,
@@ -117,6 +129,7 @@ describe('battle report', () => {
       poisonApplied: 120,
       shield: 0,
       repair: 0,
+      coinsEarned: 0,
     });
   });
 
@@ -132,8 +145,13 @@ describe('battle report', () => {
       poisonApplied: 35,
       shield: 0,
       repair: 0,
+      coinsEarned: 0,
     });
     expect(rupture).toMatchObject({ activations: 1, damage: 1430 });
+    expect(report.player.skills.find((skill) => skill.blockId === 'salvage-blade')).toMatchObject({
+      activations: 1,
+      coinsEarned: 1,
+    });
     expect(report.enemy.skills.find((skill) => skill.blockId === 'arc-shot')).toMatchObject({
       title: 'アーク弾',
       activations: 1,

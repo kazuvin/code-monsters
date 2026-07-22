@@ -24,13 +24,15 @@ export type EffectTrigger =
 
 export type CircuitEffectTrigger = Exclude<EffectTrigger, { kind: 'enemy-poisoned' }>;
 
-export type EffectScaling =
-  | { kind: 'enemy-poison'; every: number; amount: number }
-  | { kind: 'path-length'; every: number; amount: number }
-  | { kind: 'straight-line'; every: number; amount: number }
-  | { kind: 'magic-sigil-level'; every: number; amount: number }
-  | { kind: 'magic-sigil-count'; every: number; amount: number }
-  | { kind: 'adjacent-build'; buildId: string; every: number; amount: number };
+export type EffectScaling = (
+  | { kind: 'enemy-poison' }
+  | { kind: 'path-length' }
+  | { kind: 'straight-line' }
+  | { kind: 'magic-sigil-level' }
+  | { kind: 'magic-sigil-count' }
+  | { kind: 'powered-axis'; axisId: string; valueId: string }
+  | { kind: 'adjacent-build'; buildId: string }
+) & { every: number; amount: number; maxStacks?: number };
 
 type NumericEffect = {
   amount: number;
@@ -43,6 +45,7 @@ export type ActiveEffect =
   | ({ kind: 'shield' } & NumericEffect)
   | ({ kind: 'repair' } & NumericEffect)
   | ({ kind: 'poison' } & NumericEffect)
+  | { kind: 'coin'; amount: number; trigger?: EffectTrigger }
   | {
       kind: 'release-charge';
       output: 'damage' | 'shield';
@@ -84,6 +87,13 @@ export type BlockDefinition = {
   buildIds?: string[];
   effects: BlockEffect[];
   cooldown?: number;
+  fusion?: {
+    title: string;
+    description: string;
+    glyph?: string;
+    cooldown?: number | null;
+    effects: BlockEffect[];
+  };
 };
 
 export type BuildPayoffDefinition = {
@@ -196,6 +206,7 @@ export type BalanceFormulaRules = {
     magicSigilLevel: number;
     magicSigilCount: number;
     adjacentBuildCount: number;
+    poweredAxisCount: number;
     targetCooldownBeats: number;
     targetEffectAmount: number;
   };
@@ -204,6 +215,7 @@ export type BalanceFormulaRules = {
     repair: number;
     poisonTicks: number;
     supportPoint: number;
+    coin: number;
   };
   conditionAvailability: {
     minimum: number;
@@ -224,6 +236,7 @@ export type BalanceFormulaRules = {
     charge: number;
     rupturePoison: number;
     magicSigil: number;
+    poweredAxis: number;
   };
   chargeAttribution: {
     producer: number;
@@ -320,7 +333,7 @@ export type BattleTraceEvent =
       id: string;
       tick: number;
       team: Team;
-      kind: 'damage' | 'shield' | 'repair' | 'poison' | 'growth' | 'rupture';
+      kind: 'damage' | 'shield' | 'repair' | 'poison' | 'growth' | 'rupture' | 'coin';
       blockId: string;
       row: number;
       column: number;

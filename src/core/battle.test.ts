@@ -188,6 +188,20 @@ describe('1vs1 circuit battle', () => {
     expect(tick2.trace.filter((event) => event.kind === 'damage')).toHaveLength(2);
   });
 
+  it('records coin income each time a powered economy skill acts', () => {
+    const data = testData();
+    data.blocks.find((block) => block.id === 'strike')!.effects = [
+      { kind: 'damage', amount: 1 },
+      { kind: 'coin', amount: 2 } as never,
+    ];
+    data.blocks.find((block) => block.id === 'strike')!.cooldown = 2;
+    const tick1 = resolveTick(data, createBattle(data, route('strike'), emptyBoard()), 1);
+    const tick2 = resolveTick(data, tick1, 2);
+    const tick3 = resolveTick(data, tick2, 3);
+
+    expect(tick3.trace.filter((event) => event.kind === 'coin').map((event) => event.value)).toEqual([2, 2]);
+  });
+
   it('activates a straight-line condition only when its minimum segment is complete', () => {
     const data = testData();
     data.blocks.find((block) => block.id === 'strike')!.effects = [

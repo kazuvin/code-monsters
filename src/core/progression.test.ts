@@ -57,7 +57,7 @@ describe('run progression', () => {
 
   it('uses the average configured battle reward for a standard simulation budget', () => {
     expect(cumulativeBudgetForRun(GAME_DATA, 1)).toBe(32);
-    expect(cumulativeBudgetForRun(GAME_DATA, 2)).toBe(42);
-    expect(cumulativeBudgetForRun(GAME_DATA, 5)).toBe(72);
+    expect(cumulativeBudgetForRun(GAME_DATA, 2)).toBe(46);
+    expect(cumulativeBudgetForRun(GAME_DATA, 5)).toBe(88);
   });
 });

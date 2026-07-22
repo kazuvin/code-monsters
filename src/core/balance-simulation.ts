@@ -307,7 +307,10 @@ const ROTATIONS: Rotation[] = [0, 1, 2, 3];
 
 const buildLinksOverlap = (referenceLink: SkillBuildLink, targetLink: SkillBuildLink) => {
   if (!referenceLink.roles.some((role) => targetLink.roles.includes(role))) return false;
-  if (!referenceLink.roles.includes('payoff') || !targetLink.roles.includes('payoff')) return true;
+  const referenceIsPayoff = referenceLink.roles.includes('payoff');
+  const targetIsPayoff = targetLink.roles.includes('payoff');
+  if (referenceIsPayoff !== targetIsPayoff) return false;
+  if (!referenceIsPayoff) return true;
   return referenceLink.payoffIds.some((payoffId) => targetLink.payoffIds.includes(payoffId));
 };
 
@@ -323,7 +326,14 @@ const hasReplacementPeer = (data: GameData, targetBlock: BlockDefinition, buildI
   return data.blocks.some((reference) => {
     if (reference.id === targetBlock.id || reference.rarity !== targetBlock.rarity) return false;
     const referenceLink = designsByBlockId.get(reference.id)?.buildLinks.find((link) => link.buildId === buildId);
-    if (!referenceLink || !buildLinksOverlap(referenceLink, targetLink)) return false;
+    const referenceDesign = designsByBlockId.get(reference.id);
+    if (
+      !referenceLink ||
+      referenceDesign?.placementPatternId !== targetDesign?.placementPatternId ||
+      !buildLinksOverlap(referenceLink, targetLink)
+    ) {
+      return false;
+    }
     return ROTATIONS.some((rotation) => targetSignatures.has(portSignature(reference, rotation)));
   });
 };
@@ -345,6 +355,7 @@ const replacementFor = (data: GameData, base: EnemyBuild, targetBlock: BlockDefi
       const referenceLink = referenceDesign?.buildLinks.find((link) => link.buildId === base.buildId);
       if (!placed || !reference || !referenceLink || reference.id === targetBlock.id) continue;
       if (reference.rarity !== targetBlock.rarity) continue;
+      if (referenceDesign?.placementPatternId !== targetDesign.placementPatternId) continue;
       if (!buildLinksOverlap(referenceLink, targetLink)) continue;
       if (base.totalCost - reference.price + targetBlock.price > base.budget) continue;
       const signature = portSignature(reference, placed.rotation);
@@ -1010,6 +1021,7 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
         'A linked build is generated with the target skill required, then the same board is replayed with that skill disabled while ports remain unchanged, using an opponent that does not contain it.',
       limitations: [
         'Generated builds spend their paid body-upgrade cost and skills within the average cumulative player coin budget for that run and use tier-adjusted rarity weights, but do not model individual shop choices, rerolls, locked offers, or fusion decisions.',
+        'Coins earned by skill activations are reported by battles but are not reinvested into later simulated runs; their progression value is covered by the deterministic power formula.',
         'Per-skill damage is reported trace output before shield absorption and overkill; repair is capped effective healing.',
         'Poison tick damage is team-attributed rather than source-skill-attributed.',
         'Passive support is evaluated primarily through matched and counterfactual outcome lift rather than direct trace output.',

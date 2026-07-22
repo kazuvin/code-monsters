@@ -804,6 +804,18 @@ button:focus-visible {
   line-height: 1;
 }
 
+.battle-circuit-grid .skill-star {
+  top: -2px;
+  left: -2px;
+  width: 11px;
+  height: 11px;
+  border-width: 1px;
+  box-shadow:
+    1px 1px 0 #07151d,
+    0 0 4px rgb(255 211 106 / 65%);
+  font-size: 7px;
+}
+
 .resonance-count {
   position: absolute;
   z-index: 10;
@@ -2794,6 +2806,17 @@ button:focus-visible {
     monospace;
 }
 
+.result-reward b,
+.result-reward small {
+  display: block;
+}
+
+.result-reward small {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
 .result-panel button {
   width: 100%;
   padding: 12px;
@@ -2934,7 +2957,7 @@ button:focus-visible {
 
 .report-summary {
   display: grid;
-  grid-template-columns: 1.35fr repeat(5, minmax(0, 1fr));
+  grid-template-columns: 1.35fr repeat(6, minmax(0, 1fr));
   border: 1px solid #315968;
   background: #061820;
 }
@@ -2979,6 +3002,10 @@ button:focus-visible {
 
 .report-summary .is-poison b {
   color: #a7ed69;
+}
+
+.report-summary .is-coin b {
+  color: var(--amber);
 }
 
 .report-ledger {
@@ -3061,7 +3088,7 @@ button:focus-visible {
 
 .report-skill-metrics {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .report-skill-metrics span {

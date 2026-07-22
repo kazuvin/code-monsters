@@ -158,6 +158,7 @@ const scalingReference = (scaling: EffectScaling, rules: BalanceFormulaRules) =>
   if (scaling.kind === 'straight-line') return rules.reference.straightLineLength;
   if (scaling.kind === 'magic-sigil-level') return rules.reference.magicSigilLevel;
   if (scaling.kind === 'magic-sigil-count') return rules.reference.magicSigilCount;
+  if (scaling.kind === 'powered-axis') return rules.reference.poweredAxisCount;
   return rules.reference.adjacentBuildCount;
 };
 
@@ -175,6 +176,7 @@ const scalingAvailability = (scaling: EffectScaling, portCount: number, rules: B
   if (scaling.kind === 'magic-sigil-level' || scaling.kind === 'magic-sigil-count') {
     return rules.resourceAvailability.magicSigil;
   }
+  if (scaling.kind === 'powered-axis') return rules.resourceAvailability.poweredAxis;
   if (scaling.kind === 'adjacent-build') {
     return conditionAvailability(
       {
@@ -225,14 +227,19 @@ const numericEffectPower = (
   const baseValue = effect.amount * unit;
   const scaling = effect.scaling;
   const scalingSource = scaling ? scalingReference(scaling, context.rules) : 0;
-  const scalingBonus = scaling ? Math.floor(scalingSource / scaling.every) * scaling.amount * unit : 0;
+  const scalingStacks = scaling
+    ? Math.min(Math.floor(scalingSource / scaling.every), scaling.maxStacks ?? Number.POSITIVE_INFINITY)
+    : 0;
+  const scalingBonus = scaling ? scalingStacks * scaling.amount * unit : 0;
   const scaleWeight = scaling ? scalingAvailability(scaling, context.block.ports.length, context.rules) : 1;
   const rawCvps = (baseValue + scalingBonus) / context.cooldownSeconds;
   const weightedCvps =
     (baseValue * triggerWeight + scalingBonus * triggerWeight * scaleWeight) / context.cooldownSeconds;
   const offense = effect.kind === 'damage' || effect.kind === 'poison' ? rawCvps : 0;
   const defense = effect.kind === 'shield' || effect.kind === 'repair' ? rawCvps : 0;
-  const scaleText = scaling ? ` + floor(${scalingSource}/${scaling.every})*${scaling.amount}` : '';
+  const scaleText = scaling
+    ? ` + ${scaling.maxStacks ? `min(floor(${scalingSource}/${scaling.every}),${scaling.maxStacks})` : `floor(${scalingSource}/${scaling.every})`}*${scaling.amount}`
+    : '';
   return {
     formula: `(amount ${effect.amount}${scaleText})*unit ${unit}/seconds ${context.cooldownSeconds}`,
     conditionAvailability: triggerWeight,
@@ -288,6 +295,23 @@ const rupturePower = (
     rawCvps,
     weightedCvps,
     referenceOffensePerSecond: rawCvps,
+    referenceDefensePerSecond: 0,
+  };
+};
+
+const coinPower = (
+  effect: Extract<BlockEffect, { kind: 'coin' }>,
+  triggerWeight: number,
+  context: EffectPowerContext,
+): EffectPowerValue => {
+  const rawCvps = (effect.amount * context.rules.effectValue.coin) / context.cooldownSeconds;
+  return {
+    formula: `coin ${effect.amount}*utility ${context.rules.effectValue.coin}/seconds ${context.cooldownSeconds}`,
+    conditionAvailability: triggerWeight,
+    rewardMultiplier: 1 / triggerWeight,
+    rawCvps,
+    weightedCvps: rawCvps * triggerWeight,
+    referenceOffensePerSecond: 0,
     referenceDefensePerSecond: 0,
   };
 };
@@ -402,6 +426,7 @@ const effectPower = (effect: BlockEffect, context: EffectPowerContext): EffectPo
   }
   if (effect.kind === 'release-charge') return releaseChargePower(effect, triggerWeight, context);
   if (effect.kind === 'rupture-poison') return rupturePower(effect, triggerWeight, context);
+  if (effect.kind === 'coin') return coinPower(effect, triggerWeight, context);
   if (effect.kind === 'growth') return growthPower(effect, triggerWeight, context);
   if (effect.kind === 'amplify') return amplifyPower(effect, triggerWeight, context);
   if (effect.kind === 'haste') return hastePower(effect, triggerWeight, context);

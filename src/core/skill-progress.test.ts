@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeCircuit } from './circuit';
-import { buffStatsForBlock, incomingSkillModifiers, summarizeSkillProgress } from './skill-progress';
+import {
+  buffStatsForBlock,
+  effectScalingBonus,
+  incomingSkillModifiers,
+  summarizeSkillProgress,
+} from './skill-progress';
 import type { BlockDefinition, CircuitBoard } from './types';
 
 const block = (effects: BlockDefinition['effects']): BlockDefinition => ({
@@ -54,6 +59,53 @@ describe('skill progress', () => {
 
     expect(buffStatsForBlock(skill)).toEqual(['rupture']);
     expect(summarizeSkillProgress(skill, { rupture: 1 }).effects[0]?.currentAmount).toBe(4);
+  });
+
+  it('scales from any powered build-axis value without hard-coding neutral as a special build', () => {
+    expect(
+      effectScalingBonus(
+        {
+          kind: 'powered-axis',
+          axisId: 'trait',
+          valueId: 'neutral',
+          every: 2,
+          amount: 30,
+        } as never,
+        {
+          enemyPoison: 0,
+          pathLength: 0,
+          straightLineLength: 0,
+          magicSigilLevel: 0,
+          magicSigilCount: 0,
+          adjacentBuildCounts: {},
+          poweredAxisCounts: { 'trait:neutral': 5 },
+        } as never,
+      ),
+    ).toBe(60);
+  });
+
+  it('caps powered-axis scaling so a single-axis board cannot grow without limit', () => {
+    expect(
+      effectScalingBonus(
+        {
+          kind: 'powered-axis',
+          axisId: 'trait',
+          valueId: 'neutral',
+          every: 2,
+          amount: 30,
+          maxStacks: 3,
+        } as never,
+        {
+          enemyPoison: 0,
+          pathLength: 0,
+          straightLineLength: 0,
+          magicSigilLevel: 0,
+          magicSigilCount: 0,
+          adjacentBuildCounts: {},
+          poweredAxisCounts: { 'trait:neutral': 20 },
+        },
+      ),
+    ).toBe(90);
   });
 
   it('reads amplifier and accelerator effects only from powered connected inputs', () => {

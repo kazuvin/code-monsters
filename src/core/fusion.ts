@@ -17,6 +17,7 @@ const randomUnit = (seed: number) => {
 const boosted = (value: number, multiplier: number) => Math.round(value * multiplier);
 
 const upgradeEffect = (effect: BlockEffect, multiplier: number): BlockEffect => {
+  if (effect.kind === 'coin') return { ...effect };
   if (effect.kind === 'release-charge') {
     return {
       ...effect,
@@ -47,6 +48,16 @@ export function upgradeBlockDefinition(
   rules: SkillFusionRules,
 ): BlockDefinition {
   if (stars === 0) return block;
+  if (block.fusion) {
+    return {
+      ...block,
+      title: block.fusion.title,
+      description: block.fusion.description,
+      glyph: block.fusion.glyph ?? block.glyph,
+      cooldown: block.fusion.cooldown === null ? undefined : (block.fusion.cooldown ?? block.cooldown),
+      effects: block.fusion.effects.map((effect) => ({ ...effect })),
+    };
+  }
   return {
     ...block,
     cooldown: block.cooldown ? Math.max(1, block.cooldown - rules.cooldownReduction) : undefined,

@@ -1,5 +1,5 @@
 {
-  "gameSchemaVersion": 22,
+  "gameSchemaVersion": 23,
   "formulaVersion": 1,
   "formula": {
     "version": 1,
@@ -12,6 +12,7 @@
       "magicSigilLevel": 2,
       "magicSigilCount": 4,
       "adjacentBuildCount": 4,
+      "poweredAxisCount": 4,
       "targetCooldownBeats": 3,
       "targetEffectAmount": 220
     },
@@ -19,7 +20,8 @@
       "shield": 0.9,
       "repair": 0.8,
       "poisonTicks": 5,
-      "supportPoint": 1
+      "supportPoint": 1,
+      "coin": 160
     },
     "conditionAvailability": {
       "minimum": 0.25,
@@ -39,7 +41,8 @@
     "resourceAvailability": {
       "charge": 0.7,
       "rupturePoison": 0.65,
-      "magicSigil": 0.7
+      "magicSigil": 0.7,
+      "poweredAxis": 0.7
     },
     "chargeAttribution": {
       "producer": 0.65,
@@ -72,9 +75,9 @@
   "referenceWindowSeconds": 10,
   "chargeMarginalCvps": 130,
   "summary": {
-    "skillCount": 47,
+    "skillCount": 53,
     "low": 0,
-    "in-range": 47,
+    "in-range": 53,
     "high": 0
   },
   "skills": [
@@ -110,10 +113,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 351,
-        "weightedCombatValuePerSecond": 391,
-        "gainOverNormal": 2.490446
+        "referenceOffensePerSecond": 45,
+        "referenceDefensePerSecond": 148.5,
+        "weightedCombatValuePerSecond": 233.5,
+        "gainOverNormal": 1.487261
       }
     },
     {
@@ -286,10 +289,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 210,
-        "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 235,
-        "gainOverNormal": 1.424242
+        "referenceOffensePerSecond": 180,
+        "referenceDefensePerSecond": 54,
+        "weightedCombatValuePerSecond": 259,
+        "gainOverNormal": 1.569697
       }
     },
     {
@@ -324,10 +327,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 480,
-        "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 505,
-        "gainOverNormal": 2.72973
+        "referenceOffensePerSecond": 200,
+        "referenceDefensePerSecond": 63,
+        "weightedCombatValuePerSecond": 288,
+        "gainOverNormal": 1.556757
       }
     },
     {
@@ -531,6 +534,56 @@
       }
     },
     {
+      "blockId": "salvage-blade",
+      "title": "回収刃",
+      "rarity": "common",
+      "price": 5,
+      "placementPatternId": "free",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 55,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 160,
+      "weightedCombatValuePerSecond": 160,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 166.666667,
+      "budgetRatio": 0.96,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 110)*unit 1/seconds 2",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 55,
+          "weightedCvps": 55,
+          "referenceOffensePerSecond": 55,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "coin",
+          "condition": "always",
+          "formula": "coin 1*utility 160/seconds 2",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 80,
+          "weightedCvps": 80,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 93.333333,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 255,
+        "gainOverNormal": 1.59375
+      }
+    },
+    {
       "blockId": "sigil-blade",
       "title": "魔紋刃",
       "rarity": "common",
@@ -638,10 +691,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 570,
-        "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 610,
-        "gainOverNormal": 2.652174
+        "referenceOffensePerSecond": 240,
+        "referenceDefensePerSecond": 49.5,
+        "weightedCombatValuePerSecond": 329.5,
+        "gainOverNormal": 1.432609
       }
     },
     {
@@ -815,9 +868,9 @@
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 312,
-        "weightedCombatValuePerSecond": 337,
-        "gainOverNormal": 2.059063
+        "referenceDefensePerSecond": 256,
+        "weightedCombatValuePerSecond": 281,
+        "gainOverNormal": 1.716904
       }
     },
     {
@@ -866,8 +919,8 @@
       "fused": {
         "referenceOffensePerSecond": 0,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 429.133334,
-        "gainOverNormal": 1.952085
+        "weightedCombatValuePerSecond": 269.333333,
+        "gainOverNormal": 1.225171
       }
     },
     {
@@ -904,8 +957,58 @@
       "fused": {
         "referenceOffensePerSecond": 0,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 315,
-        "gainOverNormal": 1.442748
+        "weightedCombatValuePerSecond": 265,
+        "gainOverNormal": 1.21374
+      }
+    },
+    {
+      "blockId": "bounty-arrow",
+      "title": "賞金矢",
+      "rarity": "rare",
+      "price": 8,
+      "placementPatternId": "free",
+      "cooldownBeats": 5,
+      "cooldownSeconds": 2.5,
+      "referenceOffensePerSecond": 96,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 200,
+      "weightedCombatValuePerSecond": 200,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 220,
+      "budgetRatio": 0.909091,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 240)*unit 1/seconds 2.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 96,
+          "weightedCvps": 96,
+          "referenceOffensePerSecond": 96,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "coin",
+          "condition": "always",
+          "formula": "coin 1*utility 160/seconds 2.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 64,
+          "weightedCvps": 64,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 150,
+        "referenceDefensePerSecond": 36,
+        "weightedCombatValuePerSecond": 306,
+        "gainOverNormal": 1.53
       }
     },
     {
@@ -1052,10 +1155,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 620,
-        "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 767,
-        "gainOverNormal": 3.478064
+        "referenceOffensePerSecond": 250,
+        "referenceDefensePerSecond": 63,
+        "weightedCombatValuePerSecond": 283,
+        "gainOverNormal": 1.283301
       }
     },
     {
@@ -1115,9 +1218,9 @@
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 459,
-        "weightedCombatValuePerSecond": 743.483333,
-        "gainOverNormal": 3.366082
+        "referenceDefensePerSecond": 228,
+        "weightedCombatValuePerSecond": 306.45,
+        "gainOverNormal": 1.387436
       }
     },
     {
@@ -1359,6 +1462,68 @@
       }
     },
     {
+      "blockId": "repair-dividend",
+      "title": "配当修復機",
+      "rarity": "rare",
+      "price": 9,
+      "placementPatternId": "free",
+      "cooldownBeats": 5,
+      "cooldownSeconds": 2.5,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 137.6,
+      "rawCombatValuePerSecond": 226.6,
+      "weightedCombatValuePerSecond": 226.6,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 247.5,
+      "budgetRatio": 0.915556,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 240)*unit 0.9/seconds 2.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 86.4,
+          "weightedCvps": 86.4,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 86.4
+        },
+        {
+          "effectIndex": 1,
+          "kind": "repair",
+          "condition": "always",
+          "formula": "(amount 160)*unit 0.8/seconds 2.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 51.2,
+          "weightedCvps": 51.2,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 51.2
+        },
+        {
+          "effectIndex": 2,
+          "kind": "coin",
+          "condition": "always",
+          "formula": "coin 1*utility 160/seconds 2.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 64,
+          "weightedCvps": 64,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 231,
+        "weightedCombatValuePerSecond": 336,
+        "gainOverNormal": 1.482789
+      }
+    },
+    {
       "blockId": "thunder-sigil",
       "title": "雷紋",
       "rarity": "rare",
@@ -1418,6 +1583,44 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 471.3,
         "gainOverNormal": 2.378501
+      }
+    },
+    {
+      "blockId": "adaptive-arsenal",
+      "title": "汎用兵装",
+      "rarity": "epic",
+      "price": 13,
+      "placementPatternId": "free",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 293.333333,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 333.333333,
+      "weightedCombatValuePerSecond": 289.333333,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 327.407407,
+      "budgetRatio": 0.88371,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 220 + min(floor(4/2),4)*110)*unit 1/seconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 293.333333,
+          "weightedCvps": 249.333333,
+          "referenceOffensePerSecond": 293.333333,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 326.666667,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 385.333334,
+        "gainOverNormal": 1.331797
       }
     },
     {
@@ -1602,10 +1805,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 1188,
-        "weightedCombatValuePerSecond": 747,
-        "gainOverNormal": 2.092437
+        "referenceOffensePerSecond": 280,
+        "referenceDefensePerSecond": 684,
+        "weightedCombatValuePerSecond": 599,
+        "gainOverNormal": 1.677871
       }
     },
     {
@@ -1668,6 +1871,44 @@
         "referenceDefensePerSecond": 47.7,
         "weightedCombatValuePerSecond": 537.6,
         "gainOverNormal": 1.649417
+      }
+    },
+    {
+      "blockId": "adaptive-bulwark",
+      "title": "汎用防壁",
+      "rarity": "epic",
+      "price": 14,
+      "placementPatternId": "free",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 274.5,
+      "rawCombatValuePerSecond": 319.5,
+      "weightedCombatValuePerSecond": 270.9,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 352.592593,
+      "budgetRatio": 0.768309,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 250 + min(floor(4/2),3)*180)*unit 0.9/seconds 2",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 274.5,
+          "weightedCvps": 225.9,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 274.5
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 492,
+        "weightedCombatValuePerSecond": 468.6,
+        "gainOverNormal": 1.72979
       }
     },
     {
@@ -1958,6 +2199,56 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 1097,
         "gainOverNormal": 2.216162
+      }
+    },
+    {
+      "blockId": "bridge-core",
+      "title": "架橋中枢",
+      "rarity": "legendary",
+      "price": 21,
+      "placementPatternId": "free",
+      "cooldownBeats": 5,
+      "cooldownSeconds": 2.5,
+      "referenceOffensePerSecond": 320,
+      "referenceDefensePerSecond": 151.2,
+      "rawCombatValuePerSecond": 516.2,
+      "weightedCombatValuePerSecond": 442.04,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 520,
+      "budgetRatio": 0.850077,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 380 + min(floor(4/2),4)*210)*unit 1/seconds 2.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 320,
+          "weightedCvps": 269.6,
+          "referenceOffensePerSecond": 320,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 200 + min(floor(4/2),4)*110)*unit 0.9/seconds 2.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 151.2,
+          "weightedCvps": 127.44,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 151.2
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 430,
+        "referenceDefensePerSecond": 248,
+        "weightedCombatValuePerSecond": 624.6,
+        "gainOverNormal": 1.412994
       }
     },
     {

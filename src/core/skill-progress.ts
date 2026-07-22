@@ -22,6 +22,7 @@ export type EffectScalingContext = {
   magicSigilLevel: number;
   magicSigilCount: number;
   adjacentBuildCounts: Readonly<Record<string, number>>;
+  poweredAxisCounts?: Readonly<Record<string, number>>;
 };
 
 export type SkillModifiers = {
@@ -71,8 +72,11 @@ export function effectScalingBonus(scaling: EffectScaling | undefined, context: 
             ? context.magicSigilLevel
             : scaling.kind === 'magic-sigil-count'
               ? context.magicSigilCount
-              : (context.adjacentBuildCounts[scaling.buildId] ?? 0);
-  return Math.floor(source / scaling.every) * scaling.amount;
+              : scaling.kind === 'powered-axis'
+                ? (context.poweredAxisCounts?.[`${scaling.axisId}:${scaling.valueId}`] ?? 0)
+                : (context.adjacentBuildCounts[scaling.buildId] ?? 0);
+  const stacks = Math.floor(source / scaling.every);
+  return Math.min(stacks, scaling.maxStacks ?? stacks) * scaling.amount;
 }
 
 export function magicSigilModifiers(level: number, rules: MagicSigilRules): SkillModifiers {
@@ -171,6 +175,7 @@ export function summarizeSkillProgress(
     magicSigilLevel: 0,
     magicSigilCount: 0,
     adjacentBuildCounts: {},
+    poweredAxisCounts: {},
   },
 ): SkillProgress {
   const normalizedBuffs = Object.fromEntries(

@@ -1,4 +1,5 @@
 import type {
+  BuildDesign,
   BlockDefinition,
   CellPosition,
   CircuitEffectTrigger,
@@ -42,6 +43,27 @@ const positionForKey = (key: string): CellPosition => {
   const [row, column] = key.split(':').map(Number);
   return { row, column };
 };
+
+export const axisValueCountKey = (axisId: string, valueId: string) => `${axisId}:${valueId}`;
+
+export function countPoweredAxisValue(
+  board: CircuitBoard,
+  poweredCells: ReadonlySet<string>,
+  design: BuildDesign,
+  axisId: string,
+  valueId: string,
+): number {
+  const matchingBlockIds = new Set(
+    design.skills
+      .filter((skill) => skill.axisLinks.some((link) => link.axisId === axisId && link.valueIds.includes(valueId)))
+      .flatMap((skill) => (skill.blockId ? [skill.blockId] : [])),
+  );
+  return [...poweredCells].filter((key) => {
+    const position = positionForKey(key);
+    const placed = board[position.row]?.[position.column];
+    return Boolean(placed && matchingBlockIds.has(placed.blockId));
+  }).length;
+}
 
 export function rotateDirection(direction: Direction, rotation: Rotation): Direction {
   return DIRECTIONS[(DIRECTIONS.indexOf(direction) + rotation) % DIRECTIONS.length];

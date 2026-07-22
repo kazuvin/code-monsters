@@ -31,8 +31,8 @@ describe('balance simulation', () => {
     expect(first.byRun.reduce((total, run) => total + run.battles, 0)).toBe(6);
     expect(first.byRun.map((run) => [run.run, run.level, run.budget])).toEqual([
       [1, 1, 32],
-      [3, 3, 52],
-      [5, 5, 72],
+      [3, 3, 60],
+      [5, 5, 88],
     ]);
     expect(first.byRun.every((run) => run.averageBuildCost <= run.budget)).toBe(true);
   });
@@ -119,6 +119,34 @@ describe('balance simulation', () => {
 
     expect(railCannon?.counterfactual.samples).toBe(0);
     expect(railCannon?.ablation.samples).toBe(1);
+  });
+
+  it('does not compare a bridge skill with a payoff just because they share a secondary role', () => {
+    const result = runBalanceSimulation(GAME_DATA, {
+      ...quickConfig,
+      battles: 2,
+      runs: [9],
+      skillTrials: 1,
+      skillIds: ['bridge-core'],
+    });
+    const bridgeCore = result.skills.find((skill) => skill.blockId === 'bridge-core');
+
+    expect(bridgeCore?.counterfactual.samples).toBe(0);
+    expect(bridgeCore?.ablation.samples).toBe(1);
+  });
+
+  it('does not compare skills with different placement identities', () => {
+    const result = runBalanceSimulation(GAME_DATA, {
+      ...quickConfig,
+      battles: 2,
+      runs: [9],
+      skillTrials: 1,
+      skillIds: ['adaptive-bulwark'],
+    });
+    const adaptiveBulwark = result.skills.find((skill) => skill.blockId === 'adaptive-bulwark');
+
+    expect(adaptiveBulwark?.counterfactual.samples).toBe(0);
+    expect(adaptiveBulwark?.ablation.samples).toBe(1);
   });
 
   it('renders machine-readable CSV and a human-readable Markdown report', () => {

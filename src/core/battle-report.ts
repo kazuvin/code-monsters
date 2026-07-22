@@ -11,6 +11,7 @@ export type SkillBattleReport = {
   poisonApplied: number;
   shield: number;
   repair: number;
+  coinsEarned: number;
 };
 
 export type TeamBattleReport = {
@@ -22,6 +23,7 @@ export type TeamBattleReport = {
     poisonApplied: number;
     shield: number;
     repair: number;
+    coinsEarned: number;
   };
   skills: SkillBattleReport[];
 };
@@ -34,7 +36,15 @@ const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player')
 
 const emptyTeamReport = (team: Team): TeamBattleReport => ({
   team,
-  totals: { totalDamage: 0, skillDamage: 0, poisonDamage: 0, poisonApplied: 0, shield: 0, repair: 0 },
+  totals: {
+    totalDamage: 0,
+    skillDamage: 0,
+    poisonDamage: 0,
+    poisonApplied: 0,
+    shield: 0,
+    repair: 0,
+    coinsEarned: 0,
+  },
   skills: [],
 });
 
@@ -66,6 +76,7 @@ export function createBattleReport(data: GameData, trace: BattleTraceEvent[]): B
         poisonApplied: 0,
         shield: 0,
         repair: 0,
+        coinsEarned: 0,
         activationKeys: new Set(),
       };
       skillMaps[event.team].set(event.blockId, skill);
@@ -75,6 +86,7 @@ export function createBattleReport(data: GameData, trace: BattleTraceEvent[]): B
     if (event.kind === 'poison') skill.poisonApplied += event.value;
     if (event.kind === 'shield') skill.shield += event.value;
     if (event.kind === 'repair') skill.repair += event.value;
+    if (event.kind === 'coin') skill.coinsEarned += event.value;
   }
 
   (['player', 'enemy'] as Team[]).forEach((team) => {
@@ -85,8 +97,9 @@ export function createBattleReport(data: GameData, trace: BattleTraceEvent[]): B
           right.damage +
             right.poisonApplied +
             right.shield +
-            right.repair -
-            (left.damage + left.poisonApplied + left.shield + left.repair) ||
+            right.repair +
+            right.coinsEarned -
+            (left.damage + left.poisonApplied + left.shield + left.repair + left.coinsEarned) ||
           left.title.localeCompare(right.title, 'ja'),
       );
     const totals = report[team].totals;
@@ -95,6 +108,7 @@ export function createBattleReport(data: GameData, trace: BattleTraceEvent[]): B
       totals.poisonApplied += skill.poisonApplied;
       totals.shield += skill.shield;
       totals.repair += skill.repair;
+      totals.coinsEarned += skill.coinsEarned;
     });
     totals.totalDamage = totals.skillDamage + totals.poisonDamage;
     report[team].skills = skills;

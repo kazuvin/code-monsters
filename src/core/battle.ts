@@ -1,10 +1,12 @@
 import {
   analyzeCircuit,
   analyzeMagicSigils,
+  axisValueCountKey,
   adjacentPoweredBuildNeighbors,
   calculateChargeByCell,
   cellKey,
   cloneBoard,
+  countPoweredAxisValue,
   countActiveMagicSigils,
   matchesCircuitTrigger,
 } from './circuit';
@@ -49,6 +51,7 @@ type PlannedActivation = {
   magicSigilLevel: number;
   magicSigilCount: number;
   adjacentBuildCounts: Readonly<Record<string, number>>;
+  poweredAxisCounts: Readonly<Record<string, number>>;
   stars: 0 | 1;
 };
 
@@ -146,6 +149,16 @@ const adjacentBuildIdsFor = (block: BlockDefinition) => [
   ),
 ];
 
+const poweredAxisValuesFor = (block: BlockDefinition) => [
+  ...new Map(
+    block.effects.flatMap((effect) =>
+      'scaling' in effect && effect.scaling?.kind === 'powered-axis'
+        ? [[axisValueCountKey(effect.scaling.axisId, effect.scaling.valueId), effect.scaling] as const]
+        : [],
+    ),
+  ).values(),
+];
+
 function plannedActivations(
   data: GameData,
   board: CircuitBoard,
@@ -178,6 +191,12 @@ function plannedActivations(
           adjacentPoweredBuildNeighbors(board, data.blocks, analysis, position, buildId).length,
         ]),
       );
+      const poweredAxisCounts = Object.fromEntries(
+        poweredAxisValuesFor(block).map((scaling) => [
+          axisValueCountKey(scaling.axisId, scaling.valueId),
+          countPoweredAxisValue(board, analysis.poweredCells, data.buildDesign, scaling.axisId, scaling.valueId),
+        ]),
+      );
       const modifiers = combineSkillModifiers(
         incomingSkillModifiers(board, data.blocks, analysis, position, data.rules.skillFusion),
         magicSigilModifiers(magicSigilLevel, data.rules.magicSigils),
@@ -201,6 +220,7 @@ function plannedActivations(
         magicSigilLevel,
         magicSigilCount,
         adjacentBuildCounts,
+        poweredAxisCounts,
         stars,
       });
     }),
@@ -286,6 +306,7 @@ const numericAmount = (
           magicSigilLevel: action.magicSigilLevel,
           magicSigilCount: action.magicSigilCount,
           adjacentBuildCounts: action.adjacentBuildCounts,
+          poweredAxisCounts: action.poweredAxisCounts,
         })
       : 0) +
     (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0);
@@ -377,6 +398,11 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
             (consumed * effect.damagePerStack + (context.selfBuffs.rupture ?? 0) + plan.boost) * plan.mergeMultiplier;
           pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
           trace.push(traceEvent(tick, plan, 'rupture', value, target.instanceId, trace.length));
+          continue;
+        }
+
+        if (effect.kind === 'coin') {
+          trace.push(traceEvent(tick, plan, 'coin', effect.amount, actor.instanceId, trace.length));
           continue;
         }
 

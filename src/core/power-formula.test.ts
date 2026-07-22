@@ -86,6 +86,20 @@ describe('deterministic skill power formula', () => {
     ).toBeGreaterThan(report.skills.find((skill) => skill.blockId === 'strike')!.weightedCombatValuePerSecond);
   });
 
+  it('makes every neutral fusion stronger while keeping its deterministic gain restrained', () => {
+    const report = createPowerFormulaReport(GAME_DATA);
+    const neutralIds = new Set(
+      GAME_DATA.buildDesign.skills
+        .filter((skill) => skill.axisLinks.some((link) => link.axisId === 'trait' && link.valueIds.includes('neutral')))
+        .map((skill) => skill.blockId),
+    );
+    const gains = report.skills
+      .filter((skill) => neutralIds.has(skill.blockId))
+      .map((skill) => [skill.blockId, skill.fused.gainOverNormal] as const);
+
+    expect(gains.every(([, gain]) => gain > 1 && gain < 1.8)).toBe(true);
+  });
+
   it('keeps every playable skill inside the declared deterministic power budget', () => {
     const report = createPowerFormulaReport(GAME_DATA);
 

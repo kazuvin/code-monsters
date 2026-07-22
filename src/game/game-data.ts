@@ -147,6 +147,7 @@ export function validateGameData(data: GameData): string[] {
   probabilityFormulaValue('effectValue.repair', balanceFormula.effectValue.repair);
   positiveFormulaValue('effectValue.poisonTicks', balanceFormula.effectValue.poisonTicks);
   positiveFormulaValue('effectValue.supportPoint', balanceFormula.effectValue.supportPoint);
+  positiveFormulaValue('effectValue.coin', balanceFormula.effectValue.coin);
   probabilityFormulaValue('conditionAvailability.minimum', balanceFormula.conditionAvailability.minimum);
   probabilityFormulaValue('conditionAvailability.enemyPoisoned', balanceFormula.conditionAvailability.enemyPoisoned);
   probabilityFormulaValue('conditionAvailability.inCycle', balanceFormula.conditionAvailability.inCycle);
@@ -179,6 +180,7 @@ export function validateGameData(data: GameData): string[] {
   probabilityFormulaValue('resourceAvailability.charge', balanceFormula.resourceAvailability.charge);
   probabilityFormulaValue('resourceAvailability.rupturePoison', balanceFormula.resourceAvailability.rupturePoison);
   probabilityFormulaValue('resourceAvailability.magicSigil', balanceFormula.resourceAvailability.magicSigil);
+  probabilityFormulaValue('resourceAvailability.poweredAxis', balanceFormula.resourceAvailability.poweredAxis);
   probabilityFormulaValue('chargeAttribution.producer', balanceFormula.chargeAttribution.producer);
   probabilityFormulaValue('chargeAttribution.consumer', balanceFormula.chargeAttribution.consumer);
   if (Math.abs(balanceFormula.chargeAttribution.producer + balanceFormula.chargeAttribution.consumer - 1) > 1e-9) {
@@ -232,6 +234,14 @@ export function validateGameData(data: GameData): string[] {
       .flatMap((skill) => (skill.blockId ? [skill.blockId] : [])),
   );
   const traitAxis = data.buildDesign.axes.find((axis) => axis.id === 'trait');
+  const axisValues = new Map(
+    data.buildDesign.axes.map((axis) => [axis.id, new Set(axis.values.map((value) => value.id))]),
+  );
+  const neutralBlockIds = new Set(
+    data.buildDesign.skills
+      .filter((skill) => skill.axisLinks.some((link) => link.axisId === 'trait' && link.valueIds.includes('neutral')))
+      .flatMap((skill) => (skill.blockId ? [skill.blockId] : [])),
+  );
   traitAxis?.values.forEach((value) => {
     if (!value.color || !/^#[0-9a-f]{6}$/i.test(value.color)) {
       errors.push(`trait axis value "${value.id}" needs a six-digit hex color`);
@@ -250,6 +260,21 @@ export function validateGameData(data: GameData): string[] {
       if (!directions.has(port)) errors.push(`block "${block.id}" has invalid port "${port}"`);
     });
     if (block.effects.length === 0) errors.push(`block "${block.id}" must have an effect`);
+    if (neutralBlockIds.has(block.id) && !block.fusion) {
+      errors.push(`neutral block "${block.id}" needs an explicit fusion transformation`);
+    }
+    if (block.fusion) {
+      if (!block.fusion.title.trim()) errors.push(`block "${block.id}" fusion needs a title`);
+      if (!block.fusion.description.trim().endsWith('。')) {
+        errors.push(`block "${block.id}" fusion description must be a complete sentence`);
+      }
+      if (block.fusion.effects.length === 0) errors.push(`block "${block.id}" fusion must have an effect`);
+      const fusedCooldown = block.fusion.cooldown === null ? undefined : (block.fusion.cooldown ?? block.cooldown);
+      const fusedActive = block.fusion.effects.some(
+        (effect) => !['amplify', 'haste', 'charge', 'inscribe-magic-sigil'].includes(effect.kind),
+      );
+      if (fusedActive && !fusedCooldown) errors.push(`active fusion "${block.id}" must have a cooldown`);
+    }
     if (
       chargeBlockIds.has(block.id) &&
       !block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
@@ -266,6 +291,24 @@ export function validateGameData(data: GameData): string[] {
       }
       if ('scaling' in effect && effect.scaling && effect.scaling.every <= 0) {
         errors.push(`block "${block.id}" effect "${effect.kind}" scaling every must be positive`);
+      }
+      if (
+        'scaling' in effect &&
+        effect.scaling?.maxStacks !== undefined &&
+        (!Number.isInteger(effect.scaling.maxStacks) || effect.scaling.maxStacks < 1)
+      ) {
+        errors.push(`block "${block.id}" effect "${effect.kind}" scaling maxStacks must be a positive integer`);
+      }
+      if ('scaling' in effect && effect.scaling?.kind === 'powered-axis') {
+        const values = axisValues.get(effect.scaling.axisId);
+        if (!values?.has(effect.scaling.valueId)) {
+          errors.push(
+            `block "${block.id}" effect "${effect.kind}" references unknown powered axis "${effect.scaling.axisId}/${effect.scaling.valueId}"`,
+          );
+        }
+      }
+      if (effect.kind === 'coin' && !Number.isInteger(effect.amount)) {
+        errors.push(`block "${block.id}" coin amount must be an integer`);
       }
       if (effect.kind === 'release-charge' && effect.perCharge <= 0) {
         errors.push(`block "${block.id}" charge release must gain power from charge`);
@@ -341,6 +384,35 @@ export function validateGameData(data: GameData): string[] {
           errors.push(`block "${block.id}" rupture fraction must be between 0 and 1`);
         }
         if (effect.damagePerStack <= 0) errors.push(`block "${block.id}" rupture damage must be positive`);
+      }
+    });
+    block.fusion?.effects.forEach((effect) => {
+      if ('amount' in effect && effect.amount <= 0) {
+        errors.push(`block "${block.id}" fusion effect "${effect.kind}" amount must be positive`);
+      }
+      if ('scaling' in effect && effect.scaling && effect.scaling.every <= 0) {
+        errors.push(`block "${block.id}" fusion effect "${effect.kind}" scaling every must be positive`);
+      }
+      if (
+        'scaling' in effect &&
+        effect.scaling?.maxStacks !== undefined &&
+        (!Number.isInteger(effect.scaling.maxStacks) || effect.scaling.maxStacks < 1)
+      ) {
+        errors.push(`block "${block.id}" fusion effect "${effect.kind}" scaling maxStacks must be a positive integer`);
+      }
+      if ('scaling' in effect && effect.scaling?.kind === 'powered-axis') {
+        const values = axisValues.get(effect.scaling.axisId);
+        if (!values?.has(effect.scaling.valueId)) {
+          errors.push(
+            `block "${block.id}" fusion effect "${effect.kind}" references unknown powered axis "${effect.scaling.axisId}/${effect.scaling.valueId}"`,
+          );
+        }
+      }
+      if (effect.kind === 'coin' && !Number.isInteger(effect.amount)) {
+        errors.push(`block "${block.id}" fusion coin amount must be an integer`);
+      }
+      if (effect.kind === 'rupture-poison' && (effect.fraction <= 0 || effect.fraction > 1)) {
+        errors.push(`block "${block.id}" fusion rupture fraction must be between 0 and 1`);
       }
     });
     block.buildIds?.forEach((buildId) => {

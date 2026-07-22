@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   analyzeCircuit,
   circuitConditionsForBlock,
+  countPoweredAxisValue,
   evaluateCircuitCondition,
   findPoweredCells,
   rotatePorts,
@@ -10,6 +11,20 @@ import type { CircuitBoard, Direction } from './types';
 import { GAME_DATA } from '../game/game-data';
 
 describe('circuit connectivity', () => {
+  it('counts powered nodes by a data-defined axis value', () => {
+    const board: CircuitBoard = [
+      [
+        { blockId: 'strike', rotation: 0 },
+        { blockId: 'charge-blade', rotation: 0 },
+        { blockId: 'barrier', rotation: 0 },
+      ],
+    ];
+
+    expect(
+      countPoweredAxisValue(board, new Set(['0:0', '0:1', '0:2']), GAME_DATA.buildDesign, 'trait', 'neutral'),
+    ).toBe(2);
+  });
+
   it('starts four independent powered routes from a heart without counting the heart as a skill', () => {
     const blocks: Array<{ id: string; ports: Direction[] }> = [
       { id: 'north', ports: ['south'] },
