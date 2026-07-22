@@ -49,8 +49,42 @@ export function validateGameData(data: GameData): string[] {
   if (!unitIds.has(data.playerUnitId)) errors.push(`playerUnitId references unknown unit "${data.playerUnitId}"`);
   if (!unitIds.has(data.enemyUnitId)) errors.push(`enemyUnitId references unknown unit "${data.enemyUnitId}"`);
   if (data.rules.boardSize < 2) errors.push('boardSize must be at least 2');
-  if (data.rules.sourceRow < 0 || data.rules.sourceRow >= data.rules.boardSize)
-    errors.push('sourceRow is outside the board');
+  const heart = data.rules.heart;
+  if (
+    !Number.isInteger(heart.initialPosition.row) ||
+    !Number.isInteger(heart.initialPosition.column) ||
+    heart.initialPosition.row < 0 ||
+    heart.initialPosition.row >= data.rules.boardSize ||
+    heart.initialPosition.column < 0 ||
+    heart.initialPosition.column >= data.rules.boardSize
+  ) {
+    errors.push('heart.initialPosition is outside the board');
+  }
+  if (
+    heart.ports.length !== 4 ||
+    new Set(heart.ports).size !== 4 ||
+    !['north', 'east', 'south', 'west'].every((direction) =>
+      heart.ports.includes(direction as (typeof heart.ports)[number]),
+    )
+  ) {
+    errors.push('heart.ports must contain north, east, south, and west');
+  }
+  const bodyUpgrades = data.rules.bodyUpgrades;
+  if (!Number.isInteger(bodyUpgrades.maxLevel) || bodyUpgrades.maxLevel < 1) {
+    errors.push('bodyUpgrades.maxLevel must be positive');
+  }
+  if (!Number.isFinite(bodyUpgrades.hpPerLevel) || bodyUpgrades.hpPerLevel <= 0) {
+    errors.push('bodyUpgrades.hpPerLevel must be positive');
+  }
+  if (
+    bodyUpgrades.upgradeCosts.length !== bodyUpgrades.maxLevel - 1 ||
+    bodyUpgrades.upgradeCosts.some((cost) => cost <= 0)
+  ) {
+    errors.push('bodyUpgrades.upgradeCosts must contain one positive cost per upgrade');
+  }
+  if (!Number.isInteger(bodyUpgrades.rivalRunsPerLevel) || bodyUpgrades.rivalRunsPerLevel < 1) {
+    errors.push('bodyUpgrades.rivalRunsPerLevel must be positive');
+  }
   if (data.rules.battleStepMs <= 0) errors.push('battleStepMs must be positive');
   if (data.rules.pulseAnimationMs < 300) errors.push('pulseAnimationMs must be at least 300');
   if (data.rules.suddenDeathSeconds <= 0) errors.push('suddenDeathSeconds must be positive');
@@ -60,7 +94,7 @@ export function validateGameData(data: GameData): string[] {
   const boardCellCount = data.rules.boardSize ** 2;
   if (enemyGeneration.startingNodes < 2) errors.push('enemyGeneration.startingNodes must be at least 2');
   if (enemyGeneration.nodesPerRun < 1) errors.push('enemyGeneration.nodesPerRun must be positive');
-  if (enemyGeneration.maxNodes < enemyGeneration.startingNodes || enemyGeneration.maxNodes > boardCellCount) {
+  if (enemyGeneration.maxNodes < enemyGeneration.startingNodes || enemyGeneration.maxNodes >= boardCellCount) {
     errors.push('enemyGeneration.maxNodes must fit the board and not be below startingNodes');
   }
   const levelProgression = data.rules.levelProgression;
@@ -69,9 +103,6 @@ export function validateGameData(data: GameData): string[] {
   }
   if (!Number.isInteger(levelProgression.maxLevel) || levelProgression.maxLevel < 1) {
     errors.push('levelProgression.maxLevel must be a positive integer');
-  }
-  if (!Number.isFinite(levelProgression.hpPerLevel) || levelProgression.hpPerLevel < 0) {
-    errors.push('levelProgression.hpPerLevel must not be negative');
   }
   if (data.rules.poisonTickSeconds <= 0) errors.push('poisonTickSeconds must be positive');
   if (data.rules.poisonDecay < 0) errors.push('poisonDecay must not be negative');
@@ -187,6 +218,9 @@ export function validateGameData(data: GameData): string[] {
   });
 
   validateBoard('playerBoard', data.playerBoard, data, errors);
+  if (data.playerBoard[heart.initialPosition.row]?.[heart.initialPosition.column]) {
+    errors.push('playerBoard must keep heart.initialPosition empty');
+  }
   const blockIds = new Set(data.blocks.map((block) => block.id));
   data.startingRack.forEach((blockId, index) => {
     if (!blockIds.has(blockId)) errors.push(`startingRack[${index}] references unknown block "${blockId}"`);

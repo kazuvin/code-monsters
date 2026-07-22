@@ -1,8 +1,16 @@
 import { rotateCellOffset, rotatePorts } from './circuit';
-import { cumulativeBudgetForRun, levelForRun, maxHpBonusForLevel, rarityWeightsForLevel } from './progression';
+import {
+  bodyLevelForRun,
+  totalBodyUpgradeCost,
+  cumulativeBudgetForRun,
+  levelForRun,
+  maxHpBonusForBodyLevel,
+  rarityWeightsForLevel,
+} from './progression';
 import type {
   BlockDefinition,
   BuildDefinition,
+  CellPosition,
   CircuitBoard,
   Direction,
   GameData,
@@ -13,53 +21,185 @@ import type {
 
 export type EnemyBuild = {
   board: CircuitBoard;
+  heartPosition: CellPosition;
   buildId: string;
   nodeCount: number;
   level: number;
+  bodyLevel: number;
   budget: number;
+  skillCost: number;
+  bodyUpgradeCost: number;
   totalCost: number;
   maxHpBonus: number;
 };
 
-export type EnemyBuildOptions = { budget?: number; buildId?: string; requiredBlockId?: string };
+export type EnemyBuildOptions = {
+  budget?: number;
+  buildId?: string;
+  requiredBlockId?: string;
+  excludedBlockIds?: string[];
+};
 
 type LayoutNode = { row: number; column: number };
 type PlacementCandidate = { block: BlockDefinition; design: SkillDesignDefinition; rotations: Rotation[] };
 
-const LAYOUT: LayoutNode[] = [
-  { row: 2, column: 0 },
-  { row: 1, column: 0 },
-  { row: 2, column: 1 },
-  { row: 1, column: 1 },
-  { row: 2, column: 2 },
-  { row: 1, column: 2 },
-  { row: 1, column: 3 },
-  { row: 1, column: 4 },
-  { row: 2, column: 3 },
-  { row: 2, column: 4 },
-  { row: 0, column: 0 },
-  { row: 0, column: 1 },
-  { row: 0, column: 2 },
-  { row: 0, column: 3 },
-  { row: 0, column: 4 },
-];
+type EnemyLayout = {
+  heartPosition: CellPosition;
+  nodes: LayoutNode[];
+  edges: Array<[number, number]>;
+  heartNodeIndexes: number[];
+};
 
-const LAYOUT_EDGES: Array<[number, number]> = [
-  [0, 1],
-  [0, 2],
-  [1, 3],
-  [2, 3],
-  [2, 4],
-  [3, 5],
-  [5, 6],
-  [6, 7],
-  [4, 8],
-  [8, 9],
-  [1, 10],
-  [10, 11],
-  [11, 12],
-  [12, 13],
-  [13, 14],
+type FlowEdge = { to: number; reverse: number; capacity: number; cost: number };
+
+const minimumAssignmentCost = (
+  candidateSets: PlacementCandidate[][],
+  blockCapacities?: ReadonlyMap<string, number>,
+): number | null => {
+  const blockIds = [...new Set(candidateSets.flatMap((candidates) => candidates.map(({ block }) => block.id)))];
+  const blockIndex = new Map(blockIds.map((id, index) => [id, index]));
+  const source = 0;
+  const slotOffset = 1;
+  const blockOffset = slotOffset + candidateSets.length;
+  const sink = blockOffset + blockIds.length;
+  const graph: FlowEdge[][] = Array.from({ length: sink + 1 }, () => []);
+  const addEdge = (from: number, to: number, capacity: number, cost: number) => {
+    const forward: FlowEdge = { to, reverse: graph[to].length, capacity, cost };
+    const reverse: FlowEdge = { to: from, reverse: graph[from].length, capacity: 0, cost: -cost };
+    graph[from].push(forward);
+    graph[to].push(reverse);
+  };
+
+  candidateSets.forEach((candidates, slotIndex) => {
+    addEdge(source, slotOffset + slotIndex, 1, 0);
+    candidates.forEach(({ block }) => {
+      addEdge(slotOffset + slotIndex, blockOffset + blockIndex.get(block.id)!, 1, block.price);
+    });
+  });
+  blockIds.forEach((id, index) => addEdge(blockOffset + index, sink, blockCapacities?.get(id) ?? 2, 0));
+
+  let totalCost = 0;
+  for (let flow = 0; flow < candidateSets.length; flow += 1) {
+    const distance = Array.from({ length: graph.length }, () => Number.POSITIVE_INFINITY);
+    const previousNode = Array.from({ length: graph.length }, () => -1);
+    const previousEdge = Array.from({ length: graph.length }, () => -1);
+    distance[source] = 0;
+    for (let pass = 0; pass < graph.length - 1; pass += 1) {
+      let changed = false;
+      graph.forEach((edges, from) => {
+        if (!Number.isFinite(distance[from])) return;
+        edges.forEach((edge, edgeIndex) => {
+          if (edge.capacity <= 0 || distance[from] + edge.cost >= distance[edge.to]) return;
+          distance[edge.to] = distance[from] + edge.cost;
+          previousNode[edge.to] = from;
+          previousEdge[edge.to] = edgeIndex;
+          changed = true;
+        });
+      });
+      if (!changed) break;
+    }
+    if (!Number.isFinite(distance[sink])) return null;
+    totalCost += distance[sink];
+    for (let node = sink; node !== source; node = previousNode[node]) {
+      const edge = graph[previousNode[node]][previousEdge[node]];
+      edge.capacity -= 1;
+      graph[node][edge.reverse].capacity += 1;
+    }
+  }
+  return totalCost;
+};
+
+const rotateLayoutPosition = (position: CellPosition, rotation: Rotation): CellPosition => {
+  let result = { ...position };
+  for (let step = 0; step < rotation; step += 1) {
+    result = { row: result.column, column: 4 - result.row };
+  }
+  return result;
+};
+
+const EDGE_LAYOUT: EnemyLayout = {
+  heartPosition: { row: 2, column: 0 },
+  nodes: [
+    { row: 2, column: 1 },
+    { row: 1, column: 1 },
+    { row: 1, column: 0 },
+    { row: 2, column: 2 },
+    { row: 1, column: 2 },
+    { row: 1, column: 3 },
+    { row: 1, column: 4 },
+    { row: 2, column: 3 },
+    { row: 2, column: 4 },
+    { row: 0, column: 0 },
+    { row: 0, column: 1 },
+    { row: 0, column: 2 },
+    { row: 0, column: 3 },
+    { row: 0, column: 4 },
+    { row: 3, column: 0 },
+  ],
+  edges: [
+    [0, 1],
+    [2, 1],
+    [0, 3],
+    [1, 4],
+    [4, 5],
+    [5, 6],
+    [3, 7],
+    [7, 8],
+    [2, 9],
+    [9, 10],
+    [10, 11],
+    [11, 12],
+    [12, 13],
+  ],
+  heartNodeIndexes: [0, 2, 14],
+};
+
+const CENTER_LAYOUT: EnemyLayout = {
+  heartPosition: { row: 2, column: 2 },
+  nodes: [
+    { row: 2, column: 1 },
+    { row: 1, column: 1 },
+    { row: 1, column: 2 },
+    { row: 0, column: 2 },
+    { row: 0, column: 1 },
+    { row: 0, column: 0 },
+    { row: 1, column: 0 },
+    { row: 2, column: 0 },
+    { row: 3, column: 0 },
+    { row: 3, column: 1 },
+    { row: 4, column: 1 },
+    { row: 4, column: 2 },
+    { row: 4, column: 3 },
+    { row: 3, column: 3 },
+    { row: 2, column: 3 },
+  ],
+  edges: [
+    [0, 1],
+    [2, 1],
+    [2, 3],
+    [1, 4],
+    [4, 5],
+    [5, 6],
+    [0, 7],
+    [7, 8],
+    [8, 9],
+    [9, 10],
+    [10, 11],
+    [11, 12],
+    [12, 13],
+    [13, 14],
+  ],
+  heartNodeIndexes: [0, 2, 14],
+};
+
+const LAYOUTS: EnemyLayout[] = [
+  CENTER_LAYOUT,
+  ...([0, 1, 2, 3] as Rotation[]).map((rotation) => ({
+    heartPosition: rotateLayoutPosition(EDGE_LAYOUT.heartPosition, rotation),
+    nodes: EDGE_LAYOUT.nodes.map((position) => rotateLayoutPosition(position, rotation)),
+    edges: EDGE_LAYOUT.edges,
+    heartNodeIndexes: EDGE_LAYOUT.heartNodeIndexes,
+  })),
 ];
 
 const ROTATIONS: Rotation[] = [0, 1, 2, 3];
@@ -119,8 +259,12 @@ export function generateEnemyBuild(
   const rules = data.rules.enemyGeneration;
   const targetNodeCount = Math.min(rules.maxNodes, rules.startingNodes + (safeRun - 1) * rules.nodesPerRun);
   const level = levelForRun(data, safeRun);
+  const bodyLevel = bodyLevelForRun(data, safeRun);
   const budget = Math.max(0, Math.floor(options.budget ?? cumulativeBudgetForRun(data, safeRun)));
+  const bodyUpgradeCost = totalBodyUpgradeCost(data, bodyLevel);
+  const skillBudget = Math.max(0, budget - bodyUpgradeCost);
   const rarityWeights = rarityWeightsForLevel(data, level);
+  const layout = LAYOUTS[Math.floor(randomUnit(seed * 47 + safeRun * 13) * LAYOUTS.length)];
   const builds = data.buildDesign.builds;
   if (builds.length === 0) throw new Error('Enemy generator requires at least one build');
   const build = options.buildId
@@ -129,18 +273,22 @@ export function generateEnemyBuild(
   if (!build) throw new Error(`Unknown enemy build "${options.buildId}"`);
   const blocksById = new Map(data.blocks.map((block) => [block.id, block]));
   const designs = data.buildDesign.skills.filter(
-    (skill) => skill.status === 'playable' && skill.blockId && supportsBuild(skill, build),
+    (skill) =>
+      skill.status === 'playable' &&
+      skill.blockId &&
+      !options.excludedBlockIds?.includes(skill.blockId) &&
+      supportsBuild(skill, build),
   );
   if (options.requiredBlockId && !designs.some((skill) => skill.blockId === options.requiredBlockId)) {
     throw new Error(`Playable skill "${options.requiredBlockId}" is not linked to build "${build.id}"`);
   }
 
   const tryBuild = (nodeCount: number) => {
-    const activeNodes = LAYOUT.slice(0, nodeCount);
+    const activeNodes = layout.nodes.slice(0, nodeCount);
     const neighborIndexesByNode = activeNodes.map((_, index) =>
-      LAYOUT_EDGES.flatMap(([left, right]) => {
-        if (left === index && right < nodeCount) return [right];
-        if (right === index && left < nodeCount) return [left];
+      layout.edges.flatMap(([left, right]) => {
+        if (left === index && right < activeNodes.length) return [right];
+        if (right === index && left < activeNodes.length) return [left];
         return [];
       }),
     );
@@ -177,7 +325,7 @@ export function generateEnemyBuild(
     const payoffKey = `${payoffPosition.row}:${payoffPosition.column}`;
     const candidateSets = activeNodes.map((position, index) => {
       const requiredPorts = [
-        ...(index === 0 ? (['west'] as Direction[]) : []),
+        ...(layout.heartNodeIndexes.includes(index) ? [directionBetween(position, layout.heartPosition)] : []),
         ...neighborIndexesByNode[index].map((neighborIndex) => directionBetween(position, activeNodes[neighborIndex])),
       ];
       const desiredRole = index === 0 ? 'starter' : index === payoffIndex ? 'payoff' : null;
@@ -203,9 +351,20 @@ export function generateEnemyBuild(
     });
     if (candidateSets.some((candidates) => candidates.length === 0)) return null;
 
-    const forcedPayoff = options.requiredBlockId
-      ? candidateSets[payoffIndex].find(({ block }) => block.id === options.requiredBlockId)
-      : undefined;
+    const requiredIndex = options.requiredBlockId
+      ? candidateSets.findIndex((candidates) => candidates.some(({ block }) => block.id === options.requiredBlockId))
+      : -1;
+    if (options.requiredBlockId && requiredIndex < 0) return null;
+    if (requiredIndex >= 0) {
+      candidateSets[requiredIndex] = candidateSets[requiredIndex].filter(
+        ({ block }) => block.id === options.requiredBlockId,
+      );
+    }
+
+    const forcedPayoff =
+      requiredIndex === payoffIndex
+        ? candidateSets[payoffIndex].find(({ block }) => block.id === options.requiredBlockId)
+        : undefined;
     const selectedPayoff =
       forcedPayoff ?? weightedPick(candidateSets[payoffIndex], rarityWeights, seed * 101 + safeRun * 59);
     const payoffAdjacentBuildRequirement = adjacentBuildRequirement(selectedPayoff.block, build.id);
@@ -265,67 +424,82 @@ export function generateEnemyBuild(
         return rotations.length > 0 ? [{ ...candidate, rotations }] : [];
       });
     }
+    const minimumCost = minimumAssignmentCost(candidateSets);
+    if (minimumCost === null || minimumCost > skillBudget) return null;
 
-    const minimumRemainingCost = candidateSets.map((_, index) =>
-      candidateSets
-        .slice(index + 1)
-        .reduce((total, candidates) => total + Math.min(...candidates.map(({ block }) => block.price)), 0),
-    );
+    const placementOrder = candidateSets.map((_, index) => index);
     const used = new Map<string, number>();
     const board: CircuitBoard = Array.from({ length: data.rules.boardSize }, () =>
       Array.from({ length: data.rules.boardSize }, () => null),
     );
-    const placeNode = (index: number, totalCost: number, placedRequired: boolean): number | null => {
-      if (index >= activeNodes.length) {
+    const rotationFor = (index: number, picked: PlacementCandidate, salt: number) => {
+      const position = activeNodes[index];
+      const rotationSeed = seed * 43 + safeRun * 31 + index * 71 + salt * 13;
+      return [...picked.rotations].sort((left, right) => {
+        const score = (rotation: Rotation) =>
+          picked.block.effects
+            .filter((effect) => effect.kind === 'inscribe-magic-sigil')
+            .flatMap((effect) => effect.offsets)
+            .reduce((total, authoredOffset) => {
+              const offset = rotateCellOffset(authoredOffset, rotation);
+              const targetKey = `${position.row + offset.row}:${position.column + offset.column}`;
+              return total + (targetKey === payoffKey ? 100 : activeNodeKeys.has(targetKey) ? 10 : 0);
+            }, 0);
+        const scoreDifference = score(right) - score(left);
+        if (scoreDifference !== 0) return scoreDifference;
+        return randomUnit(rotationSeed + left * 19) - randomUnit(rotationSeed + right * 19);
+      })[0];
+    };
+    const placeNode = (step: number, totalCost: number, placedRequired: boolean): number | null => {
+      if (step >= placementOrder.length) {
         if (options.requiredBlockId && !placedRequired) return null;
         return totalCost;
       }
+      const index = placementOrder[step];
       const candidates = candidateSets[index].filter(
-        ({ block }) => (used.get(block.id) ?? 0) < 2 && totalCost + block.price + minimumRemainingCost[index] <= budget,
+        ({ block }) => (used.get(block.id) ?? 0) < 2 && totalCost + block.price <= skillBudget,
       );
       if (candidates.length === 0) return null;
       const preferred = weightedPick(candidates, rarityWeights, seed * 97 + safeRun * 53 + index * 29);
       const ordered = [preferred, ...candidates.filter((candidate) => candidate !== preferred)].sort(
         (left, right) =>
-          Number(right.block.id === options.requiredBlockId) - Number(left.block.id === options.requiredBlockId),
+          Number(right.block.id === options.requiredBlockId) - Number(left.block.id === options.requiredBlockId) ||
+          Number(right === preferred) - Number(left === preferred),
       );
       for (const [candidateIndex, picked] of ordered.entries()) {
         const position = activeNodes[index];
-        const rotationSeed = seed * 43 + safeRun * 31 + index * 71 + candidateIndex * 13;
-        const orderedRotations = [...picked.rotations].sort((left, right) => {
-          const score = (rotation: Rotation) =>
-            picked.block.effects
-              .filter((effect) => effect.kind === 'inscribe-magic-sigil')
-              .flatMap((effect) => effect.offsets)
-              .reduce((total, authoredOffset) => {
-                const offset = rotateCellOffset(authoredOffset, rotation);
-                const targetKey = `${position.row + offset.row}:${position.column + offset.column}`;
-                return total + (targetKey === payoffKey ? 100 : activeNodeKeys.has(targetKey) ? 10 : 0);
-              }, 0);
-          const scoreDifference = score(right) - score(left);
-          if (scoreDifference !== 0) return scoreDifference;
-          return randomUnit(rotationSeed + left * 19) - randomUnit(rotationSeed + right * 19);
-        });
-        for (const rotation of orderedRotations.slice(0, 1)) {
-          board[position.row][position.column] = { blockId: picked.block.id, rotation };
-          used.set(picked.block.id, (used.get(picked.block.id) ?? 0) + 1);
-          const result = placeNode(
-            index + 1,
-            totalCost + picked.block.price,
-            placedRequired || picked.block.id === options.requiredBlockId,
-          );
-          if (result !== null) return result;
-          const remainingCopies = (used.get(picked.block.id) ?? 1) - 1;
-          if (remainingCopies === 0) used.delete(picked.block.id);
-          else used.set(picked.block.id, remainingCopies);
-          board[position.row][position.column] = null;
-        }
+        board[position.row][position.column] = {
+          blockId: picked.block.id,
+          rotation: rotationFor(index, picked, candidateIndex),
+        };
+        used.set(picked.block.id, (used.get(picked.block.id) ?? 0) + 1);
+        const remainingCandidateSets = placementOrder
+          .slice(step + 1)
+          .map((remainingIndex) => candidateSets[remainingIndex]);
+        const remainingCapacities = new Map(
+          data.blocks.map((block) => [block.id, Math.max(0, 2 - (used.get(block.id) ?? 0))]),
+        );
+        const remainingCost = minimumAssignmentCost(remainingCandidateSets, remainingCapacities);
+        const result =
+          remainingCost !== null && totalCost + picked.block.price + remainingCost <= skillBudget
+            ? placeNode(
+                step + 1,
+                totalCost + picked.block.price,
+                placedRequired || picked.block.id === options.requiredBlockId,
+              )
+            : null;
+        if (result !== null) return result;
+        const remainingCopies = (used.get(picked.block.id) ?? 1) - 1;
+        if (remainingCopies === 0) used.delete(picked.block.id);
+        else used.set(picked.block.id, remainingCopies);
+        board[position.row][position.column] = null;
       }
       return null;
     };
 
     const totalCost = placeNode(0, 0, false);
-    return totalCost === null ? null : { board, totalCost };
+    if (totalCost === null) return null;
+    return { board, skillCost: totalCost };
   };
 
   for (let nodeCount = targetNodeCount; nodeCount >= 2; nodeCount -= 1) {
@@ -333,11 +507,15 @@ export function generateEnemyBuild(
     if (!result) continue;
     return {
       ...result,
+      heartPosition: { ...layout.heartPosition },
       buildId: build.id,
       nodeCount,
       level,
+      bodyLevel,
       budget,
-      maxHpBonus: maxHpBonusForLevel(data, level),
+      bodyUpgradeCost,
+      totalCost: result.skillCost + bodyUpgradeCost,
+      maxHpBonus: maxHpBonusForBodyLevel(data, bodyLevel),
     };
   }
 

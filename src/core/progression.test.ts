@@ -1,16 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
-import { cumulativeBudgetForRun, levelForRun, maxHpBonusForLevel, rarityWeightsForLevel } from './progression';
+import {
+  bodyLevelForRun,
+  cumulativeBudgetForRun,
+  bodyUpgradeCostForLevel,
+  levelForRun,
+  maxHpBonusForBodyLevel,
+  rarityWeightsForLevel,
+  totalBodyUpgradeCost,
+} from './progression';
 
 describe('run progression', () => {
   it('levels once per run until the configured cap', () => {
     expect([1, 2, 3, 9, 10].map((run) => levelForRun(GAME_DATA, run))).toEqual([1, 2, 3, 9, 9]);
   });
 
-  it('raises both combatant health as the level rises', () => {
-    expect(maxHpBonusForLevel(GAME_DATA, 1)).toBe(0);
-    expect(maxHpBonusForLevel(GAME_DATA, 2)).toBe(2500);
-    expect(maxHpBonusForLevel(GAME_DATA, 9)).toBe(20_000);
+  it('keeps paid body upgrades separate from automatic run tiers', () => {
+    expect(maxHpBonusForBodyLevel(GAME_DATA, 1)).toBe(0);
+    expect(maxHpBonusForBodyLevel(GAME_DATA, 2)).toBe(GAME_DATA.rules.bodyUpgrades.hpPerLevel);
+    expect(maxHpBonusForBodyLevel(GAME_DATA, GAME_DATA.rules.bodyUpgrades.maxLevel)).toBe(
+      (GAME_DATA.rules.bodyUpgrades.maxLevel - 1) * GAME_DATA.rules.bodyUpgrades.hpPerLevel,
+    );
+    expect(bodyUpgradeCostForLevel(GAME_DATA, 1)).toBe(GAME_DATA.rules.bodyUpgrades.upgradeCosts[0]);
+    expect(totalBodyUpgradeCost(GAME_DATA, 3)).toBe(
+      GAME_DATA.rules.bodyUpgrades.upgradeCosts[0] + GAME_DATA.rules.bodyUpgrades.upgradeCosts[1],
+    );
+    expect(bodyLevelForRun(GAME_DATA, 1)).toBe(1);
+    expect(bodyLevelForRun(GAME_DATA, 9)).toBeLessThanOrEqual(GAME_DATA.rules.bodyUpgrades.maxLevel);
   });
 
   it('shifts shop weight from common skills toward high rarities', () => {

@@ -31,13 +31,23 @@ describe('game data', () => {
     );
   });
 
-  it('defines automatic level health and rarity progression', () => {
+  it('defines automatic rarity progression and body upgrades separately from the heart', () => {
     expect(GAME_DATA.rules.levelProgression).toEqual({
       runsPerLevel: 1,
       maxLevel: 9,
-      hpPerLevel: 2500,
       rarityWeightMultiplierPerLevel: { common: 0.96, rare: 1.02, epic: 1.08, legendary: 1.14 },
     });
+    expect(GAME_DATA.rules.heart).toEqual({
+      initialPosition: { row: 2, column: 2 },
+      ports: ['north', 'east', 'south', 'west'],
+    });
+    expect(GAME_DATA.rules.bodyUpgrades).toEqual({
+      maxLevel: 6,
+      hpPerLevel: 2500,
+      upgradeCosts: [6, 8, 10, 12, 14],
+      rivalRunsPerLevel: 1,
+    });
+    expect(GAME_DATA.playerBoard[2][2]).toBeNull();
   });
 
   it('rejects incomplete or incoherent deterministic balance-formula coefficients', () => {

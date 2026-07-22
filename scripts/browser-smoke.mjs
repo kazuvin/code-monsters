@@ -78,6 +78,16 @@ if ((await desktop.locator('.arena-fighter').count()) !== 0)
 if ((await desktop.locator('.circuit-cell .block-button').count()) !== 0)
   throw new Error('Player circuit should start empty');
 if ((await desktop.locator('.rack-block').count()) !== 0) throw new Error('Skill rack should start empty');
+if ((await desktop.locator('.heart-button').count()) !== 1)
+  throw new Error('The circuit must contain exactly one heart');
+if ((await desktop.locator('.heart-button .heart-port').count()) !== 4) {
+  throw new Error('The heart does not expose all four connectors');
+}
+if ((await desktop.locator('.power-source').count()) !== 0)
+  throw new Error('The fixed external power source still exists');
+if ((await desktop.locator('.body-upgrade').count()) !== 1) {
+  throw new Error('Paid body upgrades are not available separately from the heart');
+}
 const shopRarities = await desktop
   .locator('.shop-card')
   .evaluateAll((cards) => cards.map((card) => [...card.classList].find((name) => name.startsWith('rarity-'))));
@@ -211,6 +221,16 @@ await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: /回路/ }).click();
 
+const originalHeartCell = desktop.locator('[data-row="2"][data-column="2"]');
+const movedHeartCell = desktop.locator('[data-row="2"][data-column="0"]');
+await longDrag(desktop, originalHeartCell.locator('.heart-button'), movedHeartCell);
+if (
+  (await movedHeartCell.locator('.heart-button').count()) !== 1 ||
+  (await originalHeartCell.locator('.heart-button').count()) !== 0
+) {
+  throw new Error('Could not move the heart freely across the circuit');
+}
+
 const firstOffer = desktop.locator('.shop-card').first();
 await firstOffer.locator('.shop-block-button').click();
 await desktop.getByRole('dialog').waitFor();
@@ -240,12 +260,12 @@ if (JSON.stringify(purchasedRackPorts) !== JSON.stringify(purchasedOfferPorts)) 
   throw new Error('Purchased skill did not retain its generated connector direction in the rack');
 }
 
-const firstCell = desktop.locator('[data-row="2"][data-column="0"]');
+const firstCell = desktop.locator('[data-row="2"][data-column="1"]');
 const firstRackSkill = desktop.locator('.rack-block').first();
 const firstRackGlyph = (await firstRackSkill.locator('.block-core b').textContent())?.trim();
 await longDrag(desktop, firstRackSkill, firstCell);
 if ((await firstCell.locator('.block-core b').textContent())?.trim() !== firstRackGlyph) {
-  throw new Error('Could not place the first purchased skill at the power source');
+  throw new Error('Could not place the first purchased skill next to the heart');
 }
 const purchasedBoardPorts = await firstCell
   .locator('.block-port')
@@ -255,7 +275,7 @@ if (JSON.stringify(purchasedBoardPorts) !== JSON.stringify(purchasedOfferPorts))
 }
 
 await desktop.locator('.shop-card').first().getByRole('button', { name: /買う/ }).click();
-const secondCell = desktop.locator('[data-row="2"][data-column="1"]');
+const secondCell = desktop.locator('[data-row="2"][data-column="2"]');
 const secondRackSkill = desktop.locator('.rack-block').first();
 const secondRackGlyph = (await secondRackSkill.locator('.block-core b').textContent())?.trim();
 await longDrag(desktop, secondRackSkill, secondCell);
@@ -290,6 +310,18 @@ if ((await rotateButton.count()) > 0) {
 }
 await desktop.getByRole('button', { name: '詳細を閉じる' }).click();
 
+await longDrag(desktop, movedHeartCell.locator('.heart-button'), firstCell);
+if (
+  (await firstCell.locator('.heart-button').count()) !== 1 ||
+  (await movedHeartCell.locator('.block-button').count()) !== 1
+) {
+  throw new Error('Moving the heart onto a skill did not swap the displaced skill into its previous cell');
+}
+await longDrag(desktop, firstCell.locator('.heart-button'), movedHeartCell);
+if ((await movedHeartCell.locator('.heart-button').count()) !== 1) {
+  throw new Error('Could not move the heart back after swapping with a skill');
+}
+
 const firstGlyph = (await firstCell.locator('.block-core b').textContent())?.trim();
 const secondGlyph = (await secondCell.locator('.block-core b').textContent())?.trim();
 await longDrag(desktop, firstCell.locator('.block-button'), secondCell);
@@ -298,6 +330,18 @@ if (
   (await secondCell.locator('.block-core b').textContent())?.trim() !== firstGlyph
 ) {
   throw new Error('Could not swap circuit skills with long-press drag');
+}
+
+const coinsBeforeBodyUpgrade = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
+await desktop.locator('.body-upgrade > button').click();
+const coinsAfterBodyUpgrade = Number((await desktop.locator('.coin-readout b').textContent())?.trim());
+const bodyUpgradeText = (await desktop.locator('.body-upgrade-copy').textContent()) ?? '';
+if (
+  coinsBeforeBodyUpgrade - coinsAfterBodyUpgrade !== 6 ||
+  !bodyUpgradeText.includes('LV.2') ||
+  !bodyUpgradeText.includes('7500')
+) {
+  throw new Error(`Paid body upgrade did not increase max HP separately: ${bodyUpgradeText}`);
 }
 
 await desktop.screenshot({ path: '/tmp/code-monsters-circuit-desktop.png', fullPage: true });
@@ -341,7 +385,9 @@ if ((await desktop.locator('.battle-circuit-cell.is-activated').count()) === 0) 
 if ((await desktop.locator('.battle-circuit-cell .block-port.is-conducting').count()) === 0) {
   throw new Error('Circuit summary did not show current moving along an edge');
 }
-const enemyMergeSkill = desktop.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]');
+const enemyMergeSkill = desktop
+  .locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]')
+  .first();
 await enemyMergeSkill.waitFor({ timeout: 5000 });
 await enemyMergeSkill.click();
 await desktop.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
@@ -390,11 +436,11 @@ if ((await mobile.locator('.circuit-cell .block-button').count()) !== 0)
 
 await mobile.locator('.shop-card').first().getByRole('button', { name: /買う/ }).click();
 await mobile.locator('.circuit-panel').evaluate((panel) => panel.scrollIntoView({ block: 'start' }));
-const mobileFirst = mobile.locator('[data-row="2"][data-column="0"]');
+const mobileFirst = mobile.locator('[data-row="2"][data-column="3"]');
 await longTouch(mobile, mobileClient, mobile.locator('.rack-block').first(), mobileFirst);
 await mobile.locator('.shop-card').first().getByRole('button', { name: /買う/ }).click();
 await mobile.locator('.circuit-panel').evaluate((panel) => panel.scrollIntoView({ block: 'start' }));
-const mobileSecond = mobile.locator('[data-row="2"][data-column="1"]');
+const mobileSecond = mobile.locator('[data-row="2"][data-column="4"]');
 await longTouch(mobile, mobileClient, mobile.locator('.rack-block').first(), mobileSecond);
 if ((await mobileSecond.locator('.block-button').count()) !== 1) {
   throw new Error(
@@ -445,7 +491,9 @@ await mobile.locator('.battle-circuit-cell .block-charge-chip').first().waitFor(
 if ((await mobile.locator('.battle-circuit-cell .block-visual.effect-charge').count()) === 0) {
   throw new Error('Charge did not become visible while current moved through the circuit');
 }
-const mobileMergeSkill = mobile.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]');
+const mobileMergeSkill = mobile
+  .locator('.battle-circuit-summary.team-enemy .battle-circuit-skill[data-merge="true"]')
+  .first();
 await mobileMergeSkill.waitFor({ timeout: 5000 });
 await mobileMergeSkill.click();
 await mobile.locator('.battle-buff-panel[data-buff-team="enemy"]').waitFor();
@@ -479,25 +527,24 @@ await pulse.clock.runFor(481);
 const firstPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
   .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
-if (JSON.stringify(firstPulse) !== JSON.stringify(['2:0'])) {
-  throw new Error(`First pulse stage is not the source cell: ${JSON.stringify(firstPulse)}`);
+if (JSON.stringify(firstPulse) !== JSON.stringify(['2:3', '3:4'])) {
+  throw new Error(`First pulse stage did not leave the heart in parallel: ${JSON.stringify(firstPulse)}`);
 }
 if (
-  (await pulse.locator('.battle-circuit-summary.team-enemy [data-cell-key="2:0"][data-activated="true"]').count()) !== 1
+  (await pulse.locator('.battle-circuit-summary.team-enemy [data-cell-key="3:4"][data-activated="true"]').count()) !== 1
 ) {
-  throw new Error('The source skill did not light when it activated');
+  throw new Error('A heart-adjacent skill did not light when it activated');
 }
 if ((await pulse.locator('.battle-circuit-summary.team-enemy .block-port.is-conducting').count()) === 0) {
   throw new Error('The first pulse did not animate current on its input edge');
 }
-const firstDamageFeedback = pulse.locator(
-  '.arena-fighter.team-player [data-feedback-kind="damage"][data-feedback-tier="small"]',
-);
-if (
-  (await pulse.locator('.battle-projectile.team-enemy.effect-damage').count()) === 0 ||
-  (await firstDamageFeedback.count()) !== 1
-) {
-  throw new Error('Damage did not show its projectile and impact value');
+const firstDamageFeedback = pulse.locator('.arena-fighter.team-player [data-feedback-kind="damage"]').first();
+const firstProjectileCount = await pulse.locator('.battle-projectile.team-enemy.effect-damage').count();
+const firstDamageFeedbackCount = await firstDamageFeedback.count();
+if (firstProjectileCount === 0 || firstDamageFeedbackCount !== 1) {
+  throw new Error(
+    `Damage did not show its projectile and impact value: ${JSON.stringify({ firstProjectileCount, firstDamageFeedbackCount, feedback: await pulse.locator('.combat-feedback').allTextContents() })}`,
+  );
 }
 if (!/^-\d+$/.test((await firstDamageFeedback.textContent())?.trim() ?? '')) {
   throw new Error(
@@ -515,20 +562,20 @@ await pulse.clock.runFor(480);
 const parallelPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
   .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
-if (JSON.stringify(parallelPulse) !== JSON.stringify(['1:0', '2:1'])) {
+if (JSON.stringify(parallelPulse) !== JSON.stringify(['2:2', '3:3'])) {
   throw new Error(`Split pulse did not fire the same depth together: ${JSON.stringify(parallelPulse)}`);
 }
 await pulse.clock.runFor(480);
 const continuedPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
   .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
-if (JSON.stringify(continuedPulse) !== JSON.stringify(['1:1', '2:2'])) {
+if (JSON.stringify(continuedPulse) !== JSON.stringify(['3:2'])) {
   throw new Error(`Split paths did not continue without waiting: ${JSON.stringify(continuedPulse)}`);
 }
 const mergingPulse = pulse.locator('.battle-circuit-summary.team-enemy .battle-circuit-cell.is-merging');
 if (
   (await mergingPulse.count()) !== 1 ||
-  (await mergingPulse.getAttribute('data-cell-key')) !== '1:1' ||
+  (await mergingPulse.getAttribute('data-cell-key')) !== '3:2' ||
   !(await mergingPulse.locator('.block-merge-chip').textContent())?.includes('×2')
 ) {
   const pulseState = await pulse
@@ -543,11 +590,11 @@ await pulse.clock.runFor(480);
 const terminalPulse = await pulse
   .locator('.battle-circuit-summary.team-enemy [data-pulse-step]')
   .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-cell-key')).sort());
-if (JSON.stringify(terminalPulse) !== JSON.stringify(['1:2'])) {
+if (JSON.stringify(terminalPulse) !== JSON.stringify(['3:1'])) {
   throw new Error(`Merged pulse did not continue to the terminal node: ${JSON.stringify(terminalPulse)}`);
 }
 await pulse.clock.runFor(480);
-const cooldownSource = pulse.locator('.battle-circuit-summary.team-enemy [data-cell-key="2:0"]');
+const cooldownSource = pulse.locator('.battle-circuit-summary.team-enemy [data-cell-key="2:3"]');
 if ((await cooldownSource.getAttribute('data-pulse-step')) !== '1') await pulse.clock.runFor(480);
 if (
   (await cooldownSource.getAttribute('data-pulse-step')) !== '1' ||
@@ -580,12 +627,12 @@ await overloadDefenseOffer.getByRole('button', { name: /買う/ }).click();
 await longDrag(
   overload,
   overload.locator('.rack-block').filter({ hasText: '充電矢' }),
-  overload.locator('[data-row="2"][data-column="0"]'),
+  overload.locator('[data-row="2"][data-column="3"]'),
 );
 await longDrag(
   overload,
   overload.locator('.rack-block').filter({ hasText: '帰還コイル' }),
-  overload.locator('[data-row="3"][data-column="0"]'),
+  overload.locator('[data-row="3"][data-column="3"]'),
 );
 if ((await overload.locator('.circuit-cell.is-powered .block-button').count()) !== 2) {
   throw new Error('Overload survival route did not power both nodes');
@@ -687,19 +734,19 @@ if (
 await lockedRun.getByRole('button', { name: /戦闘開始/ }).click();
 await lockedRun.locator('.battle-screen').waitFor();
 const secondRunRival = (await lockedRun.locator('.rival-readout').textContent()) ?? '';
-if (!secondRunRival.includes('LV.02') || !secondRunRival.includes('8 NODE') || !secondRunRival.includes('40/40 COIN')) {
+if (!secondRunRival.includes('LV.02') || !secondRunRival.includes('7 NODE') || !secondRunRival.includes('40/40 COIN')) {
   throw new Error(`The rival did not grow on run two: ${secondRunRival}`);
 }
-if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 8) {
-  throw new Error('The generated run-two rival circuit does not contain eight affordable powered nodes');
+if ((await lockedRun.locator('.battle-circuit-summary.team-enemy .battle-circuit-skill.is-powered').count()) !== 7) {
+  throw new Error('The generated run-two rival circuit did not reserve coins for its body upgrade');
 }
 if (!(await lockedRun.locator('.arena-fighter.team-enemy .unit-health').getAttribute('aria-label'))?.includes('7500')) {
   throw new Error('The run-two rival did not receive its configured health growth');
 }
 if (
-  !(await lockedRun.locator('.arena-fighter.team-player .unit-health').getAttribute('aria-label'))?.includes('7500')
+  !(await lockedRun.locator('.arena-fighter.team-player .unit-health').getAttribute('aria-label'))?.includes('5000')
 ) {
-  throw new Error('The run-two player did not receive the same configured health growth');
+  throw new Error('The run-two player received an automatic body upgrade without paying for it');
 }
 
 const fusion = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
@@ -744,12 +791,12 @@ magicSigil.on('console', (message) => {
 const magicSigilTarget = new URL(target);
 magicSigilTarget.searchParams.set('magicSigilFixture', 'focus');
 await magicSigil.goto(magicSigilTarget.toString(), { waitUntil: 'networkidle' });
-const rankThreeSigil = magicSigil.locator('.circuit-cell[data-row="2"][data-column="1"][data-magic-sigil-level="3"]');
+const rankThreeSigil = magicSigil.locator('.circuit-cell[data-row="2"][data-column="2"][data-magic-sigil-level="3"]');
 await rankThreeSigil.waitFor();
 if ((await rankThreeSigil.locator('[data-magic-sigil-mark]').count()) !== 1) {
   throw new Error('Rank III magic sigil is missing its board mark');
 }
-const emptySigil = magicSigil.locator('.circuit-cell[data-row="2"][data-column="2"][data-magic-sigil-level="1"]');
+const emptySigil = magicSigil.locator('.circuit-cell[data-row="2"][data-column="3"][data-magic-sigil-level="1"]');
 if (
   (await emptySigil.locator('.block-button').count()) !== 0 ||
   (await emptySigil.locator('[data-magic-sigil-mark]').count()) !== 1

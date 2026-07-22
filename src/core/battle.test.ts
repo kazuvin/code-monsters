@@ -10,7 +10,16 @@ const testData = (): GameData => ({
   schemaVersion: 2,
   rules: {
     boardSize: 3,
-    sourceRow: 1,
+    heart: {
+      initialPosition: { row: 1, column: -1 },
+      ports: ['north', 'east', 'south', 'west'],
+    },
+    bodyUpgrades: {
+      maxLevel: 3,
+      hpPerLevel: 5,
+      upgradeCosts: [1, 2],
+      rivalRunsPerLevel: 1,
+    },
     battleStepMs: 1000,
     pulseAnimationMs: 480,
     suddenDeathSeconds: 4,
@@ -28,7 +37,6 @@ const testData = (): GameData => ({
     levelProgression: {
       runsPerLevel: 1,
       maxLevel: 3,
-      hpPerLevel: 5,
       rarityWeightMultiplierPerLevel: { common: 0.96, rare: 1.02, epic: 1.08, legendary: 1.14 },
     },
     skillFusion: {

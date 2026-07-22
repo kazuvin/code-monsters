@@ -5,6 +5,9 @@ import { magicSigilModifiers } from './skill-progress';
 import type { BlockDefinition, CircuitBoard, MagicSigilRules, SkillFusionRules } from './types';
 import { GAME_DATA } from '../game/game-data';
 
+const ROUTE_DATA = structuredClone(GAME_DATA);
+ROUTE_DATA.rules.heart.initialPosition = { row: 2, column: -1 };
+
 const sigilRules: MagicSigilRules = {
   maxLevel: 3,
   effectPowerPerLevel: 15,
@@ -112,7 +115,7 @@ describe('magic sigils', () => {
     playerBoard[2][0] = { blockId: 'inscription-stone', rotation: 0 };
     playerBoard[2][1] = { blockId: 'sigil-blade', rotation: 0 };
 
-    const result = resolveTick(GAME_DATA, createBattle(GAME_DATA, playerBoard, enemyBoard), 1);
+    const result = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, playerBoard, enemyBoard), 1);
     const blade = result.trace.find(
       (event) => 'blockId' in event && event.blockId === 'sigil-blade' && event.kind === 'damage',
     );
@@ -132,7 +135,7 @@ describe('magic sigils', () => {
     playerBoard[1][1] = { blockId: 'convergence-sigil', rotation: 0 };
     playerBoard[2][1] = { blockId: 'deep-sigil-cannon', rotation: 0, stars: 1 };
 
-    const circuit = analyzeCircuit(playerBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+    const circuit = analyzeCircuit(playerBoard, GAME_DATA.blocks, 2);
     const sigils = analyzeMagicSigils(
       playerBoard,
       GAME_DATA.blocks,
@@ -140,7 +143,7 @@ describe('magic sigils', () => {
       GAME_DATA.rules.skillFusion,
       GAME_DATA.rules.magicSigils,
     );
-    const result = resolveTick(GAME_DATA, createBattle(GAME_DATA, playerBoard, enemyBoard), 1);
+    const result = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, playerBoard, enemyBoard), 1);
     const finisher = result.trace.find(
       (event) => 'blockId' in event && event.blockId === 'deep-sigil-cannon' && event.kind === 'damage',
     );
@@ -162,7 +165,7 @@ describe('magic sigils', () => {
     playerBoard[2][2] = { blockId: 'sigil-blade', rotation: 0 };
     playerBoard[2][3] = { blockId: 'resonance-circle', rotation: 0 };
 
-    const result = resolveTick(GAME_DATA, createBattle(GAME_DATA, playerBoard, enemyBoard), 1);
+    const result = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, playerBoard, enemyBoard), 1);
     const resonance = result.trace.find(
       (event) => 'blockId' in event && event.blockId === 'resonance-circle' && event.kind === 'poison',
     );
@@ -180,7 +183,7 @@ describe('magic sigils', () => {
     playerBoard[2][0] = { blockId: 'guiding-bolt', rotation: 0 };
     playerBoard[2][1] = { blockId: 'sigil-cannon', rotation: 0, stars: 1 };
 
-    const result = resolveTick(GAME_DATA, createBattle(GAME_DATA, playerBoard, enemyBoard), 1);
+    const result = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, playerBoard, enemyBoard), 1);
     const cannon = result.trace.find(
       (event) => 'blockId' in event && event.blockId === 'sigil-cannon' && event.kind === 'damage',
     );
@@ -204,16 +207,16 @@ describe('magic sigils', () => {
       Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
     );
     const poisonResult = resolveTick(
-      GAME_DATA,
-      createBattle(GAME_DATA, spreadBoard('resonance-circle'), enemyBoard),
+      ROUTE_DATA,
+      createBattle(ROUTE_DATA, spreadBoard('resonance-circle'), enemyBoard),
       1,
     );
     const resonance = poisonResult.trace.find(
       (event) => 'blockId' in event && event.blockId === 'resonance-circle' && event.kind === 'poison',
     );
     const allResult = resolveTick(
-      GAME_DATA,
-      createBattle(GAME_DATA, spreadBoard('all-sigil-resonance'), enemyBoard),
+      ROUTE_DATA,
+      createBattle(ROUTE_DATA, spreadBoard('all-sigil-resonance'), enemyBoard),
       1,
     );
     const allDamage = allResult.trace.find(

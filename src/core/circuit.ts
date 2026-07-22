@@ -109,6 +109,7 @@ export function adjacentPoweredBuildNeighbors(
 
 export type CircuitAnalysis = {
   poweredCells: Set<string>;
+  heartConnections: Set<string>;
   routeLength: Map<string, number>;
   cyclicCells: Set<string>;
   waveStep: Map<string, number>;
@@ -146,6 +147,7 @@ export type MagicSigilAnalysis = {
 
 const emptyAnalysis = (): CircuitAnalysis => ({
   poweredCells: new Set(),
+  heartConnections: new Set(),
   routeLength: new Map(),
   cyclicCells: new Set(),
   waveStep: new Map(),
@@ -173,15 +175,32 @@ const canReachWithout = (neighborsByKey: Map<string, string[]>, start: string, t
   return false;
 };
 
-export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], sourceRow: number): CircuitAnalysis {
-  const source = { row: sourceRow, column: 0 };
-  const sourceKey = cellKey(source);
-  const first = definitionAt(board, blocks, source);
-  if (!first || !rotatePorts(first.definition.ports, first.placed.rotation).includes('west')) return emptyAnalysis();
+const normalizeHeartPosition = (source: CellPosition | number): CellPosition =>
+  typeof source === 'number' ? { row: source, column: -1 } : source;
 
+export function analyzeCircuit(
+  board: CircuitBoard,
+  blocks: ConnectionBlock[],
+  source: CellPosition | number,
+  heartPorts: Direction[] = DIRECTIONS,
+): CircuitAnalysis {
+  const heartPosition = normalizeHeartPosition(source);
+  const heartConnections = new Set<string>();
   const poweredCells = new Set<string>();
-  const routeLength = new Map<string, number>([[sourceKey, 1]]);
-  const queue = [source];
+  const routeLength = new Map<string, number>();
+  const queue = heartPorts.flatMap((direction) => {
+    const vector = VECTORS[direction];
+    const position = { row: heartPosition.row + vector.row, column: heartPosition.column + vector.column };
+    const neighbor = definitionAt(board, blocks, position);
+    if (!neighbor || !rotatePorts(neighbor.definition.ports, neighbor.placed.rotation).includes(OPPOSITE[direction])) {
+      return [];
+    }
+    const key = cellKey(position);
+    heartConnections.add(key);
+    routeLength.set(key, 1);
+    return [position];
+  });
+  if (queue.length === 0) return emptyAnalysis();
   while (queue.length > 0) {
     const current = queue.shift()!;
     const key = cellKey(current);
@@ -241,9 +260,16 @@ export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], s
       if (!current) return false;
       const connected = new Set(neighborsByKey.get(key) ?? []);
       return rotatePorts(current.definition.ports, current.placed.rotation).every((direction) => {
-        if (position.row === sourceRow && position.column === 0 && direction === 'west') return true;
         const vector = VECTORS[direction];
-        return connected.has(cellKey({ row: position.row + vector.row, column: position.column + vector.column }));
+        const neighborPosition = { row: position.row + vector.row, column: position.column + vector.column };
+        if (
+          heartConnections.has(key) &&
+          neighborPosition.row === heartPosition.row &&
+          neighborPosition.column === heartPosition.column
+        ) {
+          return true;
+        }
+        return connected.has(cellKey(neighborPosition));
       });
     }),
   );
@@ -271,6 +297,7 @@ export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], s
 
   return {
     poweredCells,
+    heartConnections,
     routeLength,
     cyclicCells,
     waveStep,
@@ -284,8 +311,13 @@ export function analyzeCircuit(board: CircuitBoard, blocks: ConnectionBlock[], s
   };
 }
 
-export function findPoweredCells(board: CircuitBoard, blocks: ConnectionBlock[], sourceRow: number): Set<string> {
-  return analyzeCircuit(board, blocks, sourceRow).poweredCells;
+export function findPoweredCells(
+  board: CircuitBoard,
+  blocks: ConnectionBlock[],
+  source: CellPosition | number,
+  heartPorts: Direction[] = DIRECTIONS,
+): Set<string> {
+  return analyzeCircuit(board, blocks, source, heartPorts).poweredCells;
 }
 
 export const rotateCellOffset = (offset: CellPosition, rotation: Rotation): CellPosition => {
@@ -387,9 +419,7 @@ export function evaluateCircuitCondition(
   const currentBlock = definitionAt(board, blocks, position);
   const rotatedPorts = currentBlock ? rotatePorts(currentBlock.definition.ports, currentBlock.placed.rotation) : [];
   const connected = connectedNeighbors(board, blocks, position).map(cellKey);
-  const connectedPortCount =
-    connected.length +
-    ((analysis.routeLength.get(key) ?? 0) === 1 && position.column === 0 && rotatedPorts.includes('west') ? 1 : 0);
+  const connectedPortCount = connected.length + (analysis.heartConnections.has(key) ? 1 : 0);
   const pathLength = analysis.routeLength.get(key) ?? 0;
   const straightLength = analysis.straightLineLength.get(key) ?? 0;
   const adjacentBuildNeighbors =

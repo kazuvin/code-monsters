@@ -10,6 +10,47 @@ import type { CircuitBoard, Direction } from './types';
 import { GAME_DATA } from '../game/game-data';
 
 describe('circuit connectivity', () => {
+  it('starts four independent powered routes from a heart without counting the heart as a skill', () => {
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'north', ports: ['south'] },
+      { id: 'east', ports: ['west'] },
+      { id: 'south', ports: ['north'] },
+      { id: 'west', ports: ['east'] },
+    ];
+    const board: CircuitBoard = [
+      [null, { blockId: 'north', rotation: 0 }, null],
+      [{ blockId: 'west', rotation: 0 }, null, { blockId: 'east', rotation: 0 }],
+      [null, { blockId: 'south', rotation: 0 }, null],
+    ];
+
+    const analysis = analyzeCircuit(board, blocks, { row: 1, column: 1 });
+
+    expect(analysis.poweredCells).toEqual(new Set(['0:1', '1:2', '2:1', '1:0']));
+    expect([...analysis.routeLength.values()]).toEqual([1, 1, 1, 1]);
+    expect(analysis.poweredCells).not.toContain('1:1');
+    expect(analysis.cyclicCells).toEqual(new Set());
+  });
+
+  it('merges heart routes where their wave fronts meet without turning the heart into a free loop', () => {
+    const blocks: Array<{ id: string; ports: Direction[] }> = [
+      { id: 'north', ports: ['south', 'west'] },
+      { id: 'west', ports: ['east', 'north'] },
+      { id: 'merge', ports: ['east', 'south'] },
+    ];
+    const board: CircuitBoard = [
+      [{ blockId: 'merge', rotation: 0 }, { blockId: 'north', rotation: 0 }, null],
+      [{ blockId: 'west', rotation: 0 }, null, null],
+      [null, null, null],
+    ];
+
+    const analysis = analyzeCircuit(board, blocks, { row: 1, column: 1 });
+
+    expect(analysis.routeLength.get('0:0')).toBe(2);
+    expect(analysis.mergeCells).toEqual(new Set(['0:0']));
+    expect(analysis.cyclicCells).toEqual(new Set());
+    expect(analysis.straightLineLength.get('0:1')).toBe(2);
+  });
+
   it('rotates block ports clockwise', () => {
     expect(rotatePorts(['north', 'east'], 1)).toEqual(['east', 'south']);
   });
@@ -231,7 +272,7 @@ describe('circuit connectivity', () => {
     board[1][1] = { blockId: 'return-coil', rotation: 0 };
     board[1][0] = { blockId: 'charge-guard', rotation: 0 };
 
-    const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+    const analysis = analyzeCircuit(board, GAME_DATA.blocks, 2);
 
     expect(analysis.poweredCells).toEqual(new Set(['2:0', '2:1', '1:1', '1:0']));
     expect(analysis.cyclicCells).toEqual(new Set(['2:0', '2:1', '1:1', '1:0']));
@@ -245,9 +286,7 @@ describe('circuit connectivity', () => {
     board[2][1] = { blockId: 'strike', rotation: 0 };
     board[1][0] = { blockId: 'charge-guard', rotation: 0 };
 
-    expect(findPoweredCells(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow)).toEqual(
-      new Set(['2:0', '2:1', '1:0']),
-    );
+    expect(findPoweredCells(board, GAME_DATA.blocks, 2)).toEqual(new Set(['2:0', '2:1', '1:0']));
   });
 
   it('advances every branch each stage and merges where wave fronts arrive together', () => {
@@ -294,6 +333,6 @@ describe('circuit connectivity', () => {
     board[1][1] = { blockId: 'return-coil', rotation: 0 };
     board[1][0] = { blockId: 'charge-guard', rotation: 0 };
 
-    expect(analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow).mergeCells).toEqual(new Set(['1:1']));
+    expect(analyzeCircuit(board, GAME_DATA.blocks, 2).mergeCells).toEqual(new Set(['1:1']));
   });
 });

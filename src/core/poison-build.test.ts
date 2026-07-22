@@ -3,6 +3,10 @@ import { createBattle, resolveTick } from './battle';
 import type { CircuitBoard } from './types';
 import { GAME_DATA } from '../game/game-data';
 
+const ROUTE_ROW = 2;
+const ROUTE_DATA = structuredClone(GAME_DATA);
+ROUTE_DATA.rules.heart.initialPosition = { row: ROUTE_ROW, column: -1 };
+
 const emptyBoard = (): CircuitBoard =>
   Array.from({ length: GAME_DATA.rules.boardSize }, () =>
     Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
@@ -11,14 +15,14 @@ const emptyBoard = (): CircuitBoard =>
 const horizontalRoute = (...blockIds: string[]) => {
   const board = emptyBoard();
   blockIds.forEach((blockId, column) => {
-    board[GAME_DATA.rules.sourceRow][column] = { blockId, rotation: 0 };
+    board[ROUTE_ROW][column] = { blockId, rotation: 0 };
   });
   return board;
 };
 
 describe('poison build', () => {
   it('applies poison needle self growth to later poison applications', () => {
-    const data = structuredClone(GAME_DATA);
+    const data = structuredClone(ROUTE_DATA);
     data.rules.poisonTickSeconds = 100;
     const state = createBattle(data, horizontalRoute('poison-needle'), emptyBoard());
 
@@ -35,7 +39,7 @@ describe('poison build', () => {
   });
 
   it('keeps poison and lets venom bloom scale from the poison already cultivated', () => {
-    const data = structuredClone(GAME_DATA);
+    const data = structuredClone(ROUTE_DATA);
     data.rules.poisonTickSeconds = 100;
     const board = horizontalRoute('poison-needle', 'status-relay', 'venom-bloom');
     const tick1 = resolveTick(data, createBattle(data, board, emptyBoard()), 1);
@@ -53,7 +57,7 @@ describe('poison build', () => {
   });
 
   it('activates every skill in a real poison cycle and applies named buffs in route order', () => {
-    const data = structuredClone(GAME_DATA);
+    const data = structuredClone(ROUTE_DATA);
     data.rules.poisonTickSeconds = 100;
     const board = emptyBoard();
     board[2][0] = { blockId: 'poison-needle', rotation: 0 };
@@ -79,7 +83,7 @@ describe('poison build', () => {
   });
 
   it('fires every powered branch instead of only following one output', () => {
-    const data = structuredClone(GAME_DATA);
+    const data = structuredClone(ROUTE_DATA);
     data.rules.poisonTickSeconds = 100;
     const board = emptyBoard();
     board[2][0] = { blockId: 'arc-shot', rotation: 0 };
@@ -96,7 +100,7 @@ describe('poison build', () => {
   });
 
   it('doubles active effects when two branches merge in the same wave', () => {
-    const data = structuredClone(GAME_DATA);
+    const data = structuredClone(ROUTE_DATA);
     data.rules.poisonTickSeconds = 100;
     const board = emptyBoard();
     board[2][0] = { blockId: 'arc-shot', rotation: 0 };
@@ -118,7 +122,7 @@ describe('poison build', () => {
   });
 
   it('ruptures part of the stored poison while preserving the cultivated stack', () => {
-    const data = structuredClone(GAME_DATA);
+    const data = structuredClone(ROUTE_DATA);
     data.rules.poisonTickSeconds = 100;
     const state = createBattle(data, horizontalRoute('rupture-stake'), emptyBoard());
     state.fighters.find((fighter) => fighter.team === 'enemy')!.poison = 100;
@@ -132,7 +136,7 @@ describe('poison build', () => {
   });
 
   it('lets an upstream amplifier increase rupture damage per consumed poison', () => {
-    const data = structuredClone(GAME_DATA);
+    const data = structuredClone(ROUTE_DATA);
     data.rules.poisonTickSeconds = 100;
     const state = createBattle(data, horizontalRoute('amplifier', 'rupture-stake'), emptyBoard());
     state.fighters.find((fighter) => fighter.team === 'enemy')!.poison = 100;
@@ -146,7 +150,7 @@ describe('poison build', () => {
   });
 
   it('deals poison damage periodically and lets one stack decay', () => {
-    const data = structuredClone(GAME_DATA);
+    const data = structuredClone(ROUTE_DATA);
     data.rules.poisonTickSeconds = 1;
     const state = createBattle(data, emptyBoard(), emptyBoard());
     const enemy = state.fighters.find((fighter) => fighter.team === 'enemy')!;
@@ -157,7 +161,7 @@ describe('poison build', () => {
     const afflicted = tick2.fighters.find((fighter) => fighter.team === 'enemy')!;
 
     expect(afflicted.hp).toBe(afflicted.maxHp - 400);
-    expect(afflicted.poison).toBe(380);
+    expect(afflicted.poison).toBe(400 - GAME_DATA.rules.poisonDecay);
     expect(tick2.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'poison-tick', value: 400 })]));
   });
 });

@@ -1,15 +1,24 @@
 {
-  "schemaVersion": 20,
+  "schemaVersion": 21,
   "rules": {
     "boardSize": 5,
-    "sourceRow": 2,
+    "heart": {
+      "initialPosition": { "row": 2, "column": 2 },
+      "ports": ["north", "east", "south", "west"]
+    },
+    "bodyUpgrades": {
+      "maxLevel": 6,
+      "hpPerLevel": 2500,
+      "upgradeCosts": [6, 8, 10, 12, 14],
+      "rivalRunsPerLevel": 1
+    },
     "battleStepMs": 500,
     "pulseAnimationMs": 480,
     "suddenDeathSeconds": 20,
     "suddenDeathBaseDamage": 250,
     "suddenDeathGrowth": 2,
     "poisonTickSeconds": 1,
-    "poisonDecay": 20,
+    "poisonDecay": 15,
     "mergeEffectMultiplier": 2,
     "startingCoins": 32,
     "winReward": 12,
@@ -20,7 +29,6 @@
     "levelProgression": {
       "runsPerLevel": 1,
       "maxLevel": 9,
-      "hpPerLevel": 2500,
       "rarityWeightMultiplierPerLevel": { "common": 0.96, "rare": 1.02, "epic": 1.08, "legendary": 1.14 }
     },
     "skillFusion": {

@@ -244,8 +244,19 @@ export type BalanceFormulaRules = {
 export type LevelProgressionRules = {
   runsPerLevel: number;
   maxLevel: number;
-  hpPerLevel: number;
   rarityWeightMultiplierPerLevel: RarityWeights;
+};
+
+export type HeartRules = {
+  initialPosition: CellPosition;
+  ports: Direction[];
+};
+
+export type BodyUpgradeRules = {
+  maxLevel: number;
+  hpPerLevel: number;
+  upgradeCosts: number[];
+  rivalRunsPerLevel: number;
 };
 
 export type CircuitBoard = Array<Array<PlacedBlock | null>>;
@@ -254,7 +265,8 @@ export type GameData = {
   schemaVersion: number;
   rules: {
     boardSize: number;
-    sourceRow: number;
+    heart: HeartRules;
+    bodyUpgrades: BodyUpgradeRules;
     battleStepMs: number;
     pulseAnimationMs: number;
     suddenDeathSeconds: number;
@@ -333,6 +345,8 @@ export type BattleState = {
   fighters: FighterState[];
   playerBoard: CircuitBoard;
   enemyBoard: CircuitBoard;
+  playerHeartPosition: CellPosition;
+  enemyHeartPosition: CellPosition;
   playerPowered: string[];
   enemyPowered: string[];
   skillBuffs: Record<Team, Record<string, SkillBuffState>>;

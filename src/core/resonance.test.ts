@@ -72,6 +72,7 @@ const boardFor = (stars: 0 | 1): CircuitBoard => [
 
 const analysis: CircuitAnalysis = {
   poweredCells: new Set(['0:0', '0:1', '0:2', '1:0', '1:1', '1:2', '2:0', '2:1', '2:2']),
+  heartConnections: new Set(),
   routeLength: new Map([['1:1', 1]]),
   cyclicCells: new Set(),
   waveStep: new Map(),

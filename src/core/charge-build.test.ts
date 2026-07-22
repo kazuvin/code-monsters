@@ -4,6 +4,10 @@ import { upgradeBlockDefinition } from './fusion';
 import type { CircuitBoard } from './types';
 import { GAME_DATA } from '../game/game-data';
 
+const ROUTE_ROW = 2;
+const ROUTE_DATA = structuredClone(GAME_DATA);
+ROUTE_DATA.rules.heart.initialPosition = { row: ROUTE_ROW, column: -1 };
+
 const emptyBoard = (): CircuitBoard =>
   Array.from({ length: GAME_DATA.rules.boardSize }, () =>
     Array.from({ length: GAME_DATA.rules.boardSize }, () => null),
@@ -12,11 +16,11 @@ const emptyBoard = (): CircuitBoard =>
 describe('charge build', () => {
   it('carries charge through the route and releases it as terminal damage', () => {
     const board = emptyBoard();
-    board[GAME_DATA.rules.sourceRow][0] = { blockId: 'charge-blade', rotation: 0 };
-    board[GAME_DATA.rules.sourceRow][1] = { blockId: 'charge-coil', rotation: 0 };
-    board[GAME_DATA.rules.sourceRow][2] = { blockId: 'rail-cannon', rotation: 0 };
+    board[ROUTE_ROW][0] = { blockId: 'charge-blade', rotation: 0 };
+    board[ROUTE_ROW][1] = { blockId: 'charge-coil', rotation: 0 };
+    board[ROUTE_ROW][2] = { blockId: 'rail-cannon', rotation: 0 };
 
-    const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
+    const state = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
     expect(release).toMatchObject({ kind: 'damage', value: 1138, charge: 4 });
@@ -24,9 +28,9 @@ describe('charge build', () => {
 
   it('only deals the base release damage when the cannon is next to the source', () => {
     const board = emptyBoard();
-    board[GAME_DATA.rules.sourceRow][0] = { blockId: 'rail-cannon', rotation: 0 };
+    board[ROUTE_ROW][0] = { blockId: 'rail-cannon', rotation: 0 };
 
-    const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
+    const state = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
     expect(release).toMatchObject({ kind: 'damage', value: 298, charge: 0 });
@@ -34,11 +38,11 @@ describe('charge build', () => {
 
   it('carries zero charge through neutral nodes', () => {
     const board = emptyBoard();
-    board[GAME_DATA.rules.sourceRow][0] = { blockId: 'strike', rotation: 0 };
-    board[GAME_DATA.rules.sourceRow][1] = { blockId: 'arc-shot', rotation: 0 };
-    board[GAME_DATA.rules.sourceRow][2] = { blockId: 'rail-cannon', rotation: 0 };
+    board[ROUTE_ROW][0] = { blockId: 'strike', rotation: 0 };
+    board[ROUTE_ROW][1] = { blockId: 'arc-shot', rotation: 0 };
+    board[ROUTE_ROW][2] = { blockId: 'rail-cannon', rotation: 0 };
 
-    const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
+    const state = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
     expect(release).toMatchObject({ kind: 'damage', value: 298, charge: 0 });
@@ -46,11 +50,11 @@ describe('charge build', () => {
 
   it('does not gain charge while traversing poison-only nodes', () => {
     const board = emptyBoard();
-    board[GAME_DATA.rules.sourceRow][0] = { blockId: 'poison-needle', rotation: 0 };
-    board[GAME_DATA.rules.sourceRow][1] = { blockId: 'venom-bloom', rotation: 0 };
-    board[GAME_DATA.rules.sourceRow][2] = { blockId: 'rail-cannon', rotation: 0 };
+    board[ROUTE_ROW][0] = { blockId: 'poison-needle', rotation: 0 };
+    board[ROUTE_ROW][1] = { blockId: 'venom-bloom', rotation: 0 };
+    board[ROUTE_ROW][2] = { blockId: 'rail-cannon', rotation: 0 };
 
-    const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
+    const state = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
     expect(release).toMatchObject({ kind: 'damage', value: 298, charge: 0 });
@@ -58,11 +62,11 @@ describe('charge build', () => {
 
   it('can release the same route charge as a defensive payoff', () => {
     const board = emptyBoard();
-    board[GAME_DATA.rules.sourceRow][0] = { blockId: 'charge-blade', rotation: 0 };
-    board[GAME_DATA.rules.sourceRow][1] = { blockId: 'charge-coil', rotation: 0 };
-    board[GAME_DATA.rules.sourceRow][2] = { blockId: 'charge-bastion', rotation: 0 };
+    board[ROUTE_ROW][0] = { blockId: 'charge-blade', rotation: 0 };
+    board[ROUTE_ROW][1] = { blockId: 'charge-coil', rotation: 0 };
+    board[ROUTE_ROW][2] = { blockId: 'charge-bastion', rotation: 0 };
 
-    const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
+    const state = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'charge-bastion');
 
     expect(release).toMatchObject({ kind: 'shield', value: 1010, charge: 4 });
@@ -71,12 +75,12 @@ describe('charge build', () => {
 
   it('lets the defensive charge payoff repair poison damage as well as add shield', () => {
     const board = emptyBoard();
-    board[GAME_DATA.rules.sourceRow][0] = { blockId: 'charge-bastion', rotation: 0 };
-    const state = createBattle(GAME_DATA, board, emptyBoard());
+    board[ROUTE_ROW][0] = { blockId: 'charge-bastion', rotation: 0 };
+    const state = createBattle(ROUTE_DATA, board, emptyBoard());
     const player = state.fighters.find((fighter) => fighter.team === 'player')!;
     player.hp -= 1000;
 
-    const result = resolveTick(GAME_DATA, state, 1);
+    const result = resolveTick(ROUTE_DATA, state, 1);
 
     expect(result.fighters.find((fighter) => fighter.team === 'player')?.hp).toBe(player.hp + 175);
   });
@@ -105,22 +109,22 @@ describe('charge build', () => {
 
   it('uses the legendary lance as a topology-gated charge relay instead of a damage source', () => {
     const shortBoard = emptyBoard();
-    shortBoard[GAME_DATA.rules.sourceRow][0] = { blockId: 'charge-blade', rotation: 0 };
-    shortBoard[GAME_DATA.rules.sourceRow][1] = { blockId: 'charge-line-lance', rotation: 0 };
-    shortBoard[GAME_DATA.rules.sourceRow][2] = { blockId: 'overcharge-cannon', rotation: 0 };
-    const shortState = resolveTick(GAME_DATA, createBattle(GAME_DATA, shortBoard, emptyBoard()), 1);
+    shortBoard[ROUTE_ROW][0] = { blockId: 'charge-blade', rotation: 0 };
+    shortBoard[ROUTE_ROW][1] = { blockId: 'charge-line-lance', rotation: 0 };
+    shortBoard[ROUTE_ROW][2] = { blockId: 'overcharge-cannon', rotation: 0 };
+    const shortState = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, shortBoard, emptyBoard()), 1);
     const shortRelease = shortState.trace.find((event) => 'blockId' in event && event.blockId === 'overcharge-cannon');
 
     expect(shortRelease).toMatchObject({ kind: 'damage', value: 3740, charge: 7 });
     expect(shortState.trace.some((event) => 'blockId' in event && event.blockId === 'charge-line-lance')).toBe(false);
 
     const longBoard = emptyBoard();
-    longBoard[GAME_DATA.rules.sourceRow][0] = { blockId: 'charge-blade', rotation: 0 };
-    longBoard[GAME_DATA.rules.sourceRow][1] = { blockId: 'charge-coil', rotation: 0 };
-    longBoard[GAME_DATA.rules.sourceRow][2] = { blockId: 'strike', rotation: 0 };
-    longBoard[GAME_DATA.rules.sourceRow][3] = { blockId: 'charge-line-lance', rotation: 0 };
-    longBoard[GAME_DATA.rules.sourceRow][4] = { blockId: 'overcharge-cannon', rotation: 0 };
-    const longState = resolveTick(GAME_DATA, createBattle(GAME_DATA, longBoard, emptyBoard()), 1);
+    longBoard[ROUTE_ROW][0] = { blockId: 'charge-blade', rotation: 0 };
+    longBoard[ROUTE_ROW][1] = { blockId: 'charge-coil', rotation: 0 };
+    longBoard[ROUTE_ROW][2] = { blockId: 'strike', rotation: 0 };
+    longBoard[ROUTE_ROW][3] = { blockId: 'charge-line-lance', rotation: 0 };
+    longBoard[ROUTE_ROW][4] = { blockId: 'overcharge-cannon', rotation: 0 };
+    const longState = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, longBoard, emptyBoard()), 1);
     const longRelease = longState.trace.find((event) => 'blockId' in event && event.blockId === 'overcharge-cannon');
 
     expect(longRelease).toMatchObject({ kind: 'damage', value: 6940, charge: 15 });
@@ -129,11 +133,11 @@ describe('charge build', () => {
   it('keeps the first pulse release values explicit at five charge', () => {
     const releaseValue = (blockId: string) => {
       const board = emptyBoard();
-      board[GAME_DATA.rules.sourceRow][0] = { blockId: 'charge-blade', rotation: 0 };
-      board[GAME_DATA.rules.sourceRow][1] = { blockId: 'charge-coil', rotation: 0 };
-      board[GAME_DATA.rules.sourceRow][2] = { blockId: 'status-relay', rotation: 0 };
-      board[GAME_DATA.rules.sourceRow][3] = { blockId, rotation: 0 };
-      const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
+      board[ROUTE_ROW][0] = { blockId: 'charge-blade', rotation: 0 };
+      board[ROUTE_ROW][1] = { blockId: 'charge-coil', rotation: 0 };
+      board[ROUTE_ROW][2] = { blockId: 'status-relay', rotation: 0 };
+      board[ROUTE_ROW][3] = { blockId, rotation: 0 };
+      const state = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, board, emptyBoard()), 1);
       return state.trace.find((event) => 'blockId' in event && event.blockId === blockId);
     };
 

@@ -52,7 +52,12 @@ type PlannedActivation = {
   stars: 0 | 1;
 };
 
-export type BattleOptions = { playerMaxHpBonus?: number; enemyMaxHpBonus?: number };
+export type BattleOptions = {
+  playerMaxHpBonus?: number;
+  enemyMaxHpBonus?: number;
+  playerHeartPosition?: CellPosition;
+  enemyHeartPosition?: CellPosition;
+};
 
 const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player');
 
@@ -102,13 +107,17 @@ export function createBattle(
   enemyBoard: CircuitBoard,
   options: BattleOptions = {},
 ): BattleState {
-  const playerAnalysis = analyzeCircuit(playerBoard, data.blocks, data.rules.sourceRow);
-  const enemyAnalysis = analyzeCircuit(enemyBoard, data.blocks, data.rules.sourceRow);
+  const playerHeartPosition = options.playerHeartPosition ?? data.rules.heart.initialPosition;
+  const enemyHeartPosition = options.enemyHeartPosition ?? data.rules.heart.initialPosition;
+  const playerAnalysis = analyzeCircuit(playerBoard, data.blocks, playerHeartPosition, data.rules.heart.ports);
+  const enemyAnalysis = analyzeCircuit(enemyBoard, data.blocks, enemyHeartPosition, data.rules.heart.ports);
   return {
     tick: 0,
     fighters: [fighterFor(data, 'player', options), fighterFor(data, 'enemy', options)],
     playerBoard: cloneBoard(playerBoard),
     enemyBoard: cloneBoard(enemyBoard),
+    playerHeartPosition: { ...playerHeartPosition },
+    enemyHeartPosition: { ...enemyHeartPosition },
     playerPowered: [...playerAnalysis.poweredCells],
     enemyPowered: [...enemyAnalysis.poweredCells],
     skillBuffs: { player: {}, enemy: {} },
@@ -137,9 +146,15 @@ const adjacentBuildIdsFor = (block: BlockDefinition) => [
   ),
 ];
 
-function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tick: number): PlannedActivation[] {
+function plannedActivations(
+  data: GameData,
+  board: CircuitBoard,
+  heartPosition: CellPosition,
+  team: Team,
+  tick: number,
+): PlannedActivation[] {
   const definitions = new Map(data.blocks.map((block) => [block.id, block]));
-  const analysis = analyzeCircuit(board, data.blocks, data.rules.sourceRow);
+  const analysis = analyzeCircuit(board, data.blocks, heartPosition, data.rules.heart.ports);
   const magicSigils = analyzeMagicSigils(board, data.blocks, analysis, data.rules.skillFusion, data.rules.magicSigils);
   const magicSigilCount = countActiveMagicSigils(board, analysis, magicSigils);
   const chargeByCell = calculateChargeByCell(board, data.blocks, analysis, data.rules.skillFusion);
@@ -286,11 +301,16 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
   if (state.winner) return [state];
   const fighters = state.fighters.map((fighter) => ({ ...fighter }));
   const skillBuffs = cloneSkillBuffs(state.skillBuffs);
-  const playerAnalysis = analyzeCircuit(state.playerBoard, data.blocks, data.rules.sourceRow);
-  const enemyAnalysis = analyzeCircuit(state.enemyBoard, data.blocks, data.rules.sourceRow);
+  const playerAnalysis = analyzeCircuit(
+    state.playerBoard,
+    data.blocks,
+    state.playerHeartPosition,
+    data.rules.heart.ports,
+  );
+  const enemyAnalysis = analyzeCircuit(state.enemyBoard, data.blocks, state.enemyHeartPosition, data.rules.heart.ports);
   const plans = [
-    ...plannedActivations(data, state.playerBoard, 'player', tick),
-    ...plannedActivations(data, state.enemyBoard, 'enemy', tick),
+    ...plannedActivations(data, state.playerBoard, state.playerHeartPosition, 'player', tick),
+    ...plannedActivations(data, state.enemyBoard, state.enemyHeartPosition, 'enemy', tick),
   ];
   const trace = [...state.trace];
   const fighter = (team: Team) => fighters.find((candidate) => candidate.team === team)!;

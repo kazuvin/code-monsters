@@ -23,9 +23,14 @@ import { damageTierFor, type DamageTier } from './core/combat-presentation';
 import { battleReward } from './core/economy';
 import { generateEnemyBuild } from './core/enemy-builder';
 import { fuseSkillCopies, pickFusionRewardIds, upgradeBlockDefinition } from './core/fusion';
-import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
+import { moveBlock, moveHeart, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './core/loadout';
 import { BATTLE_SPEEDS, playbackFrameMs, type BattleSpeed } from './core/playback';
-import { levelForRun, maxHpBonusForLevel, rarityWeightsForLevel } from './core/progression';
+import {
+  bodyUpgradeCostForLevel,
+  levelForRun,
+  maxHpBonusForBodyLevel,
+  rarityWeightsForLevel,
+} from './core/progression';
 import { advanceShop, createShop, randomShopSeed, rerollShop } from './core/shop';
 import {
   incomingSkillModifiers,
@@ -64,10 +69,13 @@ type DetailTarget = {
   team?: Team;
   stars?: SkillStars;
 };
-type DragOrigin = { kind: 'board'; position: CellPosition } | { kind: 'rack'; block: PlacedBlock };
+type DragOrigin =
+  | { kind: 'board'; position: CellPosition }
+  | { kind: 'rack'; block: PlacedBlock }
+  | { kind: 'heart'; position: CellPosition };
 type DragState = {
   origin: DragOrigin;
-  blockId: string;
+  blockId?: string;
   rotation: Rotation;
   stars: SkillStars;
   x: number;
@@ -209,13 +217,31 @@ const MagicSigilMark = ({ level, active = false }: { level: number; active?: boo
     </span>
   ) : null;
 
+const HeartVisual = ({ compact = false, conducting = false }: { compact?: boolean; conducting?: boolean }) => (
+  <span className={`heart-core ${compact ? 'is-compact' : ''} ${conducting ? 'is-conducting' : ''}`}>
+    <em className="heart-port port-north" />
+    <em className="heart-port port-east" />
+    <em className="heart-port port-south" />
+    <em className="heart-port port-west" />
+    <i aria-hidden="true" />
+    <b>♥</b>
+    <small>CORE</small>
+  </span>
+);
+
+const createInitialHeartPosition = (): CellPosition => {
+  if (magicSigilFixture === 'focus') return { row: 2, column: 0 };
+  if (resonanceFixture === 'surround') return { row: 2, column: 3 };
+  return { ...GAME_DATA.rules.heart.initialPosition };
+};
+
 const createInitialPlayerBoard = () => {
   const initial = GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
   if (magicSigilFixture === 'focus') {
-    initial[2][0] = { blockId: 'guiding-bolt', rotation: 0 };
-    initial[1][0] = { blockId: 'guardian-sigil', rotation: 2 };
-    initial[1][1] = { blockId: 'convergence-sigil', rotation: 0 };
-    initial[2][1] = { blockId: 'deep-sigil-cannon', rotation: 0 };
+    initial[2][1] = { blockId: 'guiding-bolt', rotation: 0 };
+    initial[1][1] = { blockId: 'guardian-sigil', rotation: 2 };
+    initial[1][2] = { blockId: 'convergence-sigil', rotation: 0 };
+    initial[2][2] = { blockId: 'deep-sigil-cannon', rotation: 0 };
     return initial;
   }
   if (resonanceFixture === 'surround') {
@@ -236,9 +262,11 @@ const createInitialPlayerBoard = () => {
     return initial;
   }
   if (topologyFixture !== 'straight') return initial;
-  ['charge-blade', 'charge-coil', 'strike', 'charge-line-lance', 'overcharge-cannon'].forEach((blockId, column) => {
-    initial[GAME_DATA.rules.sourceRow][column] = { blockId, rotation: 0 };
-  });
+  ['charge-blade', 'charge-coil', 'charge-arrow', 'charge-line-lance', 'overcharge-cannon'].forEach(
+    (blockId, column) => {
+      initial[1][column] = { blockId, rotation: blockId === 'charge-arrow' ? 2 : 0 };
+    },
+  );
   return initial;
 };
 
@@ -743,6 +771,7 @@ const BattleCircuitSummary = ({
   team,
   label,
   board,
+  heartPosition,
   powered,
   events,
   tick,
@@ -756,6 +785,7 @@ const BattleCircuitSummary = ({
   team: 'player' | 'enemy';
   label: string;
   board: CircuitBoard;
+  heartPosition: CellPosition;
   powered: string[];
   events: BattleTraceEvent[];
   tick: number;
@@ -768,7 +798,7 @@ const BattleCircuitSummary = ({
 }) => {
   const [conditionPreviewKey, setConditionPreviewKey] = useState<string | null>(null);
   const poweredCells = new Set(powered);
-  const analysis = analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+  const analysis = analyzeCircuit(board, GAME_DATA.blocks, heartPosition, GAME_DATA.rules.heart.ports);
   const magicSigils = analyzeMagicSigils(
     board,
     GAME_DATA.blocks,
@@ -808,7 +838,9 @@ const BattleCircuitSummary = ({
   for (const targetKey of conductingCells) {
     const [row, column] = targetKey.split(':').map(Number);
     const target = { row, column };
-    if (row === GAME_DATA.rules.sourceRow && column === 0) setPortFlow(targetKey, 'west', 'in');
+    if (analysis.heartConnections.has(targetKey)) {
+      setPortFlow(targetKey, directionBetween(target, heartPosition), 'in');
+    }
     for (const upstream of analysis.upstreamCells.get(targetKey) ?? []) {
       const upstreamKey = `${upstream.row}:${upstream.column}`;
       setPortFlow(targetKey, directionBetween(target, upstream), 'in');
@@ -840,17 +872,23 @@ const BattleCircuitSummary = ({
         </em>
       </header>
       <div className="battle-circuit-map">
-        <div
-          className={`battle-circuit-source ${conductingCells.has(`${GAME_DATA.rules.sourceRow}:0`) ? 'is-conducting' : ''}`}
-          style={{ '--source-row': GAME_DATA.rules.sourceRow + 1 } as CSSProperties}
-          aria-hidden="true"
-        >
-          <i>∞</i>
-        </div>
         <div className="battle-circuit-grid" key={`${team}-${tick}`}>
           {board.flatMap((row, rowIndex) =>
             row.map((placed, columnIndex) => {
               const key = `${rowIndex}:${columnIndex}`;
+              const isHeart = rowIndex === heartPosition.row && columnIndex === heartPosition.column;
+              if (isHeart) {
+                const heartConducting = [...analysis.heartConnections].some((cell) => conductingCells.has(cell));
+                return (
+                  <span
+                    className={`battle-circuit-cell battle-heart-cell ${heartConducting ? 'is-conducting' : ''}`}
+                    key={key}
+                    aria-label={`${label}の心臓`}
+                  >
+                    <HeartVisual compact conducting={heartConducting} />
+                  </span>
+                );
+              }
               const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
               const baseBlock = placed ? blockById.get(placed.blockId) : undefined;
               const block = baseBlock
@@ -983,6 +1021,8 @@ export function App() {
   const [coins, setCoins] = useState(GAME_DATA.rules.startingCoins);
   const [earnedCoins, setEarnedCoins] = useState(GAME_DATA.rules.startingCoins);
   const [run, setRun] = useState(1);
+  const [bodyLevel, setBodyLevel] = useState(1);
+  const [heartPosition, setHeartPosition] = useState<CellPosition>(createInitialHeartPosition);
   const [seed, setSeed] = useState(initialSeed);
   const [enemySeed, setEnemySeed] = useState(initialSeed + 101);
   const [rack, setRack] = useState<PlacedBlock[]>(() =>
@@ -1019,7 +1059,10 @@ export function App() {
   const fusionTimer = useRef<number | null>(null);
 
   const ownedBlockIds = useMemo(() => ownedBlockIdsFor(board, rack), [board, rack]);
-  const circuitAnalysis = useMemo(() => analyzeCircuit(board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow), [board]);
+  const circuitAnalysis = useMemo(
+    () => analyzeCircuit(board, GAME_DATA.blocks, heartPosition, GAME_DATA.rules.heart.ports),
+    [board, heartPosition],
+  );
   const powered = circuitAnalysis.poweredCells;
   const magicSigils = useMemo(
     () =>
@@ -1065,7 +1108,8 @@ export function App() {
       : [],
   );
   const level = levelForRun(GAME_DATA, run);
-  const maxHpBonus = maxHpBonusForLevel(GAME_DATA, level);
+  const maxHpBonus = maxHpBonusForBodyLevel(GAME_DATA, bodyLevel);
+  const nextBodyUpgradeCost = bodyUpgradeCostForLevel(GAME_DATA, bodyLevel);
   const shopRarityWeights = useMemo(() => rarityWeightsForLevel(GAME_DATA, level), [level]);
   const enemyBuild = useMemo(
     () =>
@@ -1081,9 +1125,11 @@ export function App() {
     () =>
       createBattle(GAME_DATA, board, enemyBuild.board, {
         playerMaxHpBonus: maxHpBonus,
-        enemyMaxHpBonus: maxHpBonus,
+        enemyMaxHpBonus: enemyBuild.maxHpBonus,
+        playerHeartPosition: heartPosition,
+        enemyHeartPosition: enemyBuild.heartPosition,
       }),
-    [board, enemyBuild.board, maxHpBonus],
+    [board, enemyBuild, heartPosition, maxHpBonus],
   );
   const battle = playback[frame] ?? preview;
   const fighters = battle.fighters;
@@ -1250,8 +1296,8 @@ export function App() {
   const beginHold = (
     event: ReactPointerEvent<HTMLButtonElement>,
     origin: DragOrigin,
-    blockId: string,
-    rotation: Rotation,
+    blockId?: string,
+    rotation: Rotation = 0,
     stars: SkillStars = 0,
   ) => {
     if (event.button !== 0) return;
@@ -1314,18 +1360,29 @@ export function App() {
       return;
     }
     const position = { row: Number(target.dataset.row), column: Number(target.dataset.column) };
+    if (drag.origin.kind === 'heart') {
+      const result = moveHeart(board, heartPosition, position);
+      if (result.board === board) {
+        setMessage('心臓はそこへ移動できません');
+        return;
+      }
+      setBoard(result.board);
+      setHeartPosition(result.heartPosition);
+      setMessage('心臓を移動');
+      return;
+    }
     if (drag.origin.kind === 'rack') {
-      const result = placeBlockFromRack(rack, board, drag.origin.block, position);
+      const result = placeBlockFromRack(rack, board, drag.origin.block, position, heartPosition);
       if (result.board === board) {
         setMessage('そこには置けません');
         return;
       }
       setBoard(result.board);
       setRack(result.rack);
-      setMessage(`${blockById.get(drag.blockId)?.title ?? '技'}を配置`);
+      setMessage(`${(drag.blockId ? blockById.get(drag.blockId)?.title : undefined) ?? '技'}を配置`);
       return;
     }
-    const next = moveBlock(board, drag.origin.position, position);
+    const next = moveBlock(board, drag.origin.position, position, heartPosition);
     if (next === board) {
       setMessage('そこへは移動できません');
       return;
@@ -1452,10 +1509,26 @@ export function App() {
   const toggleLock = (id: string) =>
     setShop((current) => current.map((offer) => (offer.id === id ? { ...offer, locked: !offer.locked } : offer)));
 
+  const upgradeBody = () => {
+    if (nextBodyUpgradeCost === null) {
+      setMessage('機体強化は最大です');
+      return;
+    }
+    if (coins < nextBodyUpgradeCost) {
+      setMessage('コインが足りません');
+      return;
+    }
+    setCoins((current) => current - nextBodyUpgradeCost);
+    setBodyLevel((current) => current + 1);
+    setMessage(`機体LV.${bodyLevel + 1}へ強化`);
+  };
+
   const startBattle = () => {
     const next = createPlayback(GAME_DATA, board, enemyBuild.board, {
       playerMaxHpBonus: maxHpBonus,
-      enemyMaxHpBonus: maxHpBonus,
+      enemyMaxHpBonus: enemyBuild.maxHpBonus,
+      playerHeartPosition: heartPosition,
+      enemyHeartPosition: enemyBuild.heartPosition,
     });
     setDetail(null);
     setReportOpen(false);
@@ -1510,7 +1583,18 @@ export function App() {
   const detailCellKey = detail?.position ? `${detail.position.row}:${detail.position.column}` : undefined;
   const detailOwner = detailBattleTeam === 'player' ? player : detailBattleTeam === 'enemy' ? enemy : undefined;
   const detailOpponent = detailBattleTeam === 'player' ? enemy : detailBattleTeam === 'enemy' ? player : undefined;
-  const detailAnalysis = analyzeCircuit(detailBoard, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+  const detailHeartPosition =
+    detailBattleTeam === 'player'
+      ? battle.playerHeartPosition
+      : detailBattleTeam === 'enemy'
+        ? battle.enemyHeartPosition
+        : heartPosition;
+  const detailAnalysis = analyzeCircuit(
+    detailBoard,
+    GAME_DATA.blocks,
+    detailHeartPosition,
+    GAME_DATA.rules.heart.ports,
+  );
   const detailMagicSigils = analyzeMagicSigils(
     detailBoard,
     GAME_DATA.blocks,
@@ -1621,7 +1705,7 @@ export function App() {
                 RUN <b>{String(run).padStart(2, '0')}</b>
               </span>
               <span>
-                LV <b>{String(level).padStart(2, '0')}</b>
+                TIER <b>{String(level).padStart(2, '0')}</b>
               </span>
               <span className="coin-readout">
                 COIN <b>{coins}</b>
@@ -1645,20 +1729,12 @@ export function App() {
 
                 <div className="circuit-workbench">
                   <div className="circuit-stage">
-                    <div
-                      className="source-column"
-                      style={{ '--source-row': GAME_DATA.rules.sourceRow + 1 } as CSSProperties}
-                    >
-                      <div className="power-source" aria-label="電源コア">
-                        <small>CORE</small>
-                        <b>∞</b>
-                      </div>
-                    </div>
                     <div className="circuit-board" role="grid" aria-label="5×5 回路ボード">
                       {board.flatMap((row, rowIndex) =>
                         row.map((placed, columnIndex) => {
                           const block = placed ? blockById.get(placed.blockId) : undefined;
                           const key = `${rowIndex}:${columnIndex}`;
+                          const isHeart = rowIndex === heartPosition.row && columnIndex === heartPosition.column;
                           const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
                           const conditions = conditionStatusesByCell.get(key) ?? [];
                           const conditionSummary = conditions.map(conditionLabel).join('、');
@@ -1673,7 +1749,7 @@ export function App() {
                               : undefined;
                           return (
                             <div
-                              className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''} ${magicSigilLevel > 0 ? 'is-magic-sigil' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
+                              className={`circuit-cell ${isHeart ? 'is-heart' : ''} ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''} ${magicSigilLevel > 0 ? 'is-magic-sigil' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
                               data-circuit-cell
                               data-magic-sigil-level={magicSigilLevel || undefined}
                               data-resonance-count={resonanceCount}
@@ -1689,8 +1765,22 @@ export function App() {
                               role="gridcell"
                               key={key}
                             >
-                              <MagicSigilMark level={magicSigilLevel} active={powered.has(key)} />
-                              {block && placed ? (
+                              {!isHeart && <MagicSigilMark level={magicSigilLevel} active={powered.has(key)} />}
+                              {isHeart ? (
+                                <button
+                                  type="button"
+                                  className="heart-button"
+                                  aria-label="心臓。長押しで移動"
+                                  onPointerDown={(event) =>
+                                    beginHold(event, { kind: 'heart', position: heartPosition })
+                                  }
+                                  onPointerMove={moveHold}
+                                  onPointerUp={endHold}
+                                  onPointerCancel={cancelHold}
+                                >
+                                  <HeartVisual />
+                                </button>
+                              ) : block && placed ? (
                                 <button
                                   className="block-button"
                                   aria-label={`${block.title}${powered.has(key) ? ' 通電中' : ' 未通電'}${magicSigilLevel > 0 ? `。魔紋位階${SIGIL_LEVEL_LABELS[magicSigilLevel]}` : ''}${conditionSummary ? `。条件 ${conditionSummary}` : ''}。クリックで詳細、長押しで移動`}
@@ -1833,6 +1923,37 @@ export function App() {
                     更新 <b>{GAME_DATA.rules.rerollCost}</b>
                   </button>
                 </header>
+                <section className="body-upgrade" aria-label="機体強化">
+                  <div className="body-upgrade-mark" aria-hidden="true">
+                    <HeartVisual compact />
+                  </div>
+                  <div className="body-upgrade-copy">
+                    <small>BODY TUNE</small>
+                    <strong>機体強化 LV.{bodyLevel}</strong>
+                    <span>
+                      最大HP <b>{player.maxHp}</b>
+                      {nextBodyUpgradeCost !== null && <em>+{GAME_DATA.rules.bodyUpgrades.hpPerLevel}</em>}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={upgradeBody}
+                    disabled={nextBodyUpgradeCost === null}
+                    aria-label={
+                      nextBodyUpgradeCost === null
+                        ? '機体強化は最大'
+                        : `コイン${nextBodyUpgradeCost}で最大HPを${GAME_DATA.rules.bodyUpgrades.hpPerLevel}増やす`
+                    }
+                  >
+                    {nextBodyUpgradeCost === null ? (
+                      <b>MAX</b>
+                    ) : (
+                      <>
+                        強化 <b>{nextBodyUpgradeCost}</b>
+                      </>
+                    )}
+                  </button>
+                </section>
                 <div className="shop-list">
                   {Array.from({ length: GAME_DATA.rules.shopSize }, (_, slot) => {
                     const offer = shop.find((item) => item.slot === slot);
@@ -1972,6 +2093,7 @@ export function App() {
               team="player"
               label={player.name}
               board={battle.playerBoard}
+              heartPosition={battle.playerHeartPosition}
               powered={battle.playerPowered}
               events={frameEvents}
               tick={battle.tick}
@@ -1986,6 +2108,7 @@ export function App() {
               team="enemy"
               label={enemy.name}
               board={battle.enemyBoard}
+              heartPosition={battle.enemyHeartPosition}
               powered={battle.enemyPowered}
               events={frameEvents}
               tick={battle.tick}
@@ -2265,12 +2388,16 @@ export function App() {
 
       {dragging && (
         <div className="drag-ghost" style={{ left: dragging.x, top: dragging.y } as CSSProperties} aria-hidden="true">
-          <BlockVisual
-            block={blockById.get(dragging.blockId)!}
-            rotation={dragging.rotation}
-            stars={dragging.stars}
-            powered
-          />
+          {dragging.origin.kind === 'heart' ? (
+            <HeartVisual />
+          ) : (
+            <BlockVisual
+              block={blockById.get(dragging.blockId!)!}
+              rotation={dragging.rotation}
+              stars={dragging.stars}
+              powered
+            />
+          )}
         </div>
       )}
 

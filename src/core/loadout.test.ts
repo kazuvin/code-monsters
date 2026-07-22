@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moveBlock, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './loadout';
+import { moveBlock, moveHeart, placeBlockFromRack, removeBlockToRack, rotateBoardBlock } from './loadout';
 import type { CircuitBoard } from './types';
 
 const board: CircuitBoard = [
@@ -13,6 +13,30 @@ const board: CircuitBoard = [
 ];
 
 describe('circuit loadout', () => {
+  it('moves the heart by swapping an occupied destination into its previous cell', () => {
+    const result = moveHeart(board, { row: 0, column: 0 }, { row: 1, column: 1 });
+
+    expect(result.heartPosition).toEqual({ row: 1, column: 1 });
+    expect(result.board[0][0]).toEqual({ blockId: 'strike', rotation: 0 });
+    expect(result.board[1][1]).toBeNull();
+    expect(board[1][1]).toEqual({ blockId: 'strike', rotation: 0 });
+  });
+
+  it('never lets a skill replace or move into the heart cell', () => {
+    const heartPosition = { row: 0, column: 0 };
+    const placed = placeBlockFromRack(
+      [{ blockId: 'repair', rotation: 3 }],
+      board,
+      { blockId: 'repair', rotation: 3 },
+      heartPosition,
+      heartPosition,
+    );
+    const moved = moveBlock(board, { row: 1, column: 1 }, heartPosition, heartPosition);
+
+    expect(placed.board).toBe(board);
+    expect(moved).toBe(board);
+  });
+
   it('places a rack block and returns the replaced block to the rack', () => {
     const result = placeBlockFromRack(
       [{ blockId: 'repair', rotation: 3 }],

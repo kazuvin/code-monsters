@@ -5,6 +5,7 @@ import { generateEnemyBuild, type EnemyBuild } from './enemy-builder';
 import type {
   BattleState,
   BlockDefinition,
+  CellPosition,
   CircuitBoard,
   GameData,
   PlacementPatternId,
@@ -264,10 +265,14 @@ const runHeadlessBattle = (
   playerBoard: CircuitBoard,
   enemyBoard: CircuitBoard,
   maxHpBonus: number,
+  playerHeartPosition: CellPosition,
+  enemyHeartPosition: CellPosition,
 ): BattleState => {
   let state = createBattle(data, playerBoard, enemyBoard, {
     playerMaxHpBonus: maxHpBonus,
     enemyMaxHpBonus: maxHpBonus,
+    playerHeartPosition,
+    enemyHeartPosition,
   });
   for (let tick = 1; !state.winner; tick += 1) {
     if (tick > 10_000) throw new Error('Battle exceeded the 10,000 tick simulation guard');
@@ -348,7 +353,10 @@ const replacementFor = (data: GameData, base: EnemyBuild, targetBlock: BlockDefi
 
       const candidate = cloneBoard(base.board);
       candidate[row][column] = { blockId: targetBlock.id, rotation: targetRotation };
-      if (analyzeCircuit(candidate, data.blocks, data.rules.sourceRow).poweredCells.size === base.nodeCount) {
+      if (
+        analyzeCircuit(candidate, data.blocks, base.heartPosition, data.rules.heart.ports).poweredCells.size ===
+        base.nodeCount
+      ) {
         return candidate;
       }
     }
@@ -372,11 +380,41 @@ const counterfactualSample = (
   baselineBoard: CircuitBoard,
   opponentBoard: CircuitBoard,
   maxHpBonus: number,
+  baselineHeartPosition: CellPosition,
+  opponentHeartPosition: CellPosition,
 ): CounterfactualSample => {
-  const baselinePlayer = runHeadlessBattle(data, baselineBoard, opponentBoard, maxHpBonus);
-  const targetPlayer = runHeadlessBattle(data, targetBoard, opponentBoard, maxHpBonus);
-  const baselineEnemy = runHeadlessBattle(data, opponentBoard, baselineBoard, maxHpBonus);
-  const targetEnemy = runHeadlessBattle(data, opponentBoard, targetBoard, maxHpBonus);
+  const baselinePlayer = runHeadlessBattle(
+    data,
+    baselineBoard,
+    opponentBoard,
+    maxHpBonus,
+    baselineHeartPosition,
+    opponentHeartPosition,
+  );
+  const targetPlayer = runHeadlessBattle(
+    data,
+    targetBoard,
+    opponentBoard,
+    maxHpBonus,
+    baselineHeartPosition,
+    opponentHeartPosition,
+  );
+  const baselineEnemy = runHeadlessBattle(
+    data,
+    opponentBoard,
+    baselineBoard,
+    maxHpBonus,
+    opponentHeartPosition,
+    baselineHeartPosition,
+  );
+  const targetEnemy = runHeadlessBattle(
+    data,
+    opponentBoard,
+    targetBoard,
+    maxHpBonus,
+    opponentHeartPosition,
+    baselineHeartPosition,
+  );
   const baselinePlayerOutput = boardOutput(data, baselinePlayer, 'player');
   const targetPlayerOutput = boardOutput(data, targetPlayer, 'player');
   const baselineEnemyOutput = boardOutput(data, baselineEnemy, 'enemy');
@@ -414,11 +452,41 @@ const ablationSample = (
   board: CircuitBoard,
   opponentBoard: CircuitBoard,
   maxHpBonus: number,
+  boardHeartPosition: CellPosition,
+  opponentHeartPosition: CellPosition,
 ): CounterfactualSample => {
-  const activePlayer = runHeadlessBattle(data, board, opponentBoard, maxHpBonus);
-  const ablatedPlayer = runHeadlessBattle(ablatedData, board, opponentBoard, maxHpBonus);
-  const activeEnemy = runHeadlessBattle(data, opponentBoard, board, maxHpBonus);
-  const ablatedEnemy = runHeadlessBattle(ablatedData, opponentBoard, board, maxHpBonus);
+  const activePlayer = runHeadlessBattle(
+    data,
+    board,
+    opponentBoard,
+    maxHpBonus,
+    boardHeartPosition,
+    opponentHeartPosition,
+  );
+  const ablatedPlayer = runHeadlessBattle(
+    ablatedData,
+    board,
+    opponentBoard,
+    maxHpBonus,
+    boardHeartPosition,
+    opponentHeartPosition,
+  );
+  const activeEnemy = runHeadlessBattle(
+    data,
+    opponentBoard,
+    board,
+    maxHpBonus,
+    opponentHeartPosition,
+    boardHeartPosition,
+  );
+  const ablatedEnemy = runHeadlessBattle(
+    ablatedData,
+    opponentBoard,
+    board,
+    maxHpBonus,
+    opponentHeartPosition,
+    boardHeartPosition,
+  );
   const activePlayerOutput = boardOutput(data, activePlayer, 'player');
   const ablatedPlayerOutput = boardOutput(ablatedData, ablatedPlayer, 'player');
   const activeEnemyOutput = boardOutput(data, activeEnemy, 'enemy');
@@ -480,7 +548,17 @@ const counterfactualsFor = (
       const targetBoard = replacementFor(data, base, target);
       if (!targetBoard) continue;
       const opponent = generateEnemyBuild(data, run, baseSeed + 43);
-      samples.push(counterfactualSample(data, targetBoard, base.board, opponent.board, base.maxHpBonus));
+      samples.push(
+        counterfactualSample(
+          data,
+          targetBoard,
+          base.board,
+          opponent.board,
+          base.maxHpBonus,
+          base.heartPosition,
+          opponent.heartPosition,
+        ),
+      );
     }
     bySkill.set(blockId, samples);
 
@@ -501,9 +579,23 @@ const counterfactualsFor = (
       } catch {
         continue;
       }
-      const opponent = generateEnemyBuild(data, run, baseSeed + 47);
-      if (blockIdsOn(opponent.board).includes(blockId)) continue;
-      ablationSamples.push(ablationSample(data, ablatedData, base.board, opponent.board, base.maxHpBonus));
+      let opponent: EnemyBuild;
+      try {
+        opponent = generateEnemyBuild(data, run, baseSeed + 47, { excludedBlockIds: [blockId] });
+      } catch {
+        continue;
+      }
+      ablationSamples.push(
+        ablationSample(
+          data,
+          ablatedData,
+          base.board,
+          opponent.board,
+          base.maxHpBonus,
+          base.heartPosition,
+          opponent.heartPosition,
+        ),
+      );
     }
     ablationBySkill.set(blockId, ablationSamples);
   });
@@ -795,9 +887,19 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
     const pairSeed = config.seed + pairIndex * 10_007;
     const left = generateEnemyBuild(data, run, pairSeed + 17);
     const right = generateEnemyBuild(data, run, pairSeed + 53);
-    recordBattle(runHeadlessBattle(data, left.board, right.board, left.maxHpBonus), run, left, right);
+    recordBattle(
+      runHeadlessBattle(data, left.board, right.board, left.maxHpBonus, left.heartPosition, right.heartPosition),
+      run,
+      left,
+      right,
+    );
     if (tournamentBattles < config.battles) {
-      recordBattle(runHeadlessBattle(data, right.board, left.board, left.maxHpBonus), run, right, left);
+      recordBattle(
+        runHeadlessBattle(data, right.board, left.board, left.maxHpBonus, right.heartPosition, left.heartPosition),
+        run,
+        right,
+        left,
+      );
     }
   }
 
@@ -901,18 +1003,18 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
     skills,
     methodology: {
       tournament:
-        'Each generated matchup uses the same run level, cumulative coin budget, and health bonus on both sides, then replays with boards swapped. Runs and seeds are fixed by config.',
+        'Each generated matchup uses the same run tier, paid body-upgrade curve, and cumulative coin budget on both sides, then replays with boards swapped. Runs and seeds are fixed by config.',
       counterfactual:
         'A skill replaces a same-rarity, overlapping-role node with an identical rotated port signature; payoff nodes also stay on the same payoff path. Baseline and replacement boards then fight the same opponent on both sides.',
       ablation:
         'A linked build is generated with the target skill required, then the same board is replayed with that skill disabled while ports remain unchanged, using an opponent that does not contain it.',
       limitations: [
-        'Generated builds spend no more than the average cumulative player coin budget for that run and use level-adjusted rarity weights, but do not model individual shop choices, rerolls, locked offers, or fusion decisions.',
+        'Generated builds spend their paid body-upgrade cost and skills within the average cumulative player coin budget for that run and use tier-adjusted rarity weights, but do not model individual shop choices, rerolls, locked offers, or fusion decisions.',
         'Per-skill damage is reported trace output before shield absorption and overkill; repair is capped effective healing.',
         'Poison tick damage is team-attributed rather than source-skill-attributed.',
         'Passive support is evaluated primarily through matched and counterfactual outcome lift rather than direct trace output.',
         'Generated builds are not an optimizer for strongest placements or multi-skill combo ceilings; multiplicative payoffs require deterministic high-synergy regression tests.',
-        'Rarity-relative signals for topology-gated skills remain informational because the fixed generator does not guarantee each loop, fully-connected, or straight-line condition.',
+        'Rarity-relative signals for topology-gated skills remain informational because generated heart layouts do not guarantee each loop, fully-connected, or straight-line condition.',
       ],
     },
   };

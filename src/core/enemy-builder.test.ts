@@ -17,11 +17,11 @@ describe('enemy build generator', () => {
 
     expect(builds[0].nodeCount).toBe(5);
     expect(builds.map((build) => build.maxHpBonus)).toEqual([
-      0, 2500, 5000, 7500, 10_000, 12_500, 15_000, 17_500, 20_000, 20_000, 20_000,
+      0, 2500, 5000, 7500, 10_000, 12_500, 12_500, 12_500, 12_500, 12_500, 12_500,
     ]);
     builds.forEach((build, index) => {
       const targetNodes = Math.min(15, 7 + index);
-      const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+      const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, build.heartPosition, GAME_DATA.rules.heart.ports);
       expect(analysis.poweredCells.size).toBe(build.nodeCount);
       expect(build.nodeCount).toBeLessThanOrEqual(targetNodes);
       expect(build.totalCost).toBeLessThanOrEqual(build.budget);
@@ -34,6 +34,7 @@ describe('enemy build generator', () => {
     const battle = createBattle(GAME_DATA, GAME_DATA.playerBoard, build.board, {
       playerMaxHpBonus: build.maxHpBonus,
       enemyMaxHpBonus: build.maxHpBonus,
+      enemyHeartPosition: build.heartPosition,
     });
     const player = battle.fighters.find((fighter) => fighter.team === 'player')!;
     const enemy = battle.fighters.find((fighter) => fighter.team === 'enemy')!;
@@ -52,10 +53,11 @@ describe('enemy build generator', () => {
     expect(build.nodeCount).toBeLessThanOrEqual(8);
   });
 
-  it('fills the most affordable nodes before lowering the run target', () => {
+  it('fills the most affordable nodes after reserving the paid heart upgrade', () => {
     const build = generateEnemyBuild(GAME_DATA, 2, 221, { budget: 40 });
 
-    expect(build.nodeCount).toBe(8);
+    expect(build.nodeCount).toBe(7);
+    expect(build.bodyUpgradeCost).toBe(6);
     expect(build.totalCost).toBeLessThanOrEqual(40);
   });
 
@@ -83,7 +85,7 @@ describe('enemy build generator', () => {
   it('aims magic-sigil inscriptions at powered skills and places its payoff on a mark', () => {
     [11, 12, 13, 14].forEach((seed) => {
       const build = generateEnemyBuild(GAME_DATA, 6, seed, { buildId: 'magic-sigil' });
-      const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+      const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, build.heartPosition, GAME_DATA.rules.heart.ports);
       const magicSigils = analyzeMagicSigils(
         build.board,
         GAME_DATA.blocks,
@@ -111,7 +113,7 @@ describe('enemy build generator', () => {
   it('surrounds a resonance payoff with enough powered resonance nodes, including diagonals', () => {
     [11, 12, 13, 14].forEach((seed) => {
       const build = generateEnemyBuild(GAME_DATA, 6, seed, { buildId: 'resonance' });
-      const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+      const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, build.heartPosition, GAME_DATA.rules.heart.ports);
       const payoffCells = build.board.flatMap((row, rowIndex) =>
         row.flatMap((placed, columnIndex) => {
           const design = GAME_DATA.buildDesign.skills.find((skill) => skill.blockId === placed?.blockId);

@@ -30,6 +30,7 @@ const surroundedGrandHarmony = (stars: SkillStars): CircuitBoard => {
 describe('spirit resonance build', () => {
   it('uses a fused payoff to count all eight powered neighbors without multiplying the count itself', () => {
     const data = structuredClone(GAME_DATA);
+    data.rules.heart.initialPosition = { row: 2, column: -1 };
     data.rules.mergeEffectMultiplier = 1;
     const normal = resolveTick(data, createBattle(data, surroundedGrandHarmony(0), emptyBoard()), 1);
     const fused = resolveTick(data, createBattle(data, surroundedGrandHarmony(1), emptyBoard()), 1);
