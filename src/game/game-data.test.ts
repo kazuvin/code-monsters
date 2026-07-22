@@ -220,6 +220,7 @@ describe('game data', () => {
       ['charge', '#ffd36a'],
       ['magic-sigil', '#a987ff'],
       ['resonance', '#ff9bd7'],
+      ['light-vein', '#5de7f2'],
     ]);
   });
 
@@ -280,7 +281,16 @@ describe('game data', () => {
         .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2)
         .map((skill) => skill.id)
         .sort(),
-    ).toEqual(['resonance-circle', 'status-relay', 'thunder-echo', 'thunder-sigil', 'toxic-reservoir', 'venom-chorus']);
+    ).toEqual([
+      'resonance-circle',
+      'status-relay',
+      'thunder-echo',
+      'thunder-prism',
+      'thunder-sigil',
+      'toxic-reservoir',
+      'venom-chorus',
+      'venom-ray',
+    ]);
   });
 
   it('replaces poison-only nodes with weapon combinations and cross-trait nodes', () => {
@@ -333,20 +343,28 @@ describe('game data', () => {
         'arc-shot',
         'barrier',
         'bounty-arrow',
+        'branchlight-barrage',
         'bridge-core',
         'celestial-echo-cannon',
         'charge-arrow',
+        'convergence-cannon',
         'echo-arrow',
         'grand-harmony',
         'guiding-bolt',
         'harmonic-sanctuary',
+        'myriad-light-array',
         'poison-needle',
+        'prism-arrow',
+        'radiant-fork',
         'resonance-cannon',
         'resonance-circle',
         'sealed-junction',
+        'solar-convergence',
+        'thunder-prism',
         'twin-inscription',
         'venom-chorus',
         'venom-orbit',
+        'venom-ray',
       ].sort(),
     );
     branchingSkills.forEach((block) => {

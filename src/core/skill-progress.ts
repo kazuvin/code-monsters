@@ -22,6 +22,8 @@ export type EffectScalingContext = {
   magicSigilLevel: number;
   magicSigilCount: number;
   adjacentBuildCounts: Readonly<Record<string, number>>;
+  downstreamCount?: number;
+  upstreamCount?: number;
   poweredAxisCounts?: Readonly<Record<string, number>>;
 };
 
@@ -74,7 +76,11 @@ export function effectScalingBonus(scaling: EffectScaling | undefined, context: 
               ? context.magicSigilCount
               : scaling.kind === 'powered-axis'
                 ? (context.poweredAxisCounts?.[`${scaling.axisId}:${scaling.valueId}`] ?? 0)
-                : (context.adjacentBuildCounts[scaling.buildId] ?? 0);
+                : scaling.kind === 'adjacent-build'
+                  ? (context.adjacentBuildCounts[scaling.buildId] ?? 0)
+                  : scaling.kind === 'downstream-count'
+                    ? (context.downstreamCount ?? 0)
+                    : (context.upstreamCount ?? 0);
   const stacks = Math.floor(source / scaling.every);
   return Math.min(stacks, scaling.maxStacks ?? stacks) * scaling.amount;
 }
@@ -121,6 +127,8 @@ const modifierTriggerMatches = (
     straightLineLength: analysis.straightLineLength.get(key) ?? 0,
     magicSigilLevel: 0,
     adjacentBuildCounts,
+    downstreamCount: analysis.downstreamCells.get(key)?.length ?? 0,
+    upstreamCount: analysis.upstreamCells.get(key)?.length ?? 0,
   });
 };
 
@@ -175,6 +183,8 @@ export function summarizeSkillProgress(
     magicSigilLevel: 0,
     magicSigilCount: 0,
     adjacentBuildCounts: {},
+    downstreamCount: 0,
+    upstreamCount: 0,
     poweredAxisCounts: {},
   },
 ): SkillProgress {

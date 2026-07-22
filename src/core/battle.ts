@@ -244,6 +244,8 @@ const triggerMatches = (
     straightLineLength: number;
     magicSigilLevel: number;
     adjacentBuildCounts: Readonly<Record<string, number>>;
+    downstreamCount: number;
+    upstreamCount: number;
   },
 ) => {
   if (!trigger) return true;
@@ -306,6 +308,8 @@ const numericAmount = (
           magicSigilLevel: action.magicSigilLevel,
           magicSigilCount: action.magicSigilCount,
           adjacentBuildCounts: action.adjacentBuildCounts,
+          downstreamCount: action.downstream.length,
+          upstreamCount: action.upstream.length,
           poweredAxisCounts: action.poweredAxisCounts,
         })
       : 0) +
@@ -361,6 +365,8 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
         straightLineLength: plan.straightLineLength,
         magicSigilLevel: plan.magicSigilLevel,
         adjacentBuildCounts: plan.adjacentBuildCounts,
+        downstreamCount: plan.downstream.length,
+        upstreamCount: plan.upstream.length,
         selfBuffs: skillBuffs[plan.team][planKey] ?? {},
       };
 

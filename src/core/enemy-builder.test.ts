@@ -183,6 +183,40 @@ describe('enemy build generator', () => {
     });
   });
 
+  it('builds powered light-vein branches and three-route convergence for their required payoffs', () => {
+    const fixtures = [
+      { blockId: 'branchlight-barrage', topology: 'branch' },
+      { blockId: 'solar-convergence', topology: 'merge' },
+    ] as const;
+
+    fixtures.forEach(({ blockId, topology }) => {
+      [11, 12, 13].forEach((seed) => {
+        const build = generateEnemyBuild(GAME_DATA, 9, seed, {
+          buildId: 'light-vein',
+          requiredBlockId: blockId,
+        });
+        const analysis = analyzeCircuit(
+          build.board,
+          GAME_DATA.blocks,
+          build.heartPosition,
+          GAME_DATA.rules.heart.ports,
+        );
+        const key = build.board.flatMap((row, rowIndex) =>
+          row.flatMap((placed, columnIndex) => (placed?.blockId === blockId ? [`${rowIndex}:${columnIndex}`] : [])),
+        )[0];
+
+        expect(key, `${blockId}, seed ${seed}`).toBeTruthy();
+        expect(analysis.poweredCells.has(key), `${blockId}, seed ${seed}`).toBe(true);
+        if (topology === 'branch') {
+          expect(analysis.downstreamCells.get(key)?.length, `${blockId}, seed ${seed}`).toBeGreaterThanOrEqual(2);
+        } else {
+          expect(analysis.upstreamCells.get(key)?.length, `${blockId}, seed ${seed}`).toBe(3);
+          expect(analysis.mergeCells.has(key), `${blockId}, seed ${seed}`).toBe(true);
+        }
+      });
+    });
+  });
+
   it('discovers a newly declared build and can require one of its playable skills', () => {
     const data = structuredClone(GAME_DATA);
     const charge = data.buildDesign.builds.find((build) => build.id === 'charge')!;

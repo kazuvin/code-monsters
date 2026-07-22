@@ -165,12 +165,16 @@ export function validateGameData(data: GameData): string[] {
     'conditionAvailability.adjacentBuildBase',
     balanceFormula.conditionAvailability.adjacentBuildBase,
   );
+  probabilityFormulaValue('conditionAvailability.branchBase', balanceFormula.conditionAvailability.branchBase);
+  probabilityFormulaValue('conditionAvailability.mergeBase', balanceFormula.conditionAvailability.mergeBase);
   const conditionPenalties: Array<[string, number]> = [
     ['pathLengthPenaltyPerRequiredNode', balanceFormula.conditionAvailability.pathLengthPenaltyPerRequiredNode],
     ['straightLinePenaltyPerRequiredNode', balanceFormula.conditionAvailability.straightLinePenaltyPerRequiredNode],
     ['allPortsConnectedPenaltyPerPort', balanceFormula.conditionAvailability.allPortsConnectedPenaltyPerPort],
     ['magicSigilPenaltyPerRequiredLevel', balanceFormula.conditionAvailability.magicSigilPenaltyPerRequiredLevel],
     ['adjacentBuildPenaltyPerRequiredNode', balanceFormula.conditionAvailability.adjacentBuildPenaltyPerRequiredNode],
+    ['branchPenaltyPerRequiredRoute', balanceFormula.conditionAvailability.branchPenaltyPerRequiredRoute],
+    ['mergePenaltyPerRequiredRoute', balanceFormula.conditionAvailability.mergePenaltyPerRequiredRoute],
   ];
   conditionPenalties.forEach(([key, value]) => {
     if (!Number.isFinite(value) || value < 0) {
@@ -341,6 +345,13 @@ export function validateGameData(data: GameData): string[] {
         errors.push(
           `block "${block.id}" effect "${effect.kind}" references unknown adjacent build "${effect.trigger.buildId}"`,
         );
+      }
+      if (
+        'trigger' in effect &&
+        (effect.trigger?.kind === 'branch-at-least' || effect.trigger?.kind === 'merge-at-least') &&
+        (effect.trigger.amount < 2 || effect.trigger.amount > 3)
+      ) {
+        errors.push(`block "${block.id}" effect "${effect.kind}" light route count must be between 2 and 3`);
       }
       if ('scaling' in effect && effect.scaling?.kind === 'adjacent-build' && !buildIds.has(effect.scaling.buildId)) {
         errors.push(

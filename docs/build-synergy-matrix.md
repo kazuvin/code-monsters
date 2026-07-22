@@ -6,7 +6,7 @@
 
 | 軸 | 目的 | 値 |
 | --- | --- | --- |
-| 特性 | ノード固有の蓄積・変換。無特性はどのビルドにも属さない | 無特性（`neutral`）、毒（`poison`）、チャージ（`charge`）、魔紋（`magic-sigil`）、霊響（`resonance`） |
+| 特性 | ノード固有の蓄積・変換。無特性はどのビルドにも属さない | 無特性（`neutral`）、毒（`poison`）、チャージ（`charge`）、魔紋（`magic-sigil`）、霊響（`resonance`）、光脈（`light-vein`） |
 | 武器・装置 | 特性を運び、攻撃や防御へ変換する手段 | 剣（`blade`）、弓（`bow`）、砲（`cannon`）、装置（`device`）、魔法（`magic`） |
 
 ## ノードの組み合わせ
@@ -66,6 +66,16 @@
 | `harmonic-sanctuary` | `resonance` | `magic` | 霊響 |
 | `celestial-echo-cannon` | `resonance` | `cannon` | 霊響 |
 | `grand-harmony` | `resonance` | `magic` | 霊響 |
+| `light-vein-blade` | `light-vein` | `blade` | 条件なし |
+| `prism-arrow` | `light-vein` | `bow` | 光脈 |
+| `light-guide` | `light-vein` | `device` | 条件なし |
+| `thunder-prism` | `light-vein`、`charge` | `device` | 光脈 |
+| `venom-ray` | `light-vein`、`poison` | `bow` | 光脈 |
+| `radiant-fork` | `light-vein` | `magic` | 光脈 |
+| `branchlight-barrage` | `light-vein` | `bow` | 光脈 |
+| `convergence-cannon` | `light-vein` | `cannon` | 光脈 |
+| `myriad-light-array` | `light-vein` | `magic` | 光脈 |
+| `solar-convergence` | `light-vein` | `cannon` | 光脈 |
 
 ## 配置条件 × 特性 × 武器・装置（スキル数）
 
@@ -78,31 +88,43 @@
 | 条件なし × チャージ | 1 | 2 | 2 | 6 | 0 |
 | 条件なし × 魔紋 | 0 | 2 | 0 | 2 | 1 |
 | 条件なし × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 条件なし × 光脈 | 1 | 0 | 0 | 1 | 0 |
 | 循環 × 無特性 | 0 | 0 | 0 | 1 | 0 |
 | 循環 × 毒 | 0 | 0 | 0 | 0 | 1 |
 | 循環 × チャージ | 0 | 0 | 0 | 0 | 0 |
 | 循環 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
 | 循環 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 循環 × 光脈 | 0 | 0 | 0 | 0 | 0 |
 | 全接続 × 無特性 | 0 | 0 | 0 | 0 | 2 |
 | 全接続 × 毒 | 0 | 0 | 0 | 0 | 0 |
 | 全接続 × チャージ | 0 | 0 | 0 | 0 | 0 |
 | 全接続 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
 | 全接続 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 全接続 × 光脈 | 0 | 0 | 0 | 0 | 0 |
 | 長直線 × 無特性 | 1 | 0 | 0 | 0 | 0 |
 | 長直線 × 毒 | 0 | 0 | 0 | 0 | 0 |
 | 長直線 × チャージ | 1 | 0 | 0 | 0 | 0 |
 | 長直線 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
 | 長直線 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 長直線 × 光脈 | 0 | 0 | 0 | 0 | 0 |
 | 魔紋 × 無特性 | 0 | 0 | 0 | 0 | 0 |
 | 魔紋 × 毒 | 0 | 0 | 0 | 0 | 1 |
 | 魔紋 × チャージ | 0 | 0 | 0 | 0 | 0 |
 | 魔紋 × 魔紋 | 1 | 0 | 2 | 1 | 2 |
 | 魔紋 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 魔紋 × 光脈 | 0 | 0 | 0 | 0 | 0 |
 | 霊響 × 無特性 | 0 | 0 | 0 | 0 | 0 |
 | 霊響 × 毒 | 0 | 1 | 0 | 0 | 0 |
 | 霊響 × チャージ | 0 | 0 | 0 | 1 | 0 |
 | 霊響 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
 | 霊響 × 霊響 | 1 | 2 | 2 | 2 | 3 |
+| 霊響 × 光脈 | 0 | 0 | 0 | 0 | 0 |
+| 光脈 × 無特性 | 0 | 0 | 0 | 0 | 0 |
+| 光脈 × 毒 | 0 | 1 | 0 | 0 | 0 |
+| 光脈 × チャージ | 0 | 0 | 0 | 1 | 0 |
+| 光脈 × 魔紋 | 0 | 0 | 0 | 0 | 0 |
+| 光脈 × 霊響 | 0 | 0 | 0 | 0 | 0 |
+| 光脈 × 光脈 | 0 | 3 | 2 | 1 | 2 |
 
 ## 毒（`poison`）
 
@@ -118,8 +140,8 @@
 | 役割 | 対応する技 |
 | --- | --- |
 | 起点 | `strike`、`breaker`、`salvage-blade`、`poison-needle` |
-| 育成 | `poison-needle`、`cultivation-blade`、`status-relay`、`long-route-fang`、`amplifier`、`venom-orbit`、`adaptive-arsenal`、`bridge-core`、`venom-chorus` |
-| 回す | `strike`、`arc-shot`、`salvage-blade`、`bounty-arrow`、`toxic-reservoir`、`return-coil`、`long-route-fang`、`accelerator`、`venom-orbit`、`venom-chorus` |
+| 育成 | `poison-needle`、`cultivation-blade`、`status-relay`、`long-route-fang`、`amplifier`、`venom-orbit`、`adaptive-arsenal`、`bridge-core`、`venom-chorus`、`venom-ray` |
+| 回す | `strike`、`arc-shot`、`salvage-blade`、`bounty-arrow`、`toxic-reservoir`、`return-coil`、`long-route-fang`、`accelerator`、`venom-orbit`、`venom-chorus`、`venom-ray` |
 | 維持 | `barrier`、`repair`、`repair-dividend`、`toxic-reservoir`、`sealed-junction`、`adaptive-bulwark`、`bridge-core` |
 | 活かす | `venom-bloom`、`rupture-stake` |
 
@@ -127,17 +149,17 @@
 
 | 分岐 | 方針 | 育成・循環・活用技 | 固有の決め手 |
 | --- | --- | --- | --- |
-| 培養 | 毒を残して育てる | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`poison-needle`、`cultivation-blade`、`toxic-reservoir`、`venom-bloom`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`venom-orbit`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`venom-chorus` | `venom-bloom` |
-| 破裂 | 毒を一気に破裂させる | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`poison-needle`、`toxic-reservoir`、`rupture-stake`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`venom-orbit`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`venom-chorus` | `rupture-stake` |
+| 培養 | 毒を残して育てる | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`poison-needle`、`cultivation-blade`、`toxic-reservoir`、`venom-bloom`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`venom-orbit`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`venom-chorus`、`venom-ray` | `venom-bloom` |
+| 破裂 | 毒を一気に破裂させる | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`poison-needle`、`toxic-reservoir`、`rupture-stake`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`venom-orbit`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`venom-chorus`、`venom-ray` | `rupture-stake` |
 
 ### 開放性と実装状況
 
-- 開放スキル: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`venom-chorus`
-- 複合特性スキル: `toxic-reservoir`、`status-relay`、`venom-chorus`
+- 開放スキル: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`venom-chorus`、`venom-ray`
+- 複合特性スキル: `toxic-reservoir`、`status-relay`、`venom-chorus`、`venom-ray`
 - 武器・装置の幅: `blade`、`bow`、`device`、`cannon`、`magic`
-- 専用技率: 21%（上限 50%）
+- 専用技率: 20%（上限 50%）
 - 計画中: —
-- 実装済み: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`poison-needle`、`cultivation-blade`、`toxic-reservoir`、`venom-bloom`、`rupture-stake`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`venom-orbit`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`venom-chorus`（最低 8）
+- 実装済み: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`poison-needle`、`cultivation-blade`、`toxic-reservoir`、`venom-bloom`、`rupture-stake`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`venom-orbit`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`venom-chorus`、`venom-ray`（最低 8）
 
 ## チャージ（`charge`）
 
@@ -153,8 +175,8 @@
 | 役割 | 対応する技 |
 | --- | --- |
 | 起点 | `strike`、`breaker`、`salvage-blade`、`charge-blade`、`charge-arrow` |
-| 育成 | `toxic-reservoir`、`status-relay`、`long-route-fang`、`amplifier`、`charge-guard`、`charge-blade`、`charge-coil`、`adaptive-arsenal`、`bridge-core`、`charge-line-lance`、`thunder-sigil`、`thunder-echo` |
-| 回す | `strike`、`arc-shot`、`salvage-blade`、`bounty-arrow`、`toxic-reservoir`、`return-coil`、`long-route-fang`、`accelerator`、`charge-arrow`、`charge-coil`、`charge-line-lance`、`thunder-sigil`、`thunder-echo` |
+| 育成 | `toxic-reservoir`、`status-relay`、`long-route-fang`、`amplifier`、`charge-guard`、`charge-blade`、`charge-coil`、`adaptive-arsenal`、`bridge-core`、`charge-line-lance`、`thunder-sigil`、`thunder-echo`、`thunder-prism` |
+| 回す | `strike`、`arc-shot`、`salvage-blade`、`bounty-arrow`、`toxic-reservoir`、`return-coil`、`long-route-fang`、`accelerator`、`charge-arrow`、`charge-coil`、`charge-line-lance`、`thunder-sigil`、`thunder-echo`、`thunder-prism` |
 | 維持 | `barrier`、`repair`、`repair-dividend`、`toxic-reservoir`、`charge-guard`、`charge-bastion`、`sealed-junction`、`adaptive-bulwark`、`bridge-core` |
 | 活かす | `discharge-bow`、`rail-cannon`、`charge-bastion`、`overcharge-cannon` |
 
@@ -162,17 +184,17 @@
 
 | 分岐 | 方針 | 育成・循環・活用技 | 固有の決め手 |
 | --- | --- | --- | --- |
-| 一括解放 | 全チャージを大ダメージへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`discharge-bow`、`rail-cannon`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`charge-line-lance`、`overcharge-cannon`、`thunder-sigil`、`thunder-echo` | `discharge-bow`、`rail-cannon`、`overcharge-cannon` |
-| 防壁解放 | 全チャージをシールドへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`charge-bastion`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`charge-line-lance`、`thunder-sigil`、`thunder-echo` | `charge-bastion` |
+| 一括解放 | 全チャージを大ダメージへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`discharge-bow`、`rail-cannon`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`charge-line-lance`、`overcharge-cannon`、`thunder-sigil`、`thunder-echo`、`thunder-prism` | `discharge-bow`、`rail-cannon`、`overcharge-cannon` |
+| 防壁解放 | 全チャージをシールドへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`charge-bastion`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`charge-line-lance`、`thunder-sigil`、`thunder-echo`、`thunder-prism` | `charge-bastion` |
 
 ### 開放性と実装状況
 
-- 開放スキル: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`thunder-sigil`、`thunder-echo`
-- 複合特性スキル: `toxic-reservoir`、`status-relay`、`thunder-sigil`、`thunder-echo`
+- 開放スキル: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`thunder-sigil`、`thunder-echo`、`thunder-prism`
+- 複合特性スキル: `toxic-reservoir`、`status-relay`、`thunder-sigil`、`thunder-echo`、`thunder-prism`
 - 武器・装置の幅: `blade`、`bow`、`device`、`magic`、`cannon`
-- 専用技率: 31%（上限 50%）
+- 専用技率: 30%（上限 50%）
 - 計画中: —
-- 実装済み: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`discharge-bow`、`rail-cannon`、`charge-bastion`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`charge-line-lance`、`overcharge-cannon`、`thunder-sigil`、`thunder-echo`（最低 8）
+- 実装済み: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`discharge-bow`、`rail-cannon`、`charge-bastion`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`charge-line-lance`、`overcharge-cannon`、`thunder-sigil`、`thunder-echo`、`thunder-prism`（最低 8）
 
 ## 魔紋（`magic-sigil`）
 
@@ -243,3 +265,38 @@
 - 専用技率: 31%（上限 50%）
 - 計画中: —
 - 実装済み: `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`salvage-blade`、`bounty-arrow`、`repair-dividend`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`sealed-junction`、`adaptive-arsenal`、`adaptive-bulwark`、`bridge-core`、`spirit-blade`、`echo-arrow`、`tuning-stone`、`harmony-ward`、`thunder-echo`、`venom-chorus`、`resonance-cannon`、`harmonic-sanctuary`、`celestial-echo-cannon`、`grand-harmony`（最低 8）
+
+## 光脈（`light-vein`）
+
+| 項目 | 内容 |
+| --- | --- |
+| 配置思想 | 分岐器から複数の通電経路を伸ばし、枝のまま活かすか一点へ合流させる |
+| 得意 | 広い回路から手数と合流火力のどちらも選べる |
+| リスク | 一つでも枝が途切れると条件を失い、広い盤面も必要になる |
+| 戦い方 | 光を複数経路へ分ける枝光か、異なる経路を砲へ戻す収光へ展開する |
+
+### 役割
+
+| 役割 | 対応する技 |
+| --- | --- |
+| 起点 | `light-vein-blade`、`prism-arrow` |
+| 育成 | `prism-arrow`、`thunder-prism`、`venom-ray`、`radiant-fork` |
+| 回す | `light-vein-blade`、`prism-arrow`、`thunder-prism`、`venom-ray`、`radiant-fork` |
+| 維持 | `light-guide`、`radiant-fork`、`myriad-light-array` |
+| 活かす | `branchlight-barrage`、`convergence-cannon`、`myriad-light-array`、`solar-convergence` |
+
+### 決め手
+
+| 分岐 | 方針 | 育成・循環・活用技 | 固有の決め手 |
+| --- | --- | --- | --- |
+| 枝光 | 通電した複数の枝を維持して手数を増やす | `light-vein-blade`、`prism-arrow`、`light-guide`、`thunder-prism`、`venom-ray`、`radiant-fork`、`branchlight-barrage`、`myriad-light-array` | `branchlight-barrage`、`myriad-light-array` |
+| 収光 | 異なる光路を一点へ合流させて大出力へ変える | `light-vein-blade`、`prism-arrow`、`light-guide`、`thunder-prism`、`radiant-fork`、`convergence-cannon`、`solar-convergence` | `convergence-cannon`、`solar-convergence` |
+
+### 開放性と実装状況
+
+- 開放スキル: `light-vein-blade`、`prism-arrow`、`thunder-prism`、`venom-ray`、`radiant-fork`
+- 複合特性スキル: `thunder-prism`、`venom-ray`
+- 武器・装置の幅: `blade`、`bow`、`device`、`magic`、`cannon`
+- 専用技率: 50%（上限 50%）
+- 計画中: —
+- 実装済み: `light-vein-blade`、`prism-arrow`、`light-guide`、`thunder-prism`、`venom-ray`、`radiant-fork`、`branchlight-barrage`、`convergence-cannon`、`myriad-light-array`、`solar-convergence`（最低 8）

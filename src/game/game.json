@@ -54,6 +54,8 @@
         "magicSigilLevel": 2,
         "magicSigilCount": 4,
         "adjacentBuildCount": 4,
+        "downstreamCount": 2,
+        "upstreamCount": 2,
         "poweredAxisCount": 4,
         "targetCooldownBeats": 3,
         "targetEffectAmount": 220
@@ -78,7 +80,11 @@
         "magicSigilBase": 0.85,
         "magicSigilPenaltyPerRequiredLevel": 0.15,
         "adjacentBuildBase": 1,
-        "adjacentBuildPenaltyPerRequiredNode": 0.04
+        "adjacentBuildPenaltyPerRequiredNode": 0.04,
+        "branchBase": 0.9,
+        "branchPenaltyPerRequiredRoute": 0.1,
+        "mergeBase": 0.85,
+        "mergePenaltyPerRequiredRoute": 0.1
       },
       "resourceAvailability": {
         "charge": 0.7,
@@ -158,6 +164,11 @@
         "id": "resonance",
         "title": "霊響",
         "description": "周囲8マスへ通電ノードを密集させ、共鳴度を高める配置"
+      },
+      {
+        "id": "light-vein",
+        "title": "光脈",
+        "description": "通電信号を複数の枝へ分け、異なる経路を一点へ合流させる配置"
       }
     ],
     "axes": [
@@ -195,6 +206,12 @@
             "title": "霊響",
             "description": "周囲8マスの通電した霊響を集め、技の効果へ変える",
             "color": "#ff9bd7"
+          },
+          {
+            "id": "light-vein",
+            "title": "光脈",
+            "description": "光を枝へ分けて手数を増やすか、合流させて一撃へ変える",
+            "color": "#5de7f2"
           }
         ]
       },
@@ -266,6 +283,19 @@
         "payoffs": [
           { "id": "focus", "title": "集響", "strategy": "共鳴度4以上を火力へ集中させる" },
           { "id": "harmony", "title": "交響", "strategy": "共鳴度を攻防と回復へ分配する" }
+        ]
+      },
+      {
+        "id": "light-vein",
+        "axisId": "trait",
+        "title": "光脈",
+        "placementIdentity": "分岐器から複数の通電経路を伸ばし、枝のまま活かすか一点へ合流させる",
+        "strength": "広い回路から手数と合流火力のどちらも選べる",
+        "risk": "一つでも枝が途切れると条件を失い、広い盤面も必要になる",
+        "gamePlan": "光を複数経路へ分ける枝光か、異なる経路を砲へ戻す収光へ展開する",
+        "payoffs": [
+          { "id": "branching", "title": "枝光", "strategy": "通電した複数の枝を維持して手数を増やす" },
+          { "id": "convergence", "title": "収光", "strategy": "異なる光路を一点へ合流させて大出力へ変える" }
         ]
       }
     ],
@@ -1044,6 +1074,161 @@
         "placementPatternId": "resonance",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
         "buildLinks": [{ "buildId": "resonance", "roles": ["sustain", "payoff"], "payoffIds": ["harmony"] }]
+      },
+      {
+        "id": "light-vein-blade",
+        "title": "光脈刃",
+        "summary": "枝分かれする光路の起点となる素早い刃",
+        "status": "playable",
+        "blockId": "light-vein-blade",
+        "scope": "shared",
+        "sharedSynergies": ["starter", "blade", "light-vein"],
+        "placementPatternId": "free",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "buildLinks": [
+          { "buildId": "light-vein", "roles": ["starter", "cycler"], "payoffIds": ["branching", "convergence"] }
+        ]
+      },
+      {
+        "id": "prism-arrow",
+        "title": "枝光矢",
+        "summary": "二本以上の下流へ光を分け、枝数を射撃へ変える",
+        "status": "playable",
+        "blockId": "prism-arrow",
+        "scope": "shared",
+        "sharedSynergies": ["bow", "branch", "light-vein"],
+        "placementPatternId": "light-vein",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "buildLinks": [
+          {
+            "buildId": "light-vein",
+            "roles": ["starter", "grower", "cycler"],
+            "payoffIds": ["branching", "convergence"]
+          }
+        ]
+      },
+      {
+        "id": "light-guide",
+        "title": "導光器",
+        "summary": "光路を曲げながら防壁と回復を維持する装置",
+        "status": "playable",
+        "blockId": "light-guide",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "free",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["light-vein"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [{ "buildId": "light-vein", "roles": ["sustain"], "payoffIds": ["branching", "convergence"] }]
+      },
+      {
+        "id": "thunder-prism",
+        "title": "雷光器",
+        "summary": "分けた光へチャージを載せ、二つのビルドを育てる",
+        "status": "playable",
+        "blockId": "thunder-prism",
+        "scope": "shared",
+        "sharedSynergies": ["light-vein", "charge", "branch"],
+        "placementPatternId": "light-vein",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["light-vein", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "light-vein", "roles": ["grower", "cycler"], "payoffIds": ["branching", "convergence"] },
+          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "venom-ray",
+        "title": "蝕光矢",
+        "summary": "枝数に応じて毒を広げ、毒と枝光を同時に育てる",
+        "status": "playable",
+        "blockId": "venom-ray",
+        "scope": "shared",
+        "sharedSynergies": ["light-vein", "poison", "bow", "branch"],
+        "placementPatternId": "light-vein",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["light-vein", "poison"] },
+          { "axisId": "weapon", "valueIds": ["bow"] }
+        ],
+        "buildLinks": [
+          { "buildId": "light-vein", "roles": ["grower", "cycler"], "payoffIds": ["branching"] },
+          { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] }
+        ]
+      },
+      {
+        "id": "radiant-fork",
+        "title": "輝叉術",
+        "summary": "三方向へ伸びる光路を守り、下流の技を増幅する",
+        "status": "playable",
+        "blockId": "radiant-fork",
+        "scope": "shared",
+        "sharedSynergies": ["light-vein", "magic", "branch", "sustain"],
+        "placementPatternId": "light-vein",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "buildLinks": [
+          {
+            "buildId": "light-vein",
+            "roles": ["grower", "cycler", "sustain"],
+            "payoffIds": ["branching", "convergence"]
+          }
+        ]
+      },
+      {
+        "id": "branchlight-barrage",
+        "title": "枝光連弩",
+        "summary": "二本以上の枝を維持して連射へ変える枝光の決め手",
+        "status": "playable",
+        "blockId": "branchlight-barrage",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "light-vein",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "buildLinks": [{ "buildId": "light-vein", "roles": ["payoff"], "payoffIds": ["branching"] }]
+      },
+      {
+        "id": "convergence-cannon",
+        "title": "収光砲",
+        "summary": "二つ以上の光路を一撃へ束ねる収光の決め手",
+        "status": "playable",
+        "blockId": "convergence-cannon",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "light-vein",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["light-vein"] },
+          { "axisId": "weapon", "valueIds": ["cannon"] }
+        ],
+        "buildLinks": [{ "buildId": "light-vein", "roles": ["payoff"], "payoffIds": ["convergence"] }]
+      },
+      {
+        "id": "myriad-light-array",
+        "title": "万条光陣",
+        "summary": "三本の枝すべてを攻防へ変える枝光の奥義",
+        "status": "playable",
+        "blockId": "myriad-light-array",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "light-vein",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["light-vein"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "buildLinks": [{ "buildId": "light-vein", "roles": ["sustain", "payoff"], "payoffIds": ["branching"] }]
+      },
+      {
+        "id": "solar-convergence",
+        "title": "天光収束砲",
+        "summary": "三つの光路を一点へ戻して撃ち出す収光の奥義",
+        "status": "playable",
+        "blockId": "solar-convergence",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "light-vein",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["light-vein"] },
+          { "axisId": "weapon", "valueIds": ["cannon"] }
+        ],
+        "buildLinks": [{ "buildId": "light-vein", "roles": ["payoff"], "payoffIds": ["convergence"] }]
       }
     ]
   },
@@ -2257,6 +2442,208 @@
           "amount": 300,
           "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 8 },
           "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 60 }
+        }
+      ]
+    },
+    {
+      "id": "light-vein-blade",
+      "code": "LUMEN-B",
+      "title": "光脈刃",
+      "description": "1拍ごとに70ダメージを与え、枝分かれする光路の起点になる。",
+      "glyph": "光",
+      "price": 4,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "east"],
+      "buildIds": ["light-vein"],
+      "cooldown": 1,
+      "effects": [{ "kind": "damage", "amount": 70 }]
+    },
+    {
+      "id": "prism-arrow",
+      "code": "BRANCH-R",
+      "title": "枝光矢",
+      "description": "下流2本以上で2拍ごとに90ダメージを与え、通電した下流1本につき40増やす。",
+      "glyph": "枝",
+      "price": 5,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["light-vein"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 90,
+          "trigger": { "kind": "branch-at-least", "amount": 2 },
+          "scaling": { "kind": "downstream-count", "every": 1, "amount": 40, "maxStacks": 3 }
+        }
+      ]
+    },
+    {
+      "id": "light-guide",
+      "code": "GUIDE-L",
+      "title": "導光器",
+      "description": "2拍ごとにシールド100を得て、HPを50回復しながら光路を曲げる。",
+      "glyph": "導",
+      "price": 5,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "south"],
+      "buildIds": ["light-vein"],
+      "cooldown": 2,
+      "effects": [{ "kind": "shield", "amount": 100 }, { "kind": "repair", "amount": 50 }]
+    },
+    {
+      "id": "thunder-prism",
+      "code": "TH-LUMEN",
+      "title": "雷光器",
+      "description": "下流2本以上なら通電にチャージ1を追加し、2拍ごとに80ダメージを与えて下流1本につき30増やす。",
+      "glyph": "雷",
+      "price": 8,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["light-vein", "charge"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "charge", "amount": 1, "trigger": { "kind": "branch-at-least", "amount": 2 } },
+        {
+          "kind": "damage",
+          "amount": 80,
+          "trigger": { "kind": "branch-at-least", "amount": 2 },
+          "scaling": { "kind": "downstream-count", "every": 1, "amount": 30, "maxStacks": 3 }
+        }
+      ]
+    },
+    {
+      "id": "venom-ray",
+      "code": "VEN-LIGHT",
+      "title": "蝕光矢",
+      "description": "下流2本以上で2拍ごとに毒18を与え、通電した下流1本につき毒を9増やす。",
+      "glyph": "蝕",
+      "price": 8,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["light-vein", "poison"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "poison",
+          "amount": 18,
+          "trigger": { "kind": "branch-at-least", "amount": 2 },
+          "scaling": { "kind": "downstream-count", "every": 1, "amount": 9, "maxStacks": 3 }
+        }
+      ]
+    },
+    {
+      "id": "radiant-fork",
+      "code": "FORK-L",
+      "title": "輝叉術",
+      "description": "下流2本以上で2拍ごとにシールド90を得て、下流1本につき30増やし、直後の技を90増幅する。",
+      "glyph": "叉",
+      "price": 9,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["light-vein"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "shield",
+          "amount": 90,
+          "trigger": { "kind": "branch-at-least", "amount": 2 },
+          "scaling": { "kind": "downstream-count", "every": 1, "amount": 30, "maxStacks": 3 }
+        },
+        { "kind": "amplify", "amount": 90, "trigger": { "kind": "branch-at-least", "amount": 2 } }
+      ]
+    },
+    {
+      "id": "branchlight-barrage",
+      "code": "BRANCH-X",
+      "title": "枝光連弩",
+      "description": "下流2本以上で3拍ごとに420ダメージを与え、通電した下流1本につき110増やす。",
+      "glyph": "連",
+      "price": 13,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["light-vein"],
+      "cooldown": 3,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 420,
+          "trigger": { "kind": "branch-at-least", "amount": 2 },
+          "scaling": { "kind": "downstream-count", "every": 1, "amount": 110, "maxStacks": 3 }
+        }
+      ]
+    },
+    {
+      "id": "convergence-cannon",
+      "code": "FOCUS-C",
+      "title": "収光砲",
+      "description": "上流2本以上の合流で3拍ごとに220ダメージを与え、通電した上流1本につき75増やす。",
+      "glyph": "収",
+      "price": 14,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["north", "south", "east"],
+      "buildIds": ["light-vein"],
+      "cooldown": 3,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 220,
+          "trigger": { "kind": "merge-at-least", "amount": 2 },
+          "scaling": { "kind": "upstream-count", "every": 1, "amount": 75, "maxStacks": 3 }
+        }
+      ]
+    },
+    {
+      "id": "myriad-light-array",
+      "code": "MYRIAD-L",
+      "title": "万条光陣",
+      "description": "下流3本で4拍ごとに1000ダメージを与え、通電した下流1本につき240増やす。",
+      "glyph": "万",
+      "price": 21,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["light-vein"],
+      "cooldown": 4,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 1000,
+          "trigger": { "kind": "branch-at-least", "amount": 3 },
+          "scaling": { "kind": "downstream-count", "every": 1, "amount": 240, "maxStacks": 3 }
+        }
+      ]
+    },
+    {
+      "id": "solar-convergence",
+      "code": "SOLAR-C",
+      "title": "天光収束砲",
+      "description": "上流3本の合流で4拍ごとに500ダメージを与え、通電した上流1本につき160増やす。",
+      "glyph": "天",
+      "price": 22,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["light-vein"],
+      "cooldown": 4,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 500,
+          "trigger": { "kind": "merge-at-least", "amount": 3 },
+          "scaling": { "kind": "upstream-count", "every": 1, "amount": 160, "maxStacks": 3 }
         }
       ]
     }

@@ -159,6 +159,8 @@ export type CircuitTriggerContext = {
   straightLineLength: number;
   magicSigilLevel: number;
   adjacentBuildCounts: Readonly<Record<string, number>>;
+  downstreamCount: number;
+  upstreamCount: number;
 };
 
 export type MagicSigilAnalysis = {
@@ -407,6 +409,8 @@ export const matchesCircuitTrigger = (trigger: CircuitEffectTrigger, context: Ci
   if (trigger.kind === 'adjacent-build-at-least') {
     return (context.adjacentBuildCounts[trigger.buildId] ?? 0) >= trigger.amount;
   }
+  if (trigger.kind === 'branch-at-least') return context.downstreamCount >= trigger.amount;
+  if (trigger.kind === 'merge-at-least') return context.upstreamCount >= trigger.amount;
   return context.straightLineLength >= trigger.amount;
 };
 
@@ -443,6 +447,8 @@ export function evaluateCircuitCondition(
   const connectedPortCount = connected.length + (analysis.heartConnections.has(key) ? 1 : 0);
   const pathLength = analysis.routeLength.get(key) ?? 0;
   const straightLength = analysis.straightLineLength.get(key) ?? 0;
+  const downstream = analysis.downstreamCells.get(key) ?? [];
+  const upstream = analysis.upstreamCells.get(key) ?? [];
   const adjacentBuildNeighbors =
     trigger.kind === 'adjacent-build-at-least'
       ? adjacentPoweredBuildNeighbors(board, blocks, analysis, position, trigger.buildId)
@@ -455,6 +461,8 @@ export function evaluateCircuitCondition(
     magicSigilLevel,
     adjacentBuildCounts:
       trigger.kind === 'adjacent-build-at-least' ? { [trigger.buildId]: adjacentBuildNeighbors.length } : {},
+    downstreamCount: downstream.length,
+    upstreamCount: upstream.length,
   };
   const met = matchesCircuitTrigger(trigger, context);
 
@@ -501,6 +509,24 @@ export function evaluateCircuitCondition(
       current: adjacentBuildNeighbors.length,
       required: trigger.amount,
       contributingCells: [key, ...adjacentBuildNeighbors.map(cellKey)].sort(),
+    };
+  }
+  if (trigger.kind === 'branch-at-least') {
+    return {
+      trigger,
+      met,
+      current: downstream.length,
+      required: trigger.amount,
+      contributingCells: [key, ...downstream.map(cellKey)].sort(),
+    };
+  }
+  if (trigger.kind === 'merge-at-least') {
+    return {
+      trigger,
+      met,
+      current: upstream.length,
+      required: trigger.amount,
+      contributingCells: [key, ...upstream.map(cellKey)].sort(),
     };
   }
   return {

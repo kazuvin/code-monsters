@@ -117,6 +117,7 @@ const fusionFixtureBlockId = query.get('fusionFixture');
 const topologyFixture = query.get('topologyFixture');
 const magicSigilFixture = query.get('magicSigilFixture');
 const resonanceFixture = query.get('resonanceFixture');
+const lightVeinFixture = query.get('lightVeinFixture');
 const enemyBuildFixture = query.get('enemyBuildFixture');
 const enemyRequiredBlockFixture = query.get('enemyRequiredBlockFixture');
 const HOLD_DELAY = 320;
@@ -161,6 +162,8 @@ const conditionLabel = (condition: CircuitConditionStatus) => {
   if (condition.trigger.kind === 'all-ports-connected') return `全接続 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'magic-sigil-level-at-least') return `魔紋 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'adjacent-build-at-least') return `共鳴 ${condition.current}/${condition.required}`;
+  if (condition.trigger.kind === 'branch-at-least') return `分岐 ${condition.current}/${condition.required}`;
+  if (condition.trigger.kind === 'merge-at-least') return `合流 ${condition.current}/${condition.required}`;
   return `直線 ${condition.current}/${condition.required}`;
 };
 
@@ -251,6 +254,7 @@ const HeartVisual = ({ compact = false, conducting = false }: { compact?: boolea
 const createInitialHeartPosition = (): CellPosition => {
   if (magicSigilFixture === 'focus') return { row: 2, column: 0 };
   if (resonanceFixture === 'surround') return { row: 2, column: 3 };
+  if (lightVeinFixture === 'converge') return { row: 2, column: 0 };
   return { ...GAME_DATA.rules.heart.initialPosition };
 };
 
@@ -276,6 +280,23 @@ const createInitialPlayerBoard = () => {
     ];
     fixture.forEach(([row, column, blockId, stars]) => {
       initial[row][column] = { blockId, rotation: 0, ...(stars ? { stars } : {}) };
+    });
+    return initial;
+  }
+  if (lightVeinFixture === 'converge') {
+    const fixture: Array<[number, number, string, Rotation, SkillStars?]> = [
+      [2, 1, 'radiant-fork', 0],
+      [1, 1, 'light-guide', 3],
+      [1, 2, 'prism-arrow', 2],
+      [1, 3, 'light-guide', 0],
+      [2, 2, 'light-guide', 2],
+      [3, 1, 'light-guide', 2],
+      [3, 2, 'light-vein-blade', 0],
+      [3, 3, 'light-guide', 1],
+      [2, 3, 'solar-convergence', 0, 1],
+    ];
+    fixture.forEach(([row, column, blockId, rotation, stars]) => {
+      initial[row][column] = { blockId, rotation, ...(stars ? { stars } : {}) };
     });
     return initial;
   }
@@ -408,8 +429,9 @@ const BlockVisual = ({
   const ports = rotatePorts(block.ports, rotation);
   const traits = axisValuesForBlock(block.id, 'trait');
   const [weapon] = axisValuesForBlock(block.id, 'weapon');
-  const visualEffect =
-    adjacentBuildIdsForBlock(block).length > 0
+  const visualEffect = traits.some((trait) => trait.id === 'light-vein')
+    ? 'light-vein'
+    : adjacentBuildIdsForBlock(block).length > 0
       ? 'resonance'
       : block.effects.some((effect) => effect.kind === 'inscribe-magic-sigil')
         ? 'magic-sigil'
@@ -962,6 +984,8 @@ const BattleCircuitSummary = ({
                   magicSigilLevel,
                   magicSigilCount: activeMagicSigilCount,
                   adjacentBuildCounts,
+                  downstreamCount: analysis.downstreamCells.get(key)?.length ?? 0,
+                  upstreamCount: analysis.upstreamCells.get(key)?.length ?? 0,
                   poweredAxisCounts: poweredAxisCountsForBlock(board, poweredCells, block),
                 });
                 const skillBuffs = visibleBuffs(block, progress, modifiers);
@@ -1657,6 +1681,11 @@ export function App() {
     detailBlock && adjacentBuildIdsForBlock(detailBlock).includes('resonance')
       ? (detailAdjacentBuildCounts.resonance ?? 0)
       : undefined;
+  const detailIsLightVein = detailBlock
+    ? axisValuesForBlock(detailBlock.id, 'trait').some((value) => value.id === 'light-vein')
+    : false;
+  const detailDownstreamCount = detailCellKey ? (detailAnalysis.downstreamCells.get(detailCellKey)?.length ?? 0) : 0;
+  const detailUpstreamCount = detailCellKey ? (detailAnalysis.upstreamCells.get(detailCellKey)?.length ?? 0) : 0;
   const detailChargeByCell = calculateChargeByCell(
     detailBoard,
     GAME_DATA.blocks,
@@ -1686,6 +1715,8 @@ export function App() {
         magicSigilLevel: detailMagicSigilLevel,
         magicSigilCount: detailMagicSigilCount,
         adjacentBuildCounts: detailAdjacentBuildCounts,
+        downstreamCount: detailDownstreamCount,
+        upstreamCount: detailUpstreamCount,
         poweredAxisCounts: poweredAxisCountsForBlock(detailBoard, detailPoweredCells, detailBlock),
       })
     : undefined;
@@ -2342,6 +2373,14 @@ export function App() {
                 <div className="dialog-resonance-rule">
                   <span>SPIRIT RESONANCE · {detailResonanceCount}/8</span>
                   周囲8マスの通電した霊響を数える。★は特性を問わず、すべての通電ノードを数える。
+                </div>
+              )}
+              {detailIsLightVein && detail?.position && (
+                <div className="dialog-light-vein-rule">
+                  <span>
+                    LIGHT VEIN · 分岐 {detailDownstreamCount} / 合流 {detailUpstreamCount}
+                  </span>
+                  通電した下流を枝光として数え、同じ波で届いた上流を収光として数える。
                 </div>
               )}
               {detailMergeMultiplier > 1 && (

@@ -193,6 +193,46 @@ const CENTER_LAYOUT: EnemyLayout = {
   heartNodeIndexes: [0, 2, 14],
 };
 
+const LIGHT_VEIN_LAYOUT: EnemyLayout = {
+  heartPosition: { row: 2, column: 0 },
+  nodes: [
+    { row: 2, column: 1 },
+    { row: 1, column: 1 },
+    { row: 1, column: 2 },
+    { row: 1, column: 3 },
+    { row: 2, column: 2 },
+    { row: 3, column: 1 },
+    { row: 3, column: 2 },
+    { row: 3, column: 3 },
+    { row: 2, column: 3 },
+    { row: 2, column: 4 },
+    { row: 1, column: 4 },
+    { row: 0, column: 4 },
+    { row: 0, column: 3 },
+    { row: 3, column: 4 },
+    { row: 4, column: 4 },
+  ],
+  edges: [
+    [0, 1],
+    [0, 5],
+    [1, 2],
+    [2, 3],
+    [2, 4],
+    [5, 6],
+    [6, 7],
+    [3, 8],
+    [4, 8],
+    [7, 8],
+    [8, 9],
+    [3, 10],
+    [10, 11],
+    [11, 12],
+    [7, 13],
+    [13, 14],
+  ],
+  heartNodeIndexes: [0],
+};
+
 const LAYOUTS: EnemyLayout[] = [
   CENTER_LAYOUT,
   ...([0, 1, 2, 3] as Rotation[]).map((rotation) => ({
@@ -236,6 +276,14 @@ const adjacentBuildRequirement = (block: BlockDefinition, buildId: string) =>
     ),
   );
 
+const topologyRequirement = (block: BlockDefinition, kind: 'branch-at-least' | 'merge-at-least') =>
+  Math.max(
+    0,
+    ...block.effects.flatMap((effect) =>
+      'trigger' in effect && effect.trigger?.kind === kind ? [effect.trigger.amount] : [],
+    ),
+  );
+
 const weightedPick = (candidates: PlacementCandidate[], rarityWeights: RarityWeights, seed: number) => {
   const weightFor = ({ block }: PlacementCandidate) => {
     return rarityWeights[block.rarity] * (block.shopWeight ?? 1);
@@ -268,7 +316,10 @@ export function generateEnemyBuild(
   const bodyUpgradeCost = totalBodyUpgradeCost(data, bodyLevel);
   const skillBudget = Math.max(0, budget - bodyUpgradeCost);
   const rarityWeights = rarityWeightsForLevel(data, level);
-  const layout = LAYOUTS[Math.floor(randomUnit(seed * 47 + safeRun * 13) * LAYOUTS.length)];
+  const layout =
+    options.buildId === 'light-vein'
+      ? LIGHT_VEIN_LAYOUT
+      : LAYOUTS[Math.floor(randomUnit(seed * 47 + safeRun * 13) * LAYOUTS.length)];
   const builds = data.buildDesign.builds;
   if (builds.length === 0) throw new Error('Enemy generator requires at least one build');
   const selectedBuildIndex = options.buildId
@@ -299,6 +350,54 @@ export function generateEnemyBuild(
           : [],
       ),
     );
+    const distanceByIndex = new Map<number, number>(
+      layout.heartNodeIndexes.filter((index) => index < activeNodes.length).map((index) => [index, 1]),
+    );
+    const distanceQueue = [...distanceByIndex.keys()];
+    while (distanceQueue.length > 0) {
+      const index = distanceQueue.shift()!;
+      const nextDistance = (distanceByIndex.get(index) ?? 0) + 1;
+      neighborIndexesByNode[index].forEach((neighborIndex) => {
+        if ((distanceByIndex.get(neighborIndex) ?? Number.POSITIVE_INFINITY) <= nextDistance) return;
+        distanceByIndex.set(neighborIndex, nextDistance);
+        distanceQueue.push(neighborIndex);
+      });
+    }
+    const upstreamIndexesByNode = neighborIndexesByNode.map((neighbors, index) =>
+      neighbors.filter((neighborIndex) => distanceByIndex.get(neighborIndex) === (distanceByIndex.get(index) ?? 0) - 1),
+    );
+    const downstreamIndexesByNode = neighborIndexesByNode.map((neighbors, index) =>
+      neighbors.filter((neighborIndex) => distanceByIndex.get(neighborIndex) === (distanceByIndex.get(index) ?? 0) + 1),
+    );
+    const payoffDesigns = designs.filter((design) => {
+      const link = design.buildLinks.find((candidate) => candidate.buildId === build.id);
+      if (!link?.roles.includes('payoff')) return false;
+      return (
+        !options.requiredBlockId ||
+        options.requiredBlockId === design.blockId ||
+        !designs.some(
+          (candidate) =>
+            candidate.blockId === options.requiredBlockId &&
+            candidate.buildLinks.some(
+              (candidateLink) => candidateLink.buildId === build.id && candidateLink.roles.includes('payoff'),
+            ),
+        )
+      );
+    });
+    const topologyPayoffIndexes = activeNodes.flatMap((_, index) => {
+      if (index === 0) return [];
+      const fits = payoffDesigns.some((design) => {
+        const block = design.blockId ? blocksById.get(design.blockId) : undefined;
+        if (!block) return false;
+        const branch = topologyRequirement(block, 'branch-at-least');
+        const merge = topologyRequirement(block, 'merge-at-least');
+        return (
+          (branch > 0 && branch <= downstreamIndexesByNode[index].length) ||
+          (merge > 0 && merge <= upstreamIndexesByNode[index].length)
+        );
+      });
+      return fits ? [index] : [];
+    });
     const hasAdjacentPayoff = designs.some((design) => {
       const block = design.blockId ? blocksById.get(design.blockId) : undefined;
       return (
@@ -307,16 +406,19 @@ export function generateEnemyBuild(
         adjacentBuildRequirement(block, build.id) > 0
       );
     });
-    const payoffIndex = hasAdjacentPayoff
-      ? surroundingIndexesByNode.reduce(
-          (best, neighbors, index) =>
-            index !== 0 && (best < 0 || neighbors.length >= surroundingIndexesByNode[best].length) ? index : best,
-          -1,
-        )
-      : neighborIndexesByNode.reduce(
-          (last, neighbors, index) => (index !== 0 && neighbors.length === 1 ? index : last),
-          -1,
-        );
+    const payoffIndex =
+      topologyPayoffIndexes.length > 0
+        ? topologyPayoffIndexes[Math.floor(randomUnit(seed * 83 + safeRun * 37) * topologyPayoffIndexes.length)]
+        : hasAdjacentPayoff
+          ? surroundingIndexesByNode.reduce(
+              (best, neighbors, index) =>
+                index !== 0 && (best < 0 || neighbors.length >= surroundingIndexesByNode[best].length) ? index : best,
+              -1,
+            )
+          : neighborIndexesByNode.reduce(
+              (last, neighbors, index) => (index !== 0 && neighbors.length === 1 ? index : last),
+              -1,
+            );
     if (payoffIndex < 0) return null;
     const activeNodeKeys = new Set(activeNodes.map((position) => `${position.row}:${position.column}`));
     const payoffPosition = activeNodes[payoffIndex];
@@ -336,6 +438,18 @@ export function generateEnemyBuild(
         if (
           index === payoffIndex &&
           adjacentBuildRequirement(block, build.id) > surroundingIndexesByNode[index].length
+        ) {
+          return [];
+        }
+        if (
+          index === payoffIndex &&
+          topologyRequirement(block, 'branch-at-least') > downstreamIndexesByNode[index].length
+        ) {
+          return [];
+        }
+        if (
+          index === payoffIndex &&
+          topologyRequirement(block, 'merge-at-least') > upstreamIndexesByNode[index].length
         ) {
           return [];
         }

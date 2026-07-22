@@ -72,6 +72,14 @@ describe('deterministic skill power formula', () => {
     expect(result.effects[0].formula).toContain('charge=5');
   });
 
+  it('includes the circuit merge multiplier for effects that require converging routes', () => {
+    const block = GAME_DATA.blocks.find((candidate) => candidate.id === 'convergence-cannon')!;
+    const result = assessSkillPower(GAME_DATA, block);
+
+    expect(result.referenceOffensePerSecond).toBeCloseTo(493.333333, 6);
+    expect(result.effects[0].formula).toContain('merge=2');
+  });
+
   it('covers every playable skill and reports normal and fused values without running battles', () => {
     const report = createPowerFormulaReport(GAME_DATA);
     const playableIds = GAME_DATA.buildDesign.skills

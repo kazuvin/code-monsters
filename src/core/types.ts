@@ -7,7 +7,14 @@ export type Rotation = 0 | 1 | 2 | 3;
 export type BuildRole = 'starter' | 'grower' | 'cycler' | 'sustain' | 'payoff';
 export type SkillDesignStatus = 'planned' | 'playable';
 export type SkillDesignScope = 'exclusive' | 'shared';
-export type PlacementPatternId = 'free' | 'loop' | 'fully-connected' | 'straight-line' | 'magic-sigil' | 'resonance';
+export type PlacementPatternId =
+  | 'free'
+  | 'loop'
+  | 'fully-connected'
+  | 'straight-line'
+  | 'magic-sigil'
+  | 'resonance'
+  | 'light-vein';
 export type SkillStars = 0 | 1;
 export type BuffStat = 'damage' | 'poison' | 'shield' | 'repair' | 'rupture';
 export type BuffTarget = BuffStat | 'all';
@@ -20,7 +27,9 @@ export type EffectTrigger =
   | { kind: 'all-ports-connected' }
   | { kind: 'straight-line-at-least'; amount: number }
   | { kind: 'magic-sigil-level-at-least'; amount: number }
-  | { kind: 'adjacent-build-at-least'; buildId: string; amount: number };
+  | { kind: 'adjacent-build-at-least'; buildId: string; amount: number }
+  | { kind: 'branch-at-least'; amount: number }
+  | { kind: 'merge-at-least'; amount: number };
 
 export type CircuitEffectTrigger = Exclude<EffectTrigger, { kind: 'enemy-poisoned' }>;
 
@@ -32,6 +41,8 @@ export type EffectScaling = (
   | { kind: 'magic-sigil-count' }
   | { kind: 'powered-axis'; axisId: string; valueId: string }
   | { kind: 'adjacent-build'; buildId: string }
+  | { kind: 'downstream-count' }
+  | { kind: 'upstream-count' }
 ) & { every: number; amount: number; maxStacks?: number };
 
 type NumericEffect = {
@@ -206,6 +217,8 @@ export type BalanceFormulaRules = {
     magicSigilLevel: number;
     magicSigilCount: number;
     adjacentBuildCount: number;
+    downstreamCount: number;
+    upstreamCount: number;
     poweredAxisCount: number;
     targetCooldownBeats: number;
     targetEffectAmount: number;
@@ -231,6 +244,10 @@ export type BalanceFormulaRules = {
     magicSigilPenaltyPerRequiredLevel: number;
     adjacentBuildBase: number;
     adjacentBuildPenaltyPerRequiredNode: number;
+    branchBase: number;
+    branchPenaltyPerRequiredRoute: number;
+    mergeBase: number;
+    mergePenaltyPerRequiredRoute: number;
   };
   resourceAvailability: {
     charge: number;

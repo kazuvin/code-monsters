@@ -16,6 +16,7 @@ describe('build design', () => {
       'charge',
       'magic-sigil',
       'resonance',
+      'light-vein',
     ]);
     expect(GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'weapon')?.values.map((value) => value.id)).toEqual([
       'blade',
@@ -32,9 +33,11 @@ describe('build design', () => {
       'resonance-circle',
       'status-relay',
       'thunder-echo',
+      'thunder-prism',
       'thunder-sigil',
       'toxic-reservoir',
       'venom-chorus',
+      'venom-ray',
     ]);
 
     GAME_DATA.buildDesign.skills.forEach((skill) => {
@@ -50,6 +53,7 @@ describe('build design', () => {
       'straight-line',
       'magic-sigil',
       'resonance',
+      'light-vein',
     ]);
     expect(GAME_DATA.buildDesign.skills.every((skill) => Boolean(skill.placementPatternId))).toBe(true);
 
@@ -68,6 +72,9 @@ describe('build design', () => {
     ).toBeGreaterThanOrEqual(1);
     expect(
       rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'resonance')?.counts.magic,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      rows.find((row) => row.placementPatternId === 'light-vein' && row.traitId === 'light-vein')?.counts.cannon,
     ).toBeGreaterThanOrEqual(1);
   });
 

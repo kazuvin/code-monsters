@@ -122,6 +122,18 @@ export function conditionAvailability(
       weights.minimum,
     );
   }
+  if (trigger.kind === 'branch-at-least') {
+    return clamp(
+      weights.branchBase - weights.branchPenaltyPerRequiredRoute * Math.max(0, trigger.amount - 1),
+      weights.minimum,
+    );
+  }
+  if (trigger.kind === 'merge-at-least') {
+    return clamp(
+      weights.mergeBase - weights.mergePenaltyPerRequiredRoute * Math.max(0, trigger.amount - 1),
+      weights.minimum,
+    );
+  }
   return assertNever(trigger);
 }
 
@@ -134,6 +146,8 @@ const triggerLabel = (trigger: EffectTrigger | undefined, portCount: number) => 
   if (trigger.kind === 'all-ports-connected') return `all-${portCount}-ports`;
   if (trigger.kind === 'magic-sigil-level-at-least') return `magic-sigil>=${trigger.amount}`;
   if (trigger.kind === 'adjacent-build-at-least') return `adjacent-${trigger.buildId}>=${trigger.amount}`;
+  if (trigger.kind === 'branch-at-least') return `branches>=${trigger.amount}`;
+  if (trigger.kind === 'merge-at-least') return `inputs>=${trigger.amount}`;
   return assertNever(trigger);
 };
 
@@ -159,6 +173,8 @@ const scalingReference = (scaling: EffectScaling, rules: BalanceFormulaRules) =>
   if (scaling.kind === 'magic-sigil-level') return rules.reference.magicSigilLevel;
   if (scaling.kind === 'magic-sigil-count') return rules.reference.magicSigilCount;
   if (scaling.kind === 'powered-axis') return rules.reference.poweredAxisCount;
+  if (scaling.kind === 'downstream-count') return rules.reference.downstreamCount;
+  if (scaling.kind === 'upstream-count') return rules.reference.upstreamCount;
   return rules.reference.adjacentBuildCount;
 };
 
@@ -177,6 +193,16 @@ const scalingAvailability = (scaling: EffectScaling, portCount: number, rules: B
     return rules.resourceAvailability.magicSigil;
   }
   if (scaling.kind === 'powered-axis') return rules.resourceAvailability.poweredAxis;
+  if (scaling.kind === 'downstream-count') {
+    return conditionAvailability(
+      { kind: 'branch-at-least', amount: rules.reference.downstreamCount },
+      portCount,
+      rules,
+    );
+  }
+  if (scaling.kind === 'upstream-count') {
+    return conditionAvailability({ kind: 'merge-at-least', amount: rules.reference.upstreamCount }, portCount, rules);
+  }
   if (scaling.kind === 'adjacent-build') {
     return conditionAvailability(
       {
@@ -224,13 +250,14 @@ const numericEffectPower = (
   context: EffectPowerContext,
 ): EffectPowerValue => {
   const unit = effectUnitValue(effect.kind, context.rules);
-  const baseValue = effect.amount * unit;
+  const mergeMultiplier = effect.trigger?.kind === 'merge-at-least' ? context.data.rules.mergeEffectMultiplier : 1;
+  const baseValue = effect.amount * unit * mergeMultiplier;
   const scaling = effect.scaling;
   const scalingSource = scaling ? scalingReference(scaling, context.rules) : 0;
   const scalingStacks = scaling
     ? Math.min(Math.floor(scalingSource / scaling.every), scaling.maxStacks ?? Number.POSITIVE_INFINITY)
     : 0;
-  const scalingBonus = scaling ? scalingStacks * scaling.amount * unit : 0;
+  const scalingBonus = scaling ? scalingStacks * scaling.amount * unit * mergeMultiplier : 0;
   const scaleWeight = scaling ? scalingAvailability(scaling, context.block.ports.length, context.rules) : 1;
   const rawCvps = (baseValue + scalingBonus) / context.cooldownSeconds;
   const weightedCvps =
@@ -241,7 +268,7 @@ const numericEffectPower = (
     ? ` + ${scaling.maxStacks ? `min(floor(${scalingSource}/${scaling.every}),${scaling.maxStacks})` : `floor(${scalingSource}/${scaling.every})`}*${scaling.amount}`
     : '';
   return {
-    formula: `(amount ${effect.amount}${scaleText})*unit ${unit}/seconds ${context.cooldownSeconds}`,
+    formula: `(amount ${effect.amount}${scaleText})*unit ${unit}${mergeMultiplier > 1 ? `*merge=${mergeMultiplier}` : ''}/seconds ${context.cooldownSeconds}`,
     conditionAvailability: triggerWeight,
     rewardMultiplier: 1 / triggerWeight,
     rawCvps,

@@ -6,7 +6,7 @@ if (!seededTarget.searchParams.has('shopSeed')) seededTarget.searchParams.set('s
 if (!seededTarget.searchParams.has('enemyBuildFixture')) seededTarget.searchParams.set('enemyBuildFixture', 'charge');
 const target = seededTarget.toString();
 const battleBackgroundRatio = 1672 / 941;
-const playableSkillCount = 53;
+const playableSkillCount = 63;
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: true,
@@ -669,7 +669,7 @@ overload.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
 const overloadTarget = new URL(target);
-overloadTarget.searchParams.set('shopSeed', '550');
+overloadTarget.searchParams.set('shopSeed', '117');
 overloadTarget.searchParams.set('enemyRequiredBlockFixture', 'overcharge-cannon');
 await overload.goto(overloadTarget.toString(), { waitUntil: 'networkidle' });
 const overloadChargeOffer = overload.locator('.shop-card').filter({ hasText: '充電矢' });
@@ -793,7 +793,7 @@ const secondRunRival = (await lockedRun.locator('.rival-readout').textContent())
 if (
   !secondRunRival.includes('BODY LV.01') ||
   !secondRunRival.includes('8 NODE') ||
-  !secondRunRival.includes('43/44 COIN')
+  !secondRunRival.includes('44/44 COIN')
 ) {
   throw new Error(`The rival did not grow on run two: ${secondRunRival}`);
 }
@@ -993,6 +993,44 @@ if (battleStarSize.width > 12 || battleStarSize.height > 12) {
 }
 await resonance.screenshot({ path: '/tmp/code-monsters-resonance-battle.png', fullPage: true });
 
+const lightVein = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
+lightVein.on('pageerror', (error) => errors.push(error.message));
+lightVein.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+const lightVeinTarget = new URL(target);
+lightVeinTarget.searchParams.set('lightVeinFixture', 'converge');
+await lightVein.goto(lightVeinTarget.toString(), { waitUntil: 'networkidle' });
+const lightVeinPayoff = lightVein.locator('.circuit-cell[data-row="2"][data-column="3"]');
+await lightVeinPayoff.waitFor();
+const mergeCondition = lightVeinPayoff.locator('.condition-chip[data-condition-kind="merge-at-least"]');
+if ((await mergeCondition.textContent())?.trim() !== '✓ 合流 3/3') {
+  throw new Error(`Three-route light vein condition is incorrect: ${await mergeCondition.textContent()}`);
+}
+await lightVeinPayoff.locator('.block-button').click();
+const lightVeinRule = lightVein.locator('.dialog-light-vein-rule');
+await lightVeinRule.waitFor();
+const lightVeinRuleText = (await lightVeinRule.textContent()) ?? '';
+if (!lightVeinRuleText.includes('合流 3') || !lightVeinRuleText.includes('同じ波で届いた上流')) {
+  throw new Error(`Light vein detail is incomplete: ${lightVeinRuleText}`);
+}
+if (!((await lightVein.locator('.dialog-merge-rule').textContent()) ?? '').includes('×2')) {
+  throw new Error('Light vein convergence detail is missing the existing merge multiplier');
+}
+await lightVein.getByRole('button', { name: '詳細を閉じる' }).click();
+await lightVein.screenshot({ path: '/tmp/code-monsters-light-vein-desktop.png', fullPage: true });
+await lightVein.setViewportSize({ width: 390, height: 844 });
+const lightVeinOverflow = await lightVein.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+if (lightVeinOverflow > 1) throw new Error(`Light vein fixture overflows mobile viewport by ${lightVeinOverflow}px`);
+await lightVein.screenshot({ path: '/tmp/code-monsters-light-vein-mobile.png', fullPage: true });
+await lightVein.setViewportSize({ width: 1440, height: 1100 });
+await lightVein.getByRole('button', { name: /戦闘開始/ }).click();
+await lightVein.locator('.battle-screen').waitFor();
+await lightVein
+  .locator('.battle-circuit-summary.team-player .condition-chip[data-condition-kind="merge-at-least"]')
+  .waitFor();
+await lightVein.screenshot({ path: '/tmp/code-monsters-light-vein-battle.png', fullPage: true });
+
 const topology = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 topology.on('pageerror', (error) => errors.push(error.message));
 topology.on('console', (message) => {
@@ -1058,6 +1096,9 @@ console.log(
         'resonance-desktop',
         'resonance-mobile',
         'resonance-battle',
+        'light-vein-desktop',
+        'light-vein-mobile',
+        'light-vein-battle',
         'topology-desktop',
         'topology-mobile',
       ],
