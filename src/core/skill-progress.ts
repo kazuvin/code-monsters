@@ -1,4 +1,4 @@
-import { cellKey, matchesCircuitTrigger, type CircuitAnalysis } from './circuit';
+import { adjacentPoweredBuildNeighbors, cellKey, matchesCircuitTrigger, type CircuitAnalysis } from './circuit';
 import { upgradeBlockDefinition } from './fusion';
 import type {
   ActiveEffect,
@@ -21,6 +21,7 @@ export type EffectScalingContext = {
   straightLineLength: number;
   magicSigilLevel: number;
   magicSigilCount: number;
+  adjacentBuildCounts: Readonly<Record<string, number>>;
 };
 
 export type SkillModifiers = {
@@ -68,7 +69,9 @@ export function effectScalingBonus(scaling: EffectScaling | undefined, context: 
           ? context.straightLineLength
           : scaling.kind === 'magic-sigil-level'
             ? context.magicSigilLevel
-            : context.magicSigilCount;
+            : scaling.kind === 'magic-sigil-count'
+              ? context.magicSigilCount
+              : (context.adjacentBuildCounts[scaling.buildId] ?? 0);
   return Math.floor(source / scaling.every) * scaling.amount;
 }
 
@@ -92,6 +95,8 @@ export function combineSkillModifiers(...values: SkillModifiers[]): SkillModifie
 
 const modifierTriggerMatches = (
   effect: Extract<BlockEffect, { kind: 'amplify' | 'haste' }>,
+  board: CircuitBoard,
+  blocks: BlockDefinition[],
   analysis: CircuitAnalysis,
   position: CellPosition,
 ) => {
@@ -99,12 +104,19 @@ const modifierTriggerMatches = (
   const key = cellKey(position);
   if (!trigger) return true;
   if (trigger.kind === 'enemy-poisoned') return false;
+  const adjacentBuildCounts =
+    trigger.kind === 'adjacent-build-at-least'
+      ? {
+          [trigger.buildId]: adjacentPoweredBuildNeighbors(board, blocks, analysis, position, trigger.buildId).length,
+        }
+      : {};
   return matchesCircuitTrigger(trigger, {
     pathLength: analysis.routeLength.get(key) ?? 0,
     inCycle: analysis.cyclicCells.has(key),
     allPortsConnected: analysis.fullyConnectedCells.has(key),
     straightLineLength: analysis.straightLineLength.get(key) ?? 0,
     magicSigilLevel: 0,
+    adjacentBuildCounts,
   });
 };
 
@@ -132,10 +144,10 @@ export function incomingSkillModifiers(
   return inputs.reduce<SkillModifiers>(
     (modifiers, { block, input }) => {
       block.effects.forEach((effect) => {
-        if (effect.kind === 'amplify' && modifierTriggerMatches(effect, analysis, input)) {
+        if (effect.kind === 'amplify' && modifierTriggerMatches(effect, board, blocks, analysis, input)) {
           modifiers.effectPower += effect.amount;
         }
-        if (effect.kind === 'haste' && modifierTriggerMatches(effect, analysis, input)) {
+        if (effect.kind === 'haste' && modifierTriggerMatches(effect, board, blocks, analysis, input)) {
           modifiers.cooldownReduction += effect.amount;
         }
       });
@@ -158,6 +170,7 @@ export function summarizeSkillProgress(
     straightLineLength: 0,
     magicSigilLevel: 0,
     magicSigilCount: 0,
+    adjacentBuildCounts: {},
   },
 ): SkillProgress {
   const normalizedBuffs = Object.fromEntries(

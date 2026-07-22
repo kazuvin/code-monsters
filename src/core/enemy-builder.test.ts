@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
 import { createBattle } from './battle';
-import { analyzeCircuit, analyzeMagicSigils, countActiveMagicSigils } from './circuit';
+import { adjacentPoweredBuildNeighbors, analyzeCircuit, analyzeMagicSigils, countActiveMagicSigils } from './circuit';
 import { generateEnemyBuild } from './enemy-builder';
 
 describe('enemy build generator', () => {
@@ -105,6 +105,39 @@ describe('enemy build generator', () => {
         payoffCells.some((key) => (magicSigils.levels.get(key) ?? 0) > 0),
         `seed ${seed}`,
       ).toBe(true);
+    });
+  });
+
+  it('surrounds a resonance payoff with enough powered resonance nodes, including diagonals', () => {
+    [11, 12, 13, 14].forEach((seed) => {
+      const build = generateEnemyBuild(GAME_DATA, 6, seed, { buildId: 'resonance' });
+      const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, GAME_DATA.rules.sourceRow);
+      const payoffCells = build.board.flatMap((row, rowIndex) =>
+        row.flatMap((placed, columnIndex) => {
+          const design = GAME_DATA.buildDesign.skills.find((skill) => skill.blockId === placed?.blockId);
+          const roles = design?.buildLinks.find((link) => link.buildId === 'resonance')?.roles;
+          return roles?.includes('payoff') && placed
+            ? [{ placed, position: { row: rowIndex, column: columnIndex } }]
+            : [];
+        }),
+      );
+
+      expect(payoffCells.length, `seed ${seed}`).toBeGreaterThan(0);
+      payoffCells.forEach(({ placed, position }) => {
+        const block = GAME_DATA.blocks.find((candidate) => candidate.id === placed.blockId)!;
+        const required = Math.max(
+          ...block.effects.flatMap((effect) =>
+            'trigger' in effect && effect.trigger?.kind === 'adjacent-build-at-least' ? [effect.trigger.amount] : [],
+          ),
+        );
+        const neighbors = adjacentPoweredBuildNeighbors(build.board, GAME_DATA.blocks, analysis, position, 'resonance');
+
+        expect(neighbors.length, `${placed.blockId}, seed ${seed}`).toBe(required);
+        expect(
+          neighbors.some((neighbor) => neighbor.row !== position.row && neighbor.column !== position.column),
+          `${placed.blockId}, seed ${seed}`,
+        ).toBe(true);
+      });
     });
   });
 

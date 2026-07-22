@@ -7,7 +7,7 @@ export type Rotation = 0 | 1 | 2 | 3;
 export type BuildRole = 'starter' | 'grower' | 'cycler' | 'sustain' | 'payoff';
 export type SkillDesignStatus = 'planned' | 'playable';
 export type SkillDesignScope = 'exclusive' | 'shared';
-export type PlacementPatternId = 'free' | 'loop' | 'fully-connected' | 'straight-line' | 'magic-sigil';
+export type PlacementPatternId = 'free' | 'loop' | 'fully-connected' | 'straight-line' | 'magic-sigil' | 'resonance';
 export type SkillStars = 0 | 1;
 export type BuffStat = 'damage' | 'poison' | 'shield' | 'repair' | 'rupture';
 export type BuffTarget = BuffStat | 'all';
@@ -19,7 +19,8 @@ export type EffectTrigger =
   | { kind: 'in-cycle' }
   | { kind: 'all-ports-connected' }
   | { kind: 'straight-line-at-least'; amount: number }
-  | { kind: 'magic-sigil-level-at-least'; amount: number };
+  | { kind: 'magic-sigil-level-at-least'; amount: number }
+  | { kind: 'adjacent-build-at-least'; buildId: string; amount: number };
 
 export type CircuitEffectTrigger = Exclude<EffectTrigger, { kind: 'enemy-poisoned' }>;
 
@@ -28,7 +29,8 @@ export type EffectScaling =
   | { kind: 'path-length'; every: number; amount: number }
   | { kind: 'straight-line'; every: number; amount: number }
   | { kind: 'magic-sigil-level'; every: number; amount: number }
-  | { kind: 'magic-sigil-count'; every: number; amount: number };
+  | { kind: 'magic-sigil-count'; every: number; amount: number }
+  | { kind: 'adjacent-build'; buildId: string; every: number; amount: number };
 
 type NumericEffect = {
   amount: number;
@@ -193,6 +195,7 @@ export type BalanceFormulaRules = {
     straightLineLength: number;
     magicSigilLevel: number;
     magicSigilCount: number;
+    adjacentBuildCount: number;
     targetCooldownBeats: number;
     targetEffectAmount: number;
   };
@@ -214,6 +217,8 @@ export type BalanceFormulaRules = {
     allPortsConnectedPenaltyPerPort: number;
     magicSigilBase: number;
     magicSigilPenaltyPerRequiredLevel: number;
+    adjacentBuildBase: number;
+    adjacentBuildPenaltyPerRequiredNode: number;
   };
   resourceAvailability: {
     charge: number;

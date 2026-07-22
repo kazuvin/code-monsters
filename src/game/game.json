@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 19,
+  "schemaVersion": 20,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -45,6 +45,7 @@
         "straightLineLength": 5,
         "magicSigilLevel": 2,
         "magicSigilCount": 4,
+        "adjacentBuildCount": 4,
         "targetCooldownBeats": 3,
         "targetEffectAmount": 220
       },
@@ -65,7 +66,9 @@
         "allPortsConnectedBase": 0.95,
         "allPortsConnectedPenaltyPerPort": 0.15,
         "magicSigilBase": 0.85,
-        "magicSigilPenaltyPerRequiredLevel": 0.15
+        "magicSigilPenaltyPerRequiredLevel": 0.15,
+        "adjacentBuildBase": 1,
+        "adjacentBuildPenaltyPerRequiredNode": 0.04
       },
       "resourceAvailability": {
         "charge": 0.7,
@@ -139,6 +142,11 @@
         "id": "magic-sigil",
         "title": "魔紋",
         "description": "通電した刻印元が作る魔紋マスへノードを置く配置"
+      },
+      {
+        "id": "resonance",
+        "title": "霊響",
+        "description": "周囲8マスへ通電ノードを密集させ、共鳴度を高める配置"
       }
     ],
     "axes": [
@@ -170,6 +178,12 @@
             "title": "魔紋",
             "description": "盤面へ魔紋を刻み、重ねるか連ねて技を強化する",
             "color": "#a987ff"
+          },
+          {
+            "id": "resonance",
+            "title": "霊響",
+            "description": "周囲8マスの通電した霊響を集め、技の効果へ変える",
+            "color": "#ff9bd7"
           }
         ]
       },
@@ -225,6 +239,19 @@
           { "id": "overlap", "title": "重刻", "strategy": "一つの魔紋を位階IIIまで重ねて決め手を強化する" },
           { "id": "network", "title": "連環", "strategy": "通電した魔紋マスを増やして盤面全体を共鳴させる" }
         ]
+      },
+      {
+        "id": "resonance",
+        "axisId": "trait",
+        "title": "霊響",
+        "placementIdentity": "決め手の周囲8マスへ通電した霊響を集め、共鳴度を高める",
+        "strength": "密集した盤面から攻撃か防御へ大きな出力を得る",
+        "risk": "中心と周囲を同時に通電させる必要があり、盤面の空きと経路を圧迫する",
+        "gamePlan": "小さな響きを斜めにも重ね、中央へ集める集響か全周を満たす交響へ展開する",
+        "payoffs": [
+          { "id": "focus", "title": "集響", "strategy": "共鳴度4以上を火力へ集中させる" },
+          { "id": "harmony", "title": "交響", "strategy": "共鳴度を攻防と回復へ分配する" }
+        ]
       }
     ],
     "skills": [
@@ -241,7 +268,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["starter", "cycler"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["starter", "cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["starter", "cycler"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["starter", "cycler"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["starter", "cycler"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -257,7 +285,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["starter"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["starter"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["starter"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["starter"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["starter"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -272,7 +301,8 @@
         "axisLinks": [{ "axisId": "trait", "valueIds": ["neutral"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
         "buildLinks": [
           { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
-          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] }
+          { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
+          { "buildId": "resonance", "roles": ["cycler"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -288,7 +318,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -304,7 +335,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -404,7 +436,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["grower", "cycler"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -420,7 +453,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["grower", "cycler"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["grower", "cycler"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -436,7 +470,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["grower"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["grower"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["grower"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["grower"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["grower"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -452,7 +487,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["cycler"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["cycler"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["cycler"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["cycler"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["cycler"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -564,7 +600,8 @@
         "buildLinks": [
           { "buildId": "poison", "roles": ["sustain"], "payoffIds": ["cultivate", "burst"] },
           { "buildId": "charge", "roles": ["sustain"], "payoffIds": ["burst", "guard"] },
-          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] }
+          { "buildId": "magic-sigil", "roles": ["sustain"], "payoffIds": ["overlap", "network"] },
+          { "buildId": "resonance", "roles": ["sustain"], "payoffIds": ["focus", "harmony"] }
         ]
       },
       {
@@ -756,6 +793,140 @@
           { "axisId": "weapon", "valueIds": ["magic"] }
         ],
         "buildLinks": [{ "buildId": "magic-sigil", "roles": ["payoff"], "payoffIds": ["network"] }]
+      },
+      {
+        "id": "spirit-blade",
+        "title": "霊響刃",
+        "summary": "周囲8マスの霊響を刃へ集め、素早く斬り込む",
+        "status": "playable",
+        "blockId": "spirit-blade",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "resonance",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
+        "buildLinks": [
+          { "buildId": "resonance", "roles": ["starter", "grower", "cycler"], "payoffIds": ["focus", "harmony"] }
+        ]
+      },
+      {
+        "id": "echo-arrow",
+        "title": "残響矢",
+        "summary": "斜めの霊響も拾いながら経路を分岐する矢",
+        "status": "playable",
+        "blockId": "echo-arrow",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "resonance",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["bow"] }],
+        "buildLinks": [{ "buildId": "resonance", "roles": ["starter", "cycler"], "payoffIds": ["focus", "harmony"] }]
+      },
+      {
+        "id": "tuning-stone",
+        "title": "調律碑",
+        "summary": "周囲の響きを整えて防壁へ変える基礎の魔法碑",
+        "status": "playable",
+        "blockId": "tuning-stone",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "resonance",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "buildLinks": [{ "buildId": "resonance", "roles": ["grower", "sustain"], "payoffIds": ["focus", "harmony"] }]
+      },
+      {
+        "id": "harmony-ward",
+        "title": "響護壁",
+        "summary": "三つ以上の響きで回復まで目覚める守護装置",
+        "status": "playable",
+        "blockId": "harmony-ward",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "resonance",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["device"] }],
+        "buildLinks": [{ "buildId": "resonance", "roles": ["grower", "sustain"], "payoffIds": ["harmony"] }]
+      },
+      {
+        "id": "thunder-echo",
+        "title": "雷響器",
+        "summary": "霊響とチャージを同時に運ぶ雷の中継装置",
+        "status": "playable",
+        "blockId": "thunder-echo",
+        "scope": "shared",
+        "sharedSynergies": ["resonance", "charge", "cycler"],
+        "placementPatternId": "resonance",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["resonance", "charge"] },
+          { "axisId": "weapon", "valueIds": ["device"] }
+        ],
+        "buildLinks": [
+          { "buildId": "resonance", "roles": ["grower", "cycler"], "payoffIds": ["focus", "harmony"] },
+          { "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }
+        ]
+      },
+      {
+        "id": "venom-chorus",
+        "title": "蝕響矢",
+        "summary": "密集する霊響を毒へ変える二系統の弓",
+        "status": "playable",
+        "blockId": "venom-chorus",
+        "scope": "shared",
+        "sharedSynergies": ["resonance", "poison", "branch"],
+        "placementPatternId": "resonance",
+        "axisLinks": [
+          { "axisId": "trait", "valueIds": ["resonance", "poison"] },
+          { "axisId": "weapon", "valueIds": ["bow"] }
+        ],
+        "buildLinks": [
+          { "buildId": "resonance", "roles": ["grower", "cycler"], "payoffIds": ["focus", "harmony"] },
+          { "buildId": "poison", "roles": ["grower", "cycler"], "payoffIds": ["cultivate", "burst"] }
+        ]
+      },
+      {
+        "id": "resonance-cannon",
+        "title": "霊響砲",
+        "summary": "共鳴度4以上を一撃へ集中させる集響の決め手",
+        "status": "playable",
+        "blockId": "resonance-cannon",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "resonance",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
+        "buildLinks": [{ "buildId": "resonance", "roles": ["payoff"], "payoffIds": ["focus"] }]
+      },
+      {
+        "id": "harmonic-sanctuary",
+        "title": "交響結界",
+        "summary": "共鳴度4以上を防壁と回復へ分ける交響の決め手",
+        "status": "playable",
+        "blockId": "harmonic-sanctuary",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "resonance",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "buildLinks": [{ "buildId": "resonance", "roles": ["sustain", "payoff"], "payoffIds": ["harmony"] }]
+      },
+      {
+        "id": "celestial-echo-cannon",
+        "title": "天響砲",
+        "summary": "六つ以上の響きを天へ束ねる集響の奥義",
+        "status": "playable",
+        "blockId": "celestial-echo-cannon",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "resonance",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["cannon"] }],
+        "buildLinks": [{ "buildId": "resonance", "roles": ["payoff"], "payoffIds": ["focus"] }]
+      },
+      {
+        "id": "grand-harmony",
+        "title": "万象交響",
+        "summary": "周囲8マスすべての響きを攻防へ変える交響の奥義",
+        "status": "playable",
+        "blockId": "grand-harmony",
+        "scope": "exclusive",
+        "sharedSynergies": [],
+        "placementPatternId": "resonance",
+        "axisLinks": [{ "axisId": "trait", "valueIds": ["resonance"] }, { "axisId": "weapon", "valueIds": ["magic"] }],
+        "buildLinks": [{ "buildId": "resonance", "roles": ["sustain", "payoff"], "payoffIds": ["harmony"] }]
       }
     ]
   },
@@ -1435,6 +1606,231 @@
           "amount": 200,
           "trigger": { "kind": "magic-sigil-level-at-least", "amount": 1 },
           "scaling": { "kind": "magic-sigil-count", "every": 1, "amount": 50 }
+        }
+      ]
+    },
+    {
+      "id": "spirit-blade",
+      "code": "ECHO-B",
+      "title": "霊響刃",
+      "description": "1拍ごとに20ダメージを与え、周囲8マスの通電した霊響1個につきダメージを9増やす。★はすべての特性を数える。",
+      "glyph": "響",
+      "price": 4,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "east"],
+      "buildIds": ["resonance"],
+      "cooldown": 1,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 20,
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 9 }
+        }
+      ]
+    },
+    {
+      "id": "echo-arrow",
+      "code": "ECHO-A",
+      "title": "残響矢",
+      "description": "2拍ごとに60ダメージを与え、周囲8マスの通電した霊響1個につきダメージを15増やす。★はすべての特性を数える。",
+      "glyph": "残",
+      "price": 5,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["resonance"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 60,
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 15 }
+        }
+      ]
+    },
+    {
+      "id": "tuning-stone",
+      "code": "TUNE",
+      "title": "調律碑",
+      "description": "2拍ごとにシールド60を得て、周囲8マスの通電した霊響1個につきシールドを16増やす。★はすべての特性を数える。",
+      "glyph": "律",
+      "price": 5,
+      "rarity": "common",
+      "shopWeight": 1,
+      "ports": ["west", "north"],
+      "buildIds": ["resonance"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "shield",
+          "amount": 60,
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 16 }
+        }
+      ]
+    },
+    {
+      "id": "harmony-ward",
+      "code": "H-WARD",
+      "title": "響護壁",
+      "description": "2拍ごとにシールド85を得て、共鳴度1につき20増やす。共鳴度3以上ならHPを60回復する。★はすべての特性を数える。",
+      "glyph": "護",
+      "price": 7,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "south"],
+      "buildIds": ["resonance"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "shield",
+          "amount": 85,
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 20 }
+        },
+        {
+          "kind": "repair",
+          "amount": 60,
+          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 3 }
+        }
+      ]
+    },
+    {
+      "id": "thunder-echo",
+      "code": "TH-ECHO",
+      "title": "雷響器",
+      "description": "通電にチャージ1を追加する。2拍ごとに50ダメージを与え、共鳴度1につき15増やす。★はすべての特性を数える。",
+      "glyph": "雷",
+      "price": 8,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "east"],
+      "buildIds": ["resonance", "charge"],
+      "cooldown": 2,
+      "effects": [
+        { "kind": "charge", "amount": 1 },
+        {
+          "kind": "damage",
+          "amount": 50,
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 15 }
+        }
+      ]
+    },
+    {
+      "id": "venom-chorus",
+      "code": "V-CHOIR",
+      "title": "蝕響矢",
+      "description": "2拍ごとに毒12を与え、共鳴度1につき毒を6増やす。★はすべての特性を数える。",
+      "glyph": "蝕",
+      "price": 8,
+      "rarity": "rare",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east"],
+      "buildIds": ["resonance", "poison"],
+      "cooldown": 2,
+      "effects": [
+        {
+          "kind": "poison",
+          "amount": 12,
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 6 }
+        }
+      ]
+    },
+    {
+      "id": "resonance-cannon",
+      "code": "ECHO-C",
+      "title": "霊響砲",
+      "description": "共鳴度4以上で3拍ごとに200ダメージを与え、共鳴度1につき80増やす。★はすべての特性を数える。",
+      "glyph": "砲",
+      "price": 14,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["resonance"],
+      "cooldown": 3,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 200,
+          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 4 },
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 80 }
+        }
+      ]
+    },
+    {
+      "id": "harmonic-sanctuary",
+      "code": "CHORUS",
+      "title": "交響結界",
+      "description": "共鳴度4以上で3拍ごとにシールド150と回復120を得て、共鳴度1につきシールドを60増やす。★はすべての特性を数える。",
+      "glyph": "奏",
+      "price": 13,
+      "rarity": "epic",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["resonance"],
+      "cooldown": 3,
+      "effects": [
+        {
+          "kind": "shield",
+          "amount": 150,
+          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 4 },
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 60 }
+        },
+        {
+          "kind": "repair",
+          "amount": 120,
+          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 4 }
+        }
+      ]
+    },
+    {
+      "id": "celestial-echo-cannon",
+      "code": "CELEST",
+      "title": "天響砲",
+      "description": "共鳴度6以上で4拍ごとに600ダメージを与え、共鳴度1につき160増やす。★はすべての特性を数える。",
+      "glyph": "天",
+      "price": 21,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["resonance"],
+      "cooldown": 4,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 600,
+          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 6 },
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 160 }
+        }
+      ]
+    },
+    {
+      "id": "grand-harmony",
+      "code": "GRAND",
+      "title": "万象交響",
+      "description": "共鳴度8で4拍ごとに攻防を奏で、共鳴度に応じて両方を強化する。★は周囲8マスのすべての特性を数える。",
+      "glyph": "響",
+      "price": 22,
+      "rarity": "legendary",
+      "shopWeight": 1,
+      "ports": ["west", "north", "east", "south"],
+      "rotatable": false,
+      "buildIds": ["resonance"],
+      "cooldown": 4,
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 600,
+          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 8 },
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 120 }
+        },
+        {
+          "kind": "shield",
+          "amount": 300,
+          "trigger": { "kind": "adjacent-build-at-least", "buildId": "resonance", "amount": 8 },
+          "scaling": { "kind": "adjacent-build", "buildId": "resonance", "every": 1, "amount": 60 }
         }
       ]
     }

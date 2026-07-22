@@ -9,12 +9,14 @@ import {
 import { createBattle, createPlayback } from './core/battle';
 import { createBattleReport, type BattleReport, type TeamBattleReport } from './core/battle-report';
 import {
+  adjacentPoweredBuildNeighbors,
   analyzeCircuit,
   analyzeMagicSigils,
   calculateChargeByCell,
   circuitConditionsForBlock,
   countActiveMagicSigils,
   rotatePorts,
+  type CircuitAnalysis,
   type CircuitConditionStatus,
 } from './core/circuit';
 import { damageTierFor, type DamageTier } from './core/combat-presentation';
@@ -104,6 +106,7 @@ const nextShopSeed = (current: number, step = 1) => (hasFixtureSeed ? current + 
 const fusionFixtureBlockId = query.get('fusionFixture');
 const topologyFixture = query.get('topologyFixture');
 const magicSigilFixture = query.get('magicSigilFixture');
+const resonanceFixture = query.get('resonanceFixture');
 const enemyBuildFixture = query.get('enemyBuildFixture');
 const enemyRequiredBlockFixture = query.get('enemyRequiredBlockFixture');
 const HOLD_DELAY = 320;
@@ -146,8 +149,34 @@ const conditionLabel = (condition: CircuitConditionStatus) => {
   if (condition.trigger.kind === 'in-cycle') return `循環 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'all-ports-connected') return `全接続 ${condition.current}/${condition.required}`;
   if (condition.trigger.kind === 'magic-sigil-level-at-least') return `魔紋 ${condition.current}/${condition.required}`;
+  if (condition.trigger.kind === 'adjacent-build-at-least') return `共鳴 ${condition.current}/${condition.required}`;
   return `直線 ${condition.current}/${condition.required}`;
 };
+
+const adjacentBuildIdsForBlock = (block: BlockDefinition) => [
+  ...new Set(
+    block.effects.flatMap((effect) => {
+      const triggerBuildId =
+        'trigger' in effect && effect.trigger?.kind === 'adjacent-build-at-least' ? [effect.trigger.buildId] : [];
+      const scalingBuildId =
+        'scaling' in effect && effect.scaling?.kind === 'adjacent-build' ? [effect.scaling.buildId] : [];
+      return [...triggerBuildId, ...scalingBuildId];
+    }),
+  ),
+];
+
+const adjacentBuildCountsForBlock = (
+  board: CircuitBoard,
+  analysis: CircuitAnalysis,
+  position: CellPosition,
+  block: BlockDefinition,
+) =>
+  Object.fromEntries(
+    adjacentBuildIdsForBlock(block).map((buildId) => [
+      buildId,
+      adjacentPoweredBuildNeighbors(board, GAME_DATA.blocks, analysis, position, buildId).length,
+    ]),
+  );
 
 const CircuitConditionChips = ({ conditions }: { conditions: CircuitConditionStatus[] }) =>
   conditions.length > 0 ? (
@@ -187,6 +216,23 @@ const createInitialPlayerBoard = () => {
     initial[1][0] = { blockId: 'guardian-sigil', rotation: 2 };
     initial[1][1] = { blockId: 'convergence-sigil', rotation: 0 };
     initial[2][1] = { blockId: 'deep-sigil-cannon', rotation: 0 };
+    return initial;
+  }
+  if (resonanceFixture === 'surround') {
+    const fixture: Array<[number, number, string, SkillStars?]> = [
+      [1, 0, 'grand-harmony'],
+      [1, 1, 'harmonic-sanctuary'],
+      [1, 2, 'sealed-junction'],
+      [2, 0, 'sealed-junction'],
+      [2, 1, 'grand-harmony', 1],
+      [2, 2, 'sealed-junction'],
+      [3, 0, 'sealed-junction'],
+      [3, 1, 'harmonic-sanctuary'],
+      [3, 2, 'harmonic-sanctuary'],
+    ];
+    fixture.forEach(([row, column, blockId, stars]) => {
+      initial[row][column] = { blockId, rotation: 0, ...(stars ? { stars } : {}) };
+    });
     return initial;
   }
   if (topologyFixture !== 'straight') return initial;
@@ -302,6 +348,7 @@ const BlockVisual = ({
   powered = false,
   compact = false,
   portFlows,
+  resonanceCount,
 }: {
   block: BlockDefinition;
   rotation?: Rotation;
@@ -309,17 +356,21 @@ const BlockVisual = ({
   powered?: boolean;
   compact?: boolean;
   portFlows?: Partial<Record<Direction, PortFlow>>;
+  resonanceCount?: number;
 }) => {
   const ports = rotatePorts(block.ports, rotation);
   const traits = axisValuesForBlock(block.id, 'trait');
   const [weapon] = axisValuesForBlock(block.id, 'weapon');
-  const visualEffect = block.effects.some((effect) => effect.kind === 'inscribe-magic-sigil')
-    ? 'magic-sigil'
-    : block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
-      ? 'charge'
-      : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
-        ? 'poison'
-        : block.effects[0]?.kind;
+  const visualEffect =
+    adjacentBuildIdsForBlock(block).length > 0
+      ? 'resonance'
+      : block.effects.some((effect) => effect.kind === 'inscribe-magic-sigil')
+        ? 'magic-sigil'
+        : block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
+          ? 'charge'
+          : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
+            ? 'poison'
+            : block.effects[0]?.kind;
   return (
     <span
       className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${traits.length > 1 ? 'is-hybrid-trait' : ''} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
@@ -337,6 +388,11 @@ const BlockVisual = ({
         {!compact && <small>{block.code}</small>}
       </span>
       {stars > 0 && <strong className="skill-star">★</strong>}
+      {resonanceCount !== undefined && (
+        <strong className="resonance-count" data-resonance-count={resonanceCount}>
+          響{resonanceCount}
+        </strong>
+      )}
       {weapon && <span className="block-weapon-mark">{WEAPON_MARK[weapon.id] ?? '技'}</span>}
       {powered && <em className="power-pip" />}
     </span>
@@ -800,6 +856,14 @@ const BattleCircuitSummary = ({
               const block = baseBlock
                 ? upgradeBlockDefinition(baseBlock, placed?.stars ?? 0, GAME_DATA.rules.skillFusion)
                 : undefined;
+              const position = { row: rowIndex, column: columnIndex };
+              const adjacentBuildCounts = baseBlock
+                ? adjacentBuildCountsForBlock(board, analysis, position, baseBlock)
+                : {};
+              const resonanceCount =
+                baseBlock && adjacentBuildIdsForBlock(baseBlock).includes('resonance')
+                  ? (adjacentBuildCounts.resonance ?? 0)
+                  : undefined;
               const stateLabel = mergingCells.has(key)
                 ? `合流 効果${GAME_DATA.rules.mergeEffectMultiplier}倍`
                 : activatedCells.has(key)
@@ -813,7 +877,6 @@ const BattleCircuitSummary = ({
               const conditions = conditionStatusesByCell.get(key) ?? [];
               const conditionSummary = conditions.map(conditionLabel).join('、');
               if (block && placed) {
-                const position = { row: rowIndex, column: columnIndex };
                 const modifiers = combineSkillModifiers(
                   incomingSkillModifiers(board, GAME_DATA.blocks, analysis, position, GAME_DATA.rules.skillFusion),
                   magicSigilModifiers(magicSigilLevel, GAME_DATA.rules.magicSigils),
@@ -824,6 +887,7 @@ const BattleCircuitSummary = ({
                   straightLineLength: analysis.straightLineLength.get(key) ?? 0,
                   magicSigilLevel,
                   magicSigilCount: activeMagicSigilCount,
+                  adjacentBuildCounts,
                 });
                 const skillBuffs = visibleBuffs(block, progress, modifiers);
                 const badgeLabels = [
@@ -843,6 +907,7 @@ const BattleCircuitSummary = ({
                     data-activated={activatedCells.has(key) ? 'true' : undefined}
                     data-merge={analysis.mergeCells.has(key) ? 'true' : undefined}
                     data-magic-sigil-level={magicSigilLevel || undefined}
+                    data-resonance-count={resonanceCount}
                     aria-label={`${label}の${block.title} ${stateLabel}${magicSigilLabel}${conditionSummary ? ` 条件 ${conditionSummary}` : ''}${badgeLabels.length ? ` ${badgeLabels.join('、')}` : ''}`}
                     aria-haspopup="dialog"
                     onPointerEnter={() => conditions.length > 0 && setConditionPreviewKey(key)}
@@ -869,6 +934,7 @@ const BattleCircuitSummary = ({
                       powered={poweredCells.has(key)}
                       compact
                       portFlows={portFlowsByCell.get(key)}
+                      resonanceCount={resonanceCount}
                     />
                     {mergingCells.has(key) && (
                       <b className="block-merge-chip">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
@@ -1454,6 +1520,14 @@ export function App() {
   );
   const detailMagicSigilCount = countActiveMagicSigils(detailBoard, detailAnalysis, detailMagicSigils);
   const detailMagicSigilLevel = detailCellKey ? (detailMagicSigils.levels.get(detailCellKey) ?? 0) : 0;
+  const detailAdjacentBuildCounts =
+    detailBaseBlock && detail?.position
+      ? adjacentBuildCountsForBlock(detailBoard, detailAnalysis, detail.position, detailBaseBlock)
+      : {};
+  const detailResonanceCount =
+    detailBaseBlock && adjacentBuildIdsForBlock(detailBaseBlock).includes('resonance')
+      ? (detailAdjacentBuildCounts.resonance ?? 0)
+      : undefined;
   const detailChargeByCell = calculateChargeByCell(
     detailBoard,
     GAME_DATA.blocks,
@@ -1482,6 +1556,7 @@ export function App() {
         straightLineLength: detailCellKey ? (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) : 0,
         magicSigilLevel: detailMagicSigilLevel,
         magicSigilCount: detailMagicSigilCount,
+        adjacentBuildCounts: detailAdjacentBuildCounts,
       })
     : undefined;
   const detailVisibleBuffs =
@@ -1498,6 +1573,7 @@ export function App() {
         detailAnalysis.cyclicCells.has(detailCellKey) ? '循環' : '',
         detailAnalysis.fullyConnectedCells.has(detailCellKey) ? '全接続' : '',
         detailMagicSigilLevel > 0 ? `魔紋${SIGIL_LEVEL_LABELS[detailMagicSigilLevel]}` : '',
+        detailResonanceCount !== undefined ? `共鳴${detailResonanceCount}` : '',
         (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) >= 4
           ? `直線${detailAnalysis.straightLineLength.get(detailCellKey)}`
           : '',
@@ -1586,11 +1662,21 @@ export function App() {
                           const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
                           const conditions = conditionStatusesByCell.get(key) ?? [];
                           const conditionSummary = conditions.map(conditionLabel).join('、');
+                          const resonanceCount =
+                            block && adjacentBuildIdsForBlock(block).includes('resonance')
+                              ? (adjacentBuildCountsForBlock(
+                                  board,
+                                  circuitAnalysis,
+                                  { row: rowIndex, column: columnIndex },
+                                  block,
+                                ).resonance ?? 0)
+                              : undefined;
                           return (
                             <div
                               className={`circuit-cell ${powered.has(key) ? 'is-powered' : ''} ${circuitAnalysis.mergeCells.has(key) ? 'is-merge' : ''} ${magicSigilLevel > 0 ? 'is-magic-sigil' : ''} ${conditions.some((condition) => condition.met) ? 'is-condition-ready' : ''} ${conditionPreviewCells.has(key) ? 'is-condition-path' : ''}`}
                               data-circuit-cell
                               data-magic-sigil-level={magicSigilLevel || undefined}
+                              data-resonance-count={resonanceCount}
                               data-condition-state={
                                 conditions.length > 0
                                   ? conditions.some((condition) => condition.met)
@@ -1639,6 +1725,7 @@ export function App() {
                                     rotation={placed.rotation}
                                     stars={placed.stars ?? 0}
                                     powered={powered.has(key)}
+                                    resonanceCount={resonanceCount}
                                   />
                                   {circuitAnalysis.mergeCells.has(key) && (
                                     <b className="merge-preview">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
@@ -1998,6 +2085,7 @@ export function App() {
                 rotation={detailRotation}
                 stars={detailStars}
                 powered={Boolean(detailCellKey && detailPoweredCells.has(detailCellKey))}
+                resonanceCount={detailResonanceCount}
               />
             </div>
             <div className="dialog-copy">
@@ -2013,6 +2101,12 @@ export function App() {
                   <span>STAR UPGRADE</span>
                   全効果 ×{GAME_DATA.rules.skillFusion.effectMultiplier}・発動間隔 -
                   {GAME_DATA.rules.skillFusion.cooldownReduction}拍
+                </div>
+              )}
+              {detailResonanceCount !== undefined && (
+                <div className="dialog-resonance-rule">
+                  <span>SPIRIT RESONANCE · {detailResonanceCount}/8</span>
+                  周囲8マスの通電した霊響を数える。★は特性を問わず、すべての通電ノードを数える。
                 </div>
               )}
               {detailMergeMultiplier > 1 && (
@@ -2111,6 +2205,12 @@ export function App() {
                     <dd>
                       位階{SIGIL_LEVEL_LABELS[detailMagicSigilLevel]}・通電中 {detailMagicSigilCount}マス
                     </dd>
+                  </div>
+                )}
+                {detailResonanceCount !== undefined && (
+                  <div>
+                    <dt>共鳴度</dt>
+                    <dd>{detailResonanceCount} / 8</dd>
                   </div>
                 )}
                 {detailBattleTeam && detailProgress && (

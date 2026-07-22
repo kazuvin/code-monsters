@@ -6,7 +6,7 @@ if (!seededTarget.searchParams.has('shopSeed')) seededTarget.searchParams.set('s
 if (!seededTarget.searchParams.has('enemyBuildFixture')) seededTarget.searchParams.set('enemyBuildFixture', 'charge');
 const target = seededTarget.toString();
 const battleBackgroundRatio = 1672 / 941;
-const playableSkillCount = 37;
+const playableSkillCount = 47;
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: true,
@@ -567,7 +567,7 @@ overload.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
 const overloadTarget = new URL(target);
-overloadTarget.searchParams.set('shopSeed', '324');
+overloadTarget.searchParams.set('shopSeed', '121');
 overloadTarget.searchParams.set('enemyRequiredBlockFixture', 'overcharge-cannon');
 await overload.goto(overloadTarget.toString(), { waitUntil: 'networkidle' });
 const overloadChargeOffer = overload.locator('.shop-card').filter({ hasText: '充電矢' });
@@ -781,6 +781,48 @@ await magicSigil
   .waitFor({ timeout: 5000 });
 await magicSigil.screenshot({ path: '/tmp/code-monsters-magic-sigil-battle.png', fullPage: true });
 
+const resonance = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
+resonance.on('pageerror', (error) => errors.push(error.message));
+resonance.on('console', (message) => {
+  if (message.type() === 'error') errors.push(message.text());
+});
+const resonanceTarget = new URL(target);
+resonanceTarget.searchParams.set('resonanceFixture', 'surround');
+await resonance.goto(resonanceTarget.toString(), { waitUntil: 'networkidle' });
+const fullResonance = resonance.locator('.circuit-cell[data-row="2"][data-column="1"][data-resonance-count="8"]');
+await fullResonance.waitFor();
+if ((await fullResonance.locator('.resonance-count').textContent())?.trim() !== '響8') {
+  throw new Error(
+    `Full resonance badge is incorrect: ${await fullResonance.locator('.resonance-count').textContent()}`,
+  );
+}
+const resonanceCondition = fullResonance.locator('.condition-chip[data-condition-kind="adjacent-build-at-least"]');
+if ((await resonanceCondition.textContent())?.trim() !== '✓ 共鳴 8/8') {
+  throw new Error(`Eight-direction resonance condition is incorrect: ${await resonanceCondition.textContent()}`);
+}
+await fullResonance.locator('.block-button').click();
+const resonanceRule = resonance.locator('.dialog-resonance-rule');
+await resonanceRule.waitFor();
+const resonanceRuleText = (await resonanceRule.textContent()) ?? '';
+if (!resonanceRuleText.includes('8/8') || !resonanceRuleText.includes('すべての通電ノード')) {
+  throw new Error(`Starred resonance detail is incomplete: ${resonanceRuleText}`);
+}
+await resonance.getByRole('button', { name: '詳細を閉じる' }).click();
+await resonance.screenshot({ path: '/tmp/code-monsters-resonance-desktop.png', fullPage: true });
+await resonance.setViewportSize({ width: 390, height: 844 });
+const resonanceOverflow = await resonance.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+if (resonanceOverflow > 1) throw new Error(`Resonance fixture overflows mobile viewport by ${resonanceOverflow}px`);
+await resonance.screenshot({ path: '/tmp/code-monsters-resonance-mobile.png', fullPage: true });
+await resonance.setViewportSize({ width: 1440, height: 1100 });
+await resonance.getByRole('button', { name: /戦闘開始/ }).click();
+await resonance.locator('.battle-screen').waitFor();
+await resonance
+  .locator(
+    '.battle-circuit-summary.team-player [data-resonance-count="8"].is-conducting, .battle-circuit-summary.team-player [data-resonance-count="8"].is-activated',
+  )
+  .waitFor({ timeout: 5000 });
+await resonance.screenshot({ path: '/tmp/code-monsters-resonance-battle.png', fullPage: true });
+
 const topology = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 topology.on('pageerror', (error) => errors.push(error.message));
 topology.on('console', (message) => {
@@ -842,6 +884,9 @@ console.log(
         'magic-sigil-desktop',
         'magic-sigil-mobile',
         'magic-sigil-battle',
+        'resonance-desktop',
+        'resonance-mobile',
+        'resonance-battle',
         'topology-desktop',
         'topology-mobile',
       ],

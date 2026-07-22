@@ -85,6 +85,16 @@ const supportsBuild = (skill: SkillDesignDefinition, build: BuildDefinition) => 
   return values.includes(build.id) || (build.axisId === 'trait' && values.includes('neutral'));
 };
 
+const adjacentBuildRequirement = (block: BlockDefinition, buildId: string) =>
+  Math.max(
+    0,
+    ...block.effects.flatMap((effect) =>
+      'trigger' in effect && effect.trigger?.kind === 'adjacent-build-at-least' && effect.trigger.buildId === buildId
+        ? [effect.trigger.amount]
+        : [],
+    ),
+  );
+
 const weightedPick = (candidates: PlacementCandidate[], rarityWeights: RarityWeights, seed: number) => {
   const weightFor = ({ block }: PlacementCandidate) => {
     return rarityWeights[block.rarity] * (block.shopWeight ?? 1);
@@ -134,10 +144,33 @@ export function generateEnemyBuild(
         return [];
       }),
     );
-    const payoffIndex = neighborIndexesByNode.reduce(
-      (last, neighbors, index) => (index !== 0 && neighbors.length === 1 ? index : last),
-      -1,
+    const surroundingIndexesByNode = activeNodes.map((position, index) =>
+      activeNodes.flatMap((candidate, candidateIndex) =>
+        candidateIndex !== index &&
+        Math.abs(candidate.row - position.row) <= 1 &&
+        Math.abs(candidate.column - position.column) <= 1
+          ? [candidateIndex]
+          : [],
+      ),
     );
+    const hasAdjacentPayoff = designs.some((design) => {
+      const block = design.blockId ? blocksById.get(design.blockId) : undefined;
+      return (
+        block &&
+        design.buildLinks.some((link) => link.buildId === build.id && link.roles.includes('payoff')) &&
+        adjacentBuildRequirement(block, build.id) > 0
+      );
+    });
+    const payoffIndex = hasAdjacentPayoff
+      ? surroundingIndexesByNode.reduce(
+          (best, neighbors, index) =>
+            index !== 0 && (best < 0 || neighbors.length >= surroundingIndexesByNode[best].length) ? index : best,
+          -1,
+        )
+      : neighborIndexesByNode.reduce(
+          (last, neighbors, index) => (index !== 0 && neighbors.length === 1 ? index : last),
+          -1,
+        );
     if (payoffIndex < 0) return null;
     const activeNodeKeys = new Set(activeNodes.map((position) => `${position.row}:${position.column}`));
     const payoffPosition = activeNodes[payoffIndex];
@@ -154,6 +187,12 @@ export function generateEnemyBuild(
         if (!block || !buildLink) return [];
         if (desiredRole && !buildLink.roles.includes(desiredRole)) return [];
         if (!desiredRole && buildLink.roles.includes('payoff')) return [];
+        if (
+          index === payoffIndex &&
+          adjacentBuildRequirement(block, build.id) > surroundingIndexesByNode[index].length
+        ) {
+          return [];
+        }
         if (index === 0 && !axisValues(design, build.axisId).includes(build.id)) return [];
         const rotations = ROTATIONS.filter((rotation) => {
           const ports = rotatePorts(block.ports, rotation);
@@ -163,6 +202,29 @@ export function generateEnemyBuild(
       });
     });
     if (candidateSets.some((candidates) => candidates.length === 0)) return null;
+
+    const forcedPayoff = options.requiredBlockId
+      ? candidateSets[payoffIndex].find(({ block }) => block.id === options.requiredBlockId)
+      : undefined;
+    const selectedPayoff =
+      forcedPayoff ?? weightedPick(candidateSets[payoffIndex], rarityWeights, seed * 101 + safeRun * 59);
+    const payoffAdjacentBuildRequirement = adjacentBuildRequirement(selectedPayoff.block, build.id);
+    if (payoffAdjacentBuildRequirement > 0) {
+      candidateSets[payoffIndex] = candidateSets[payoffIndex].filter(
+        ({ block }) =>
+          adjacentBuildRequirement(block, build.id) === payoffAdjacentBuildRequirement &&
+          (!forcedPayoff || block.id === forcedPayoff.block.id),
+      );
+      const requiredNeighborIndexes = new Set(
+        surroundingIndexesByNode[payoffIndex].slice(0, payoffAdjacentBuildRequirement),
+      );
+      surroundingIndexesByNode[payoffIndex].forEach((index) => {
+        candidateSets[index] = candidateSets[index].filter(({ block }) =>
+          requiredNeighborIndexes.has(index) ? block.buildIds?.includes(build.id) : !block.buildIds?.includes(build.id),
+        );
+      });
+      if (candidateSets.some((candidates) => candidates.length === 0)) return null;
+    }
 
     const payoffNeedsMagicSigil = candidateSets[payoffIndex].every(({ block }) =>
       block.effects.some((effect) => 'trigger' in effect && effect.trigger?.kind === 'magic-sigil-level-at-least'),

@@ -19,6 +19,7 @@
   --sigil: #aa88ff;
   --sigil-bright: #e2d5ff;
   --sigil-gold: #ffe08a;
+  --resonance: #ff9bd7;
   --green: #81f2b2;
 }
 
@@ -674,6 +675,11 @@ button:focus-visible {
   background: linear-gradient(135deg, rgb(226 213 255 / 12%) 0 12%, transparent 12% 88%, rgb(0 0 0 / 16%) 88%), #2b2751;
 }
 
+.block-visual.effect-resonance {
+  border-left-color: var(--resonance);
+  background: linear-gradient(135deg, rgb(255 155 215 / 13%) 0 12%, transparent 12% 88%, rgb(0 0 0 / 16%) 88%), #42233f;
+}
+
 .block-visual.effect-amplify,
 .block-visual.effect-haste {
   border-left-color: var(--amber);
@@ -705,6 +711,24 @@ button:focus-visible {
     0 0 9px rgb(255 211 106 / 75%);
   font-size: 13px;
   line-height: 1;
+}
+
+.resonance-count {
+  position: absolute;
+  z-index: 10;
+  top: -4px;
+  right: -4px;
+  min-width: 22px;
+  padding: 2px 3px;
+  border: 1px solid #ffd1ed;
+  color: #fff4fb;
+  background: #6b285a;
+  box-shadow:
+    2px 2px 0 #07151d,
+    0 0 8px rgb(255 155 215 / 55%);
+  font-size: 7px;
+  line-height: 1;
+  text-align: center;
 }
 
 .block-port {
@@ -1847,6 +1871,28 @@ button:focus-visible {
 
 .dialog-magic-sigil-rule span {
   color: var(--sigil-gold);
+  font:
+    600 8px / 1 "Pixelify Sans",
+    monospace;
+  white-space: nowrap;
+}
+
+.dialog-resonance-rule {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -5px 0 12px;
+  padding: 6px 8px;
+  border: 1px solid #9e4b82;
+  border-left: 3px solid var(--resonance);
+  color: #ffd9f0;
+  background: #2c1428;
+  box-shadow: inset 0 0 8px rgb(255 155 215 / 10%);
+  font-size: 9px;
+}
+
+.dialog-resonance-rule span {
+  color: var(--resonance);
   font:
     600 8px / 1 "Pixelify Sans",
     monospace;
@@ -4217,6 +4263,14 @@ button:focus-visible {
 
 .battle-circuit-cell .condition-chip {
   max-width: 48px;
+  padding: 1px 2px;
+  font-size: 5px;
+}
+
+.battle-circuit-cell .resonance-count {
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
   padding: 1px 2px;
   font-size: 5px;
 }

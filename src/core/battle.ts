@@ -1,6 +1,7 @@
 import {
   analyzeCircuit,
   analyzeMagicSigils,
+  adjacentPoweredBuildNeighbors,
   calculateChargeByCell,
   cellKey,
   cloneBoard,
@@ -47,6 +48,7 @@ type PlannedActivation = {
   charge: number;
   magicSigilLevel: number;
   magicSigilCount: number;
+  adjacentBuildCounts: Readonly<Record<string, number>>;
   stars: 0 | 1;
 };
 
@@ -123,6 +125,18 @@ export function createBattle(
 const hasActivation = (block: BlockDefinition) =>
   block.effects.some((effect) => !['amplify', 'haste', 'charge', 'inscribe-magic-sigil'].includes(effect.kind));
 
+const adjacentBuildIdsFor = (block: BlockDefinition) => [
+  ...new Set(
+    block.effects.flatMap((effect) => {
+      const triggerBuildId =
+        'trigger' in effect && effect.trigger?.kind === 'adjacent-build-at-least' ? [effect.trigger.buildId] : [];
+      const scalingBuildId =
+        'scaling' in effect && effect.scaling?.kind === 'adjacent-build' ? [effect.scaling.buildId] : [];
+      return [...triggerBuildId, ...scalingBuildId];
+    }),
+  ),
+];
+
 function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tick: number): PlannedActivation[] {
   const definitions = new Map(data.blocks.map((block) => [block.id, block]));
   const analysis = analyzeCircuit(board, data.blocks, data.rules.sourceRow);
@@ -143,6 +157,12 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
       if (!hasActivation(block)) return;
       const upstream = analysis.upstreamCells.get(key) ?? [];
       const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
+      const adjacentBuildCounts = Object.fromEntries(
+        adjacentBuildIdsFor(block).map((buildId) => [
+          buildId,
+          adjacentPoweredBuildNeighbors(board, data.blocks, analysis, position, buildId).length,
+        ]),
+      );
       const modifiers = combineSkillModifiers(
         incomingSkillModifiers(board, data.blocks, analysis, position, data.rules.skillFusion),
         magicSigilModifiers(magicSigilLevel, data.rules.magicSigils),
@@ -165,6 +185,7 @@ function plannedActivations(data: GameData, board: CircuitBoard, team: Team, tic
         charge: chargeByCell.get(key) ?? 0,
         magicSigilLevel,
         magicSigilCount,
+        adjacentBuildCounts,
         stars,
       });
     }),
@@ -187,6 +208,7 @@ const triggerMatches = (
     allPortsConnected: boolean;
     straightLineLength: number;
     magicSigilLevel: number;
+    adjacentBuildCounts: Readonly<Record<string, number>>;
   },
 ) => {
   if (!trigger) return true;
@@ -248,6 +270,7 @@ const numericAmount = (
           straightLineLength: action.straightLineLength,
           magicSigilLevel: action.magicSigilLevel,
           magicSigilCount: action.magicSigilCount,
+          adjacentBuildCounts: action.adjacentBuildCounts,
         })
       : 0) +
     (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0);
@@ -296,6 +319,7 @@ export function resolveWave(data: GameData, state: BattleState, tick: number): B
         allPortsConnected: plan.allPortsConnected,
         straightLineLength: plan.straightLineLength,
         magicSigilLevel: plan.magicSigilLevel,
+        adjacentBuildCounts: plan.adjacentBuildCounts,
         selfBuffs: skillBuffs[plan.team][planKey] ?? {},
       };
 

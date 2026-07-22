@@ -116,6 +116,12 @@ export function conditionAvailability(
       weights.minimum,
     );
   }
+  if (trigger.kind === 'adjacent-build-at-least') {
+    return clamp(
+      weights.adjacentBuildBase - weights.adjacentBuildPenaltyPerRequiredNode * Math.max(0, trigger.amount - 1),
+      weights.minimum,
+    );
+  }
   return assertNever(trigger);
 }
 
@@ -127,6 +133,7 @@ const triggerLabel = (trigger: EffectTrigger | undefined, portCount: number) => 
   if (trigger.kind === 'straight-line-at-least') return `straight>=${trigger.amount}`;
   if (trigger.kind === 'all-ports-connected') return `all-${portCount}-ports`;
   if (trigger.kind === 'magic-sigil-level-at-least') return `magic-sigil>=${trigger.amount}`;
+  if (trigger.kind === 'adjacent-build-at-least') return `adjacent-${trigger.buildId}>=${trigger.amount}`;
   return assertNever(trigger);
 };
 
@@ -150,7 +157,8 @@ const scalingReference = (scaling: EffectScaling, rules: BalanceFormulaRules) =>
   if (scaling.kind === 'path-length') return rules.reference.pathLength;
   if (scaling.kind === 'straight-line') return rules.reference.straightLineLength;
   if (scaling.kind === 'magic-sigil-level') return rules.reference.magicSigilLevel;
-  return rules.reference.magicSigilCount;
+  if (scaling.kind === 'magic-sigil-count') return rules.reference.magicSigilCount;
+  return rules.reference.adjacentBuildCount;
 };
 
 const scalingAvailability = (scaling: EffectScaling, portCount: number, rules: BalanceFormulaRules) => {
@@ -166,6 +174,17 @@ const scalingAvailability = (scaling: EffectScaling, portCount: number, rules: B
   }
   if (scaling.kind === 'magic-sigil-level' || scaling.kind === 'magic-sigil-count') {
     return rules.resourceAvailability.magicSigil;
+  }
+  if (scaling.kind === 'adjacent-build') {
+    return conditionAvailability(
+      {
+        kind: 'adjacent-build-at-least',
+        buildId: scaling.buildId,
+        amount: rules.reference.adjacentBuildCount,
+      },
+      portCount,
+      rules,
+    );
   }
   return conditionAvailability(
     { kind: 'straight-line-at-least', amount: rules.reference.straightLineLength },

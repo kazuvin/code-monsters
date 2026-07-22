@@ -73,18 +73,20 @@ describe('balance simulation', () => {
   it('keeps cross-build outcomes inside the tuning guardrail', () => {
     const result = runBalanceSimulation(GAME_DATA, {
       ...quickConfig,
-      battles: 600,
+      battles: 1200,
       runs: [1, 2, 3, 4, 5, 6, 7, 8, 9],
     });
     const crossBuildMatchups = result.buildMatchups.filter((matchup) => matchup.playerBuild !== matchup.enemyBuild);
 
-    expect(crossBuildMatchups).toHaveLength(6);
+    expect(crossBuildMatchups).toHaveLength(
+      GAME_DATA.buildDesign.builds.length * (GAME_DATA.buildDesign.builds.length - 1),
+    );
     crossBuildMatchups.forEach((matchup) => {
       expect(matchup.battles, `${matchup.playerBuild} into ${matchup.enemyBuild}`).toBeGreaterThan(50);
       expect(matchup.playerScoreRate, `${matchup.playerBuild} into ${matchup.enemyBuild}`).toBeGreaterThanOrEqual(0.25);
       expect(matchup.playerScoreRate, `${matchup.playerBuild} into ${matchup.enemyBuild}`).toBeLessThanOrEqual(0.75);
     });
-  });
+  }, 10_000);
 
   it('runs a connector-compatible counterfactual on both sides', () => {
     const result = runBalanceSimulation(GAME_DATA, {

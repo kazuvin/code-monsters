@@ -1,5 +1,5 @@
 {
-  "gameSchemaVersion": 19,
+  "gameSchemaVersion": 20,
   "formulaVersion": 1,
   "formula": {
     "version": 1,
@@ -11,6 +11,7 @@
       "straightLineLength": 5,
       "magicSigilLevel": 2,
       "magicSigilCount": 4,
+      "adjacentBuildCount": 4,
       "targetCooldownBeats": 3,
       "targetEffectAmount": 220
     },
@@ -31,7 +32,9 @@
       "allPortsConnectedBase": 0.95,
       "allPortsConnectedPenaltyPerPort": 0.15,
       "magicSigilBase": 0.85,
-      "magicSigilPenaltyPerRequiredLevel": 0.15
+      "magicSigilPenaltyPerRequiredLevel": 0.15,
+      "adjacentBuildBase": 1,
+      "adjacentBuildPenaltyPerRequiredNode": 0.04
     },
     "resourceAvailability": {
       "charge": 0.7,
@@ -69,9 +72,9 @@
   "referenceWindowSeconds": 10,
   "chargeMarginalCvps": 130,
   "summary": {
-    "skillCount": 37,
+    "skillCount": 47,
     "low": 0,
-    "in-range": 37,
+    "in-range": 47,
     "high": 0
   },
   "skills": [
@@ -214,6 +217,44 @@
       }
     },
     {
+      "blockId": "spirit-blade",
+      "title": "霊響刃",
+      "rarity": "common",
+      "price": 4,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 1,
+      "cooldownSeconds": 0.5,
+      "referenceOffensePerSecond": 112,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 137,
+      "weightedCombatValuePerSecond": 128.36,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 133.333333,
+      "budgetRatio": 0.9627,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 20 + floor(4/1)*9)*unit 1/seconds 0.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 112,
+          "weightedCvps": 103.36,
+          "referenceOffensePerSecond": 112,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 172,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 183.56,
+        "gainOverNormal": 1.430041
+      }
+    },
+    {
       "blockId": "strike",
       "title": "斬撃",
       "rarity": "common",
@@ -337,6 +378,44 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 388.3,
         "gainOverNormal": 2.295596
+      }
+    },
+    {
+      "blockId": "echo-arrow",
+      "title": "残響矢",
+      "rarity": "common",
+      "price": 5,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 120,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 160,
+      "weightedCombatValuePerSecond": 152.8,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 166.666667,
+      "budgetRatio": 0.9168,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 60 + floor(4/1)*15)*unit 1/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 120,
+          "weightedCvps": 112.8,
+          "referenceOffensePerSecond": 120,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 364,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 381.92,
+        "gainOverNormal": 2.499476
       }
     },
     {
@@ -490,6 +569,44 @@
       }
     },
     {
+      "blockId": "tuning-stone",
+      "title": "調律碑",
+      "rarity": "common",
+      "price": 5,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 111.6,
+      "rawCombatValuePerSecond": 136.6,
+      "weightedCombatValuePerSecond": 129.688,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 166.666667,
+      "budgetRatio": 0.778128,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 60 + floor(4/1)*16)*unit 0.9/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 111.6,
+          "weightedCvps": 104.688,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 111.6
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 334.8,
+        "weightedCombatValuePerSecond": 339.064,
+        "gainOverNormal": 2.614459
+      }
+    },
+    {
       "blockId": "arc-shot",
       "title": "アーク弾",
       "rarity": "rare",
@@ -613,6 +730,56 @@
         "referenceDefensePerSecond": 382.5,
         "weightedCombatValuePerSecond": 375.1,
         "gainOverNormal": 2.076966
+      }
+    },
+    {
+      "blockId": "harmony-ward",
+      "title": "響護壁",
+      "rarity": "rare",
+      "price": 7,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 196.5,
+      "rawCombatValuePerSecond": 221.5,
+      "weightedCombatValuePerSecond": 209.02,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 192.5,
+      "budgetRatio": 1.085818,
+      "budgetStatus": "in-range",
+      "conditions": ["adjacent-resonance>=3"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 85 + floor(4/1)*20)*unit 0.9/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 148.5,
+          "weightedCvps": 139.86,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 148.5
+        },
+        {
+          "effectIndex": 1,
+          "kind": "repair",
+          "condition": "adjacent-resonance>=3",
+          "formula": "(amount 60)*unit 0.8/seconds 1",
+          "conditionAvailability": 0.92,
+          "rewardMultiplier": 1.086957,
+          "rawCvps": 48,
+          "weightedCvps": 44.16,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 48
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 590.4,
+        "weightedCombatValuePerSecond": 577.96,
+        "gainOverNormal": 2.765094
       }
     },
     {
@@ -1016,6 +1183,56 @@
       }
     },
     {
+      "blockId": "thunder-echo",
+      "title": "雷響器",
+      "rarity": "rare",
+      "price": 8,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 110,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 265,
+      "weightedCombatValuePerSecond": 186.95,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 220,
+      "budgetRatio": 0.849773,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "charge",
+          "condition": "always",
+          "formula": "charge 1*marginalCVPS 130*producerShare 0.65",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 130,
+          "weightedCvps": 59.15,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 50 + floor(4/1)*15)*unit 1/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 110,
+          "weightedCvps": 102.8,
+          "referenceOffensePerSecond": 110,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 334,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 455.22,
+        "gainOverNormal": 2.434983
+      }
+    },
+    {
       "blockId": "twin-inscription",
       "title": "双刻碑",
       "rarity": "rare",
@@ -1063,6 +1280,44 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 338,
         "gainOverNormal": 1.942529
+      }
+    },
+    {
+      "blockId": "venom-chorus",
+      "title": "蝕響矢",
+      "rarity": "rare",
+      "price": 8,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 180,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 220,
+      "weightedCombatValuePerSecond": 205.6,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 220,
+      "budgetRatio": 0.934545,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "poison",
+          "condition": "always",
+          "formula": "(amount 12 + floor(4/1)*6)*unit 5/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 180,
+          "weightedCvps": 165.6,
+          "referenceOffensePerSecond": 180,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 540,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 536.8,
+        "gainOverNormal": 2.610895
       }
     },
     {
@@ -1213,6 +1468,56 @@
         "referenceDefensePerSecond": 486,
         "weightedCombatValuePerSecond": 532,
         "gainOverNormal": 2.086275
+      }
+    },
+    {
+      "blockId": "harmonic-sanctuary",
+      "title": "交響結界",
+      "rarity": "epic",
+      "price": 13,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 298,
+      "rawCombatValuePerSecond": 343,
+      "weightedCombatValuePerSecond": 292.0336,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 327.407407,
+      "budgetRatio": 0.891958,
+      "budgetStatus": "in-range",
+      "conditions": ["adjacent-resonance>=4"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "shield",
+          "condition": "adjacent-resonance>=4",
+          "formula": "(amount 150 + floor(4/1)*60)*unit 0.9/seconds 1.5",
+          "conditionAvailability": 0.88,
+          "rewardMultiplier": 1.136364,
+          "rawCvps": 234,
+          "weightedCvps": 190.7136,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 234
+        },
+        {
+          "effectIndex": 1,
+          "kind": "repair",
+          "condition": "adjacent-resonance>=4",
+          "formula": "(amount 120)*unit 0.8/seconds 1.5",
+          "conditionAvailability": 0.88,
+          "rewardMultiplier": 1.136364,
+          "rawCvps": 64,
+          "weightedCvps": 56.32,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 64
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 670.5,
+        "weightedCombatValuePerSecond": 600.8256,
+        "gainOverNormal": 2.057385
       }
     },
     {
@@ -1454,6 +1759,44 @@
       }
     },
     {
+      "blockId": "resonance-cannon",
+      "title": "霊響砲",
+      "rarity": "epic",
+      "price": 14,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 346.666667,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 391.666667,
+      "weightedCombatValuePerSecond": 327.538667,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 352.592593,
+      "budgetRatio": 0.928944,
+      "budgetStatus": "in-range",
+      "conditions": ["adjacent-resonance>=4"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "adjacent-resonance>=4",
+          "formula": "(amount 200 + floor(4/1)*80)*unit 1/seconds 1.5",
+          "conditionAvailability": 0.88,
+          "rewardMultiplier": 1.136364,
+          "rawCvps": 346.666667,
+          "weightedCvps": 282.538667,
+          "referenceOffensePerSecond": 346.666667,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 780,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 680.712,
+        "gainOverNormal": 2.078265
+      }
+    },
+    {
       "blockId": "rupture-stake",
       "title": "破裂砲",
       "rarity": "epic",
@@ -1618,6 +1961,44 @@
       }
     },
     {
+      "blockId": "celestial-echo-cannon",
+      "title": "天響砲",
+      "rarity": "legendary",
+      "price": 21,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 620,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 665,
+      "weightedCombatValuePerSecond": 510.28,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 520,
+      "budgetRatio": 0.981308,
+      "budgetStatus": "in-range",
+      "conditions": ["adjacent-resonance>=6"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "adjacent-resonance>=6",
+          "formula": "(amount 600 + floor(4/1)*160)*unit 1/seconds 2",
+          "conditionAvailability": 0.8,
+          "rewardMultiplier": 1.25,
+          "rawCvps": 620,
+          "weightedCvps": 465.28,
+          "referenceOffensePerSecond": 620,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 1240,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 975.56,
+        "gainOverNormal": 1.911813
+      }
+    },
+    {
       "blockId": "charge-line-lance",
       "title": "雷路槍",
       "rarity": "legendary",
@@ -1753,6 +2134,56 @@
         "referenceDefensePerSecond": 360,
         "weightedCombatValuePerSecond": 917.1,
         "gainOverNormal": 1.906455
+      }
+    },
+    {
+      "blockId": "grand-harmony",
+      "title": "万象交響",
+      "rarity": "legendary",
+      "price": 22,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 540,
+      "referenceDefensePerSecond": 243,
+      "rawCombatValuePerSecond": 828,
+      "weightedCombatValuePerSecond": 578.6928,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 544.761905,
+      "budgetRatio": 1.062286,
+      "budgetStatus": "in-range",
+      "conditions": ["adjacent-resonance>=8"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "adjacent-resonance>=8",
+          "formula": "(amount 600 + floor(4/1)*120)*unit 1/seconds 2",
+          "conditionAvailability": 0.72,
+          "rewardMultiplier": 1.388889,
+          "rawCvps": 540,
+          "weightedCvps": 368.064,
+          "referenceOffensePerSecond": 540,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "shield",
+          "condition": "adjacent-resonance>=8",
+          "formula": "(amount 300 + floor(4/1)*60)*unit 0.9/seconds 2",
+          "conditionAvailability": 0.72,
+          "rewardMultiplier": 1.388889,
+          "rawCvps": 243,
+          "weightedCvps": 165.6288,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 243
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 1080,
+        "referenceDefensePerSecond": 486,
+        "weightedCombatValuePerSecond": 1112.3856,
+        "gainOverNormal": 1.922239
       }
     },
     {

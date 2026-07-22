@@ -15,6 +15,7 @@ describe('build design', () => {
       'poison',
       'charge',
       'magic-sigil',
+      'resonance',
     ]);
     expect(GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'weapon')?.values.map((value) => value.id)).toEqual([
       'blade',
@@ -30,8 +31,10 @@ describe('build design', () => {
     expect(hybridSkills.map((skill) => skill.id).sort()).toEqual([
       'resonance-circle',
       'status-relay',
+      'thunder-echo',
       'thunder-sigil',
       'toxic-reservoir',
+      'venom-chorus',
     ]);
 
     GAME_DATA.buildDesign.skills.forEach((skill) => {
@@ -46,6 +49,7 @@ describe('build design', () => {
       'fully-connected',
       'straight-line',
       'magic-sigil',
+      'resonance',
     ]);
     expect(GAME_DATA.buildDesign.skills.every((skill) => Boolean(skill.placementPatternId))).toBe(true);
 
@@ -61,6 +65,9 @@ describe('build design', () => {
     ).toBeGreaterThanOrEqual(1);
     expect(
       rows.find((row) => row.placementPatternId === 'magic-sigil' && row.traitId === 'magic-sigil')?.counts.cannon,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'resonance')?.counts.magic,
     ).toBeGreaterThanOrEqual(1);
   });
 
@@ -166,7 +173,12 @@ describe('build design', () => {
     const strike = GAME_DATA.buildDesign.skills.find((skill) => skill.id === 'strike')!;
 
     expect(strike.axisLinks.find((link) => link.axisId === 'trait')?.valueIds).toEqual(['neutral']);
-    expect(strike.buildLinks.map((link) => link.buildId).sort()).toEqual(['charge', 'magic-sigil', 'poison']);
+    expect(strike.buildLinks.map((link) => link.buildId).sort()).toEqual([
+      'charge',
+      'magic-sigil',
+      'poison',
+      'resonance',
+    ]);
     expect(
       validateBuildDesign(
         GAME_DATA.buildDesign,
@@ -189,6 +201,8 @@ describe('build design', () => {
     expect(markdown).toContain('| 一括解放 | 全チャージを大ダメージへ変える |');
     expect(markdown).toContain('| 重刻 | 一つの魔紋を位階IIIまで重ねて決め手を強化する |');
     expect(markdown).toContain('| 連環 | 通電した魔紋マスを増やして盤面全体を共鳴させる |');
+    expect(markdown).toContain('| 集響 | 共鳴度4以上を火力へ集中させる |');
+    expect(markdown).toContain('| 交響 | 共鳴度を攻防と回復へ分配する |');
     expect(markdown).toContain('`discharge-bow`');
     expect(markdown).toContain('`status-relay`');
   });

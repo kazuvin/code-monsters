@@ -10,7 +10,7 @@ import type {
   SkillFusionRules,
 } from './types';
 
-type ConnectionBlock = Pick<BlockDefinition, 'id' | 'ports'>;
+type ConnectionBlock = Pick<BlockDefinition, 'id' | 'ports' | 'buildIds'>;
 
 const DIRECTIONS: Direction[] = ['north', 'east', 'south', 'west'];
 const VECTORS: Record<Direction, CellPosition> = {
@@ -19,6 +19,16 @@ const VECTORS: Record<Direction, CellPosition> = {
   south: { row: 1, column: 0 },
   west: { row: 0, column: -1 },
 };
+const SURROUNDING_VECTORS: CellPosition[] = [
+  { row: -1, column: -1 },
+  { row: -1, column: 0 },
+  { row: -1, column: 1 },
+  { row: 0, column: -1 },
+  { row: 0, column: 1 },
+  { row: 1, column: -1 },
+  { row: 1, column: 0 },
+  { row: 1, column: 1 },
+];
 const OPPOSITE: Record<Direction, Direction> = {
   north: 'south',
   east: 'west',
@@ -78,6 +88,25 @@ export function connectedNeighbors(
   });
 }
 
+export function adjacentPoweredBuildNeighbors(
+  board: CircuitBoard,
+  blocks: ConnectionBlock[],
+  analysis: Pick<CircuitAnalysis, 'poweredCells'>,
+  position: CellPosition,
+  buildId: string,
+): CellPosition[] {
+  const current = definitionAt(board, blocks, position);
+  const key = cellKey(position);
+  if (!current || !analysis.poweredCells.has(key)) return [];
+  const countsEveryBuild = (current.placed.stars ?? 0) > 0;
+  return SURROUNDING_VECTORS.flatMap((vector) => {
+    const neighborPosition = { row: position.row + vector.row, column: position.column + vector.column };
+    const neighbor = definitionAt(board, blocks, neighborPosition);
+    if (!neighbor || !analysis.poweredCells.has(cellKey(neighborPosition))) return [];
+    return countsEveryBuild || neighbor.definition.buildIds?.includes(buildId) ? [neighborPosition] : [];
+  }).sort((left, right) => cellKey(left).localeCompare(cellKey(right)));
+}
+
 export type CircuitAnalysis = {
   poweredCells: Set<string>;
   routeLength: Map<string, number>;
@@ -106,6 +135,7 @@ export type CircuitTriggerContext = {
   allPortsConnected: boolean;
   straightLineLength: number;
   magicSigilLevel: number;
+  adjacentBuildCounts: Readonly<Record<string, number>>;
 };
 
 export type MagicSigilAnalysis = {
@@ -321,6 +351,9 @@ export const matchesCircuitTrigger = (trigger: CircuitEffectTrigger, context: Ci
   if (trigger.kind === 'in-cycle') return context.inCycle;
   if (trigger.kind === 'all-ports-connected') return context.allPortsConnected;
   if (trigger.kind === 'magic-sigil-level-at-least') return context.magicSigilLevel >= trigger.amount;
+  if (trigger.kind === 'adjacent-build-at-least') {
+    return (context.adjacentBuildCounts[trigger.buildId] ?? 0) >= trigger.amount;
+  }
   return context.straightLineLength >= trigger.amount;
 };
 
@@ -359,12 +392,18 @@ export function evaluateCircuitCondition(
     ((analysis.routeLength.get(key) ?? 0) === 1 && position.column === 0 && rotatedPorts.includes('west') ? 1 : 0);
   const pathLength = analysis.routeLength.get(key) ?? 0;
   const straightLength = analysis.straightLineLength.get(key) ?? 0;
+  const adjacentBuildNeighbors =
+    trigger.kind === 'adjacent-build-at-least'
+      ? adjacentPoweredBuildNeighbors(board, blocks, analysis, position, trigger.buildId)
+      : [];
   const context: CircuitTriggerContext = {
     pathLength,
     inCycle: analysis.cyclicCells.has(key),
     allPortsConnected: analysis.fullyConnectedCells.has(key),
     straightLineLength: straightLength,
     magicSigilLevel,
+    adjacentBuildCounts:
+      trigger.kind === 'adjacent-build-at-least' ? { [trigger.buildId]: adjacentBuildNeighbors.length } : {},
   };
   const met = matchesCircuitTrigger(trigger, context);
 
@@ -402,6 +441,15 @@ export function evaluateCircuitCondition(
       current: magicSigilLevel,
       required: trigger.amount,
       contributingCells: [key, ...magicSigilSources].sort(),
+    };
+  }
+  if (trigger.kind === 'adjacent-build-at-least') {
+    return {
+      trigger,
+      met,
+      current: adjacentBuildNeighbors.length,
+      required: trigger.amount,
+      contributingCells: [key, ...adjacentBuildNeighbors.map(cellKey)].sort(),
     };
   }
   return {

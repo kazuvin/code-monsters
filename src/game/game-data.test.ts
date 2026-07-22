@@ -162,6 +162,7 @@ describe('game data', () => {
       ['poison', '#8bd450'],
       ['charge', '#ffd36a'],
       ['magic-sigil', '#a987ff'],
+      ['resonance', '#ff9bd7'],
     ]);
   });
 
@@ -221,7 +222,7 @@ describe('game data', () => {
         .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2)
         .map((skill) => skill.id)
         .sort(),
-    ).toEqual(['resonance-circle', 'status-relay', 'thunder-sigil', 'toxic-reservoir']);
+    ).toEqual(['resonance-circle', 'status-relay', 'thunder-echo', 'thunder-sigil', 'toxic-reservoir', 'venom-chorus']);
   });
 
   it('replaces poison-only nodes with weapon combinations and cross-trait nodes', () => {
@@ -271,12 +272,18 @@ describe('game data', () => {
         'all-sigil-resonance',
         'arc-shot',
         'barrier',
+        'celestial-echo-cannon',
         'charge-arrow',
+        'echo-arrow',
+        'grand-harmony',
         'guiding-bolt',
+        'harmonic-sanctuary',
         'poison-needle',
+        'resonance-cannon',
         'resonance-circle',
         'sealed-junction',
         'twin-inscription',
+        'venom-chorus',
         'venom-orbit',
       ].sort(),
     );

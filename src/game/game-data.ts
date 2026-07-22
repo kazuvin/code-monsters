@@ -129,11 +129,16 @@ export function validateGameData(data: GameData): string[] {
     balanceFormula.conditionAvailability.allPortsConnectedBase,
   );
   probabilityFormulaValue('conditionAvailability.magicSigilBase', balanceFormula.conditionAvailability.magicSigilBase);
+  probabilityFormulaValue(
+    'conditionAvailability.adjacentBuildBase',
+    balanceFormula.conditionAvailability.adjacentBuildBase,
+  );
   const conditionPenalties: Array<[string, number]> = [
     ['pathLengthPenaltyPerRequiredNode', balanceFormula.conditionAvailability.pathLengthPenaltyPerRequiredNode],
     ['straightLinePenaltyPerRequiredNode', balanceFormula.conditionAvailability.straightLinePenaltyPerRequiredNode],
     ['allPortsConnectedPenaltyPerPort', balanceFormula.conditionAvailability.allPortsConnectedPenaltyPerPort],
     ['magicSigilPenaltyPerRequiredLevel', balanceFormula.conditionAvailability.magicSigilPenaltyPerRequiredLevel],
+    ['adjacentBuildPenaltyPerRequiredNode', balanceFormula.conditionAvailability.adjacentBuildPenaltyPerRequiredNode],
   ];
   conditionPenalties.forEach(([key, value]) => {
     if (!Number.isFinite(value) || value < 0) {
@@ -243,6 +248,27 @@ export function validateGameData(data: GameData): string[] {
         (effect.trigger.amount < 1 || effect.trigger.amount > magicSigils.maxLevel)
       ) {
         errors.push(`block "${block.id}" effect "${effect.kind}" magic sigil level is invalid`);
+      }
+      if (
+        'trigger' in effect &&
+        effect.trigger?.kind === 'adjacent-build-at-least' &&
+        (effect.trigger.amount < 1 || effect.trigger.amount > 8)
+      ) {
+        errors.push(`block "${block.id}" effect "${effect.kind}" adjacent build count must be between 1 and 8`);
+      }
+      if (
+        'trigger' in effect &&
+        effect.trigger?.kind === 'adjacent-build-at-least' &&
+        !buildIds.has(effect.trigger.buildId)
+      ) {
+        errors.push(
+          `block "${block.id}" effect "${effect.kind}" references unknown adjacent build "${effect.trigger.buildId}"`,
+        );
+      }
+      if ('scaling' in effect && effect.scaling?.kind === 'adjacent-build' && !buildIds.has(effect.scaling.buildId)) {
+        errors.push(
+          `block "${block.id}" effect "${effect.kind}" references unknown adjacent build "${effect.scaling.buildId}"`,
+        );
       }
       if (effect.kind === 'inscribe-magic-sigil') {
         if (effect.offsets.length === 0) errors.push(`block "${block.id}" must inscribe at least one cell`);
