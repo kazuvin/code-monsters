@@ -168,6 +168,54 @@ export type SkillFusionRules = {
   cooldownReduction: number;
 };
 
+export type BalanceFormulaRules = {
+  version: number;
+  reference: {
+    windowSeconds: number;
+    enemyPoison: number;
+    charge: number;
+    pathLength: number;
+    straightLineLength: number;
+    targetCooldownBeats: number;
+    targetEffectAmount: number;
+  };
+  effectValue: {
+    shield: number;
+    repair: number;
+    poisonTicks: number;
+    supportPoint: number;
+  };
+  conditionAvailability: {
+    minimum: number;
+    enemyPoisoned: number;
+    inCycle: number;
+    pathLengthBase: number;
+    pathLengthPenaltyPerRequiredNode: number;
+    straightLineBase: number;
+    straightLinePenaltyPerRequiredNode: number;
+    allPortsConnectedBase: number;
+    allPortsConnectedPenaltyPerPort: number;
+  };
+  resourceAvailability: {
+    charge: number;
+    rupturePoison: number;
+  };
+  chargeAttribution: {
+    producer: number;
+    consumer: number;
+  };
+  topologyUtility: {
+    perAdditionalPort: number;
+    rotatable: number;
+  };
+  targetCvpsByRarity: Record<Rarity, number>;
+  referencePriceByRarity: Record<Rarity, number>;
+  acceptableBudgetRatio: {
+    minimum: number;
+    maximum: number;
+  };
+};
+
 export type LevelProgressionRules = {
   runsPerLevel: number;
   maxLevel: number;
@@ -198,6 +246,7 @@ export type GameData = {
     rarityWeights: RarityWeights;
     levelProgression: LevelProgressionRules;
     skillFusion: SkillFusionRules;
+    balanceFormula: BalanceFormulaRules;
     enemyGeneration: {
       startingNodes: number;
       nodesPerRun: number;

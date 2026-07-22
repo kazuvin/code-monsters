@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBattle, createPlayback, resolveTick, resolveWave, runBattle } from './battle';
 import type { CircuitBoard, GameData } from './types';
+import { GAME_DATA } from '../game/game-data';
 
 const emptyBoard = (size = 3): CircuitBoard =>
   Array.from({ length: size }, () => Array.from({ length: size }, () => null));
@@ -36,6 +37,7 @@ const testData = (): GameData => ({
       effectMultiplier: 1.5,
       cooldownReduction: 1,
     },
+    balanceFormula: GAME_DATA.rules.balanceFormula,
     enemyGeneration: {
       startingNodes: 2,
       nodesPerRun: 1,

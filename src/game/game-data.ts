@@ -82,6 +82,69 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.skillFusion.cooldownReduction < 0) {
     errors.push('skillFusion.cooldownReduction must not be negative');
   }
+  const balanceFormula = data.rules.balanceFormula;
+  const positiveFormulaValue = (label: string, value: number) => {
+    if (!Number.isFinite(value) || value <= 0) errors.push(`balanceFormula.${label} must be positive`);
+  };
+  const probabilityFormulaValue = (label: string, value: number) => {
+    if (!Number.isFinite(value) || value <= 0 || value > 1) {
+      errors.push(`balanceFormula.${label} must be within (0, 1]`);
+    }
+  };
+  if (!Number.isInteger(balanceFormula.version) || balanceFormula.version < 1) {
+    errors.push('balanceFormula.version must be a positive integer');
+  }
+  Object.entries(balanceFormula.reference).forEach(([key, value]) => positiveFormulaValue(`reference.${key}`, value));
+  probabilityFormulaValue('effectValue.shield', balanceFormula.effectValue.shield);
+  probabilityFormulaValue('effectValue.repair', balanceFormula.effectValue.repair);
+  positiveFormulaValue('effectValue.poisonTicks', balanceFormula.effectValue.poisonTicks);
+  positiveFormulaValue('effectValue.supportPoint', balanceFormula.effectValue.supportPoint);
+  probabilityFormulaValue('conditionAvailability.minimum', balanceFormula.conditionAvailability.minimum);
+  probabilityFormulaValue('conditionAvailability.enemyPoisoned', balanceFormula.conditionAvailability.enemyPoisoned);
+  probabilityFormulaValue('conditionAvailability.inCycle', balanceFormula.conditionAvailability.inCycle);
+  probabilityFormulaValue('conditionAvailability.pathLengthBase', balanceFormula.conditionAvailability.pathLengthBase);
+  probabilityFormulaValue(
+    'conditionAvailability.straightLineBase',
+    balanceFormula.conditionAvailability.straightLineBase,
+  );
+  probabilityFormulaValue(
+    'conditionAvailability.allPortsConnectedBase',
+    balanceFormula.conditionAvailability.allPortsConnectedBase,
+  );
+  const conditionPenalties: Array<[string, number]> = [
+    ['pathLengthPenaltyPerRequiredNode', balanceFormula.conditionAvailability.pathLengthPenaltyPerRequiredNode],
+    ['straightLinePenaltyPerRequiredNode', balanceFormula.conditionAvailability.straightLinePenaltyPerRequiredNode],
+    ['allPortsConnectedPenaltyPerPort', balanceFormula.conditionAvailability.allPortsConnectedPenaltyPerPort],
+  ];
+  conditionPenalties.forEach(([key, value]) => {
+    if (!Number.isFinite(value) || value < 0) {
+      errors.push(`balanceFormula.conditionAvailability.${key} must not be negative`);
+    }
+  });
+  probabilityFormulaValue('resourceAvailability.charge', balanceFormula.resourceAvailability.charge);
+  probabilityFormulaValue('resourceAvailability.rupturePoison', balanceFormula.resourceAvailability.rupturePoison);
+  probabilityFormulaValue('chargeAttribution.producer', balanceFormula.chargeAttribution.producer);
+  probabilityFormulaValue('chargeAttribution.consumer', balanceFormula.chargeAttribution.consumer);
+  if (Math.abs(balanceFormula.chargeAttribution.producer + balanceFormula.chargeAttribution.consumer - 1) > 1e-9) {
+    errors.push('balanceFormula.chargeAttribution producer and consumer must sum to 1');
+  }
+  if (balanceFormula.topologyUtility.perAdditionalPort < 0 || balanceFormula.topologyUtility.rotatable < 0) {
+    errors.push('balanceFormula.topologyUtility values must not be negative');
+  }
+  rarities.forEach((rarity) => {
+    positiveFormulaValue(`targetCvpsByRarity.${rarity}`, balanceFormula.targetCvpsByRarity[rarity]);
+    positiveFormulaValue(`referencePriceByRarity.${rarity}`, balanceFormula.referencePriceByRarity[rarity]);
+  });
+  rarities.slice(1).forEach((rarity, index) => {
+    if (balanceFormula.targetCvpsByRarity[rarity] <= balanceFormula.targetCvpsByRarity[rarities[index]]) {
+      errors.push(`balanceFormula.targetCvpsByRarity.${rarity} must exceed ${rarities[index]}`);
+    }
+  });
+  positiveFormulaValue('acceptableBudgetRatio.minimum', balanceFormula.acceptableBudgetRatio.minimum);
+  positiveFormulaValue('acceptableBudgetRatio.maximum', balanceFormula.acceptableBudgetRatio.maximum);
+  if (balanceFormula.acceptableBudgetRatio.maximum <= balanceFormula.acceptableBudgetRatio.minimum) {
+    errors.push('balanceFormula.acceptableBudgetRatio.maximum must exceed minimum');
+  }
   rarities.forEach((rarity) => {
     if (!Number.isFinite(data.rules.rarityWeights[rarity]) || data.rules.rarityWeights[rarity] <= 0) {
       errors.push(`rarityWeights.${rarity} must be positive`);

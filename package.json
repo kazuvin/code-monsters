@@ -9,6 +9,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "balance:simulate": "node --import tsx scripts/simulate-balance.mjs",
+    "balance:formula": "node --import tsx scripts/calculate-skill-power.mjs && biome format --write reports/balance/formula.json",
+    "balance:formula:check": "node --import tsx scripts/calculate-skill-power.mjs --check",
     "balance:baseline": "node --import tsx scripts/simulate-balance.mjs --output reports/balance/baseline && biome format --write reports/balance/baseline.json",
     "balance:check": "node --import tsx scripts/simulate-balance.mjs --baseline reports/balance/baseline.json --fail-on-regression --output reports/balance/latest",
     "design:matrix": "node --experimental-strip-types scripts/generate-build-matrix.ts",
@@ -20,7 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:browser": "node scripts/browser-smoke.mjs",
-    "verify": "pnpm format:check && pnpm test && pnpm build"
+    "verify": "pnpm format:check && pnpm balance:formula:check && pnpm test && pnpm build"
   },
   "dependencies": {
     "@fontsource/pixelify-sans": "latest",

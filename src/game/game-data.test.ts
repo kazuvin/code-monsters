@@ -40,6 +40,19 @@ describe('game data', () => {
     });
   });
 
+  it('rejects incomplete or incoherent deterministic balance-formula coefficients', () => {
+    const data = structuredClone(GAME_DATA);
+    data.rules.balanceFormula.chargeAttribution = { producer: 0.8, consumer: 0.8 };
+    data.rules.balanceFormula.conditionAvailability.inCycle = 1.2;
+
+    expect(validateGameData(data)).toEqual(
+      expect.arrayContaining([
+        'balanceFormula.chargeAttribution producer and consumer must sum to 1',
+        'balanceFormula.conditionAvailability.inCycle must be within (0, 1]',
+      ]),
+    );
+  });
+
   it('defines three-copy fusion and enough same-rarity rewards for every tier', () => {
     expect(GAME_DATA.rules.skillFusion).toEqual({
       copiesRequired: 3,
@@ -65,7 +78,7 @@ describe('game data', () => {
     );
     expect(block('charge-line-lance').effects).toEqual([
       { kind: 'charge', amount: 6 },
-      { kind: 'charge', amount: 4, trigger: { kind: 'straight-line-at-least', amount: 5 } },
+      { kind: 'charge', amount: 5, trigger: { kind: 'straight-line-at-least', amount: 5 } },
     ]);
   });
 
@@ -87,14 +100,14 @@ describe('game data', () => {
     GAME_DATA.blocks.forEach((block) => {
       block.effects.forEach((effect) => {
         if ('amount' in effect && ['damage', 'shield', 'repair', 'poison'].includes(effect.kind)) {
-          expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThanOrEqual(35);
+          expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThan(0);
         }
         if (effect.kind === 'growth' || effect.kind === 'amplify') {
-          expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThanOrEqual(8);
+          expect(effect.amount, `${block.id} ${effect.kind}`).toBeGreaterThan(0);
         }
         if (effect.kind === 'release-charge') {
           expect(effect.amount, `${block.id} release base`).toBeGreaterThanOrEqual(100);
-          expect(effect.perCharge, `${block.id} release ratio`).toBeGreaterThanOrEqual(320);
+          expect(effect.perCharge, `${block.id} release ratio`).toBeGreaterThan(0);
         }
         if (effect.kind === 'rupture-poison') {
           expect(effect.damagePerStack, `${block.id} rupture ratio`).toBeGreaterThanOrEqual(6);

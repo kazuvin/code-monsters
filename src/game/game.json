@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 17,
+  "schemaVersion": 18,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -28,6 +28,63 @@
       "rewardChoices": 3,
       "effectMultiplier": 1.5,
       "cooldownReduction": 1
+    },
+    "balanceFormula": {
+      "version": 1,
+      "reference": {
+        "windowSeconds": 10,
+        "enemyPoison": 250,
+        "charge": 5,
+        "pathLength": 5,
+        "straightLineLength": 5,
+        "targetCooldownBeats": 3,
+        "targetEffectAmount": 220
+      },
+      "effectValue": {
+        "shield": 0.9,
+        "repair": 0.8,
+        "poisonTicks": 5,
+        "supportPoint": 1
+      },
+      "conditionAvailability": {
+        "minimum": 0.25,
+        "enemyPoisoned": 0.8,
+        "inCycle": 0.5,
+        "pathLengthBase": 1,
+        "pathLengthPenaltyPerRequiredNode": 0.12,
+        "straightLineBase": 0.95,
+        "straightLinePenaltyPerRequiredNode": 0.15,
+        "allPortsConnectedBase": 0.95,
+        "allPortsConnectedPenaltyPerPort": 0.15
+      },
+      "resourceAvailability": {
+        "charge": 0.7,
+        "rupturePoison": 0.65
+      },
+      "chargeAttribution": {
+        "producer": 0.65,
+        "consumer": 0.35
+      },
+      "topologyUtility": {
+        "perAdditionalPort": 15,
+        "rotatable": 10
+      },
+      "targetCvpsByRarity": {
+        "common": 150,
+        "rare": 220,
+        "epic": 340,
+        "legendary": 520
+      },
+      "referencePriceByRarity": {
+        "common": 4.5,
+        "rare": 8,
+        "epic": 13.5,
+        "legendary": 21
+      },
+      "acceptableBudgetRatio": {
+        "minimum": 0.75,
+        "maximum": 1.25
+      }
     },
     "enemyGeneration": {
       "startingNodes": 7,
@@ -567,7 +624,7 @@
       "id": "rail-cannon",
       "code": "RAIL",
       "title": "解放砲",
-      "description": "3拍ごとに、基礎220とチャージ1につき450ダメージを与える。この技で通電は止まる。",
+      "description": "3拍ごとに、基礎298とチャージ1につき210ダメージを与える。この技で通電は止まる。",
       "glyph": "砲",
       "price": 14,
       "rarity": "epic",
@@ -576,26 +633,26 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 3,
-      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 220, "perCharge": 450 }]
+      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 298, "perCharge": 210 }]
     },
     {
       "id": "amplifier",
       "code": "AMP",
       "title": "増幅術",
-      "description": "この先に直接つながった技のダメージ・毒・シールド・回復・破裂の合計威力を55増やす。",
+      "description": "この先に直接つながった技のダメージ・毒・シールド・回復・破裂の合計威力を290増やす。",
       "glyph": "増",
       "price": 8,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "east"],
       "buildIds": ["poison", "charge"],
-      "effects": [{ "kind": "amplify", "amount": 55 }]
+      "effects": [{ "kind": "amplify", "amount": 290 }]
     },
     {
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "3つの接続部がすべて繋がると、この先の技の発動間隔を1拍短くし、各効果と破裂の合計威力を110増やす。",
+      "description": "3つの接続部がすべて繋がると、この先の技の発動間隔を1拍短くし、各効果と破裂の合計威力を305増やす。",
       "glyph": "速",
       "price": 8,
       "rarity": "rare",
@@ -604,14 +661,14 @@
       "buildIds": ["poison", "charge"],
       "effects": [
         { "kind": "haste", "amount": 1, "trigger": { "kind": "all-ports-connected" } },
-        { "kind": "amplify", "amount": 110, "trigger": { "kind": "all-ports-connected" } }
+        { "kind": "amplify", "amount": 305, "trigger": { "kind": "all-ports-connected" } }
       ]
     },
     {
       "id": "poison-needle",
       "code": "VENOM",
       "title": "毒矢",
-      "description": "2拍ごとに、毒矢で45ダメージと毒35を与える。相手がすでに毒なら、この技の毒付与量が8増える。",
+      "description": "2拍ごとに、毒矢で35ダメージと毒16を与える。相手がすでに毒なら、この技の毒付与量が1増える。",
       "glyph": "毒",
       "price": 5,
       "rarity": "common",
@@ -621,11 +678,11 @@
       "buildIds": ["poison"],
       "cooldown": 2,
       "effects": [
-        { "kind": "damage", "amount": 45 },
-        { "kind": "poison", "amount": 35 },
+        { "kind": "damage", "amount": 35 },
+        { "kind": "poison", "amount": 16 },
         {
           "kind": "growth",
-          "amount": 8,
+          "amount": 1,
           "target": "self",
           "stat": "poison",
           "trigger": { "kind": "enemy-poisoned" }
@@ -636,7 +693,7 @@
       "id": "cultivation-blade",
       "code": "CULT",
       "title": "培養刃",
-      "description": "2拍ごとに、相手へ190ダメージを与える。相手が毒なら、この先の技の各効果を35増やす。",
+      "description": "2拍ごとに、相手へ170ダメージを与える。相手が毒なら、この先の技の各効果を15増やす。",
       "glyph": "培",
       "price": 8,
       "rarity": "rare",
@@ -646,10 +703,10 @@
       "buildIds": ["poison"],
       "cooldown": 2,
       "effects": [
-        { "kind": "damage", "amount": 190 },
+        { "kind": "damage", "amount": 170 },
         {
           "kind": "growth",
-          "amount": 35,
+          "amount": 15,
           "target": "downstream",
           "stat": "all",
           "trigger": { "kind": "enemy-poisoned" }
@@ -660,7 +717,7 @@
       "id": "toxic-reservoir",
       "code": "TANK",
       "title": "毒電池",
-      "description": "通電にチャージ4を追加する。3拍ごとに、毒70を与えてシールド220を得る。",
+      "description": "通電にチャージ4を追加する。3拍ごとに、毒16を与えてシールド35を得る。",
       "glyph": "溜",
       "price": 13,
       "rarity": "epic",
@@ -671,15 +728,15 @@
       "cooldown": 3,
       "effects": [
         { "kind": "charge", "amount": 4 },
-        { "kind": "poison", "amount": 70 },
-        { "kind": "shield", "amount": 220 }
+        { "kind": "poison", "amount": 16 },
+        { "kind": "shield", "amount": 35 }
       ]
     },
     {
       "id": "venom-bloom",
       "code": "BLOOM",
       "title": "猛毒花",
-      "description": "3拍ごとに毒240を与え、相手が持つ毒250ごとに付与する毒を80増やす。毒は消費しない。",
+      "description": "3拍ごとに毒100を与え、相手が持つ毒250ごとに付与する毒を55増やす。毒は消費しない。",
       "glyph": "花",
       "price": 20,
       "rarity": "legendary",
@@ -689,14 +746,14 @@
       "buildIds": ["poison"],
       "cooldown": 3,
       "effects": [
-        { "kind": "poison", "amount": 240, "scaling": { "kind": "enemy-poison", "every": 250, "amount": 80 } }
+        { "kind": "poison", "amount": 100, "scaling": { "kind": "enemy-poison", "every": 250, "amount": 55 } }
       ]
     },
     {
       "id": "rupture-stake",
       "code": "BURST",
       "title": "破裂砲",
-      "description": "4拍ごとに、砲撃で相手の毒を35%取り除く。取り除いた毒1につき8ダメージを与える。",
+      "description": "4拍ごとに、砲撃で相手の毒を35%取り除く。取り除いた毒1につき17ダメージを与える。",
       "glyph": "裂",
       "price": 14,
       "rarity": "epic",
@@ -705,13 +762,13 @@
       "rotatable": false,
       "buildIds": ["poison"],
       "cooldown": 4,
-      "effects": [{ "kind": "rupture-poison", "fraction": 0.35, "damagePerStack": 8 }]
+      "effects": [{ "kind": "rupture-poison", "fraction": 0.35, "damagePerStack": 17 }]
     },
     {
       "id": "status-relay",
       "code": "RELAY",
       "title": "異常伝送",
-      "description": "通電にチャージ1を追加する。2拍ごとに80ダメージを与え、相手が毒ならこの先の技の各効果を8増やす。",
+      "description": "通電にチャージ1を追加する。2拍ごとに120ダメージを与え、相手が毒ならこの先の技の各効果を8増やす。",
       "glyph": "伝",
       "price": 8,
       "rarity": "rare",
@@ -722,7 +779,7 @@
       "cooldown": 2,
       "effects": [
         { "kind": "charge", "amount": 1 },
-        { "kind": "damage", "amount": 80 },
+        { "kind": "damage", "amount": 120 },
         {
           "kind": "growth",
           "amount": 8,
@@ -736,7 +793,7 @@
       "id": "return-coil",
       "code": "RETURN",
       "title": "帰還コイル",
-      "description": "2拍ごとにシールド170を得て、回路が一周すると自身とこの先の技の各効果を60ずつ増やす。",
+      "description": "2拍ごとにシールド170を得て、回路が一周すると自身とこの先の技の各効果を15ずつ増やす。",
       "glyph": "還",
       "price": 8,
       "rarity": "rare",
@@ -749,14 +806,14 @@
         { "kind": "shield", "amount": 170 },
         {
           "kind": "growth",
-          "amount": 60,
+          "amount": 15,
           "target": "self",
           "stat": "shield",
           "trigger": { "kind": "in-cycle" }
         },
         {
           "kind": "growth",
-          "amount": 60,
+          "amount": 15,
           "target": "downstream",
           "stat": "all",
           "trigger": { "kind": "in-cycle" }
@@ -767,7 +824,7 @@
       "id": "long-route-fang",
       "code": "LONG",
       "title": "長路の牙",
-      "description": "2拍ごとに150ダメージを与え、同じ直線上で繋がった技1個につきダメージが55増える。4ノード以上の直線ではさらに育つ。",
+      "description": "2拍ごとに130ダメージを与え、同じ直線上で繋がった技1個につきダメージが15増える。4ノード以上の直線ではさらに13増える。",
       "glyph": "路",
       "price": 8,
       "rarity": "rare",
@@ -777,10 +834,10 @@
       "buildIds": ["poison", "charge"],
       "cooldown": 2,
       "effects": [
-        { "kind": "damage", "amount": 150, "scaling": { "kind": "straight-line", "every": 1, "amount": 55 } },
+        { "kind": "damage", "amount": 130, "scaling": { "kind": "straight-line", "every": 1, "amount": 15 } },
         {
           "kind": "growth",
-          "amount": 40,
+          "amount": 13,
           "target": "self",
           "stat": "damage",
           "trigger": { "kind": "straight-line-at-least", "amount": 4 }
@@ -791,7 +848,7 @@
       "id": "charge-blade",
       "code": "CHG-B",
       "title": "充電刃",
-      "description": "通電にチャージ2を追加する。2拍ごとに、剣で相手へ80ダメージを与える。",
+      "description": "通電にチャージ1を追加する。2拍ごとに、剣で相手へ65ダメージを与える。",
       "glyph": "充",
       "price": 4,
       "rarity": "common",
@@ -800,13 +857,13 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "charge", "amount": 2 }, { "kind": "damage", "amount": 80 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 65 }]
     },
     {
       "id": "charge-arrow",
       "code": "CHG-A",
       "title": "充電矢",
-      "description": "通電にチャージ2を追加する。2拍ごとに、弓で相手へ65ダメージを与える。",
+      "description": "通電にチャージ1を追加する。2拍ごとに、弓で相手へ80ダメージを与える。",
       "glyph": "矢",
       "price": 5,
       "rarity": "common",
@@ -815,7 +872,7 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "charge", "amount": 2 }, { "kind": "damage", "amount": 65 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "damage", "amount": 80 }]
     },
     {
       "id": "charge-coil",
@@ -835,7 +892,7 @@
       "id": "discharge-bow",
       "code": "SPARK",
       "title": "放電弓",
-      "description": "3拍ごとに、基礎120とチャージ1につき400ダメージを与える。この技で通電は止まる。",
+      "description": "3拍ごとに、基礎170とチャージ1につき180ダメージを与える。この技で通電は止まる。",
       "glyph": "放",
       "price": 9,
       "rarity": "rare",
@@ -844,13 +901,13 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 3,
-      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 120, "perCharge": 400 }]
+      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 170, "perCharge": 180 }]
     },
     {
       "id": "charge-guard",
       "code": "CHG-G",
       "title": "蓄電装甲",
-      "description": "通電にチャージ2を追加する。2拍ごとに、シールドを220得る。",
+      "description": "通電にチャージ1を追加する。2拍ごとに、シールドを175得る。",
       "glyph": "蓄",
       "price": 8,
       "rarity": "rare",
@@ -859,13 +916,13 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 2,
-      "effects": [{ "kind": "charge", "amount": 2 }, { "kind": "shield", "amount": 220 }]
+      "effects": [{ "kind": "charge", "amount": 1 }, { "kind": "shield", "amount": 175 }]
     },
     {
       "id": "charge-bastion",
       "code": "BASTION",
       "title": "防壁展開",
-      "description": "3拍ごとに、基礎240とチャージ1につき500のシールドを得て、失ったHPを600回復する。この技で通電は止まる。",
+      "description": "3拍ごとに、基礎210とチャージ1につき200のシールドを得て、失ったHPを175回復する。この技で通電は止まる。",
       "glyph": "壁",
       "price": 14,
       "rarity": "epic",
@@ -875,15 +932,15 @@
       "buildIds": ["charge"],
       "cooldown": 3,
       "effects": [
-        { "kind": "release-charge", "output": "shield", "amount": 240, "perCharge": 500 },
-        { "kind": "repair", "amount": 600 }
+        { "kind": "release-charge", "output": "shield", "amount": 210, "perCharge": 200 },
+        { "kind": "repair", "amount": 175 }
       ]
     },
     {
       "id": "venom-orbit",
       "code": "ORBIT",
       "title": "輪毒術",
-      "description": "3拍ごとに毒80を与える。輪の一部として通電すると、さらに毒180を与える。",
+      "description": "3拍ごとに毒50を与える。輪の一部として通電すると、さらに毒100を与える。",
       "glyph": "輪",
       "price": 14,
       "rarity": "epic",
@@ -893,8 +950,8 @@
       "buildIds": ["poison"],
       "cooldown": 3,
       "effects": [
-        { "kind": "poison", "amount": 80 },
-        { "kind": "poison", "amount": 180, "trigger": { "kind": "in-cycle" } }
+        { "kind": "poison", "amount": 50 },
+        { "kind": "poison", "amount": 100, "trigger": { "kind": "in-cycle" } }
       ]
     },
     {
@@ -919,7 +976,7 @@
       "id": "charge-line-lance",
       "code": "LANCE",
       "title": "雷路槍",
-      "description": "通電にチャージ6を追加して先へ渡す。5ノード以上の直線ではさらにチャージ4を追加する。",
+      "description": "通電にチャージ6を追加して先へ渡す。5ノード以上の直線ではさらにチャージ5を追加する。",
       "glyph": "槍",
       "price": 21,
       "rarity": "legendary",
@@ -929,14 +986,14 @@
       "buildIds": ["charge"],
       "effects": [
         { "kind": "charge", "amount": 6 },
-        { "kind": "charge", "amount": 4, "trigger": { "kind": "straight-line-at-least", "amount": 5 } }
+        { "kind": "charge", "amount": 5, "trigger": { "kind": "straight-line-at-least", "amount": 5 } }
       ]
     },
     {
       "id": "overcharge-cannon",
       "code": "OVER",
       "title": "超過解放砲",
-      "description": "5拍ごとに、基礎450とチャージ1につき900ダメージを与える。この技で通電は止まる。",
+      "description": "5拍ごとに、基礎940とチャージ1につき400ダメージを与える。この技で通電は止まる。",
       "glyph": "極",
       "price": 22,
       "rarity": "legendary",
@@ -945,7 +1002,7 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 5,
-      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 450, "perCharge": 900 }]
+      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 940, "perCharge": 400 }]
     }
   ],
   "startingRack": [],

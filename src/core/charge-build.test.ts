@@ -19,7 +19,7 @@ describe('charge build', () => {
     const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
-    expect(release).toMatchObject({ kind: 'damage', value: 2470, charge: 5 });
+    expect(release).toMatchObject({ kind: 'damage', value: 1138, charge: 4 });
   });
 
   it('only deals the base release damage when the cannon is next to the source', () => {
@@ -29,7 +29,7 @@ describe('charge build', () => {
     const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
-    expect(release).toMatchObject({ kind: 'damage', value: 220, charge: 0 });
+    expect(release).toMatchObject({ kind: 'damage', value: 298, charge: 0 });
   });
 
   it('carries zero charge through neutral nodes', () => {
@@ -41,7 +41,7 @@ describe('charge build', () => {
     const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
-    expect(release).toMatchObject({ kind: 'damage', value: 220, charge: 0 });
+    expect(release).toMatchObject({ kind: 'damage', value: 298, charge: 0 });
   });
 
   it('does not gain charge while traversing poison-only nodes', () => {
@@ -53,7 +53,7 @@ describe('charge build', () => {
     const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
-    expect(release).toMatchObject({ kind: 'damage', value: 220, charge: 0 });
+    expect(release).toMatchObject({ kind: 'damage', value: 298, charge: 0 });
   });
 
   it('can release the same route charge as a defensive payoff', () => {
@@ -65,8 +65,8 @@ describe('charge build', () => {
     const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'charge-bastion');
 
-    expect(release).toMatchObject({ kind: 'shield', value: 2740, charge: 5 });
-    expect(state.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2740);
+    expect(release).toMatchObject({ kind: 'shield', value: 1010, charge: 4 });
+    expect(state.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(1010);
   });
 
   it('lets the defensive charge payoff repair poison damage as well as add shield', () => {
@@ -78,7 +78,7 @@ describe('charge build', () => {
 
     const result = resolveTick(GAME_DATA, state, 1);
 
-    expect(result.fighters.find((fighter) => fighter.team === 'player')?.hp).toBe(player.hp + 600);
+    expect(result.fighters.find((fighter) => fighter.team === 'player')?.hp).toBe(player.hp + 175);
   });
 
   it('scales charge release DPS with rarity for normal and fused skills', () => {
@@ -98,9 +98,9 @@ describe('charge build', () => {
       }
     }
 
-    expect(releaseDps('discharge-bow', 5, 0)).toBeCloseTo(706.67, 2);
-    expect(releaseDps('rail-cannon', 5, 0)).toBeCloseTo(823.33, 2);
-    expect(releaseDps('overcharge-cannon', 5, 0)).toBe(990);
+    expect(releaseDps('discharge-bow', 5, 0)).toBeCloseTo(356.67, 2);
+    expect(releaseDps('rail-cannon', 5, 0)).toBeCloseTo(449.33, 2);
+    expect(releaseDps('overcharge-cannon', 5, 0)).toBe(588);
   });
 
   it('uses the legendary lance as a topology-gated charge relay instead of a damage source', () => {
@@ -111,7 +111,7 @@ describe('charge build', () => {
     const shortState = resolveTick(GAME_DATA, createBattle(GAME_DATA, shortBoard, emptyBoard()), 1);
     const shortRelease = shortState.trace.find((event) => 'blockId' in event && event.blockId === 'overcharge-cannon');
 
-    expect(shortRelease).toMatchObject({ kind: 'damage', value: 7650, charge: 8 });
+    expect(shortRelease).toMatchObject({ kind: 'damage', value: 3740, charge: 7 });
     expect(shortState.trace.some((event) => 'blockId' in event && event.blockId === 'charge-line-lance')).toBe(false);
 
     const longBoard = emptyBoard();
@@ -123,7 +123,7 @@ describe('charge build', () => {
     const longState = resolveTick(GAME_DATA, createBattle(GAME_DATA, longBoard, emptyBoard()), 1);
     const longRelease = longState.trace.find((event) => 'blockId' in event && event.blockId === 'overcharge-cannon');
 
-    expect(longRelease).toMatchObject({ kind: 'damage', value: 13950, charge: 15 });
+    expect(longRelease).toMatchObject({ kind: 'damage', value: 6940, charge: 15 });
   });
 
   it('keeps the first pulse release values explicit at five charge', () => {
@@ -131,13 +131,14 @@ describe('charge build', () => {
       const board = emptyBoard();
       board[GAME_DATA.rules.sourceRow][0] = { blockId: 'charge-blade', rotation: 0 };
       board[GAME_DATA.rules.sourceRow][1] = { blockId: 'charge-coil', rotation: 0 };
-      board[GAME_DATA.rules.sourceRow][2] = { blockId, rotation: 0 };
+      board[GAME_DATA.rules.sourceRow][2] = { blockId: 'status-relay', rotation: 0 };
+      board[GAME_DATA.rules.sourceRow][3] = { blockId, rotation: 0 };
       const state = resolveTick(GAME_DATA, createBattle(GAME_DATA, board, emptyBoard()), 1);
       return state.trace.find((event) => 'blockId' in event && event.blockId === blockId);
     };
 
-    expect(releaseValue('discharge-bow')).toMatchObject({ kind: 'damage', value: 2120, charge: 5 });
-    expect(releaseValue('rail-cannon')).toMatchObject({ kind: 'damage', value: 2470, charge: 5 });
-    expect(releaseValue('overcharge-cannon')).toMatchObject({ kind: 'damage', value: 4950, charge: 5 });
+    expect(releaseValue('discharge-bow')).toMatchObject({ kind: 'damage', value: 1070, charge: 5 });
+    expect(releaseValue('rail-cannon')).toMatchObject({ kind: 'damage', value: 1348, charge: 5 });
+    expect(releaseValue('overcharge-cannon')).toMatchObject({ kind: 'damage', value: 2940, charge: 5 });
   });
 });

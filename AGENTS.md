@@ -33,6 +33,8 @@
 - Define the four node rarities and their progressively lower base shop weights in `src/game/game.json`; individual `shopWeight` values may tune nodes only within that rarity baseline.
 - Every playable skill must be included by the default balance run without an explicit `--skills` list. Baseline comparison must reject added or removed playable skills and builds instead of silently inheriting an old catalog.
 - Add a deterministic ceiling test for every payoff that multiplies an accumulated resource or combines with amplification, haste, merge, or fusion. The random tournament measures average generated boards and does not replace a hand-authored high-synergy regression test.
+- Size skill parameters with `rules.balanceFormula` and `pnpm balance:formula` before using simulation results. Compare reference DPS, condition-weighted CVPS, and the rarity/price target separately; never hide a missing effect formula by excluding a playable skill from the report.
+- Treat condition availability as a fixed design coefficient, not an observed win rate. Regenerate `reports/balance/formula.*` after changing a skill, battle tempo, fusion multiplier, rarity target, or formula coefficient, and keep `pnpm balance:formula:check` in the verification gate.
 - Generate a fresh random seed for every normal shop arrival while keeping seeded core functions and the browser fixture deterministic. Unowned offers must still expose a west connector.
 - Fuse exactly three normal copies across the board and rack into one starred copy. Apply fusion tuning from `rules.skillFusion`, preserve one board placement when possible, and grant one choice from three unique skills of the fused rarity.
 
