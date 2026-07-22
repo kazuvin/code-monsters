@@ -109,16 +109,16 @@
 | --- | --- |
 | 起点 | `strike`、`breaker`、`charge-blade`、`charge-arrow` |
 | 育成 | `toxic-reservoir`、`status-relay`、`long-route-fang`、`amplifier`、`charge-guard`、`charge-blade`、`charge-coil`、`charge-line-lance` |
-| 回す | `strike`、`arc-shot`、`toxic-reservoir`、`return-coil`、`long-route-fang`、`accelerator`、`charge-arrow`、`charge-coil` |
+| 回す | `strike`、`arc-shot`、`toxic-reservoir`、`return-coil`、`long-route-fang`、`accelerator`、`charge-arrow`、`charge-coil`、`charge-line-lance` |
 | 維持 | `barrier`、`repair`、`toxic-reservoir`、`charge-guard`、`charge-bastion`、`sealed-junction` |
-| 活かす | `discharge-bow`、`rail-cannon`、`charge-bastion`、`charge-line-lance`、`overcharge-cannon` |
+| 活かす | `discharge-bow`、`rail-cannon`、`charge-bastion`、`overcharge-cannon` |
 
 ### 決め手
 
 | 分岐 | 方針 | 育成・循環・活用技 | 固有の決め手 |
 | --- | --- | --- | --- |
-| 一括解放 | 全チャージを大ダメージへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`discharge-bow`、`rail-cannon`、`sealed-junction`、`charge-line-lance`、`overcharge-cannon` | `discharge-bow`、`rail-cannon`、`charge-line-lance`、`overcharge-cannon` |
-| 防壁解放 | 全チャージをシールドへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`charge-bastion`、`sealed-junction` | `charge-bastion` |
+| 一括解放 | 全チャージを大ダメージへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`discharge-bow`、`rail-cannon`、`sealed-junction`、`charge-line-lance`、`overcharge-cannon` | `discharge-bow`、`rail-cannon`、`overcharge-cannon` |
+| 防壁解放 | 全チャージをシールドへ変える | `strike`、`breaker`、`arc-shot`、`barrier`、`repair`、`toxic-reservoir`、`status-relay`、`return-coil`、`long-route-fang`、`amplifier`、`accelerator`、`charge-guard`、`charge-blade`、`charge-arrow`、`charge-coil`、`charge-bastion`、`sealed-junction`、`charge-line-lance` | `charge-bastion` |
 
 ### 開放性と実装状況
 

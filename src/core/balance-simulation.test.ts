@@ -104,6 +104,20 @@ describe('balance simulation', () => {
     expect(strike?.ablation.scoreLift).toBeLessThanOrEqual(1);
   });
 
+  it('does not compare payoff skills from different payoff paths', () => {
+    const result = runBalanceSimulation(GAME_DATA, {
+      ...quickConfig,
+      battles: 2,
+      runs: [5],
+      skillTrials: 1,
+      skillIds: ['rail-cannon'],
+    });
+    const railCannon = result.skills.find((skill) => skill.blockId === 'rail-cannon');
+
+    expect(railCannon?.counterfactual.samples).toBe(0);
+    expect(railCannon?.ablation.samples).toBe(1);
+  });
+
   it('renders machine-readable CSV and a human-readable Markdown report', () => {
     const result = runBalanceSimulation(GAME_DATA, quickConfig);
     const markdown = renderBalanceMarkdown(result);

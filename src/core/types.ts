@@ -20,6 +20,8 @@ export type EffectTrigger =
   | { kind: 'all-ports-connected' }
   | { kind: 'straight-line-at-least'; amount: number };
 
+export type CircuitEffectTrigger = Exclude<EffectTrigger, { kind: 'enemy-poisoned' }>;
+
 export type EffectScaling =
   | { kind: 'enemy-poison'; every: number; amount: number }
   | { kind: 'path-length'; every: number; amount: number }
@@ -56,7 +58,7 @@ export type BlockEffect =
     }
   | { kind: 'amplify'; amount: number; trigger?: EffectTrigger }
   | { kind: 'haste'; amount: number; trigger?: EffectTrigger }
-  | { kind: 'charge'; amount: number };
+  | { kind: 'charge'; amount: number; trigger?: CircuitEffectTrigger };
 
 export type BlockDefinition = {
   id: string;

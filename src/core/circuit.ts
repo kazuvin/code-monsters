@@ -1,6 +1,7 @@
 import type {
   BlockDefinition,
   CellPosition,
+  CircuitEffectTrigger,
   CircuitBoard,
   Direction,
   PlacedBlock,
@@ -228,6 +229,14 @@ export function findPoweredCells(board: CircuitBoard, blocks: ConnectionBlock[],
   return analyzeCircuit(board, blocks, sourceRow).poweredCells;
 }
 
+const matchesChargeTrigger = (trigger: CircuitEffectTrigger | undefined, key: string, analysis: CircuitAnalysis) => {
+  if (!trigger) return true;
+  if (trigger.kind === 'path-length-at-least') return (analysis.routeLength.get(key) ?? 1) >= trigger.amount;
+  if (trigger.kind === 'in-cycle') return analysis.cyclicCells.has(key);
+  if (trigger.kind === 'all-ports-connected') return analysis.fullyConnectedCells.has(key);
+  return (analysis.straightLineLength.get(key) ?? 1) >= trigger.amount;
+};
+
 export function calculateChargeByCell(
   board: CircuitBoard,
   blocks: BlockDefinition[],
@@ -254,7 +263,7 @@ export function calculateChargeByCell(
       block?.effects.reduce(
         (total, effect) =>
           total +
-          (effect.kind === 'charge'
+          (effect.kind === 'charge' && matchesChargeTrigger(effect.trigger, key, analysis)
             ? (placed?.stars ?? 0) > 0 && fusionRules
               ? Math.round(effect.amount * fusionRules.effectMultiplier)
               : effect.amount

@@ -63,9 +63,10 @@ describe('game data', () => {
     expect(block('sealed-junction').effects).toContainEqual(
       expect.objectContaining({ trigger: { kind: 'all-ports-connected' } }),
     );
-    expect(block('charge-line-lance').effects).toContainEqual(
-      expect.objectContaining({ trigger: { kind: 'straight-line-at-least', amount: 5 } }),
-    );
+    expect(block('charge-line-lance').effects).toEqual([
+      { kind: 'charge', amount: 6 },
+      { kind: 'charge', amount: 4, trigger: { kind: 'straight-line-at-least', amount: 5 } },
+    ]);
   });
 
   it('makes every higher rarity stronger and more expensive as a tier', () => {
@@ -110,6 +111,7 @@ describe('game data', () => {
     expect(effectAmount('charge-guard', 'shield')).toBeGreaterThan(effectAmount('barrier', 'shield'));
     expect(effectAmount('charge-coil', 'charge')).toBeGreaterThan(effectAmount('charge-blade', 'charge'));
     expect(effectAmount('toxic-reservoir', 'charge')).toBeGreaterThan(effectAmount('charge-coil', 'charge'));
+    expect(effectAmount('charge-line-lance', 'charge')).toBeGreaterThan(effectAmount('toxic-reservoir', 'charge'));
     expect(effectAmount('venom-bloom', 'poison')).toBeGreaterThan(effectAmount('poison-needle', 'poison'));
   });
 

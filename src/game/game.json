@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 16,
+  "schemaVersion": 17,
   "rules": {
     "boardSize": 5,
     "sourceRow": 2,
@@ -406,7 +406,7 @@
       {
         "id": "discharge-bow",
         "title": "放電弓",
-        "summary": "少ないチャージを素早く放つレアの決め手",
+        "summary": "短い間隔でチャージを放つレアの決め手",
         "status": "playable",
         "blockId": "discharge-bow",
         "scope": "exclusive",
@@ -418,7 +418,7 @@
       {
         "id": "rail-cannon",
         "title": "解放砲",
-        "summary": "遠方で全チャージを大ダメージへ変える",
+        "summary": "放電弓より高効率でチャージを放つエピック砲",
         "status": "playable",
         "blockId": "rail-cannon",
         "scope": "exclusive",
@@ -469,19 +469,19 @@
       {
         "id": "charge-line-lance",
         "title": "雷路槍",
-        "summary": "5ノード以上の直線でチャージと大ダメージを両立する剣技",
+        "summary": "直線経路の途中で大量のチャージを後続へ渡す中継槍",
         "status": "playable",
         "blockId": "charge-line-lance",
         "scope": "exclusive",
         "sharedSynergies": [],
         "placementPatternId": "straight-line",
         "axisLinks": [{ "axisId": "trait", "valueIds": ["charge"] }, { "axisId": "weapon", "valueIds": ["blade"] }],
-        "buildLinks": [{ "buildId": "charge", "roles": ["grower", "payoff"], "payoffIds": ["burst"] }]
+        "buildLinks": [{ "buildId": "charge", "roles": ["grower", "cycler"], "payoffIds": ["burst", "guard"] }]
       },
       {
         "id": "overcharge-cannon",
         "title": "超過解放砲",
-        "summary": "長い待ち時間と引き換えにチャージを最大火力へ変える",
+        "summary": "長い待ち時間と引き換えに最高DPSでチャージを放つ",
         "status": "playable",
         "blockId": "overcharge-cannon",
         "scope": "exclusive",
@@ -919,7 +919,7 @@
       "id": "charge-line-lance",
       "code": "LANCE",
       "title": "雷路槍",
-      "description": "通電にチャージ2を追加し、3拍ごとに180ダメージを与える。5ノード以上の直線ではさらに1200ダメージを与える。",
+      "description": "通電にチャージ6を追加して先へ渡す。5ノード以上の直線ではさらにチャージ4を追加する。",
       "glyph": "槍",
       "price": 21,
       "rarity": "legendary",
@@ -927,18 +927,16 @@
       "ports": ["west", "east"],
       "rotatable": false,
       "buildIds": ["charge"],
-      "cooldown": 3,
       "effects": [
-        { "kind": "charge", "amount": 2 },
-        { "kind": "damage", "amount": 180 },
-        { "kind": "damage", "amount": 1200, "trigger": { "kind": "straight-line-at-least", "amount": 5 } }
+        { "kind": "charge", "amount": 6 },
+        { "kind": "charge", "amount": 4, "trigger": { "kind": "straight-line-at-least", "amount": 5 } }
       ]
     },
     {
       "id": "overcharge-cannon",
       "code": "OVER",
       "title": "超過解放砲",
-      "description": "5拍ごとに、基礎300とチャージ1につき650ダメージを与える。この技で通電は止まる。",
+      "description": "5拍ごとに、基礎450とチャージ1につき900ダメージを与える。この技で通電は止まる。",
       "glyph": "極",
       "price": 22,
       "rarity": "legendary",
@@ -947,7 +945,7 @@
       "rotatable": false,
       "buildIds": ["charge"],
       "cooldown": 5,
-      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 300, "perCharge": 650 }]
+      "effects": [{ "kind": "release-charge", "output": "damage", "amount": 450, "perCharge": 900 }]
     }
   ],
   "startingRack": [],

@@ -10,6 +10,7 @@ import type {
   PlacementPatternId,
   Rarity,
   Rotation,
+  SkillBuildLink,
   Team,
   Winner,
 } from './types';
@@ -297,6 +298,30 @@ const meanInterval = (values: number[]): ConfidenceInterval | null => {
 
 const portSignature = (block: BlockDefinition, rotation: Rotation) =>
   [...rotatePorts(block.ports, rotation)].sort().join(',');
+const ROTATIONS: Rotation[] = [0, 1, 2, 3];
+
+const buildLinksOverlap = (referenceLink: SkillBuildLink, targetLink: SkillBuildLink) => {
+  if (!referenceLink.roles.some((role) => targetLink.roles.includes(role))) return false;
+  if (!referenceLink.roles.includes('payoff') || !targetLink.roles.includes('payoff')) return true;
+  return referenceLink.payoffIds.some((payoffId) => targetLink.payoffIds.includes(payoffId));
+};
+
+const hasReplacementPeer = (data: GameData, targetBlock: BlockDefinition, buildId: string) => {
+  const targetDesign = data.buildDesign.skills.find((skill) => skill.blockId === targetBlock.id);
+  const targetLink = targetDesign?.buildLinks.find((link) => link.buildId === buildId);
+  if (!targetLink) return false;
+  const targetSignatures = new Set(ROTATIONS.map((rotation) => portSignature(targetBlock, rotation)));
+  const designsByBlockId = new Map(
+    data.buildDesign.skills.flatMap((skill) => (skill.blockId ? [[skill.blockId, skill] as const] : [])),
+  );
+
+  return data.blocks.some((reference) => {
+    if (reference.id === targetBlock.id || reference.rarity !== targetBlock.rarity) return false;
+    const referenceLink = designsByBlockId.get(reference.id)?.buildLinks.find((link) => link.buildId === buildId);
+    if (!referenceLink || !buildLinksOverlap(referenceLink, targetLink)) return false;
+    return ROTATIONS.some((rotation) => targetSignatures.has(portSignature(reference, rotation)));
+  });
+};
 
 const replacementFor = (data: GameData, base: EnemyBuild, targetBlock: BlockDefinition): CircuitBoard | null => {
   if (blockIdsOn(base.board).includes(targetBlock.id)) return null;
@@ -307,8 +332,6 @@ const replacementFor = (data: GameData, base: EnemyBuild, targetBlock: BlockDefi
   const designsByBlockId = new Map(
     data.buildDesign.skills.flatMap((skill) => (skill.blockId ? [[skill.blockId, skill] as const] : [])),
   );
-  const rotations: Rotation[] = [0, 1, 2, 3];
-
   for (let row = 0; row < base.board.length; row += 1) {
     for (let column = 0; column < base.board[row].length; column += 1) {
       const placed = base.board[row][column];
@@ -317,10 +340,10 @@ const replacementFor = (data: GameData, base: EnemyBuild, targetBlock: BlockDefi
       const referenceLink = referenceDesign?.buildLinks.find((link) => link.buildId === base.buildId);
       if (!placed || !reference || !referenceLink || reference.id === targetBlock.id) continue;
       if (reference.rarity !== targetBlock.rarity) continue;
-      if (!referenceLink.roles.some((role) => targetLink.roles.includes(role))) continue;
+      if (!buildLinksOverlap(referenceLink, targetLink)) continue;
       if (base.totalCost - reference.price + targetBlock.price > base.budget) continue;
       const signature = portSignature(reference, placed.rotation);
-      const targetRotation = rotations.find((rotation) => portSignature(targetBlock, rotation) === signature);
+      const targetRotation = ROTATIONS.find((rotation) => portSignature(targetBlock, rotation) === signature);
       if (targetRotation === undefined) continue;
 
       const candidate = cloneBoard(base.board);
@@ -444,9 +467,14 @@ const counterfactualsFor = (
     if (!target || buildIds.length === 0) return;
     const samples: CounterfactualSample[] = [];
     const maxAttempts = Math.max(config.skillTrials * 250, 250);
-    for (let attempt = 0; attempt < maxAttempts && samples.length < config.skillTrials; attempt += 1) {
+    const replacementBuildIds = buildIds.filter((buildId) => hasReplacementPeer(data, target, buildId));
+    for (
+      let attempt = 0;
+      replacementBuildIds.length > 0 && attempt < maxAttempts && samples.length < config.skillTrials;
+      attempt += 1
+    ) {
       const run = config.runs[(skillIndex + attempt) % config.runs.length];
-      const buildId = buildIds[attempt % buildIds.length];
+      const buildId = replacementBuildIds[attempt % replacementBuildIds.length];
       const baseSeed = config.seed + 1_000_003 + skillIndex * 100_003 + attempt * 97;
       const base = generateEnemyBuild(data, run, baseSeed, { buildId });
       const targetBoard = replacementFor(data, base, target);
@@ -875,7 +903,7 @@ export function runBalanceSimulation(data: GameData, options: BalanceSimulationO
       tournament:
         'Each generated matchup uses the same run level, cumulative coin budget, and health bonus on both sides, then replays with boards swapped. Runs and seeds are fixed by config.',
       counterfactual:
-        'A skill replaces a same-rarity, overlapping-role node with an identical rotated port signature, then baseline and replacement boards fight the same opponent on both sides.',
+        'A skill replaces a same-rarity, overlapping-role node with an identical rotated port signature; payoff nodes also stay on the same payoff path. Baseline and replacement boards then fight the same opponent on both sides.',
       ablation:
         'A linked build is generated with the target skill required, then the same board is replayed with that skill disabled while ports remain unchanged, using an opponent that does not contain it.',
       limitations: [
