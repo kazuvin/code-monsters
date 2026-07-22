@@ -835,33 +835,33 @@ button:focus-visible {
   box-shadow: 0 0 8px rgb(93 231 242 / 80%);
 }
 
-.port-north,
-.port-south {
+.block-port.port-north,
+.block-port.port-south {
   left: calc(50% - 4px);
   width: 8px;
   height: calc(50% + 10px);
 }
 
-.port-north {
+.block-port.port-north {
   bottom: 50%;
 }
 
-.port-south {
+.block-port.port-south {
   top: 50%;
 }
 
-.port-east,
-.port-west {
+.block-port.port-east,
+.block-port.port-west {
   top: calc(50% - 4px);
   width: calc(50% + 10px);
   height: 8px;
 }
 
-.port-east {
+.block-port.port-east {
   left: 50%;
 }
 
-.port-west {
+.block-port.port-west {
   right: 50%;
 }
 
@@ -3267,14 +3267,14 @@ button:focus-visible {
     font-size: 5px;
   }
 
-  .port-north,
-  .port-south {
+  .block-port.port-north,
+  .block-port.port-south {
     left: calc(50% - 2px);
     width: 4px;
   }
 
-  .port-east,
-  .port-west {
+  .block-port.port-east,
+  .block-port.port-west {
     top: calc(50% - 2px);
     height: 4px;
   }

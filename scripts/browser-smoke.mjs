@@ -89,6 +89,29 @@ const heartDecoration = await desktop
 if (heartDecoration.some((content) => content !== 'none')) {
   throw new Error(`The heart still has decorative crossbars: ${JSON.stringify(heartDecoration)}`);
 }
+const heartPortGeometry = await desktop.locator('.heart-button .heart-core').evaluate((heart) => {
+  const heartBox = heart.getBoundingClientRect();
+  return Object.fromEntries(
+    ['north', 'east', 'south', 'west'].map((direction) => {
+      const port = heart.querySelector(`.heart-port.port-${direction}`);
+      if (!port) return [direction, null];
+      const box = port.getBoundingClientRect();
+      return [direction, { width: box.width / heartBox.width, height: box.height / heartBox.height }];
+    }),
+  );
+});
+if (
+  !heartPortGeometry.east ||
+  !heartPortGeometry.west ||
+  heartPortGeometry.east.width > 0.2 ||
+  heartPortGeometry.west.width > 0.2 ||
+  !heartPortGeometry.north ||
+  !heartPortGeometry.south ||
+  heartPortGeometry.north.height > 0.2 ||
+  heartPortGeometry.south.height > 0.2
+) {
+  throw new Error(`The heart ports extend through the core: ${JSON.stringify(heartPortGeometry)}`);
+}
 if ((await desktop.locator('.power-source').count()) !== 0)
   throw new Error('The fixed external power source still exists');
 if ((await desktop.locator('.body-upgrade').count()) !== 1) {
