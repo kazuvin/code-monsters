@@ -14,6 +14,22 @@ describe('game data', () => {
     expect(GAME_DATA.blocks.flatMap((block) => block.effects.map((effect) => effect.kind))).not.toContain('wire');
   });
 
+  it('uses player-facing card descriptions instead of internal circuit terminology', () => {
+    expect(GAME_DATA.blocks).toHaveLength(63);
+    const descriptions = GAME_DATA.blocks.flatMap((block) => [block.description, block.fusion?.description ?? '']);
+    expect(descriptions.filter((description) => description.includes('エッジ'))).toEqual([]);
+    expect(descriptions.filter((description) => description.includes('無特性'))).toEqual([]);
+    expect(GAME_DATA.blocks.find((block) => block.id === 'strike')?.description).toBe(
+      '毎拍、相手に55ダメージ。左右につないで、次の技へ通電する。',
+    );
+    expect(GAME_DATA.blocks.find((block) => block.id === 'prism-arrow')?.description).toBe(
+      '下流が2方向以上なら、2拍ごとに90ダメージ。通電した下流1方向につき、ダメージが40増える（最大3方向）。',
+    );
+    expect(GAME_DATA.blocks.find((block) => block.id === 'rail-cannon')?.description).toBe(
+      '3拍ごとに、298＋チャージ1につき210ダメージ。チャージをすべて使い、このノードで通電が止まる。',
+    );
+  });
+
   it('gives both fighters enough health for long poison battles', () => {
     expect(GAME_DATA.units.map((unit) => unit.maxHp)).toEqual([5000, 5000]);
     expect(GAME_DATA.rules.retryReward).toBeGreaterThan(0);

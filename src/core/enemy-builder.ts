@@ -236,6 +236,44 @@ const LIGHT_VEIN_LAYOUT: EnemyLayout = {
   heartNodeIndexes: [0],
 };
 
+const COMPACT_LAYOUT: EnemyLayout = {
+  heartPosition: { row: 2, column: 0 },
+  nodes: [
+    { row: 2, column: 1 },
+    { row: 2, column: 2 },
+    { row: 2, column: 3 },
+    { row: 2, column: 4 },
+    { row: 1, column: 4 },
+    { row: 1, column: 3 },
+    { row: 1, column: 2 },
+    { row: 1, column: 1 },
+    { row: 1, column: 0 },
+    { row: 0, column: 0 },
+    { row: 0, column: 1 },
+    { row: 0, column: 2 },
+    { row: 0, column: 3 },
+    { row: 0, column: 4 },
+    { row: 3, column: 4 },
+  ],
+  edges: [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 6],
+    [6, 7],
+    [7, 8],
+    [8, 9],
+    [9, 10],
+    [10, 11],
+    [11, 12],
+    [12, 13],
+    [3, 14],
+  ],
+  heartNodeIndexes: [0],
+};
+
 const LAYOUTS: EnemyLayout[] = [
   CENTER_LAYOUT,
   ...([0, 1, 2, 3] as Rotation[]).map((rotation) => ({
@@ -348,10 +386,17 @@ export function generateEnemyBuild(
     : Math.floor(randomUnit(seed * 29 + safeRun * 43) * corePatterns.length);
   const circuitCore = corePatterns[selectedCoreIndex];
   if (!circuitCore) throw new Error(`Unknown circuit core "${selectedCoreId}"`);
+  const requiredNeedsTerminalRoute = options.requiredBlockId
+    ? data.blocks
+        .find((block) => block.id === options.requiredBlockId)
+        ?.effects.some((effect) => effect.kind === 'release-charge')
+    : false;
   const layout =
     circuitCore.id === 'light-vein'
       ? LIGHT_VEIN_LAYOUT
-      : LAYOUTS[Math.floor(randomUnit(seed * 47 + safeRun * 13) * LAYOUTS.length)];
+      : skillBudget < data.rules.startingCoins || requiredNeedsTerminalRoute
+        ? COMPACT_LAYOUT
+        : LAYOUTS[Math.floor(randomUnit(seed * 47 + safeRun * 13) * LAYOUTS.length)];
   const builds = data.buildDesign.builds;
   if (builds.length === 0) throw new Error('Enemy generator requires at least one build');
   const selectedBuildIndex = options.buildId
@@ -364,7 +409,12 @@ export function generateEnemyBuild(
     : builds.map((_, offset) => builds[(selectedBuildIndex + offset) % builds.length]);
   const blocksById = new Map(data.blocks.map((block) => [block.id, block]));
 
-  const tryBuild = (build: BuildDefinition, designs: SkillDesignDefinition[], nodeCount: number) => {
+  const tryBuild = (
+    build: BuildDefinition,
+    designs: SkillDesignDefinition[],
+    nodeCount: number,
+    reservationAttempt: number,
+  ) => {
     const activeNodes = layout.nodes.slice(0, nodeCount);
     const neighborIndexesByNode = activeNodes.map((_, index) =>
       layout.edges.flatMap(([left, right]) => {
@@ -401,18 +451,14 @@ export function generateEnemyBuild(
     const downstreamIndexesByNode = neighborIndexesByNode.map((neighbors, index) =>
       neighbors.filter((neighborIndex) => distanceByIndex.get(neighborIndex) === (distanceByIndex.get(index) ?? 0) + 1),
     );
+    const realTraitRoles = (design: SkillDesignDefinition) => {
+      if (!axisValues(design, build.axisId).includes(build.id)) return [];
+      return design.buildLinks.find((link) => link.buildId === build.id)?.roles ?? [];
+    };
     const requiredUsesCorePayoff = requiredDesign?.circuitCoreRoles?.includes('payoff') ?? false;
     const payoffDesigns = designs.filter((design) => {
-      if (options.requiredBlockId && !requiredUsesCorePayoff) return design.blockId === options.requiredBlockId;
-      if (!design.circuitCoreRoles?.includes('payoff')) return false;
-      return (
-        !options.requiredBlockId ||
-        options.requiredBlockId === design.blockId ||
-        !designs.some(
-          (candidate) =>
-            candidate.blockId === options.requiredBlockId && candidate.circuitCoreRoles?.includes('payoff'),
-        )
-      );
+      if (options.requiredBlockId) return design.blockId === options.requiredBlockId;
+      return realTraitRoles(design).includes('payoff');
     });
     const topologyPayoffIndexes = activeNodes.flatMap((_, index) => {
       if (index === 0) return [];
@@ -428,9 +474,9 @@ export function generateEnemyBuild(
       });
       return fits ? [index] : [];
     });
-    const hasAdjacentPayoff = designs.some((design) => {
+    const hasAdjacentPayoff = payoffDesigns.some((design) => {
       const block = design.blockId ? blocksById.get(design.blockId) : undefined;
-      return block && design.circuitCoreRoles?.includes('payoff') && adjacentPoweredRequirement(block) > 0;
+      return block && adjacentPoweredRequirement(block) > 0;
     });
     const payoffIndex =
       topologyPayoffIndexes.length > 0
@@ -441,8 +487,12 @@ export function generateEnemyBuild(
                 index !== 0 && (best < 0 || neighbors.length >= surroundingIndexesByNode[best].length) ? index : best,
               -1,
             )
-          : neighborIndexesByNode.reduce(
-              (last, neighbors, index) => (index !== 0 && neighbors.length === 1 ? index : last),
+          : activeNodes.reduce(
+              (farthest, _, index) =>
+                index !== 0 &&
+                (farthest < 0 || (distanceByIndex.get(index) ?? 0) > (distanceByIndex.get(farthest) ?? 0))
+                  ? index
+                  : farthest,
               -1,
             );
     if (payoffIndex < 0) return null;
@@ -461,8 +511,14 @@ export function generateEnemyBuild(
         if (!block || !buildLink) return [];
         const isRequiredFallbackPayoff =
           desiredRole === 'payoff' && !requiredUsesCorePayoff && design.blockId === options.requiredBlockId;
-        if (desiredRole && !design.circuitCoreRoles?.includes(desiredRole) && !isRequiredFallbackPayoff) return [];
-        if (desiredRole && design.placementPatternId !== circuitCore.id && !isRequiredFallbackPayoff) return [];
+        if (desiredRole === 'starter' && !design.circuitCoreRoles?.includes('starter')) return [];
+        if (desiredRole === 'payoff' && !payoffDesigns.includes(design) && !isRequiredFallbackPayoff) {
+          return [];
+        }
+        if (desiredRole === 'payoff' && requiredUsesCorePayoff && design.placementPatternId !== circuitCore.id) {
+          return [];
+        }
+        if (desiredRole === 'starter' && design.placementPatternId !== circuitCore.id) return [];
         if (!desiredRole && design.circuitCoreRoles?.includes('payoff')) return [];
         if (index === payoffIndex && adjacentPoweredRequirement(block) > surroundingIndexesByNode[index].length) {
           return [];
@@ -503,7 +559,8 @@ export function generateEnemyBuild(
         ? candidateSets[payoffIndex].find(({ block }) => block.id === options.requiredBlockId)
         : undefined;
     const selectedPayoff =
-      forcedPayoff ?? weightedPick(candidateSets[payoffIndex], rarityWeights, seed * 101 + safeRun * 59);
+      forcedPayoff ??
+      weightedPick(candidateSets[payoffIndex], rarityWeights, seed * 101 + safeRun * 59 + reservationAttempt * 173);
     const payoffAdjacentPoweredRequirement = adjacentPoweredRequirement(selectedPayoff.block);
     if (payoffAdjacentPoweredRequirement > 0) {
       candidateSets[payoffIndex] = candidateSets[payoffIndex].filter(
@@ -558,10 +615,91 @@ export function generateEnemyBuild(
         return rotations.length > 0 ? [{ ...candidate, rotations }] : [];
       });
     }
+    const ancestorIndexesFor = (targetIndex: number) => {
+      const ancestors = new Set<number>();
+      const queue = [...upstreamIndexesByNode[targetIndex]];
+      while (queue.length > 0) {
+        const index = queue.shift()!;
+        if (ancestors.has(index)) continue;
+        ancestors.add(index);
+        queue.push(...upstreamIndexesByNode[index]);
+      }
+      return ancestors;
+    };
+    const reservedTraitRoleIndexes = new Set<number>();
+    let traitPayoffIndex: number | null = null;
+    let traitStarterIndex: number | null = null;
+    let payoffAncestorIndexes = new Set<number>();
+    for (const role of ['payoff', 'starter'] as const) {
+      if (build.id === 'charge' && role === 'starter' && traitPayoffIndex !== null) {
+        payoffAncestorIndexes = ancestorIndexesFor(traitPayoffIndex);
+      }
+      let placements = candidateSets.flatMap((candidates, index) =>
+        reservedTraitRoleIndexes.has(index)
+          ? []
+          : candidates.flatMap((candidate) =>
+              realTraitRoles(candidate.design).includes(role) ? [{ index, candidate }] : [],
+            ),
+      );
+      if (role === 'payoff' && requiredDesign && realTraitRoles(requiredDesign).includes('payoff')) {
+        placements = placements.filter(({ candidate }) => candidate.block.id === options.requiredBlockId);
+      }
+      if (build.id === 'charge' && role === 'starter') {
+        placements = placements.filter(({ index }) => payoffAncestorIndexes.has(index));
+      }
+      placements.sort(
+        (left, right) =>
+          left.candidate.block.price - right.candidate.block.price ||
+          candidateSets[left.index].length - candidateSets[right.index].length ||
+          left.index - right.index ||
+          left.candidate.block.id.localeCompare(right.candidate.block.id),
+      );
+      const uniqueCandidates = [
+        ...new Map(placements.map(({ candidate }) => [candidate.block.id, candidate])).values(),
+      ];
+      if (uniqueCandidates.length === 0) return null;
+      const preferredBlock = weightedPick(
+        uniqueCandidates,
+        rarityWeights,
+        seed * 149 + safeRun * 67 + (role === 'payoff' ? 1 : 2) + reservationAttempt * 179,
+      ).block.id;
+      const selected = placements.find(({ candidate }) => candidate.block.id === preferredBlock) ?? placements[0];
+      if (!selected) return null;
+      if (role === 'payoff') traitPayoffIndex = selected.index;
+      if (role === 'starter') traitStarterIndex = selected.index;
+      reservedTraitRoleIndexes.add(selected.index);
+      candidateSets[selected.index] = candidateSets[selected.index].filter((candidate) =>
+        realTraitRoles(candidate.design).includes(role),
+      );
+    }
+    if (build.id === 'charge') {
+      const chargeSourceIndexes = [traitStarterIndex].filter((index): index is number => index !== null);
+      candidateSets.forEach((candidates, index) => {
+        if (index === traitPayoffIndex) return;
+        const ancestors = ancestorIndexesFor(index);
+        if (chargeSourceIndexes.every((sourceIndex) => ancestors.has(sourceIndex))) return;
+        candidateSets[index] = candidates.filter(
+          ({ block }) => !block.effects.some((effect) => effect.kind === 'release-charge'),
+        );
+      });
+      if (candidateSets.some((candidates) => candidates.length === 0)) return null;
+    }
     const minimumCost = minimumAssignmentCost(candidateSets);
     if (minimumCost === null || minimumCost > skillBudget) return null;
 
-    const placementOrder = candidateSets.map((_, index) => index);
+    const placementOrder = candidateSets
+      .map((_, index) => index)
+      .sort((left, right) => {
+        const roleScore = (index: number, role: 'starter' | 'payoff') =>
+          candidateSets[index].filter((candidate) => realTraitRoles(candidate.design).includes(role)).length;
+        const leftPayoffs = roleScore(left, 'payoff');
+        const rightPayoffs = roleScore(right, 'payoff');
+        if (Number(leftPayoffs === 0) !== Number(rightPayoffs === 0)) {
+          return Number(leftPayoffs === 0) - Number(rightPayoffs === 0);
+        }
+        if (leftPayoffs !== rightPayoffs) return leftPayoffs - rightPayoffs;
+        return candidateSets[left].length - candidateSets[right].length || left - right;
+      });
     const used = new Map<string, number>();
     const board: CircuitBoard = Array.from({ length: data.rules.boardSize }, () =>
       Array.from({ length: data.rules.boardSize }, () => null),
@@ -584,10 +722,30 @@ export function generateEnemyBuild(
         return randomUnit(rotationSeed + left * 19) - randomUnit(rotationSeed + right * 19);
       })[0];
     };
-    const placeNode = (step: number, totalCost: number, placedRequired: boolean): number | null => {
+    const placeNode = (
+      step: number,
+      totalCost: number,
+      placedRequired: boolean,
+      placedTraitStarter: boolean,
+      placedTraitPayoff: boolean,
+    ): number | null => {
       if (step >= placementOrder.length) {
         if (options.requiredBlockId && !placedRequired) return null;
+        if (!placedTraitStarter || !placedTraitPayoff) return null;
         return totalCost;
+      }
+      const remainingIndexes = placementOrder.slice(step);
+      if (
+        (!placedTraitStarter &&
+          !remainingIndexes.some((index) =>
+            candidateSets[index].some((candidate) => realTraitRoles(candidate.design).includes('starter')),
+          )) ||
+        (!placedTraitPayoff &&
+          !remainingIndexes.some((index) =>
+            candidateSets[index].some((candidate) => realTraitRoles(candidate.design).includes('payoff')),
+          ))
+      ) {
+        return null;
       }
       const index = placementOrder[step];
       const candidates = candidateSets[index].filter(
@@ -598,6 +756,10 @@ export function generateEnemyBuild(
       const ordered = [preferred, ...candidates.filter((candidate) => candidate !== preferred)].sort(
         (left, right) =>
           Number(right.block.id === options.requiredBlockId) - Number(left.block.id === options.requiredBlockId) ||
+          Number(!placedTraitPayoff && realTraitRoles(right.design).includes('payoff')) -
+            Number(!placedTraitPayoff && realTraitRoles(left.design).includes('payoff')) ||
+          Number(!placedTraitStarter && realTraitRoles(right.design).includes('starter')) -
+            Number(!placedTraitStarter && realTraitRoles(left.design).includes('starter')) ||
           Number(right === preferred) - Number(left === preferred),
       );
       for (const [candidateIndex, picked] of ordered.entries()) {
@@ -620,6 +782,8 @@ export function generateEnemyBuild(
                 step + 1,
                 totalCost + picked.block.price,
                 placedRequired || picked.block.id === options.requiredBlockId,
+                placedTraitStarter || realTraitRoles(picked.design).includes('starter'),
+                placedTraitPayoff || realTraitRoles(picked.design).includes('payoff'),
               )
             : null;
         if (result !== null) return result;
@@ -631,7 +795,7 @@ export function generateEnemyBuild(
       return null;
     };
 
-    const totalCost = placeNode(0, 0, false);
+    const totalCost = placeNode(0, 0, false, false, false);
     if (totalCost === null) return null;
     return { board, skillCost: totalCost };
   };
@@ -653,21 +817,23 @@ export function generateEnemyBuild(
     }
 
     for (let nodeCount = targetNodeCount; nodeCount >= 2; nodeCount -= 1) {
-      const result = tryBuild(build, designs, nodeCount);
-      if (!result) continue;
-      return {
-        ...result,
-        heartPosition: { ...layout.heartPosition },
-        buildId: build.id,
-        circuitCoreId: circuitCore.id,
-        nodeCount,
-        level,
-        bodyLevel,
-        budget,
-        bodyUpgradeCost,
-        totalCost: result.skillCost + bodyUpgradeCost,
-        maxHpBonus: maxHpBonusForBodyLevel(data, bodyLevel),
-      };
+      for (let reservationAttempt = 0; reservationAttempt < 8; reservationAttempt += 1) {
+        const result = tryBuild(build, designs, nodeCount, reservationAttempt);
+        if (!result) continue;
+        return {
+          ...result,
+          heartPosition: { ...layout.heartPosition },
+          buildId: build.id,
+          circuitCoreId: circuitCore.id,
+          nodeCount,
+          level,
+          bodyLevel,
+          budget,
+          bodyUpgradeCost,
+          totalCost: result.skillCost + bodyUpgradeCost,
+          maxHpBonus: maxHpBonusForBodyLevel(data, bodyLevel),
+        };
+      }
     }
   }
 

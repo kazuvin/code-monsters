@@ -2097,6 +2097,167 @@ button:focus-visible {
   line-height: 1.5;
 }
 
+.circuit-scope-diagram {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 9px;
+  border: 1px solid #315b6c;
+  border-left: 3px solid var(--cyan);
+  background:
+    linear-gradient(90deg, rgb(93 231 242 / 7%) 1px, transparent 1px),
+    linear-gradient(rgb(93 231 242 / 7%) 1px, transparent 1px), #071a22;
+  background-size: 10px 10px;
+  box-shadow: inset 0 0 0 2px #041219;
+}
+
+.circuit-scope-diagram svg {
+  display: block;
+  width: 116px;
+  height: 116px;
+  overflow: visible;
+  shape-rendering: crispEdges;
+}
+
+.circuit-diagram-cell {
+  fill: #0b2732;
+  stroke: #204553;
+  stroke-width: 1;
+}
+
+.circuit-diagram-links line {
+  stroke: var(--cyan);
+  stroke-width: 2.4;
+  stroke-linecap: square;
+  opacity: 0.82;
+}
+
+.circuit-diagram-links line.is-influence {
+  stroke: var(--sigil);
+  stroke-dasharray: 3 2;
+}
+
+.circuit-scope-diagram marker path {
+  fill: var(--cyan);
+}
+
+.circuit-diagram-node rect {
+  fill: #153d4a;
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+}
+
+.circuit-diagram-node text {
+  fill: #e8fbff;
+  font:
+    600 7px / 1 "Pixelify Sans",
+    monospace;
+}
+
+.circuit-diagram-node.is-target rect {
+  fill: #42233f;
+  stroke: var(--coral);
+  stroke-width: 2;
+}
+
+.circuit-diagram-node.is-target text {
+  fill: #fff;
+  font-size: 9px;
+}
+
+.circuit-diagram-node.is-source rect,
+.circuit-diagram-node.is-sigil rect {
+  fill: #281f4b;
+  stroke: var(--sigil);
+}
+
+.circuit-diagram-node.is-source text,
+.circuit-diagram-node.is-sigil text {
+  fill: var(--sigil-bright);
+}
+
+.circuit-diagram-node.is-affected rect,
+.circuit-diagram-node.is-condition rect {
+  fill: #403716;
+  stroke: var(--amber);
+}
+
+.circuit-diagram-node.is-affected text,
+.circuit-diagram-node.is-condition text {
+  fill: #fff0b2;
+}
+
+.circuit-diagram-node.is-route rect {
+  fill: #123b48;
+  stroke: var(--light-vein);
+}
+
+.circuit-scope-diagram figcaption {
+  align-self: center;
+  min-width: 0;
+}
+
+.circuit-scope-diagram figcaption > small {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--cyan);
+  font:
+    600 7px / 1 "Pixelify Sans",
+    monospace;
+  letter-spacing: 0.08em;
+}
+
+.circuit-scope-diagram figcaption > b {
+  display: block;
+  color: var(--paper);
+  font-size: 11px;
+}
+
+.circuit-scope-diagram figcaption > p {
+  margin: 5px 0 8px;
+  color: #a9c5ce;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.circuit-scope-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+  color: #7898a4;
+  font-size: 7px;
+  line-height: 1.2;
+}
+
+.circuit-scope-legend i {
+  width: 6px;
+  height: 6px;
+  margin-right: -4px;
+  border: 1px solid currentcolor;
+  background: #153d4a;
+}
+
+.circuit-scope-legend i.is-target {
+  color: var(--coral);
+  background: #42233f;
+}
+
+.circuit-scope-legend i.is-source {
+  color: var(--sigil);
+  background: #281f4b;
+}
+
+.circuit-scope-legend i.is-affected {
+  color: var(--amber);
+  background: #403716;
+}
+
+.circuit-scope-legend i.is-route {
+  color: var(--light-vein);
+  background: #123b48;
+}
+
 .rarity-value {
   display: flex;
   align-items: center;
@@ -3511,6 +3672,29 @@ button:focus-visible {
   .dialog-copy p {
     margin-bottom: 8px;
     font-size: 10px;
+  }
+
+  .circuit-scope-diagram {
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 8px;
+    padding: 7px;
+  }
+
+  .circuit-scope-diagram svg {
+    width: 92px;
+    height: 92px;
+  }
+
+  .circuit-scope-diagram figcaption > b {
+    font-size: 9px;
+  }
+
+  .circuit-scope-diagram figcaption > p {
+    font-size: 8px;
+  }
+
+  .circuit-scope-legend {
+    display: none;
   }
 
   .dialog-copy dl div {

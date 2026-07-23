@@ -33,8 +33,8 @@ describe('poison build', () => {
     const tick5 = resolveTick(data, tick4, 5);
     const enemy = tick5.fighters.find((fighter) => fighter.team === 'enemy')!;
 
-    expect(enemy.poison).toBe(49);
-    expect(enemy.hp).toBe(enemy.maxHp - 105);
+    expect(enemy.poison).toBe(37);
+    expect(enemy.hp).toBe(enemy.maxHp - 165);
     expect(tick5.skillBuffs.player['2:0']).toEqual({ poison: 2 });
   });
 
@@ -50,7 +50,7 @@ describe('poison build', () => {
 
     expect(tick1.skillBuffs.player['2:2']).toEqual({ poison: 8 });
     expect(tick3.skillBuffs.player['2:2']).toEqual({ poison: 16 });
-    expect(enemy.poison).toBe(256);
+    expect(enemy.poison).toBe(268);
     expect(tick1.trace).toEqual(
       expect.arrayContaining([expect.objectContaining({ blockId: 'status-relay', kind: 'damage', value: 120 })]),
     );
@@ -79,7 +79,7 @@ describe('poison build', () => {
     expect(firedBlocks).toEqual(new Set(['poison-needle', 'cultivation-blade', 'return-coil', 'charge-guard']));
     expect(result.skillBuffs.player['1:1']).toEqual({ shield: 45 });
     expect(result.skillBuffs.player['1:0']).toBeUndefined();
-    expect(player.shield).toBe(545);
+    expect(player.shield).toBe(520);
   });
 
   it('fires every powered branch instead of only following one output', () => {
@@ -95,8 +95,8 @@ describe('poison build', () => {
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
     expect(firedBlocks).toEqual(['arc-shot', 'charge-guard', 'strike']);
-    expect(enemy.hp).toBe(enemy.maxHp - 260);
-    expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(175);
+    expect(enemy.hp).toBe(enemy.maxHp - 245);
+    expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(150);
   });
 
   it('doubles active effects when two branches merge in the same wave', () => {
@@ -131,8 +131,8 @@ describe('poison build', () => {
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
     expect(enemy.poison).toBe(65);
-    expect(enemy.hp).toBe(enemy.maxHp - 595);
-    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 595 })]));
+    expect(enemy.hp).toBe(enemy.maxHp - 490);
+    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 490 })]));
   });
 
   it('lets an upstream amplifier increase rupture damage per consumed poison', () => {
@@ -145,8 +145,20 @@ describe('poison build', () => {
     const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
 
     expect(enemy.poison).toBe(65);
-    expect(enemy.hp).toBe(enemy.maxHp - 885);
-    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 885 })]));
+    expect(enemy.hp).toBe(enemy.maxHp - 710);
+    expect(result.trace).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'rupture', value: 710 })]));
+  });
+
+  it('keeps venom bloom from compounding too quickly at very high poison', () => {
+    const data = structuredClone(ROUTE_DATA);
+    data.rules.poisonTickSeconds = 100;
+    const state = createBattle(data, horizontalRoute('venom-bloom'), emptyBoard());
+    state.fighters.find((fighter) => fighter.team === 'enemy')!.poison = 1000;
+
+    const result = resolveTick(data, state, 1);
+    const enemy = result.fighters.find((fighter) => fighter.team === 'enemy')!;
+
+    expect(enemy.poison).toBe(1190);
   });
 
   it('deals poison damage periodically and lets one stack decay', () => {

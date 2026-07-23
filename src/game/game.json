@@ -2287,7 +2287,7 @@
       "id": "strike",
       "code": "SLASH",
       "title": "斬撃",
-      "description": "1拍ごとに、相手へ70ダメージを与える。2本のエッジを持つ。",
+      "description": "毎拍、相手に55ダメージ。左右につないで、次の技へ通電する。",
       "glyph": "斬",
       "price": 4,
       "rarity": "common",
@@ -2298,16 +2298,16 @@
       "effects": [
         {
           "kind": "damage",
-          "amount": 70
+          "amount": 55
         }
       ],
       "fusion": {
         "title": "攻防連斬",
-        "description": "1拍ごとに90ダメージを与え、シールド30を得る。",
+        "description": "1拍ごとに80ダメージを与え、シールド30を得る。",
         "effects": [
           {
             "kind": "damage",
-            "amount": 90
+            "amount": 80
           },
           {
             "kind": "shield",
@@ -2320,7 +2320,7 @@
       "id": "breaker",
       "code": "BREAK",
       "title": "破砕撃",
-      "description": "2拍ごとに、相手へ160ダメージを与える。2本のエッジを持つ。",
+      "description": "2拍ごとに、相手に160ダメージ。曲がる2方向へつないで、回路を折り返せる。",
       "glyph": "破",
       "price": 5,
       "rarity": "common",
@@ -2353,7 +2353,7 @@
       "id": "arc-shot",
       "code": "ARC",
       "title": "アーク弾",
-      "description": "2拍ごとに、相手へ190ダメージを与える。3本のエッジを持つ。",
+      "description": "2拍ごとに、相手に190ダメージ。3方向へ通電を分けられる。",
       "glyph": "弧",
       "price": 7,
       "rarity": "rare",
@@ -2386,7 +2386,7 @@
       "id": "barrier",
       "code": "GUARD",
       "title": "障壁",
-      "description": "2拍ごとに、シールドを130得る。3本のエッジを持つ。",
+      "description": "2拍ごとに、シールド110を得る。3方向へ通電を分けられる。",
       "glyph": "盾",
       "price": 4,
       "rarity": "common",
@@ -2397,7 +2397,7 @@
       "effects": [
         {
           "kind": "shield",
-          "amount": 130
+          "amount": 110
         }
       ],
       "fusion": {
@@ -2419,7 +2419,7 @@
       "id": "repair",
       "code": "REPAIR",
       "title": "修復",
-      "description": "3拍ごとに、失ったHPを260回復する。2本のエッジを持つ。",
+      "description": "3拍ごとに、失ったHPを260回復。曲がる2方向へつなげられる。",
       "glyph": "修",
       "price": 7,
       "rarity": "rare",
@@ -2453,7 +2453,7 @@
       "id": "salvage-blade",
       "code": "SALVAGE",
       "title": "回収刃",
-      "description": "4拍ごとに110ダメージを与え、コインを1枚回収する。",
+      "description": "4拍ごとに、相手に130ダメージ。さらにコイン1を得る。",
       "glyph": "収",
       "price": 5,
       "rarity": "common",
@@ -2464,7 +2464,7 @@
       "effects": [
         {
           "kind": "damage",
-          "amount": 110
+          "amount": 130
         },
         {
           "kind": "coin",
@@ -2495,7 +2495,7 @@
       "id": "bounty-arrow",
       "code": "BOUNTY",
       "title": "賞金矢",
-      "description": "5拍ごとに240ダメージを与え、コインを1枚回収する。3本のエッジを持つ。",
+      "description": "5拍ごとに、相手に280ダメージ。コイン1を得て、3方向へ通電を分けられる。",
       "glyph": "賞",
       "price": 8,
       "rarity": "rare",
@@ -2506,7 +2506,7 @@
       "effects": [
         {
           "kind": "damage",
-          "amount": 240
+          "amount": 280
         },
         {
           "kind": "coin",
@@ -2537,7 +2537,7 @@
       "id": "repair-dividend",
       "code": "DIVIDEND",
       "title": "配当修復機",
-      "description": "5拍ごとにシールド240と回復160を得て、コインを1枚回収する。",
+      "description": "5拍ごとに、シールド270とHP回復180を得る。さらにコイン1を得る。",
       "glyph": "配",
       "price": 9,
       "rarity": "rare",
@@ -2548,11 +2548,11 @@
       "effects": [
         {
           "kind": "shield",
-          "amount": 240
+          "amount": 270
         },
         {
           "kind": "repair",
-          "amount": 160
+          "amount": 180
         },
         {
           "kind": "coin",
@@ -2583,7 +2583,7 @@
       "id": "rail-cannon",
       "code": "RAIL",
       "title": "解放砲",
-      "description": "3拍ごとに、基礎298とチャージ1につき210ダメージを与える。この技で通電は止まる。",
+      "description": "3拍ごとに、298＋チャージ1につき210ダメージ。チャージをすべて使い、このノードで通電が止まる。",
       "glyph": "砲",
       "price": 14,
       "rarity": "epic",
@@ -2605,7 +2605,7 @@
       "id": "amplifier",
       "code": "AMP",
       "title": "増幅術",
-      "description": "この先に直接つながった技のダメージ・毒・シールド・回復・破裂の合計威力を290増やす。",
+      "description": "直後につながる技のダメージ・毒・シールド・回復・破裂を、それぞれ220増やす。",
       "glyph": "増",
       "price": 8,
       "rarity": "rare",
@@ -2615,7 +2615,7 @@
       "effects": [
         {
           "kind": "amplify",
-          "amount": 290
+          "amount": 220
         }
       ],
       "fusion": {
@@ -2637,7 +2637,7 @@
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "3つの接続部がすべて繋がると、この先の技の発動間隔を1拍短くし、各効果と破裂の合計威力を305増やす。",
+      "description": "3つの接続口をすべてつなぐと、直後の技が1拍早く発動し、各効果と破裂が305増える。",
       "glyph": "速",
       "price": 8,
       "rarity": "rare",
@@ -2682,7 +2682,7 @@
       "id": "poison-needle",
       "code": "VENOM",
       "title": "毒矢",
-      "description": "2拍ごとに、毒矢で35ダメージと毒16を与える。相手がすでに毒なら、この技の毒付与量が1増える。",
+      "description": "2拍ごとに、55ダメージと毒12を与える。相手がすでに毒なら、発動するたびにこの技の毒が1増える。",
       "glyph": "毒",
       "price": 5,
       "rarity": "common",
@@ -2694,11 +2694,11 @@
       "effects": [
         {
           "kind": "damage",
-          "amount": 35
+          "amount": 55
         },
         {
           "kind": "poison",
-          "amount": 16
+          "amount": 12
         },
         {
           "kind": "growth",
@@ -2715,7 +2715,7 @@
       "id": "cultivation-blade",
       "code": "CULT",
       "title": "培養刃",
-      "description": "2拍ごとに、相手へ170ダメージを与える。相手が毒なら、この先の技の各効果を15増やす。",
+      "description": "2拍ごとに、相手に170ダメージ。相手が毒なら、発動するたびに直後の技の各効果が15増える。",
       "glyph": "培",
       "price": 8,
       "rarity": "rare",
@@ -2744,9 +2744,9 @@
       "id": "toxic-reservoir",
       "code": "TANK",
       "title": "毒電池",
-      "description": "通電にチャージ4を追加する。3拍ごとに、毒16を与えてシールド35を得る。",
+      "description": "通電へチャージ5を加えて先へ渡す。3拍ごとに、毒16を与え、シールド35を得る。",
       "glyph": "溜",
-      "price": 13,
+      "price": 14,
       "rarity": "epic",
       "shopWeight": 1,
       "ports": ["north", "east"],
@@ -2756,7 +2756,7 @@
       "effects": [
         {
           "kind": "charge",
-          "amount": 4
+          "amount": 5
         },
         {
           "kind": "poison",
@@ -2772,7 +2772,7 @@
       "id": "venom-bloom",
       "code": "BLOOM",
       "title": "猛毒花",
-      "description": "3拍ごとに毒100を与え、相手が持つ毒250ごとに付与する毒を55増やす。毒は消費しない。",
+      "description": "3拍ごとに毒110を与える。相手の毒250につき付与量が20増え、たまった毒は消費しない。",
       "glyph": "花",
       "price": 20,
       "rarity": "legendary",
@@ -2784,11 +2784,11 @@
       "effects": [
         {
           "kind": "poison",
-          "amount": 100,
+          "amount": 110,
           "scaling": {
             "kind": "enemy-poison",
             "every": 250,
-            "amount": 55
+            "amount": 20
           }
         }
       ]
@@ -2797,9 +2797,9 @@
       "id": "rupture-stake",
       "code": "BURST",
       "title": "破裂砲",
-      "description": "4拍ごとに、砲撃で相手の毒を35%取り除く。取り除いた毒1につき17ダメージを与える。",
+      "description": "4拍ごとに、相手の毒を35%消費する。消費した毒1につき14ダメージ。",
       "glyph": "裂",
-      "price": 14,
+      "price": 13,
       "rarity": "epic",
       "shopWeight": 1,
       "ports": ["west"],
@@ -2810,7 +2810,7 @@
         {
           "kind": "rupture-poison",
           "fraction": 0.35,
-          "damagePerStack": 17
+          "damagePerStack": 14
         }
       ]
     },
@@ -2818,7 +2818,7 @@
       "id": "status-relay",
       "code": "RELAY",
       "title": "異常伝送",
-      "description": "通電にチャージ1を追加する。2拍ごとに120ダメージを与え、相手が毒ならこの先の技の各効果を8増やす。",
+      "description": "通電へチャージ1を加えて先へ渡す。2拍ごとに120ダメージを与え、相手が毒なら直後の技の各効果が8増える。",
       "glyph": "伝",
       "price": 8,
       "rarity": "rare",
@@ -2851,7 +2851,7 @@
       "id": "return-coil",
       "code": "RETURN",
       "title": "帰還コイル",
-      "description": "2拍ごとにシールド170を得て、回路が一周すると自身とこの先の技の各効果を15ずつ増やす。",
+      "description": "2拍ごとにシールド170を得る。中央を含む回路が一周すると、発動するたびに自身のシールドと直後の技の各効果が15増える。",
       "glyph": "還",
       "price": 8,
       "rarity": "rare",
@@ -2921,7 +2921,7 @@
       "id": "long-route-fang",
       "code": "LONG",
       "title": "長路の牙",
-      "description": "2拍ごとに130ダメージを与え、同じ直線上で繋がった技1個につきダメージが15増える。4ノード以上の直線ではさらに13増える。",
+      "description": "2拍ごとに130ダメージ。中央を含む直線の通電ノード1個につき15増え、4ノード以上なら発動するたびにさらに13増える。",
       "glyph": "路",
       "price": 8,
       "rarity": "rare",
@@ -2975,9 +2975,9 @@
       "id": "charge-blade",
       "code": "CHG-B",
       "title": "充電刃",
-      "description": "通電にチャージ1を追加する。2拍ごとに、剣で相手へ75ダメージを与える。",
+      "description": "通電へチャージ2を加えて先へ渡す。2拍ごとに、相手に75ダメージ。",
       "glyph": "充",
-      "price": 4,
+      "price": 5,
       "rarity": "common",
       "shopWeight": 1,
       "ports": ["west", "east"],
@@ -2987,7 +2987,7 @@
       "effects": [
         {
           "kind": "charge",
-          "amount": 1
+          "amount": 2
         },
         {
           "kind": "damage",
@@ -2999,7 +2999,7 @@
       "id": "charge-arrow",
       "code": "CHG-A",
       "title": "充電矢",
-      "description": "通電にチャージ1を追加する。2拍ごとに、弓で相手へ80ダメージを与える。",
+      "description": "通電へチャージ2を加えて先へ渡す。2拍ごとに、相手に50ダメージ。",
       "glyph": "矢",
       "price": 5,
       "rarity": "common",
@@ -3011,11 +3011,11 @@
       "effects": [
         {
           "kind": "charge",
-          "amount": 1
+          "amount": 2
         },
         {
           "kind": "damage",
-          "amount": 80
+          "amount": 50
         }
       ]
     },
@@ -3023,9 +3023,9 @@
       "id": "charge-coil",
       "code": "COIL",
       "title": "充電コイル",
-      "description": "通電にチャージ3を追加し、そのまま先へ渡す。",
+      "description": "通電へチャージ4を加え、先の解放ノードへ渡す。自身は攻撃しない。",
       "glyph": "蓄",
-      "price": 7,
+      "price": 8,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "east"],
@@ -3034,7 +3034,7 @@
       "effects": [
         {
           "kind": "charge",
-          "amount": 3
+          "amount": 4
         }
       ]
     },
@@ -3042,7 +3042,7 @@
       "id": "discharge-bow",
       "code": "SPARK",
       "title": "放電弓",
-      "description": "3拍ごとに、基礎170とチャージ1につき180ダメージを与える。この技で通電は止まる。",
+      "description": "3拍ごとに、150＋チャージ1につき140ダメージ。チャージをすべて使い、このノードで通電が止まる。",
       "glyph": "放",
       "price": 9,
       "rarity": "rare",
@@ -3055,8 +3055,8 @@
         {
           "kind": "release-charge",
           "output": "damage",
-          "amount": 170,
-          "perCharge": 180
+          "amount": 150,
+          "perCharge": 140
         }
       ]
     },
@@ -3064,7 +3064,7 @@
       "id": "charge-guard",
       "code": "CHG-G",
       "title": "蓄電装甲",
-      "description": "通電にチャージ1を追加する。2拍ごとに、シールドを175得る。",
+      "description": "通電へチャージ1を加えて先へ渡す。2拍ごとに、シールド150を得る。",
       "glyph": "蓄",
       "price": 8,
       "rarity": "rare",
@@ -3080,7 +3080,7 @@
         },
         {
           "kind": "shield",
-          "amount": 175
+          "amount": 150
         }
       ]
     },
@@ -3088,7 +3088,7 @@
       "id": "charge-bastion",
       "code": "BASTION",
       "title": "防壁展開",
-      "description": "3拍ごとに、基礎210とチャージ1につき200のシールドを得て、失ったHPを175回復する。この技で通電は止まる。",
+      "description": "3拍ごとに、シールド210＋チャージ1につき200と、HP回復175を得る。チャージをすべて使い、このノードで通電が止まる。",
       "glyph": "壁",
       "price": 14,
       "rarity": "epic",
@@ -3114,7 +3114,7 @@
       "id": "venom-orbit",
       "code": "ORBIT",
       "title": "輪毒術",
-      "description": "3拍ごとに毒50を与える。輪の一部として通電すると、さらに毒100を与える。",
+      "description": "3拍ごとに毒50を与える。中央を含む回路が一周していれば、さらに毒100を与える。",
       "glyph": "輪",
       "price": 14,
       "rarity": "epic",
@@ -3141,7 +3141,7 @@
       "id": "sealed-junction",
       "code": "SEAL",
       "title": "封環結界",
-      "description": "3拍ごとにシールド160を得る。4つの接続部がすべて繋がると、さらにシールド720を得る。",
+      "description": "3拍ごとにシールド160を得る。4つの接続口をすべて隣へつなぐと、さらにシールド720を得る。",
       "glyph": "封",
       "price": 13,
       "rarity": "epic",
@@ -3193,7 +3193,7 @@
       "id": "adaptive-arsenal",
       "code": "ADAPT",
       "title": "汎用兵装",
-      "description": "3拍ごとに220ダメージを与え、通電した無特性2個につきダメージが110増える。増加は4回まで。",
+      "description": "3拍ごとに220ダメージ。通電中の汎用ノード2個につき110増える（最大4回）。",
       "glyph": "汎",
       "price": 13,
       "rarity": "epic",
@@ -3217,7 +3217,7 @@
       ],
       "fusion": {
         "title": "連携兵装",
-        "description": "3拍ごとに250ダメージを与え、通電した無特性2個につき120増やす。増加は4回までで、この先の技も100強化する。",
+        "description": "3拍ごとに250ダメージを与え、通電した汎用ノード2個につき120増やす。増加は4回までで、この先の技も100強化する。",
         "effects": [
           {
             "kind": "damage",
@@ -3242,7 +3242,7 @@
       "id": "adaptive-bulwark",
       "code": "BULWARK",
       "title": "汎用防壁",
-      "description": "4拍ごとにシールド250を得て、通電した無特性2個につきシールドが180増える。増加は3回まで。",
+      "description": "4拍ごとにシールド250を得る。通電中の汎用ノード2個につき180増える（最大3回）。",
       "glyph": "汎",
       "price": 14,
       "rarity": "epic",
@@ -3267,7 +3267,7 @@
       ],
       "fusion": {
         "title": "汎用要塞",
-        "description": "3拍ごとにシールド280と回復180を得て、通電した無特性2個につきシールドが190増える。増加は3回まで。",
+        "description": "3拍ごとにシールド280と回復180を得て、通電した汎用ノード2個につきシールドが190増える。増加は3回まで。",
         "cooldown": 3,
         "effects": [
           {
@@ -3293,7 +3293,7 @@
       "id": "bridge-core",
       "code": "BRIDGE",
       "title": "架橋中枢",
-      "description": "5拍ごとにダメージ380とシールド200を得る。通電した無特性2個につきそれぞれ210と110増え、増加は4回まで。",
+      "description": "5拍ごとに380ダメージとシールド200。通電中の汎用ノード2個につき、ダメージ210・シールド110が増える（最大4回）。",
       "glyph": "架",
       "price": 21,
       "rarity": "legendary",
@@ -3330,7 +3330,7 @@
       ],
       "fusion": {
         "title": "架橋主機",
-        "description": "4拍ごとにダメージ420、シールド240、回復80を得る。通電した無特性2個につき攻防が増え、増加は4回まで。",
+        "description": "4拍ごとにダメージ420、シールド240、回復80を得る。通電した汎用ノード2個につき攻防が増え、増加は4回まで。",
         "cooldown": 4,
         "effects": [
           {
@@ -3368,7 +3368,7 @@
       "id": "charge-line-lance",
       "code": "LANCE",
       "title": "雷路槍",
-      "description": "通電にチャージ6を追加して先へ渡す。5ノード以上の直線ではさらにチャージ5を追加する。",
+      "description": "通電へチャージ6を加えて先へ渡す。中央を含む直線が5ノード以上なら、さらにチャージ5を加える。",
       "glyph": "槍",
       "price": 21,
       "rarity": "legendary",
@@ -3395,7 +3395,7 @@
       "id": "overcharge-cannon",
       "code": "OVER",
       "title": "超過解放砲",
-      "description": "5拍ごとに、基礎940とチャージ1につき400ダメージを与える。この技で通電は止まる。",
+      "description": "5拍ごとに、940＋チャージ1につき400ダメージ。チャージをすべて使い、このノードで通電が止まる。",
       "glyph": "極",
       "price": 22,
       "rarity": "legendary",
@@ -3417,7 +3417,7 @@
       "id": "inscription-stone",
       "code": "RUNE",
       "title": "刻印碑",
-      "description": "通電していなくても前方1マスへ魔紋を1段階刻み、通電中は2拍ごとにシールド90を得る。",
+      "description": "このノードが未通電でも、前方1マスへ魔紋を1段階刻む。通電中は2拍ごとにシールド90を得る。",
       "glyph": "刻",
       "price": 4,
       "rarity": "common",
@@ -3443,7 +3443,7 @@
       ],
       "fusion": {
         "title": "刻印碑・改",
-        "description": "「刻印碑」の数値効果を1.25倍にする。",
+        "description": "「刻印碑」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "inscribe-magic-sigil",
@@ -3466,7 +3466,7 @@
       "id": "guiding-bolt",
       "code": "SCRIBE",
       "title": "導刻矢",
-      "description": "前方1マス目と2マス目へ魔紋を1段階ずつ刻み、2拍ごとに75ダメージを与える。",
+      "description": "前方1・2マスへ魔紋を1段階ずつ刻む。2拍ごとに、相手に75ダメージ。",
       "glyph": "導",
       "price": 5,
       "rarity": "common",
@@ -3496,7 +3496,7 @@
       ],
       "fusion": {
         "title": "導刻矢・改",
-        "description": "「導刻矢」の数値効果を1.25倍にする。",
+        "description": "「導刻矢」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "inscribe-magic-sigil",
@@ -3523,7 +3523,7 @@
       "id": "sigil-blade",
       "code": "GLYPH",
       "title": "魔紋刃",
-      "description": "2拍ごとに80ダメージを与え、自分の魔紋位階1段階につきダメージを30増やす。",
+      "description": "2拍ごとに80ダメージ。中央の魔紋位階1段階につき、ダメージが30増える。",
       "glyph": "紋",
       "price": 5,
       "rarity": "common",
@@ -3544,7 +3544,7 @@
       ],
       "fusion": {
         "title": "魔紋刃・改",
-        "description": "「魔紋刃」の数値効果を1.25倍にする。",
+        "description": "「魔紋刃」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -3562,7 +3562,7 @@
       "id": "guardian-sigil",
       "code": "WARD",
       "title": "守護紋",
-      "description": "3拍ごとにシールド150と回復60を得て、魔紋位階1段階につきシールドを40増やす。",
+      "description": "3拍ごとにシールド150とHP回復60を得る。中央の魔紋位階1段階につき、シールドが40増える。",
       "glyph": "護",
       "price": 7,
       "rarity": "rare",
@@ -3587,7 +3587,7 @@
       ],
       "fusion": {
         "title": "守護紋・改",
-        "description": "「守護紋」の数値効果を1.25倍にする。",
+        "description": "「守護紋」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "shield",
@@ -3609,7 +3609,7 @@
       "id": "twin-inscription",
       "code": "TWIN",
       "title": "双刻碑",
-      "description": "前方と左方の2マスへ魔紋を1段階ずつ刻み、3拍ごとに180ダメージを与える。",
+      "description": "前方1マスと左1マスへ魔紋を1段階ずつ刻む。3拍ごとに、相手に180ダメージ。",
       "glyph": "双",
       "price": 8,
       "rarity": "rare",
@@ -3639,7 +3639,7 @@
       ],
       "fusion": {
         "title": "双刻碑・改",
-        "description": "「双刻碑」の数値効果を1.25倍にする。",
+        "description": "「双刻碑」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "inscribe-magic-sigil",
@@ -3666,7 +3666,7 @@
       "id": "thunder-sigil",
       "code": "THRUNE",
       "title": "雷紋",
-      "description": "前方2マスへ魔紋を刻み、通電にチャージ1を追加して、2拍ごとに100ダメージを与える。",
+      "description": "前方1・2マスへ魔紋を1段階ずつ刻み、通電へチャージ1を加える。2拍ごとに100ダメージ。",
       "glyph": "雷",
       "price": 9,
       "rarity": "rare",
@@ -3703,7 +3703,7 @@
       "id": "convergence-sigil",
       "code": "FOCUS",
       "title": "集束紋",
-      "description": "刻印線の先1マスへ魔紋を2段階刻み、3拍ごとにシールド360を得る。",
+      "description": "前方1マスへ魔紋を2段階刻む。3拍ごとに、シールド360を得る。",
       "glyph": "集",
       "price": 13,
       "rarity": "epic",
@@ -3729,7 +3729,7 @@
       ],
       "fusion": {
         "title": "集束紋・改",
-        "description": "「集束紋」の数値効果を1.25倍にする。",
+        "description": "「集束紋」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "inscribe-magic-sigil",
@@ -3752,7 +3752,7 @@
       "id": "sigil-cannon",
       "code": "SIGCANN",
       "title": "紋章砲",
-      "description": "魔紋上で3拍ごとに300ダメージを与え、魔紋位階1段階につきダメージを220増やす。",
+      "description": "中央に魔紋があると、3拍ごとに300ダメージ。魔紋位階1段階につき220増える。",
       "glyph": "砲",
       "price": 14,
       "rarity": "epic",
@@ -3778,7 +3778,7 @@
       ],
       "fusion": {
         "title": "紋章砲・改",
-        "description": "「紋章砲」の数値効果を1.25倍にする。",
+        "description": "「紋章砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -3800,7 +3800,7 @@
       "id": "resonance-circle",
       "code": "CIRCLE",
       "title": "連環陣",
-      "description": "魔紋上で3拍ごとに毒30を与え、通電した刻印マス1つにつき毒を18増やす。",
+      "description": "中央に魔紋があると、3拍ごとに毒30を与える。通電中の魔紋1マスにつき、毒が18増える。",
       "glyph": "環",
       "price": 13,
       "rarity": "epic",
@@ -3828,7 +3828,7 @@
       "id": "deep-sigil-cannon",
       "code": "ARCANA",
       "title": "深奥砲",
-      "description": "魔紋位階IIIで4拍ごとに900ダメージを与え、位階1段階につきダメージを550増やす。",
+      "description": "中央の魔紋が位階IIIなら、4拍ごとに900ダメージ。魔紋位階1段階につき550増える。",
       "glyph": "奥",
       "price": 21,
       "rarity": "legendary",
@@ -3854,7 +3854,7 @@
       ],
       "fusion": {
         "title": "深奥砲・改",
-        "description": "「深奥砲」の数値効果を1.25倍にする。",
+        "description": "「深奥砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -3876,7 +3876,7 @@
       "id": "all-sigil-resonance",
       "code": "OMNIA",
       "title": "万象連環",
-      "description": "魔紋上で4拍ごとに攻防を共鳴させ、通電した刻印マスの数に応じて両方を強化する。",
+      "description": "中央に魔紋があると、4拍ごとに300ダメージとシールド200。通電中の魔紋1マスにつき、それぞれ150・50増える。",
       "glyph": "万",
       "price": 22,
       "rarity": "legendary",
@@ -3915,7 +3915,7 @@
       ],
       "fusion": {
         "title": "万象連環・改",
-        "description": "「万象連環」の数値効果を1.25倍にする。",
+        "description": "「万象連環」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -3950,7 +3950,7 @@
       "id": "spirit-blade",
       "code": "ECHO-B",
       "title": "霊響刃",
-      "description": "1拍ごとに20ダメージを与え、周囲8マスの通電ノード1個につきダメージを9増やす。",
+      "description": "毎拍、20ダメージ。中央の周囲8マスにある通電ノード1個につき、ダメージが9増える。",
       "glyph": "響",
       "price": 4,
       "rarity": "common",
@@ -3971,7 +3971,7 @@
       ],
       "fusion": {
         "title": "霊響刃・改",
-        "description": "「霊響刃」の数値効果を1.25倍にする。",
+        "description": "「霊響刃」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -3989,7 +3989,7 @@
       "id": "echo-arrow",
       "code": "ECHO-A",
       "title": "残響矢",
-      "description": "2拍ごとに60ダメージを与え、周囲8マスの通電ノード1個につきダメージを15増やす。",
+      "description": "2拍ごとに60ダメージ。中央の周囲8マスにある通電ノード1個につき、ダメージが15増える。",
       "glyph": "残",
       "price": 5,
       "rarity": "common",
@@ -4010,7 +4010,7 @@
       ],
       "fusion": {
         "title": "残響矢・改",
-        "description": "「残響矢」の数値効果を1.25倍にする。",
+        "description": "「残響矢」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4028,7 +4028,7 @@
       "id": "tuning-stone",
       "code": "TUNE",
       "title": "調律碑",
-      "description": "2拍ごとにシールド60を得て、周囲8マスの通電ノード1個につきシールドを16増やす。",
+      "description": "2拍ごとにシールド60を得る。中央の周囲8マスにある通電ノード1個につき、シールドが16増える。",
       "glyph": "律",
       "price": 5,
       "rarity": "common",
@@ -4049,7 +4049,7 @@
       ],
       "fusion": {
         "title": "調律碑・改",
-        "description": "「調律碑」の数値効果を1.25倍にする。",
+        "description": "「調律碑」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "shield",
@@ -4067,7 +4067,7 @@
       "id": "harmony-ward",
       "code": "H-WARD",
       "title": "響護壁",
-      "description": "2拍ごとにシールド85を得て、共鳴度1につき20増やす。共鳴度3以上ならHPを60回復する。",
+      "description": "2拍ごとにシールド85＋共鳴度1につき20を得る。共鳴度3以上なら、さらにHPを60回復。",
       "glyph": "護",
       "price": 7,
       "rarity": "rare",
@@ -4096,7 +4096,7 @@
       ],
       "fusion": {
         "title": "響護壁・改",
-        "description": "「響護壁」の数値効果を1.25倍にする。",
+        "description": "「響護壁」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "shield",
@@ -4122,7 +4122,7 @@
       "id": "thunder-echo",
       "code": "TH-ECHO",
       "title": "雷響器",
-      "description": "通電にチャージ1を追加する。2拍ごとに50ダメージを与え、共鳴度1につき15増やす。",
+      "description": "通電へチャージ1を加えて先へ渡す。2拍ごとに50＋共鳴度1につき15ダメージ。",
       "glyph": "雷",
       "price": 8,
       "rarity": "rare",
@@ -4150,9 +4150,9 @@
       "id": "venom-chorus",
       "code": "V-CHOIR",
       "title": "蝕響矢",
-      "description": "2拍ごとに毒12を与え、共鳴度1につき毒を6増やす。",
+      "description": "2拍ごとに毒14を与える。共鳴度1につき、毒が2増える。",
       "glyph": "蝕",
-      "price": 8,
+      "price": 7,
       "rarity": "rare",
       "shopWeight": 1,
       "ports": ["west", "north", "east"],
@@ -4161,11 +4161,11 @@
       "effects": [
         {
           "kind": "poison",
-          "amount": 12,
+          "amount": 14,
           "scaling": {
             "kind": "adjacent-powered",
             "every": 1,
-            "amount": 6
+            "amount": 2
           }
         }
       ]
@@ -4174,7 +4174,7 @@
       "id": "resonance-cannon",
       "code": "ECHO-C",
       "title": "霊響砲",
-      "description": "共鳴度4以上で3拍ごとに200ダメージを与え、共鳴度1につき80増やす。",
+      "description": "共鳴度4以上なら、3拍ごとに200＋共鳴度1につき80ダメージ。",
       "glyph": "砲",
       "price": 14,
       "rarity": "epic",
@@ -4200,7 +4200,7 @@
       ],
       "fusion": {
         "title": "霊響砲・改",
-        "description": "「霊響砲」の数値効果を1.25倍にする。",
+        "description": "「霊響砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4222,7 +4222,7 @@
       "id": "harmonic-sanctuary",
       "code": "CHORUS",
       "title": "交響結界",
-      "description": "共鳴度4以上で3拍ごとにシールド150と回復120を得て、共鳴度1につきシールドを60増やす。",
+      "description": "共鳴度4以上なら、3拍ごとにシールド150＋共鳴度1につき60と、HP回復120を得る。",
       "glyph": "奏",
       "price": 13,
       "rarity": "epic",
@@ -4256,7 +4256,7 @@
       ],
       "fusion": {
         "title": "交響結界・改",
-        "description": "「交響結界」の数値効果を1.25倍にする。",
+        "description": "「交響結界」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "shield",
@@ -4286,7 +4286,7 @@
       "id": "celestial-echo-cannon",
       "code": "CELEST",
       "title": "天響砲",
-      "description": "共鳴度6以上で4拍ごとに600ダメージを与え、共鳴度1につき160増やす。",
+      "description": "共鳴度6以上なら、4拍ごとに600＋共鳴度1につき160ダメージ。",
       "glyph": "天",
       "price": 21,
       "rarity": "legendary",
@@ -4312,7 +4312,7 @@
       ],
       "fusion": {
         "title": "天響砲・改",
-        "description": "「天響砲」の数値効果を1.25倍にする。",
+        "description": "「天響砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4334,7 +4334,7 @@
       "id": "grand-harmony",
       "code": "GRAND",
       "title": "万象交響",
-      "description": "共鳴度8で4拍ごとに攻防を奏で、共鳴度に応じて両方を強化する。",
+      "description": "共鳴度8なら、4拍ごとに600＋共鳴度1につき120ダメージと、シールド300＋共鳴度1につき60を得る。",
       "glyph": "響",
       "price": 22,
       "rarity": "legendary",
@@ -4373,7 +4373,7 @@
       ],
       "fusion": {
         "title": "万象交響・改",
-        "description": "「万象交響」の数値効果を1.25倍にする。",
+        "description": "「万象交響」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4408,7 +4408,7 @@
       "id": "light-vein-blade",
       "code": "LUMEN-B",
       "title": "光脈刃",
-      "description": "1拍ごとに70ダメージを与え、枝分かれする光路の起点になる。",
+      "description": "毎拍、相手に70ダメージ。左右につないで、光脈の分岐や合流へ通電する。",
       "glyph": "光",
       "price": 4,
       "rarity": "common",
@@ -4424,7 +4424,7 @@
       ],
       "fusion": {
         "title": "光脈刃・改",
-        "description": "「光脈刃」の数値効果を1.25倍にする。",
+        "description": "「光脈刃」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4437,7 +4437,7 @@
       "id": "prism-arrow",
       "code": "BRANCH-R",
       "title": "枝光矢",
-      "description": "下流2本以上で2拍ごとに90ダメージを与え、通電した下流1本につき40増やす。",
+      "description": "下流が2方向以上なら、2拍ごとに90ダメージ。通電した下流1方向につき、ダメージが40増える（最大3方向）。",
       "glyph": "枝",
       "price": 5,
       "rarity": "common",
@@ -4463,7 +4463,7 @@
       ],
       "fusion": {
         "title": "枝光矢・改",
-        "description": "「枝光矢」の数値効果を1.25倍にする。",
+        "description": "「枝光矢」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4486,7 +4486,7 @@
       "id": "light-guide",
       "code": "GUIDE-L",
       "title": "導光器",
-      "description": "2拍ごとにシールド100を得て、HPを50回復しながら光路を曲げる。",
+      "description": "2拍ごとに、シールド100とHP回復50を得る。曲がる2方向へつないで、光路を折り返せる。",
       "glyph": "導",
       "price": 5,
       "rarity": "common",
@@ -4506,7 +4506,7 @@
       ],
       "fusion": {
         "title": "導光器・改",
-        "description": "「導光器」の数値効果を1.25倍にする。",
+        "description": "「導光器」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "shield",
@@ -4523,7 +4523,7 @@
       "id": "thunder-prism",
       "code": "TH-LUMEN",
       "title": "雷光器",
-      "description": "下流2本以上なら通電にチャージ1を追加し、2拍ごとに80ダメージを与えて下流1本につき30増やす。",
+      "description": "下流が2方向以上なら、通電へチャージ1を加える。2拍ごとに80＋通電した下流1方向につき30ダメージ（最大3方向）。",
       "glyph": "雷",
       "price": 8,
       "rarity": "rare",
@@ -4560,7 +4560,7 @@
       "id": "venom-ray",
       "code": "VEN-LIGHT",
       "title": "蝕光矢",
-      "description": "下流2本以上で2拍ごとに毒18を与え、通電した下流1本につき毒を9増やす。",
+      "description": "下流が2方向以上なら、2拍ごとに毒18を与える。通電した下流1方向につき、毒が9増える（最大3方向）。",
       "glyph": "蝕",
       "price": 8,
       "rarity": "rare",
@@ -4589,7 +4589,7 @@
       "id": "radiant-fork",
       "code": "FORK-L",
       "title": "輝叉術",
-      "description": "下流2本以上で2拍ごとにシールド90を得て、下流1本につき30増やし、直後の技を90増幅する。",
+      "description": "下流が2方向以上なら、2拍ごとにシールド90＋通電した下流1方向につき30を得る。直後の技の各効果も90増える。",
       "glyph": "叉",
       "price": 9,
       "rarity": "rare",
@@ -4624,7 +4624,7 @@
       ],
       "fusion": {
         "title": "輝叉術・改",
-        "description": "「輝叉術」の数値効果を1.25倍にする。",
+        "description": "「輝叉術」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "shield",
@@ -4655,7 +4655,7 @@
       "id": "branchlight-barrage",
       "code": "BRANCH-X",
       "title": "枝光連弩",
-      "description": "下流2本以上で3拍ごとに420ダメージを与え、通電した下流1本につき110増やす。",
+      "description": "下流が2方向以上なら、3拍ごとに420ダメージ。通電した下流1方向につき、ダメージが110増える（最大3方向）。",
       "glyph": "連",
       "price": 13,
       "rarity": "epic",
@@ -4682,7 +4682,7 @@
       ],
       "fusion": {
         "title": "枝光連弩・改",
-        "description": "「枝光連弩」の数値効果を1.25倍にする。",
+        "description": "「枝光連弩」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4705,7 +4705,7 @@
       "id": "convergence-cannon",
       "code": "FOCUS-C",
       "title": "収光砲",
-      "description": "上流2本以上の合流で3拍ごとに220ダメージを与え、通電した上流1本につき75増やす。",
+      "description": "上流が2方向以上から合流すると、3拍ごとに220ダメージ。通電した上流1方向につき75増える（最大3方向）。",
       "glyph": "収",
       "price": 14,
       "rarity": "epic",
@@ -4731,7 +4731,7 @@
       ],
       "fusion": {
         "title": "収光砲・改",
-        "description": "「収光砲」の数値効果を1.25倍にする。",
+        "description": "「収光砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4754,7 +4754,7 @@
       "id": "myriad-light-array",
       "code": "MYRIAD-L",
       "title": "万条光陣",
-      "description": "下流3本で4拍ごとに1000ダメージを与え、通電した下流1本につき240増やす。",
+      "description": "下流が3方向なら、4拍ごとに1000ダメージ。通電した下流1方向につき、ダメージが240増える（最大3方向）。",
       "glyph": "万",
       "price": 21,
       "rarity": "legendary",
@@ -4781,7 +4781,7 @@
       ],
       "fusion": {
         "title": "万条光陣・改",
-        "description": "「万条光陣」の数値効果を1.25倍にする。",
+        "description": "「万条光陣」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",
@@ -4804,7 +4804,7 @@
       "id": "solar-convergence",
       "code": "SOLAR-C",
       "title": "天光収束砲",
-      "description": "上流3本の合流で4拍ごとに500ダメージを与え、通電した上流1本につき160増やす。",
+      "description": "上流が3方向から合流すると、4拍ごとに500ダメージ。通電した上流1方向につき160増える（最大3方向）。",
       "glyph": "天",
       "price": 22,
       "rarity": "legendary",
@@ -4831,7 +4831,7 @@
       ],
       "fusion": {
         "title": "天光収束砲・改",
-        "description": "「天光収束砲」の数値効果を1.25倍にする。",
+        "description": "「天光収束砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
         "effects": [
           {
             "kind": "damage",

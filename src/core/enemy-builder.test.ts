@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
 import { createBattle } from './battle';
-import { adjacentPoweredNeighbors, analyzeCircuit, analyzeMagicSigils, countActiveMagicSigils } from './circuit';
+import {
+  adjacentPoweredNeighbors,
+  analyzeCircuit,
+  analyzeMagicSigils,
+  calculateChargeByCell,
+  countActiveMagicSigils,
+} from './circuit';
 import { generateEnemyBuild } from './enemy-builder';
 import { maxHpBonusForBodyLevel, totalBodyUpgradeCost } from './progression';
 
@@ -64,6 +70,30 @@ describe('enemy build generator', () => {
     expect(build.totalCost).toBeLessThanOrEqual(72);
   });
 
+  it('still builds a routed charge payoff after an early paid body upgrade', () => {
+    const build = generateEnemyBuild(GAME_DATA, 1, 73, {
+      budget: 32,
+      bodyLevel: 2,
+      buildId: 'charge',
+      circuitCoreId: 'resonance',
+    });
+    const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, build.heartPosition, GAME_DATA.rules.heart.ports);
+    const chargeByCell = calculateChargeByCell(build.board, GAME_DATA.blocks, analysis, GAME_DATA.rules.skillFusion);
+    const releaseCharges = build.board.flatMap((row, rowIndex) =>
+      row.flatMap((placed, columnIndex) => {
+        const block = GAME_DATA.blocks.find((candidate) => candidate.id === placed?.blockId);
+        return block?.effects.some((effect) => effect.kind === 'release-charge')
+          ? [chargeByCell.get(`${rowIndex}:${columnIndex}`) ?? 0]
+          : [];
+      }),
+    );
+
+    expect(build.bodyUpgradeCost).toBe(6);
+    expect(build.totalCost).toBeLessThanOrEqual(32);
+    expect(releaseCharges.length).toBeGreaterThan(0);
+    expect(releaseCharges.every((charge) => charge >= 2)).toBe(true);
+  });
+
   it('reprices every generated board inside player-reachable coin and body states', () => {
     const prices = new Map(GAME_DATA.blocks.map((block) => [block.id, block.price]));
 
@@ -93,17 +123,15 @@ describe('enemy build generator', () => {
     expect(build.nodeCount).toBeLessThanOrEqual(8);
   });
 
-  it('uses a required non-core skill as the finisher when an early budget cannot afford two cores', () => {
-    const build = generateEnemyBuild(GAME_DATA, 1, 218, {
-      budget: 32,
-      bodyLevel: 1,
+  it('uses a required non-core skill as the real-trait finisher', () => {
+    const build = generateEnemyBuild(GAME_DATA, 1, 117, {
       buildId: 'charge',
       circuitCoreId: 'resonance',
       requiredBlockId: 'overcharge-cannon',
     });
 
     expect(build.circuitCoreId).toBe('resonance');
-    expect(build.totalCost).toBeLessThanOrEqual(32);
+    expect(build.totalCost).toBeLessThanOrEqual(build.budget);
     expect(build.board.flat().some((cell) => cell?.blockId === 'overcharge-cannon')).toBe(true);
     expect(
       build.board.flat().some((cell) => {
@@ -113,12 +141,22 @@ describe('enemy build generator', () => {
     ).toBe(true);
   });
 
-  it('fills the most affordable nodes after reserving the paid heart upgrade', () => {
+  it('reserves the real-trait payoff after the paid heart upgrade', () => {
     const build = generateEnemyBuild(GAME_DATA, 2, 221, { budget: 40 });
 
-    expect(build.nodeCount).toBe(8);
+    expect(build.nodeCount).toBeGreaterThanOrEqual(2);
     expect(build.bodyUpgradeCost).toBe(6);
     expect(build.totalCost).toBeLessThanOrEqual(40);
+    const placedIds = new Set(build.board.flatMap((row) => row.flatMap((placed) => (placed ? [placed.blockId] : []))));
+    expect(
+      GAME_DATA.buildDesign.skills.some(
+        (skill) =>
+          skill.blockId &&
+          placedIds.has(skill.blockId) &&
+          skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.includes(build.buildId) &&
+          skill.buildLinks.find((link) => link.buildId === build.buildId)?.roles.includes('payoff'),
+      ),
+    ).toBe(true);
   });
 
   it('combines one real trait with a circuit core starter and payoff', () => {
@@ -129,6 +167,11 @@ describe('enemy build generator', () => {
       );
       const designs = GAME_DATA.buildDesign.skills.filter((skill) => skill.blockId && placedIds.has(skill.blockId));
       const coreRoles = designs.flatMap((skill) => skill.circuitCoreRoles ?? []);
+      const traitRoles = designs.flatMap((skill) => {
+        const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
+        if (!traits.includes(build.buildId)) return [];
+        return skill.buildLinks.find((link) => link.buildId === build.buildId)?.roles ?? [];
+      });
 
       designs.forEach((skill) => {
         const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
@@ -138,13 +181,80 @@ describe('enemy build generator', () => {
         ).toBe(true);
       });
       expect(coreRoles).toContain('starter');
-      expect(coreRoles).toContain('payoff');
+      expect(traitRoles).toContain('starter');
+      expect(traitRoles).toContain('payoff');
     });
+  });
+
+  it('keeps a real trait starter and payoff across every circuit core', () => {
+    for (const buildId of GAME_DATA.buildDesign.builds.map((build) => build.id)) {
+      for (const circuitCoreId of GAME_DATA.buildDesign.placementPatterns
+        .filter((pattern) => pattern.category === 'core')
+        .map((pattern) => pattern.id)) {
+        for (const seed of [31, 32, 33]) {
+          const build = generateEnemyBuild(GAME_DATA, 9, seed, { buildId, circuitCoreId });
+          const designs = build.board.flatMap((row) =>
+            row.flatMap((placed) => {
+              const design = GAME_DATA.buildDesign.skills.find((skill) => skill.blockId === placed?.blockId);
+              return design ? [design] : [];
+            }),
+          );
+          const traitRoles = designs.flatMap((skill) => {
+            const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
+            if (!traits.includes(buildId)) return [];
+            return skill.buildLinks.find((link) => link.buildId === buildId)?.roles ?? [];
+          });
+
+          expect(traitRoles, `${buildId} + ${circuitCoreId}, seed ${seed}`).toContain('starter');
+          expect(traitRoles, `${buildId} + ${circuitCoreId}, seed ${seed}`).toContain('payoff');
+        }
+      }
+    }
+  });
+
+  it('routes at least two charge into every generated charge release', () => {
+    for (const circuitCoreId of GAME_DATA.buildDesign.placementPatterns
+      .filter((pattern) => pattern.category === 'core')
+      .map((pattern) => pattern.id)) {
+      for (const seed of [31, 32, 33, 34, 59]) {
+        const build = generateEnemyBuild(GAME_DATA, 6, seed, { buildId: 'charge', circuitCoreId });
+        const analysis = analyzeCircuit(
+          build.board,
+          GAME_DATA.blocks,
+          build.heartPosition,
+          GAME_DATA.rules.heart.ports,
+        );
+        const chargeByCell = calculateChargeByCell(
+          build.board,
+          GAME_DATA.blocks,
+          analysis,
+          GAME_DATA.rules.skillFusion,
+        );
+        const releases = build.board.flatMap((row, rowIndex) =>
+          row.flatMap((placed, columnIndex) => {
+            const block = GAME_DATA.blocks.find((candidate) => candidate.id === placed?.blockId);
+            return block?.effects.some((effect) => effect.kind === 'release-charge')
+              ? [{ blockId: block.id, charge: chargeByCell.get(`${rowIndex}:${columnIndex}`) ?? 0 }]
+              : [];
+          }),
+        );
+
+        expect(releases.length, `${circuitCoreId}, seed ${seed}`).toBeGreaterThan(0);
+        expect(
+          releases.every((release) => release.charge >= 2),
+          `${circuitCoreId}, seed ${seed}: ${JSON.stringify(releases)}`,
+        ).toBe(true);
+      }
+    }
   });
 
   it('aims magic-sigil inscriptions at powered skills and places its payoff on a mark', () => {
     [11, 12, 13, 14].forEach((seed) => {
-      const build = generateEnemyBuild(GAME_DATA, 6, seed, { buildId: 'poison', circuitCoreId: 'magic-sigil' });
+      const build = generateEnemyBuild(GAME_DATA, 6, seed, {
+        buildId: 'poison',
+        circuitCoreId: 'magic-sigil',
+        requiredBlockId: 'sigil-cannon',
+      });
       expect(build.circuitCoreId).toBe('magic-sigil');
       const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, build.heartPosition, GAME_DATA.rules.heart.ports);
       const magicSigils = analyzeMagicSigils(
@@ -173,7 +283,11 @@ describe('enemy build generator', () => {
 
   it('surrounds a resonance payoff with enough powered resonance nodes, including diagonals', () => {
     [11, 12, 13, 14].forEach((seed) => {
-      const build = generateEnemyBuild(GAME_DATA, 6, seed, { buildId: 'charge', circuitCoreId: 'resonance' });
+      const build = generateEnemyBuild(GAME_DATA, 8, seed, {
+        buildId: 'charge',
+        circuitCoreId: 'resonance',
+        requiredBlockId: 'resonance-cannon',
+      });
       expect(build.circuitCoreId).toBe('resonance');
       const analysis = analyzeCircuit(build.board, GAME_DATA.blocks, build.heartPosition, GAME_DATA.rules.heart.ports);
       const payoffCells = build.board.flatMap((row, rowIndex) =>

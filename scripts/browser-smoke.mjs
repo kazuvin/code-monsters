@@ -1025,6 +1025,22 @@ if (!lightVeinRuleText.includes('合流 3') || !lightVeinRuleText.includes('同�
 if (!((await lightVein.locator('.dialog-merge-rule').textContent()) ?? '').includes('×2')) {
   throw new Error('Light vein convergence detail is missing the existing merge multiplier');
 }
+const lightVeinDiagram = lightVein.locator('.circuit-scope-diagram[data-diagram-kind="merge"]');
+await lightVeinDiagram.waitFor();
+if ((await lightVeinDiagram.locator('.circuit-diagram-cell').count()) !== 25) {
+  throw new Error('Circuit scope diagram is not a 5x5 grid');
+}
+if ((await lightVeinDiagram.locator('.circuit-diagram-node.is-target').count()) !== 1) {
+  throw new Error('Circuit scope diagram does not keep the selected node in the center');
+}
+await lightVein.screenshot({ path: '/tmp/code-monsters-circuit-diagram-desktop.png', fullPage: true });
+await lightVein.setViewportSize({ width: 390, height: 844 });
+const mobileDiagramDialog = await lightVein.locator('.block-dialog').boundingBox();
+if (!mobileDiagramDialog || mobileDiagramDialog.y < 0 || mobileDiagramDialog.y + mobileDiagramDialog.height > 844) {
+  throw new Error(`Mobile circuit diagram detail is clipped: ${JSON.stringify(mobileDiagramDialog)}`);
+}
+await lightVein.screenshot({ path: '/tmp/code-monsters-circuit-diagram-mobile.png', fullPage: true });
+await lightVein.setViewportSize({ width: 1440, height: 1100 });
 await lightVein.getByRole('button', { name: '詳細を閉じる' }).click();
 await lightVein.screenshot({ path: '/tmp/code-monsters-light-vein-desktop.png', fullPage: true });
 await lightVein.setViewportSize({ width: 390, height: 844 });
@@ -1107,6 +1123,8 @@ console.log(
         'light-vein-desktop',
         'light-vein-mobile',
         'light-vein-battle',
+        'circuit-diagram-desktop',
+        'circuit-diagram-mobile',
         'topology-desktop',
         'topology-mobile',
       ],

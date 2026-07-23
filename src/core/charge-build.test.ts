@@ -23,7 +23,7 @@ describe('charge build', () => {
     const state = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'rail-cannon');
 
-    expect(release).toMatchObject({ kind: 'damage', value: 1138, charge: 4 });
+    expect(release).toMatchObject({ kind: 'damage', value: 1558, charge: 6 });
   });
 
   it('only deals the base release damage when the cannon is next to the source', () => {
@@ -69,8 +69,8 @@ describe('charge build', () => {
     const state = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, board, emptyBoard()), 1);
     const release = state.trace.find((event) => 'blockId' in event && event.blockId === 'charge-bastion');
 
-    expect(release).toMatchObject({ kind: 'shield', value: 1010, charge: 4 });
-    expect(state.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(1010);
+    expect(release).toMatchObject({ kind: 'shield', value: 1410, charge: 6 });
+    expect(state.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(1410);
   });
 
   it('lets the defensive charge payoff repair poison damage as well as add shield', () => {
@@ -102,7 +102,7 @@ describe('charge build', () => {
       }
     }
 
-    expect(releaseDps('discharge-bow', 5, 0)).toBeCloseTo(356.67, 2);
+    expect(releaseDps('discharge-bow', 5, 0)).toBeCloseTo(283.33, 2);
     expect(releaseDps('rail-cannon', 5, 0)).toBeCloseTo(449.33, 2);
     expect(releaseDps('overcharge-cannon', 5, 0)).toBe(588);
   });
@@ -115,7 +115,7 @@ describe('charge build', () => {
     const shortState = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, shortBoard, emptyBoard()), 1);
     const shortRelease = shortState.trace.find((event) => 'blockId' in event && event.blockId === 'overcharge-cannon');
 
-    expect(shortRelease).toMatchObject({ kind: 'damage', value: 3740, charge: 7 });
+    expect(shortRelease).toMatchObject({ kind: 'damage', value: 4140, charge: 8 });
     expect(shortState.trace.some((event) => 'blockId' in event && event.blockId === 'charge-line-lance')).toBe(false);
 
     const longBoard = emptyBoard();
@@ -127,7 +127,7 @@ describe('charge build', () => {
     const longState = resolveTick(ROUTE_DATA, createBattle(ROUTE_DATA, longBoard, emptyBoard()), 1);
     const longRelease = longState.trace.find((event) => 'blockId' in event && event.blockId === 'overcharge-cannon');
 
-    expect(longRelease).toMatchObject({ kind: 'damage', value: 6940, charge: 15 });
+    expect(longRelease).toMatchObject({ kind: 'damage', value: 7740, charge: 17 });
   });
 
   it('keeps the first pulse release values explicit at five charge', () => {
@@ -141,8 +141,8 @@ describe('charge build', () => {
       return state.trace.find((event) => 'blockId' in event && event.blockId === blockId);
     };
 
-    expect(releaseValue('discharge-bow')).toMatchObject({ kind: 'damage', value: 1070, charge: 5 });
-    expect(releaseValue('rail-cannon')).toMatchObject({ kind: 'damage', value: 1348, charge: 5 });
-    expect(releaseValue('overcharge-cannon')).toMatchObject({ kind: 'damage', value: 2940, charge: 5 });
+    expect(releaseValue('discharge-bow')).toMatchObject({ kind: 'damage', value: 1130, charge: 7 });
+    expect(releaseValue('rail-cannon')).toMatchObject({ kind: 'damage', value: 1768, charge: 7 });
+    expect(releaseValue('overcharge-cannon')).toMatchObject({ kind: 'damage', value: 3740, charge: 7 });
   });
 });

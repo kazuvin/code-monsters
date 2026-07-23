@@ -22,6 +22,7 @@ import {
   type CircuitConditionStatus,
 } from './core/circuit';
 import { damageTierFor, type DamageTier } from './core/combat-presentation';
+import { circuitDiagramForBlock } from './core/circuit-diagram';
 import { battleCoinsEarned, battleReward } from './core/economy';
 import { generateEnemyBuild } from './core/enemy-builder';
 import { fuseSkillCopies, pickFusionRewardIds, upgradeBlockDefinition } from './core/fusion';
@@ -351,6 +352,72 @@ const BlockAxisBadges = ({ blockId, compact = false }: { blockId: string; compac
   );
 };
 
+const CircuitScopeDiagram = ({ block, rotation }: { block: BlockDefinition; rotation: Rotation }) => {
+  const diagram = circuitDiagramForBlock(block, rotation);
+  if (!diagram) return null;
+
+  const nodes = new Map(diagram.nodes.map((item) => [`${item.row}:${item.column}`, item]));
+  const arrowId = `circuit-scope-arrow-${diagram.kind}`;
+
+  return (
+    <figure className={`circuit-scope-diagram kind-${diagram.kind}`} data-diagram-kind={diagram.kind}>
+      <svg viewBox="0 0 100 100" role="img" aria-label={`${block.title}: ${diagram.title}`}>
+        <defs>
+          <marker id={arrowId} viewBox="0 0 6 6" refX="5" refY="3" markerWidth="4" markerHeight="4" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" />
+          </marker>
+        </defs>
+        {Array.from({ length: 25 }, (_, index) => {
+          const row = Math.floor(index / 5);
+          const column = index % 5;
+          return (
+            <rect
+              className="circuit-diagram-cell"
+              x={column * 20 + 1}
+              y={row * 20 + 1}
+              width="18"
+              height="18"
+              key={`cell-${row}-${column}`}
+            />
+          );
+        })}
+        <g className="circuit-diagram-links">
+          {diagram.links.map((item, index) => (
+            <line
+              className={`is-${item.role}`}
+              x1={item.from[1] * 20 + 10}
+              y1={item.from[0] * 20 + 10}
+              x2={item.to[1] * 20 + 10}
+              y2={item.to[0] * 20 + 10}
+              markerEnd={`url(#${arrowId})`}
+              key={`${item.from.join('-')}-${item.to.join('-')}-${index}`}
+            />
+          ))}
+        </g>
+        {[...nodes.values()].map((item) => (
+          <g className={`circuit-diagram-node is-${item.role}`} key={`node-${item.row}-${item.column}`}>
+            <rect x={item.column * 20 + 2} y={item.row * 20 + 2} width="16" height="16" />
+            <text x={item.column * 20 + 10} y={item.row * 20 + 12.5} textAnchor="middle">
+              {item.role === 'target' ? block.glyph : (item.glyph ?? '•')}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <figcaption>
+        <small>CIRCUIT SCOPE</small>
+        <b>{diagram.title}</b>
+        <p>{diagram.caption}</p>
+        <span className="circuit-scope-legend" aria-hidden="true">
+          <i className="is-target" /> 中央: このノード
+          <i className="is-source" /> 紫: 影響元
+          <i className="is-affected" /> 黄: 影響先
+          <i className="is-route" /> 水色: 通電経路
+        </span>
+      </figcaption>
+    </figure>
+  );
+};
+
 const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplier = 1, charge = 0) => {
   const progressByEffect = new Map(progress?.effects.map((effect) => [effect.effectIndex, effect]));
   return block.effects
@@ -483,7 +550,7 @@ const CatalogScreen = ({
       <div>
         <small>NODE ARCHIVE / {String(GAME_DATA.blocks.length).padStart(2, '0')}</small>
         <h2>カードカタログ</h2>
-        <p>特性を選び、無特性でつなぎ、武器で届ける。すべての組み合わせと接続数を確認できます。</p>
+        <p>特性を選び、汎用ノードでつなぎ、武器で届ける。すべての組み合わせと接続数を確認できます。</p>
       </div>
       <div className="rarity-legend" aria-label="レアリティの色">
         {RARITY_ORDER.map((rarity) => (
@@ -2361,6 +2428,7 @@ export function App() {
               </h2>
               <BlockAxisBadges blockId={detailBlock.id} />
               <p>{detailBlock.description}</p>
+              <CircuitScopeDiagram block={detailBlock} rotation={detailRotation} />
               {detailStars > 0 && (
                 <div className="dialog-star-rule">
                   <span>STAR UPGRADE</span>

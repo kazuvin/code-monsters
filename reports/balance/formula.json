@@ -1,5 +1,5 @@
 {
-  "gameSchemaVersion": 23,
+  "gameSchemaVersion": 25,
   "formulaVersion": 1,
   "formula": {
     "version": 1,
@@ -11,10 +11,12 @@
       "straightLineLength": 5,
       "magicSigilLevel": 2,
       "magicSigilCount": 4,
-      "adjacentBuildCount": 4,
+      "downstreamCount": 2,
+      "upstreamCount": 2,
       "poweredAxisCount": 4,
       "targetCooldownBeats": 3,
-      "targetEffectAmount": 220
+      "targetEffectAmount": 220,
+      "adjacentPoweredCount": 4
     },
     "effectValue": {
       "shield": 0.9,
@@ -35,8 +37,12 @@
       "allPortsConnectedPenaltyPerPort": 0.15,
       "magicSigilBase": 0.85,
       "magicSigilPenaltyPerRequiredLevel": 0.15,
-      "adjacentBuildBase": 1,
-      "adjacentBuildPenaltyPerRequiredNode": 0.04
+      "branchBase": 0.9,
+      "branchPenaltyPerRequiredRoute": 0.1,
+      "mergeBase": 0.85,
+      "mergePenaltyPerRequiredRoute": 0.1,
+      "adjacentPoweredBase": 1,
+      "adjacentPoweredPenaltyPerRequiredNode": 0.04
     },
     "resourceAvailability": {
       "charge": 0.7,
@@ -75,9 +81,9 @@
   "referenceWindowSeconds": 10,
   "chargeMarginalCvps": 130,
   "summary": {
-    "skillCount": 53,
+    "skillCount": 63,
     "low": 0,
-    "in-range": 53,
+    "in-range": 63,
     "high": 0
   },
   "skills": [
@@ -90,12 +96,12 @@
       "cooldownBeats": 2,
       "cooldownSeconds": 1,
       "referenceOffensePerSecond": 0,
-      "referenceDefensePerSecond": 117,
-      "rawCombatValuePerSecond": 157,
-      "weightedCombatValuePerSecond": 157,
+      "referenceDefensePerSecond": 99,
+      "rawCombatValuePerSecond": 139,
+      "weightedCombatValuePerSecond": 139,
       "topologyUtilityCvps": 40,
       "targetCombatValuePerSecond": 133.333333,
-      "budgetRatio": 1.1775,
+      "budgetRatio": 1.0425,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -103,70 +109,20 @@
           "effectIndex": 0,
           "kind": "shield",
           "condition": "always",
-          "formula": "(amount 130)*unit 0.9/seconds 1",
+          "formula": "(amount 110)*unit 0.9/seconds 1",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 117,
-          "weightedCvps": 117,
+          "rawCvps": 99,
+          "weightedCvps": 99,
           "referenceOffensePerSecond": 0,
-          "referenceDefensePerSecond": 117
+          "referenceDefensePerSecond": 99
         }
       ],
       "fused": {
         "referenceOffensePerSecond": 45,
         "referenceDefensePerSecond": 148.5,
         "weightedCombatValuePerSecond": 233.5,
-        "gainOverNormal": 1.487261
-      }
-    },
-    {
-      "blockId": "charge-blade",
-      "title": "充電刃",
-      "rarity": "common",
-      "price": 4,
-      "placementPatternId": "free",
-      "cooldownBeats": 2,
-      "cooldownSeconds": 1,
-      "referenceOffensePerSecond": 75,
-      "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 220,
-      "weightedCombatValuePerSecond": 149.15,
-      "topologyUtilityCvps": 15,
-      "targetCombatValuePerSecond": 133.333333,
-      "budgetRatio": 1.118625,
-      "budgetStatus": "in-range",
-      "conditions": [],
-      "effects": [
-        {
-          "effectIndex": 0,
-          "kind": "charge",
-          "condition": "always",
-          "formula": "charge 1*marginalCVPS 130*producerShare 0.65",
-          "conditionAvailability": 1,
-          "rewardMultiplier": 1,
-          "rawCvps": 130,
-          "weightedCvps": 59.15,
-          "referenceOffensePerSecond": 0,
-          "referenceDefensePerSecond": 0
-        },
-        {
-          "effectIndex": 1,
-          "kind": "damage",
-          "condition": "always",
-          "formula": "(amount 75)*unit 1/seconds 1",
-          "conditionAvailability": 1,
-          "rewardMultiplier": 1,
-          "rawCvps": 75,
-          "weightedCvps": 75,
-          "referenceOffensePerSecond": 75,
-          "referenceDefensePerSecond": 0
-        }
-      ],
-      "fused": {
-        "referenceOffensePerSecond": 226,
-        "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 359.3,
-        "gainOverNormal": 2.408984
+        "gainOverNormal": 1.679856
       }
     },
     {
@@ -174,7 +130,7 @@
       "title": "刻印碑",
       "rarity": "common",
       "price": 4,
-      "placementPatternId": "free",
+      "placementPatternId": "magic-sigil",
       "cooldownBeats": 2,
       "cooldownSeconds": 1,
       "referenceOffensePerSecond": 0,
@@ -214,9 +170,47 @@
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 243,
-        "weightedCombatValuePerSecond": 282,
-        "gainOverNormal": 2.495575
+        "referenceDefensePerSecond": 101.7,
+        "weightedCombatValuePerSecond": 133.7,
+        "gainOverNormal": 1.183186
+      }
+    },
+    {
+      "blockId": "light-vein-blade",
+      "title": "光脈刃",
+      "rarity": "common",
+      "price": 4,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 1,
+      "cooldownSeconds": 0.5,
+      "referenceOffensePerSecond": 140,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 165,
+      "weightedCombatValuePerSecond": 165,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 133.333333,
+      "budgetRatio": 1.2375,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 70)*unit 1/seconds 0.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 140,
+          "weightedCvps": 140,
+          "referenceOffensePerSecond": 140,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 176,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 201,
+        "gainOverNormal": 1.218182
       }
     },
     {
@@ -251,10 +245,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 172,
+        "referenceOffensePerSecond": 138,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 183.56,
-        "gainOverNormal": 1.430041
+        "weightedCombatValuePerSecond": 152.44,
+        "gainOverNormal": 1.187597
       }
     },
     {
@@ -265,13 +259,13 @@
       "placementPatternId": "free",
       "cooldownBeats": 1,
       "cooldownSeconds": 0.5,
-      "referenceOffensePerSecond": 140,
+      "referenceOffensePerSecond": 110,
       "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 165,
-      "weightedCombatValuePerSecond": 165,
+      "rawCombatValuePerSecond": 135,
+      "weightedCombatValuePerSecond": 135,
       "topologyUtilityCvps": 25,
       "targetCombatValuePerSecond": 133.333333,
-      "budgetRatio": 1.2375,
+      "budgetRatio": 1.0125,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -279,20 +273,20 @@
           "effectIndex": 0,
           "kind": "damage",
           "condition": "always",
-          "formula": "(amount 70)*unit 1/seconds 0.5",
+          "formula": "(amount 55)*unit 1/seconds 0.5",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 140,
-          "weightedCvps": 140,
-          "referenceOffensePerSecond": 140,
+          "rawCvps": 110,
+          "weightedCvps": 110,
+          "referenceOffensePerSecond": 110,
           "referenceDefensePerSecond": 0
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 180,
+        "referenceOffensePerSecond": 160,
         "referenceDefensePerSecond": 54,
-        "weightedCombatValuePerSecond": 259,
-        "gainOverNormal": 1.569697
+        "weightedCombatValuePerSecond": 239,
+        "gainOverNormal": 1.77037
       }
     },
     {
@@ -341,13 +335,13 @@
       "placementPatternId": "free",
       "cooldownBeats": 2,
       "cooldownSeconds": 1,
-      "referenceOffensePerSecond": 80,
+      "referenceOffensePerSecond": 50,
       "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 240,
-      "weightedCombatValuePerSecond": 169.15,
+      "rawCombatValuePerSecond": 340,
+      "weightedCombatValuePerSecond": 198.3,
       "topologyUtilityCvps": 30,
       "targetCombatValuePerSecond": 166.666667,
-      "budgetRatio": 1.0149,
+      "budgetRatio": 1.1898,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -355,11 +349,11 @@
           "effectIndex": 0,
           "kind": "charge",
           "condition": "always",
-          "formula": "charge 1*marginalCVPS 130*producerShare 0.65",
+          "formula": "charge 2*marginalCVPS 130*producerShare 0.65",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 130,
-          "weightedCvps": 59.15,
+          "rawCvps": 260,
+          "weightedCvps": 118.3,
           "referenceOffensePerSecond": 0,
           "referenceDefensePerSecond": 0
         },
@@ -367,20 +361,70 @@
           "effectIndex": 1,
           "kind": "damage",
           "condition": "always",
-          "formula": "(amount 80)*unit 1/seconds 1",
+          "formula": "(amount 50)*unit 1/seconds 1",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 80,
-          "weightedCvps": 80,
-          "referenceOffensePerSecond": 80,
+          "rawCvps": 50,
+          "weightedCvps": 50,
+          "referenceOffensePerSecond": 50,
           "referenceDefensePerSecond": 0
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 240,
+        "referenceOffensePerSecond": 150,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 388.3,
-        "gainOverNormal": 2.295596
+        "weightedCombatValuePerSecond": 357.45,
+        "gainOverNormal": 1.802572
+      }
+    },
+    {
+      "blockId": "charge-blade",
+      "title": "充電刃",
+      "rarity": "common",
+      "price": 5,
+      "placementPatternId": "free",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 75,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 350,
+      "weightedCombatValuePerSecond": 208.3,
+      "topologyUtilityCvps": 15,
+      "targetCombatValuePerSecond": 166.666667,
+      "budgetRatio": 1.2498,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "charge",
+          "condition": "always",
+          "formula": "charge 2*marginalCVPS 130*producerShare 0.65",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 260,
+          "weightedCvps": 118.3,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "damage",
+          "condition": "always",
+          "formula": "(amount 75)*unit 1/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 75,
+          "weightedCvps": 75,
+          "referenceOffensePerSecond": 75,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 226,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 418.45,
+        "gainOverNormal": 2.008881
       }
     },
     {
@@ -415,10 +459,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 364,
+        "referenceOffensePerSecond": 151,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 381.92,
-        "gainOverNormal": 2.499476
+        "weightedCombatValuePerSecond": 181.88,
+        "gainOverNormal": 1.190314
       }
     },
     {
@@ -426,7 +470,7 @@
       "title": "導刻矢",
       "rarity": "common",
       "price": 5,
-      "placementPatternId": "free",
+      "placementPatternId": "magic-sigil",
       "cooldownBeats": 2,
       "cooldownSeconds": 1,
       "referenceOffensePerSecond": 75,
@@ -465,10 +509,60 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 226,
+        "referenceOffensePerSecond": 94,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 294,
-        "gainOverNormal": 2.27907
+        "weightedCombatValuePerSecond": 148,
+        "gainOverNormal": 1.147287
+      }
+    },
+    {
+      "blockId": "light-guide",
+      "title": "導光器",
+      "rarity": "common",
+      "price": 5,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 130,
+      "rawCombatValuePerSecond": 155,
+      "weightedCombatValuePerSecond": 155,
+      "topologyUtilityCvps": 25,
+      "targetCombatValuePerSecond": 166.666667,
+      "budgetRatio": 0.93,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 100)*unit 0.9/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 90,
+          "weightedCvps": 90,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 90
+        },
+        {
+          "effectIndex": 1,
+          "kind": "repair",
+          "condition": "always",
+          "formula": "(amount 50)*unit 0.8/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 40,
+          "weightedCvps": 40,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 40
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 162.9,
+        "weightedCombatValuePerSecond": 187.9,
+        "gainOverNormal": 1.212258
       }
     },
     {
@@ -493,24 +587,24 @@
           "effectIndex": 0,
           "kind": "damage",
           "condition": "always",
-          "formula": "(amount 35)*unit 1/seconds 1",
+          "formula": "(amount 55)*unit 1/seconds 1",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 35,
-          "weightedCvps": 35,
-          "referenceOffensePerSecond": 35,
+          "rawCvps": 55,
+          "weightedCvps": 55,
+          "referenceOffensePerSecond": 55,
           "referenceDefensePerSecond": 0
         },
         {
           "effectIndex": 1,
           "kind": "poison",
           "condition": "always",
-          "formula": "(amount 16)*unit 5/seconds 1",
+          "formula": "(amount 12)*unit 5/seconds 1",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 80,
-          "weightedCvps": 80,
-          "referenceOffensePerSecond": 80,
+          "rawCvps": 60,
+          "weightedCvps": 60,
+          "referenceOffensePerSecond": 60,
           "referenceDefensePerSecond": 0
         },
         {
@@ -534,6 +628,44 @@
       }
     },
     {
+      "blockId": "prism-arrow",
+      "title": "枝光矢",
+      "rarity": "common",
+      "price": 5,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 170,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 210,
+      "weightedCombatValuePerSecond": 163.2,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 166.666667,
+      "budgetRatio": 0.9792,
+      "budgetStatus": "in-range",
+      "conditions": ["branches>=2"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "branches>=2",
+          "formula": "(amount 90 + min(floor(2/1),3)*40)*unit 1/seconds 1",
+          "conditionAvailability": 0.8,
+          "rewardMultiplier": 1.25,
+          "rawCvps": 170,
+          "weightedCvps": 123.2,
+          "referenceOffensePerSecond": 170,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 213,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 194.4,
+        "gainOverNormal": 1.191176
+      }
+    },
+    {
       "blockId": "salvage-blade",
       "title": "回収刃",
       "rarity": "common",
@@ -541,13 +673,13 @@
       "placementPatternId": "free",
       "cooldownBeats": 4,
       "cooldownSeconds": 2,
-      "referenceOffensePerSecond": 55,
+      "referenceOffensePerSecond": 65,
       "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 160,
-      "weightedCombatValuePerSecond": 160,
+      "rawCombatValuePerSecond": 170,
+      "weightedCombatValuePerSecond": 170,
       "topologyUtilityCvps": 25,
       "targetCombatValuePerSecond": 166.666667,
-      "budgetRatio": 0.96,
+      "budgetRatio": 1.02,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -555,12 +687,12 @@
           "effectIndex": 0,
           "kind": "damage",
           "condition": "always",
-          "formula": "(amount 110)*unit 1/seconds 2",
+          "formula": "(amount 130)*unit 1/seconds 2",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 55,
-          "weightedCvps": 55,
-          "referenceOffensePerSecond": 55,
+          "rawCvps": 65,
+          "weightedCvps": 65,
+          "referenceOffensePerSecond": 65,
           "referenceDefensePerSecond": 0
         },
         {
@@ -580,7 +712,7 @@
         "referenceOffensePerSecond": 93.333333,
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 255,
-        "gainOverNormal": 1.59375
+        "gainOverNormal": 1.5
       }
     },
     {
@@ -615,10 +747,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 420,
+        "referenceOffensePerSecond": 176,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 391,
-        "gainOverNormal": 2.659864
+        "weightedCombatValuePerSecond": 178.2,
+        "gainOverNormal": 1.212245
       }
     },
     {
@@ -654,9 +786,9 @@
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 334.8,
-        "weightedCombatValuePerSecond": 339.064,
-        "gainOverNormal": 2.614459
+        "referenceDefensePerSecond": 139.5,
+        "weightedCombatValuePerSecond": 155.86,
+        "gainOverNormal": 1.201807
       }
     },
     {
@@ -695,44 +827,6 @@
         "referenceDefensePerSecond": 49.5,
         "weightedCombatValuePerSecond": 329.5,
         "gainOverNormal": 1.432609
-      }
-    },
-    {
-      "blockId": "charge-coil",
-      "title": "充電コイル",
-      "rarity": "rare",
-      "price": 7,
-      "placementPatternId": "free",
-      "cooldownBeats": null,
-      "cooldownSeconds": null,
-      "referenceOffensePerSecond": 0,
-      "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 405,
-      "weightedCombatValuePerSecond": 192.45,
-      "topologyUtilityCvps": 15,
-      "targetCombatValuePerSecond": 192.5,
-      "budgetRatio": 0.99974,
-      "budgetStatus": "in-range",
-      "conditions": [],
-      "effects": [
-        {
-          "effectIndex": 0,
-          "kind": "charge",
-          "condition": "always",
-          "formula": "charge 3*marginalCVPS 130*producerShare 0.65",
-          "conditionAvailability": 1,
-          "rewardMultiplier": 1,
-          "rawCvps": 390,
-          "weightedCvps": 177.45,
-          "referenceOffensePerSecond": 0,
-          "referenceDefensePerSecond": 0
-        }
-      ],
-      "fused": {
-        "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 310.75,
-        "gainOverNormal": 1.614705
       }
     },
     {
@@ -780,9 +874,9 @@
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 382.5,
-        "weightedCombatValuePerSecond": 375.1,
-        "gainOverNormal": 2.076966
+        "referenceDefensePerSecond": 212.8,
+        "weightedCombatValuePerSecond": 219.8,
+        "gainOverNormal": 1.217054
       }
     },
     {
@@ -801,7 +895,7 @@
       "targetCombatValuePerSecond": 192.5,
       "budgetRatio": 1.085818,
       "budgetStatus": "in-range",
-      "conditions": ["adjacent-resonance>=3"],
+      "conditions": ["adjacent-powered>=3"],
       "effects": [
         {
           "effectIndex": 0,
@@ -818,7 +912,7 @@
         {
           "effectIndex": 1,
           "kind": "repair",
-          "condition": "adjacent-resonance>=3",
+          "condition": "adjacent-powered>=3",
           "formula": "(amount 60)*unit 0.8/seconds 1",
           "conditionAvailability": 0.92,
           "rewardMultiplier": 1.086957,
@@ -830,9 +924,9 @@
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 590.4,
-        "weightedCombatValuePerSecond": 577.96,
-        "gainOverNormal": 2.765094
+        "referenceDefensePerSecond": 245.4,
+        "weightedCombatValuePerSecond": 254.8,
+        "gainOverNormal": 1.219022
       }
     },
     {
@@ -871,6 +965,44 @@
         "referenceDefensePerSecond": 256,
         "weightedCombatValuePerSecond": 281,
         "gainOverNormal": 1.716904
+      }
+    },
+    {
+      "blockId": "venom-chorus",
+      "title": "蝕響矢",
+      "rarity": "rare",
+      "price": 7,
+      "placementPatternId": "resonance",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 110,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 150,
+      "weightedCombatValuePerSecond": 145.2,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 192.5,
+      "budgetRatio": 0.754286,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "poison",
+          "condition": "always",
+          "formula": "(amount 14 + floor(4/1)*2)*unit 5/seconds 1",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 110,
+          "weightedCvps": 105.2,
+          "referenceOffensePerSecond": 110,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 330,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 355.6,
+        "gainOverNormal": 2.449036
       }
     },
     {
@@ -933,11 +1065,11 @@
       "cooldownSeconds": null,
       "referenceOffensePerSecond": 0,
       "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 218.333333,
-      "weightedCombatValuePerSecond": 218.333333,
+      "rawCombatValuePerSecond": 171.666667,
+      "weightedCombatValuePerSecond": 171.666667,
       "topologyUtilityCvps": 25,
       "targetCombatValuePerSecond": 220,
-      "budgetRatio": 0.992424,
+      "budgetRatio": 0.780303,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -945,11 +1077,11 @@
           "effectIndex": 0,
           "kind": "amplify",
           "condition": "always",
-          "formula": "amount 290*supportUnit 1/targetSeconds 1.5",
+          "formula": "amount 220*supportUnit 1/targetSeconds 1.5",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 193.333333,
-          "weightedCvps": 193.333333,
+          "rawCvps": 146.666667,
+          "weightedCvps": 146.666667,
           "referenceOffensePerSecond": 0,
           "referenceDefensePerSecond": 0
         }
@@ -958,7 +1090,7 @@
         "referenceOffensePerSecond": 0,
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 265,
-        "gainOverNormal": 1.21374
+        "gainOverNormal": 1.543689
       }
     },
     {
@@ -969,13 +1101,13 @@
       "placementPatternId": "free",
       "cooldownBeats": 5,
       "cooldownSeconds": 2.5,
-      "referenceOffensePerSecond": 96,
+      "referenceOffensePerSecond": 112,
       "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 200,
-      "weightedCombatValuePerSecond": 200,
+      "rawCombatValuePerSecond": 216,
+      "weightedCombatValuePerSecond": 216,
       "topologyUtilityCvps": 40,
       "targetCombatValuePerSecond": 220,
-      "budgetRatio": 0.909091,
+      "budgetRatio": 0.981818,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -983,12 +1115,12 @@
           "effectIndex": 0,
           "kind": "damage",
           "condition": "always",
-          "formula": "(amount 240)*unit 1/seconds 2.5",
+          "formula": "(amount 280)*unit 1/seconds 2.5",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 96,
-          "weightedCvps": 96,
-          "referenceOffensePerSecond": 96,
+          "rawCvps": 112,
+          "weightedCvps": 112,
+          "referenceOffensePerSecond": 112,
           "referenceDefensePerSecond": 0
         },
         {
@@ -1008,7 +1140,45 @@
         "referenceOffensePerSecond": 150,
         "referenceDefensePerSecond": 36,
         "weightedCombatValuePerSecond": 306,
-        "gainOverNormal": 1.53
+        "gainOverNormal": 1.416667
+      }
+    },
+    {
+      "blockId": "charge-coil",
+      "title": "充電コイル",
+      "rarity": "rare",
+      "price": 8,
+      "placementPatternId": "free",
+      "cooldownBeats": null,
+      "cooldownSeconds": null,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 535,
+      "weightedCombatValuePerSecond": 251.6,
+      "topologyUtilityCvps": 15,
+      "targetCombatValuePerSecond": 220,
+      "budgetRatio": 1.143636,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "charge",
+          "condition": "always",
+          "formula": "charge 4*marginalCVPS 130*producerShare 0.65",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 520,
+          "weightedCvps": 236.6,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 369.9,
+        "gainOverNormal": 1.470191
       }
     },
     {
@@ -1020,12 +1190,12 @@
       "cooldownBeats": 2,
       "cooldownSeconds": 1,
       "referenceOffensePerSecond": 0,
-      "referenceDefensePerSecond": 157.5,
-      "rawCombatValuePerSecond": 302.5,
-      "weightedCombatValuePerSecond": 231.65,
+      "referenceDefensePerSecond": 135,
+      "rawCombatValuePerSecond": 280,
+      "weightedCombatValuePerSecond": 209.15,
       "topologyUtilityCvps": 15,
       "targetCombatValuePerSecond": 220,
-      "budgetRatio": 1.052955,
+      "budgetRatio": 0.950682,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -1045,20 +1215,20 @@
           "effectIndex": 1,
           "kind": "shield",
           "condition": "always",
-          "formula": "(amount 175)*unit 0.9/seconds 1",
+          "formula": "(amount 150)*unit 0.9/seconds 1",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 157.5,
-          "weightedCvps": 157.5,
+          "rawCvps": 135,
+          "weightedCvps": 135,
           "referenceOffensePerSecond": 0,
-          "referenceDefensePerSecond": 157.5
+          "referenceDefensePerSecond": 135
         }
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 473.4,
-        "weightedCombatValuePerSecond": 606.7,
-        "gainOverNormal": 2.619037
+        "referenceDefensePerSecond": 405,
+        "weightedCombatValuePerSecond": 538.3,
+        "gainOverNormal": 2.573751
       }
     },
     {
@@ -1336,11 +1506,61 @@
       }
     },
     {
+      "blockId": "thunder-prism",
+      "title": "雷光器",
+      "rarity": "rare",
+      "price": 8,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 140,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 310,
+      "weightedCombatValuePerSecond": 189.72,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 220,
+      "budgetRatio": 0.862364,
+      "budgetStatus": "in-range",
+      "conditions": ["branches>=2"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "charge",
+          "condition": "branches>=2",
+          "formula": "charge 1*marginalCVPS 130*producerShare 0.65",
+          "conditionAvailability": 0.8,
+          "rewardMultiplier": 1.25,
+          "rawCvps": 130,
+          "weightedCvps": 47.32,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "damage",
+          "condition": "branches>=2",
+          "formula": "(amount 80 + min(floor(2/1),3)*30)*unit 1/seconds 1",
+          "conditionAvailability": 0.8,
+          "rewardMultiplier": 1.25,
+          "rawCvps": 140,
+          "weightedCvps": 102.4,
+          "referenceOffensePerSecond": 140,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 420,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 441.84,
+        "gainOverNormal": 2.328906
+      }
+    },
+    {
       "blockId": "twin-inscription",
       "title": "双刻碑",
       "rarity": "rare",
       "price": 8,
-      "placementPatternId": "free",
+      "placementPatternId": "magic-sigil",
       "cooldownBeats": 3,
       "cooldownSeconds": 1.5,
       "referenceOffensePerSecond": 120,
@@ -1379,48 +1599,48 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 270,
+        "referenceOffensePerSecond": 150,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 338,
-        "gainOverNormal": 1.942529
+        "weightedCombatValuePerSecond": 204,
+        "gainOverNormal": 1.172414
       }
     },
     {
-      "blockId": "venom-chorus",
-      "title": "蝕響矢",
+      "blockId": "venom-ray",
+      "title": "蝕光矢",
       "rarity": "rare",
       "price": 8,
-      "placementPatternId": "resonance",
+      "placementPatternId": "light-vein",
       "cooldownBeats": 2,
       "cooldownSeconds": 1,
       "referenceOffensePerSecond": 180,
       "referenceDefensePerSecond": 0,
       "rawCombatValuePerSecond": 220,
-      "weightedCombatValuePerSecond": 205.6,
+      "weightedCombatValuePerSecond": 169.6,
       "topologyUtilityCvps": 40,
       "targetCombatValuePerSecond": 220,
-      "budgetRatio": 0.934545,
+      "budgetRatio": 0.770909,
       "budgetStatus": "in-range",
-      "conditions": [],
+      "conditions": ["branches>=2"],
       "effects": [
         {
           "effectIndex": 0,
           "kind": "poison",
-          "condition": "always",
-          "formula": "(amount 12 + floor(4/1)*6)*unit 5/seconds 1",
-          "conditionAvailability": 1,
-          "rewardMultiplier": 1,
+          "condition": "branches>=2",
+          "formula": "(amount 18 + min(floor(2/1),3)*9)*unit 5/seconds 1",
+          "conditionAvailability": 0.8,
+          "rewardMultiplier": 1.25,
           "rawCvps": 180,
-          "weightedCvps": 165.6,
+          "weightedCvps": 129.6,
           "referenceOffensePerSecond": 180,
           "referenceDefensePerSecond": 0
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 540,
+        "referenceOffensePerSecond": 550,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 536.8,
-        "gainOverNormal": 2.610895
+        "weightedCombatValuePerSecond": 435.2,
+        "gainOverNormal": 2.566038
       }
     },
     {
@@ -1431,13 +1651,13 @@
       "placementPatternId": "free",
       "cooldownBeats": 3,
       "cooldownSeconds": 1.5,
-      "referenceOffensePerSecond": 713.333333,
+      "referenceOffensePerSecond": 566.666667,
       "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 713.333333,
-      "weightedCombatValuePerSecond": 260.333333,
+      "rawCombatValuePerSecond": 566.666667,
+      "weightedCombatValuePerSecond": 214.333333,
       "topologyUtilityCvps": 0,
       "targetCombatValuePerSecond": 247.5,
-      "budgetRatio": 1.051852,
+      "budgetRatio": 0.865993,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -1445,20 +1665,70 @@
           "effectIndex": 0,
           "kind": "release-charge",
           "condition": "always",
-          "formula": "(base 170 + charge=5*180)*unit 1/seconds 1.5",
+          "formula": "(base 150 + charge=5*140)*unit 1/seconds 1.5",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 713.333333,
-          "weightedCvps": 260.333333,
-          "referenceOffensePerSecond": 713.333333,
+          "rawCvps": 566.666667,
+          "weightedCvps": 214.333333,
+          "referenceOffensePerSecond": 566.666667,
           "referenceDefensePerSecond": 0
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 1605,
+        "referenceOffensePerSecond": 1275,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 585.75,
+        "weightedCombatValuePerSecond": 482.25,
         "gainOverNormal": 2.25
+      }
+    },
+    {
+      "blockId": "radiant-fork",
+      "title": "輝叉術",
+      "rarity": "rare",
+      "price": 9,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 2,
+      "cooldownSeconds": 1,
+      "referenceOffensePerSecond": 0,
+      "referenceDefensePerSecond": 135,
+      "rawCombatValuePerSecond": 240,
+      "weightedCombatValuePerSecond": 192.36,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 247.5,
+      "budgetRatio": 0.777212,
+      "budgetStatus": "in-range",
+      "conditions": ["branches>=2"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "shield",
+          "condition": "branches>=2",
+          "formula": "(amount 90 + min(floor(2/1),3)*30)*unit 0.9/seconds 1",
+          "conditionAvailability": 0.8,
+          "rewardMultiplier": 1.25,
+          "rawCvps": 135,
+          "weightedCvps": 99.36,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 135
+        },
+        {
+          "effectIndex": 1,
+          "kind": "amplify",
+          "condition": "branches>=2",
+          "formula": "amount 90*supportUnit 1/targetSeconds 1.5",
+          "conditionAvailability": 0.8,
+          "rewardMultiplier": 1.25,
+          "rawCvps": 60,
+          "weightedCvps": 48,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 0,
+        "referenceDefensePerSecond": 170.1,
+        "weightedCombatValuePerSecond": 230.402667,
+        "gainOverNormal": 1.197768
       }
     },
     {
@@ -1470,12 +1740,12 @@
       "cooldownBeats": 5,
       "cooldownSeconds": 2.5,
       "referenceOffensePerSecond": 0,
-      "referenceDefensePerSecond": 137.6,
-      "rawCombatValuePerSecond": 226.6,
-      "weightedCombatValuePerSecond": 226.6,
+      "referenceDefensePerSecond": 154.8,
+      "rawCombatValuePerSecond": 243.8,
+      "weightedCombatValuePerSecond": 243.8,
       "topologyUtilityCvps": 25,
       "targetCombatValuePerSecond": 247.5,
-      "budgetRatio": 0.915556,
+      "budgetRatio": 0.985051,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -1483,25 +1753,25 @@
           "effectIndex": 0,
           "kind": "shield",
           "condition": "always",
-          "formula": "(amount 240)*unit 0.9/seconds 2.5",
+          "formula": "(amount 270)*unit 0.9/seconds 2.5",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 86.4,
-          "weightedCvps": 86.4,
+          "rawCvps": 97.2,
+          "weightedCvps": 97.2,
           "referenceOffensePerSecond": 0,
-          "referenceDefensePerSecond": 86.4
+          "referenceDefensePerSecond": 97.2
         },
         {
           "effectIndex": 1,
           "kind": "repair",
           "condition": "always",
-          "formula": "(amount 160)*unit 0.8/seconds 2.5",
+          "formula": "(amount 180)*unit 0.8/seconds 2.5",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 51.2,
-          "weightedCvps": 51.2,
+          "rawCvps": 57.6,
+          "weightedCvps": 57.6,
           "referenceOffensePerSecond": 0,
-          "referenceDefensePerSecond": 51.2
+          "referenceDefensePerSecond": 57.6
         },
         {
           "effectIndex": 2,
@@ -1520,7 +1790,7 @@
         "referenceOffensePerSecond": 0,
         "referenceDefensePerSecond": 231,
         "weightedCombatValuePerSecond": 336,
-        "gainOverNormal": 1.482789
+        "gainOverNormal": 1.378179
       }
     },
     {
@@ -1528,7 +1798,7 @@
       "title": "雷紋",
       "rarity": "rare",
       "price": 9,
-      "placementPatternId": "free",
+      "placementPatternId": "magic-sigil",
       "cooldownBeats": 2,
       "cooldownSeconds": 1,
       "referenceOffensePerSecond": 100,
@@ -1624,11 +1894,49 @@
       }
     },
     {
+      "blockId": "branchlight-barrage",
+      "title": "枝光連弩",
+      "rarity": "epic",
+      "price": 13,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 426.666667,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 471.666667,
+      "weightedCombatValuePerSecond": 362.866667,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 327.407407,
+      "budgetRatio": 1.108303,
+      "budgetStatus": "in-range",
+      "conditions": ["branches>=2"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "branches>=2",
+          "formula": "(amount 420 + min(floor(2/1),3)*110)*unit 1/seconds 1.5",
+          "conditionAvailability": 0.8,
+          "rewardMultiplier": 1.25,
+          "rawCvps": 426.666667,
+          "weightedCvps": 317.866667,
+          "referenceOffensePerSecond": 426.666667,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 534,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 442.76,
+        "gainOverNormal": 1.220173
+      }
+    },
+    {
       "blockId": "convergence-sigil",
       "title": "集束紋",
       "rarity": "epic",
       "price": 13,
-      "placementPatternId": "free",
+      "placementPatternId": "magic-sigil",
       "cooldownBeats": 3,
       "cooldownSeconds": 1.5,
       "referenceOffensePerSecond": 0,
@@ -1668,9 +1976,9 @@
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 486,
-        "weightedCombatValuePerSecond": 532,
-        "gainOverNormal": 2.086275
+        "referenceDefensePerSecond": 270,
+        "weightedCombatValuePerSecond": 316,
+        "gainOverNormal": 1.239216
       }
     },
     {
@@ -1689,12 +1997,12 @@
       "targetCombatValuePerSecond": 327.407407,
       "budgetRatio": 0.891958,
       "budgetStatus": "in-range",
-      "conditions": ["adjacent-resonance>=4"],
+      "conditions": ["adjacent-powered>=4"],
       "effects": [
         {
           "effectIndex": 0,
           "kind": "shield",
-          "condition": "adjacent-resonance>=4",
+          "condition": "adjacent-powered>=4",
           "formula": "(amount 150 + floor(4/1)*60)*unit 0.9/seconds 1.5",
           "conditionAvailability": 0.88,
           "rewardMultiplier": 1.136364,
@@ -1706,7 +2014,7 @@
         {
           "effectIndex": 1,
           "kind": "repair",
-          "condition": "adjacent-resonance>=4",
+          "condition": "adjacent-powered>=4",
           "formula": "(amount 120)*unit 0.8/seconds 1.5",
           "conditionAvailability": 0.88,
           "rewardMultiplier": 1.136364,
@@ -1718,9 +2026,9 @@
       ],
       "fused": {
         "referenceOffensePerSecond": 0,
-        "referenceDefensePerSecond": 670.5,
-        "weightedCombatValuePerSecond": 600.8256,
-        "gainOverNormal": 2.057385
+        "referenceDefensePerSecond": 372.8,
+        "weightedCombatValuePerSecond": 354.056,
+        "gainOverNormal": 1.212381
       }
     },
     {
@@ -1759,6 +2067,44 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 552.55,
         "gainOverNormal": 2.063294
+      }
+    },
+    {
+      "blockId": "rupture-stake",
+      "title": "破裂砲",
+      "rarity": "epic",
+      "price": 13,
+      "placementPatternId": "free",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 609,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 609,
+      "weightedCombatValuePerSecond": 254.475,
+      "topologyUtilityCvps": 0,
+      "targetCombatValuePerSecond": 327.407407,
+      "budgetRatio": 0.777243,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "rupture-poison",
+          "condition": "always",
+          "formula": "(floor(poison 250*0.35)*14 - consumed*poisonTicks 5)/seconds 2",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 609,
+          "weightedCvps": 254.475,
+          "referenceOffensePerSecond": 609,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 1820,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 901.333333,
+        "gainOverNormal": 3.541933
       }
     },
     {
@@ -1809,68 +2155,6 @@
         "referenceDefensePerSecond": 684,
         "weightedCombatValuePerSecond": 599,
         "gainOverNormal": 1.677871
-      }
-    },
-    {
-      "blockId": "toxic-reservoir",
-      "title": "毒電池",
-      "rarity": "epic",
-      "price": 13,
-      "placementPatternId": "free",
-      "cooldownBeats": 3,
-      "cooldownSeconds": 1.5,
-      "referenceOffensePerSecond": 53.333333,
-      "referenceDefensePerSecond": 21,
-      "rawCombatValuePerSecond": 609.333333,
-      "weightedCombatValuePerSecond": 325.933333,
-      "topologyUtilityCvps": 15,
-      "targetCombatValuePerSecond": 327.407407,
-      "budgetRatio": 0.995498,
-      "budgetStatus": "in-range",
-      "conditions": [],
-      "effects": [
-        {
-          "effectIndex": 0,
-          "kind": "charge",
-          "condition": "always",
-          "formula": "charge 4*marginalCVPS 130*producerShare 0.65",
-          "conditionAvailability": 1,
-          "rewardMultiplier": 1,
-          "rawCvps": 520,
-          "weightedCvps": 236.6,
-          "referenceOffensePerSecond": 0,
-          "referenceDefensePerSecond": 0
-        },
-        {
-          "effectIndex": 1,
-          "kind": "poison",
-          "condition": "always",
-          "formula": "(amount 16)*unit 5/seconds 1.5",
-          "conditionAvailability": 1,
-          "rewardMultiplier": 1,
-          "rawCvps": 53.333333,
-          "weightedCvps": 53.333333,
-          "referenceOffensePerSecond": 53.333333,
-          "referenceDefensePerSecond": 0
-        },
-        {
-          "effectIndex": 2,
-          "kind": "shield",
-          "condition": "always",
-          "formula": "(amount 35)*unit 0.9/seconds 1.5",
-          "conditionAvailability": 1,
-          "rewardMultiplier": 1,
-          "rawCvps": 21,
-          "weightedCvps": 21,
-          "referenceOffensePerSecond": 0,
-          "referenceDefensePerSecond": 21
-        }
-      ],
-      "fused": {
-        "referenceOffensePerSecond": 120,
-        "referenceDefensePerSecond": 47.7,
-        "weightedCombatValuePerSecond": 537.6,
-        "gainOverNormal": 1.649417
       }
     },
     {
@@ -1962,6 +2246,44 @@
       }
     },
     {
+      "blockId": "convergence-cannon",
+      "title": "収光砲",
+      "rarity": "epic",
+      "price": 14,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 493.333333,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 533.333333,
+      "weightedCombatValuePerSecond": 372.5,
+      "topologyUtilityCvps": 40,
+      "targetCombatValuePerSecond": 352.592593,
+      "budgetRatio": 1.05646,
+      "budgetStatus": "in-range",
+      "conditions": ["inputs>=2"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "inputs>=2",
+          "formula": "(amount 220 + min(floor(2/1),3)*75)*unit 1*merge=2/seconds 1.5",
+          "conditionAvailability": 0.75,
+          "rewardMultiplier": 1.333333,
+          "rawCvps": 493.333333,
+          "weightedCvps": 332.5,
+          "referenceOffensePerSecond": 493.333333,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 617.333333,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 456,
+        "gainOverNormal": 1.224161
+      }
+    },
+    {
       "blockId": "rail-cannon",
       "title": "解放砲",
       "rarity": "epic",
@@ -2015,12 +2337,12 @@
       "targetCombatValuePerSecond": 352.592593,
       "budgetRatio": 0.928944,
       "budgetStatus": "in-range",
-      "conditions": ["adjacent-resonance>=4"],
+      "conditions": ["adjacent-powered>=4"],
       "effects": [
         {
           "effectIndex": 0,
           "kind": "damage",
-          "condition": "adjacent-resonance>=4",
+          "condition": "adjacent-powered>=4",
           "formula": "(amount 200 + floor(4/1)*80)*unit 1/seconds 1.5",
           "conditionAvailability": 0.88,
           "rewardMultiplier": 1.136364,
@@ -2031,48 +2353,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 780,
+        "referenceOffensePerSecond": 433.333333,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 680.712,
-        "gainOverNormal": 2.078265
-      }
-    },
-    {
-      "blockId": "rupture-stake",
-      "title": "破裂砲",
-      "rarity": "epic",
-      "price": 14,
-      "placementPatternId": "free",
-      "cooldownBeats": 4,
-      "cooldownSeconds": 2,
-      "referenceOffensePerSecond": 739.5,
-      "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 739.5,
-      "weightedCombatValuePerSecond": 339.3,
-      "topologyUtilityCvps": 0,
-      "targetCombatValuePerSecond": 352.592593,
-      "budgetRatio": 0.9623,
-      "budgetStatus": "in-range",
-      "conditions": [],
-      "effects": [
-        {
-          "effectIndex": 0,
-          "kind": "rupture-poison",
-          "condition": "always",
-          "formula": "(floor(poison 250*0.35)*17 - consumed*poisonTicks 5)/seconds 2",
-          "conditionAvailability": 1,
-          "rewardMultiplier": 1,
-          "rawCvps": 739.5,
-          "weightedCvps": 339.3,
-          "referenceOffensePerSecond": 739.5,
-          "referenceDefensePerSecond": 0
-        }
-      ],
-      "fused": {
-        "referenceOffensePerSecond": 2253.333333,
-        "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 1183,
-        "gainOverNormal": 3.48659
+        "weightedCombatValuePerSecond": 398.173333,
+        "gainOverNormal": 1.215653
       }
     },
     {
@@ -2107,10 +2391,72 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 1110,
+        "referenceOffensePerSecond": 616.666667,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 775.2,
-        "gainOverNormal": 2.25
+        "weightedCombatValuePerSecond": 430.666667,
+        "gainOverNormal": 1.25
+      }
+    },
+    {
+      "blockId": "toxic-reservoir",
+      "title": "毒電池",
+      "rarity": "epic",
+      "price": 14,
+      "placementPatternId": "free",
+      "cooldownBeats": 3,
+      "cooldownSeconds": 1.5,
+      "referenceOffensePerSecond": 53.333333,
+      "referenceDefensePerSecond": 21,
+      "rawCombatValuePerSecond": 739.333333,
+      "weightedCombatValuePerSecond": 385.083333,
+      "topologyUtilityCvps": 15,
+      "targetCombatValuePerSecond": 352.592593,
+      "budgetRatio": 1.092148,
+      "budgetStatus": "in-range",
+      "conditions": [],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "charge",
+          "condition": "always",
+          "formula": "charge 5*marginalCVPS 130*producerShare 0.65",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 650,
+          "weightedCvps": 295.75,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 1,
+          "kind": "poison",
+          "condition": "always",
+          "formula": "(amount 16)*unit 5/seconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 53.333333,
+          "weightedCvps": 53.333333,
+          "referenceOffensePerSecond": 53.333333,
+          "referenceDefensePerSecond": 0
+        },
+        {
+          "effectIndex": 2,
+          "kind": "shield",
+          "condition": "always",
+          "formula": "(amount 35)*unit 0.9/seconds 1.5",
+          "conditionAvailability": 1,
+          "rewardMultiplier": 1,
+          "rawCvps": 21,
+          "weightedCvps": 21,
+          "referenceOffensePerSecond": 0,
+          "referenceDefensePerSecond": 21
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 120,
+        "referenceDefensePerSecond": 47.7,
+        "weightedCombatValuePerSecond": 655.9,
+        "gainOverNormal": 1.703268
       }
     },
     {
@@ -2171,13 +2517,13 @@
       "placementPatternId": "free",
       "cooldownBeats": 3,
       "cooldownSeconds": 1.5,
-      "referenceOffensePerSecond": 516.666667,
+      "referenceOffensePerSecond": 433.333333,
       "referenceDefensePerSecond": 0,
-      "rawCombatValuePerSecond": 531.666667,
-      "weightedCombatValuePerSecond": 495,
+      "rawCombatValuePerSecond": 448.333333,
+      "weightedCombatValuePerSecond": 435,
       "topologyUtilityCvps": 15,
       "targetCombatValuePerSecond": 495.238095,
-      "budgetRatio": 0.999519,
+      "budgetRatio": 0.878365,
       "budgetStatus": "in-range",
       "conditions": [],
       "effects": [
@@ -2185,20 +2531,20 @@
           "effectIndex": 0,
           "kind": "poison",
           "condition": "always",
-          "formula": "(amount 100 + floor(250/250)*55)*unit 5/seconds 1.5",
+          "formula": "(amount 110 + floor(250/250)*20)*unit 5/seconds 1.5",
           "conditionAvailability": 1,
           "rewardMultiplier": 1,
-          "rawCvps": 516.666667,
-          "weightedCvps": 480,
-          "referenceOffensePerSecond": 516.666667,
+          "rawCvps": 433.333333,
+          "weightedCvps": 420,
+          "referenceOffensePerSecond": 433.333333,
           "referenceDefensePerSecond": 0
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 1165,
+        "referenceOffensePerSecond": 975,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 1097,
-        "gainOverNormal": 2.216162
+        "weightedCombatValuePerSecond": 960,
+        "gainOverNormal": 2.206897
       }
     },
     {
@@ -2267,12 +2613,12 @@
       "targetCombatValuePerSecond": 520,
       "budgetRatio": 0.981308,
       "budgetStatus": "in-range",
-      "conditions": ["adjacent-resonance>=6"],
+      "conditions": ["adjacent-powered>=6"],
       "effects": [
         {
           "effectIndex": 0,
           "kind": "damage",
-          "condition": "adjacent-resonance>=6",
+          "condition": "adjacent-powered>=6",
           "formula": "(amount 600 + floor(4/1)*160)*unit 1/seconds 2",
           "conditionAvailability": 0.8,
           "rewardMultiplier": 1.25,
@@ -2283,10 +2629,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 1240,
+        "referenceOffensePerSecond": 775,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 975.56,
-        "gainOverNormal": 1.911813
+        "weightedCombatValuePerSecond": 626.6,
+        "gainOverNormal": 1.227953
       }
     },
     {
@@ -2371,10 +2717,48 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 2000,
+        "referenceOffensePerSecond": 1250.5,
         "referenceDefensePerSecond": 0,
-        "weightedCombatValuePerSecond": 918.5,
-        "gainOverNormal": 2
+        "weightedCombatValuePerSecond": 574.255,
+        "gainOverNormal": 1.250419
+      }
+    },
+    {
+      "blockId": "myriad-light-array",
+      "title": "万条光陣",
+      "rarity": "legendary",
+      "price": 21,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 740,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 785,
+      "weightedCombatValuePerSecond": 529.4,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 520,
+      "budgetRatio": 1.018077,
+      "budgetStatus": "in-range",
+      "conditions": ["branches>=3"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "branches>=3",
+          "formula": "(amount 1000 + min(floor(2/1),3)*240)*unit 1/seconds 2",
+          "conditionAvailability": 0.7,
+          "rewardMultiplier": 1.428571,
+          "rawCvps": 740,
+          "weightedCvps": 484.4,
+          "referenceOffensePerSecond": 740,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 925,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 650.5,
+        "gainOverNormal": 1.22875
       }
     },
     {
@@ -2421,10 +2805,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 900,
-        "referenceDefensePerSecond": 360,
-        "weightedCombatValuePerSecond": 917.1,
-        "gainOverNormal": 1.906455
+        "referenceOffensePerSecond": 563.5,
+        "referenceDefensePerSecond": 225.9,
+        "weightedCombatValuePerSecond": 591.193,
+        "gainOverNormal": 1.228964
       }
     },
     {
@@ -2443,12 +2827,12 @@
       "targetCombatValuePerSecond": 544.761905,
       "budgetRatio": 1.062286,
       "budgetStatus": "in-range",
-      "conditions": ["adjacent-resonance>=8"],
+      "conditions": ["adjacent-powered>=8"],
       "effects": [
         {
           "effectIndex": 0,
           "kind": "damage",
-          "condition": "adjacent-resonance>=8",
+          "condition": "adjacent-powered>=8",
           "formula": "(amount 600 + floor(4/1)*120)*unit 1/seconds 2",
           "conditionAvailability": 0.72,
           "rewardMultiplier": 1.388889,
@@ -2460,7 +2844,7 @@
         {
           "effectIndex": 1,
           "kind": "shield",
-          "condition": "adjacent-resonance>=8",
+          "condition": "adjacent-powered>=8",
           "formula": "(amount 300 + floor(4/1)*60)*unit 0.9/seconds 2",
           "conditionAvailability": 0.72,
           "rewardMultiplier": 1.388889,
@@ -2471,10 +2855,10 @@
         }
       ],
       "fused": {
-        "referenceOffensePerSecond": 1080,
-        "referenceDefensePerSecond": 486,
-        "weightedCombatValuePerSecond": 1112.3856,
-        "gainOverNormal": 1.922239
+        "referenceOffensePerSecond": 675,
+        "referenceDefensePerSecond": 303.75,
+        "weightedCombatValuePerSecond": 712.116,
+        "gainOverNormal": 1.23056
       }
     },
     {
@@ -2513,6 +2897,44 @@
         "referenceDefensePerSecond": 0,
         "weightedCombatValuePerSecond": 1072.5,
         "gainOverNormal": 1.875
+      }
+    },
+    {
+      "blockId": "solar-convergence",
+      "title": "天光収束砲",
+      "rarity": "legendary",
+      "price": 22,
+      "placementPatternId": "light-vein",
+      "cooldownBeats": 4,
+      "cooldownSeconds": 2,
+      "referenceOffensePerSecond": 820,
+      "referenceDefensePerSecond": 0,
+      "rawCombatValuePerSecond": 865,
+      "weightedCombatValuePerSecond": 526,
+      "topologyUtilityCvps": 45,
+      "targetCombatValuePerSecond": 544.761905,
+      "budgetRatio": 0.965559,
+      "budgetStatus": "in-range",
+      "conditions": ["inputs>=3"],
+      "effects": [
+        {
+          "effectIndex": 0,
+          "kind": "damage",
+          "condition": "inputs>=3",
+          "formula": "(amount 500 + min(floor(2/1),3)*160)*unit 1*merge=2/seconds 2",
+          "conditionAvailability": 0.65,
+          "rewardMultiplier": 1.538462,
+          "rawCvps": 820,
+          "weightedCvps": 481,
+          "referenceOffensePerSecond": 820,
+          "referenceDefensePerSecond": 0
+        }
+      ],
+      "fused": {
+        "referenceOffensePerSecond": 1025,
+        "referenceDefensePerSecond": 0,
+        "weightedCombatValuePerSecond": 646.25,
+        "gainOverNormal": 1.228612
       }
     }
   ]

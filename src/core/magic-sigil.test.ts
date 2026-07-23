@@ -123,7 +123,7 @@ describe('magic sigils', () => {
     expect(
       GAME_DATA.buildDesign.skills.find((skill) => skill.blockId === 'strike')?.buildLinks.map((link) => link.buildId),
     ).not.toContain('magic-sigil');
-    expect(strike).toMatchObject({ value: 85, row: 2, column: 1 });
+    expect(strike).toMatchObject({ value: 70, row: 2, column: 1 });
   });
 
   it('keeps the fused level-three focus finisher below a deterministic ceiling', () => {
