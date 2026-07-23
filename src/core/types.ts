@@ -1,425 +1,336 @@
 export type Team = 'player' | 'enemy';
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
-export type RarityWeights = Record<Rarity, number>;
-export type Winner = Team | 'draw' | null;
-export type Direction = 'north' | 'east' | 'south' | 'west';
-export type Rotation = 0 | 1 | 2 | 3;
-export type BuildRole = 'starter' | 'grower' | 'cycler' | 'sustain' | 'payoff';
-export type SkillDesignStatus = 'planned' | 'playable';
-export type SkillDesignScope = 'exclusive' | 'shared';
-export type PlacementPatternId =
-  | 'free'
-  | 'loop'
-  | 'fully-connected'
-  | 'straight-line'
-  | 'magic-sigil'
-  | 'resonance'
-  | 'light-vein';
-export type SkillStars = 0 | 1;
-export type BuffStat = 'damage' | 'poison' | 'shield' | 'repair' | 'rupture';
-export type BuffTarget = BuffStat | 'all';
-export type SkillBuffState = Partial<Record<BuffStat, number>>;
-export type PacketPayloadKind = 'damage' | 'poison' | 'charge' | 'shield' | 'repair' | 'coin';
-export type PacketImprint = 'assault' | 'guard' | 'renew';
+export type BattleWinner = Team | 'draw';
+export type LineageId = 'dragon' | 'demon' | 'spirit';
+export type AttributeId = 'light' | 'dark' | 'fire';
+export type WhiteStars = 1 | 2 | 3 | 4 | 5;
+export type ColorStars = 0 | 1 | 2;
+export type StatId = 'maxHp' | 'maxMp' | 'attack' | 'defense' | 'speed' | 'wisdom' | 'crit';
 
-export type PacketNodeEffect =
-  | { kind: 'generate-packet'; payload: PacketPayloadKind; amount: number }
-  | { kind: 'split-packet' }
-  | { kind: 'merge-packet' }
-  | { kind: 'echo-packet' }
-  | { kind: 'imprint-packet'; imprint: PacketImprint }
-  | { kind: 'recirculate-packet' }
-  | {
-      kind: 'convert-packet';
-      input: 'charge' | 'poison';
-      output: 'damage' | 'shield' | 'repair' | 'rupture';
-      amount: number;
-      perUnit: number;
-      consume?: number;
-    };
+export type StatBlock = Record<StatId, number>;
 
-export type PacketProgram = {
-  role: 'source' | 'operator' | 'sink' | 'hybrid';
-  terminal?: boolean;
-  effects: PacketNodeEffect[];
+export type TargetRule =
+  | 'self'
+  | 'lowest-hp-ally'
+  | 'highest-hp-ally'
+  | 'lowest-hp-enemy'
+  | 'highest-hp-enemy'
+  | 'highest-attack-enemy'
+  | 'random-enemy';
+
+export type StatusId =
+  | 'attack-up'
+  | 'attack-down'
+  | 'defense-up'
+  | 'defense-down'
+  | 'speed-up'
+  | 'speed-down'
+  | 'wisdom-up'
+  | 'wisdom-down'
+  | 'crit-up'
+  | 'crit-down'
+  | 'regeneration'
+  | 'damage-over-time'
+  | 'silence';
+
+export type GambitCondition =
+  | { kind: 'always' }
+  | { kind: 'self-hp-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'self-mp-above'; threshold: 25 | 50 | 75 }
+  | { kind: 'ally-hp-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'enemy-hp-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'ally-has-status'; statusId: StatusId }
+  | { kind: 'enemy-has-status'; statusId: StatusId }
+  | { kind: 'living-count-at-most'; team: 'ally' | 'enemy'; count: 1 | 2 };
+
+export type GambitAction = {
+  skillId: string | 'normal-attack';
+  target: TargetRule;
 };
 
-export type EffectTrigger =
-  | { kind: 'enemy-poisoned' }
-  | { kind: 'path-length-at-least'; amount: number }
-  | { kind: 'in-cycle' }
-  | { kind: 'all-ports-connected' }
-  | { kind: 'straight-line-at-least'; amount: number }
-  | { kind: 'magic-sigil-level-at-least'; amount: number }
-  | { kind: 'adjacent-powered-at-least'; amount: number }
-  | { kind: 'branch-at-least'; amount: number }
-  | { kind: 'merge-at-least'; amount: number };
-
-export type CircuitEffectTrigger = Exclude<EffectTrigger, { kind: 'enemy-poisoned' }>;
-
-export type EffectScaling = (
-  | { kind: 'enemy-poison' }
-  | { kind: 'path-length' }
-  | { kind: 'straight-line' }
-  | { kind: 'magic-sigil-level' }
-  | { kind: 'magic-sigil-count' }
-  | { kind: 'powered-axis'; axisId: string; valueId: string }
-  | { kind: 'adjacent-powered' }
-  | { kind: 'downstream-count' }
-  | { kind: 'upstream-count' }
-) & { every: number; amount: number; maxStacks?: number };
-
-type NumericEffect = {
-  amount: number;
-  trigger?: EffectTrigger;
-  scaling?: EffectScaling;
+export type GambitRule = {
+  condition: GambitCondition;
+  action: GambitAction;
 };
 
-export type ActiveEffect =
-  | ({ kind: 'damage' } & NumericEffect)
-  | ({ kind: 'shield' } & NumericEffect)
-  | ({ kind: 'repair' } & NumericEffect)
-  | ({ kind: 'poison' } & NumericEffect)
-  | { kind: 'coin'; amount: number; trigger?: EffectTrigger }
-  | {
-      kind: 'release-charge';
-      output: 'damage' | 'shield';
-      amount: number;
-      perCharge: number;
-      trigger?: EffectTrigger;
-    }
-  | { kind: 'rupture-poison'; fraction: number; damagePerStack: number; trigger?: EffectTrigger };
+export type EffectTarget = 'action-target' | 'self' | 'all-allies' | 'all-enemies';
 
-export type BlockEffect =
-  | ActiveEffect
+export type EffectDefinition =
   | {
-      kind: 'growth';
-      amount: number;
-      target: 'self' | 'upstream' | 'downstream';
-      stat: BuffTarget;
-      trigger?: EffectTrigger;
+      kind: 'damage';
+      scaling: 'physical' | 'magic';
+      power: number;
+      target: EffectTarget;
+      canCrit?: boolean;
     }
-  | { kind: 'amplify'; amount: number; trigger?: EffectTrigger }
-  | { kind: 'haste'; amount: number; trigger?: EffectTrigger }
-  | { kind: 'charge'; amount: number; trigger?: CircuitEffectTrigger }
-  | {
-      kind: 'inscribe-magic-sigil';
-      amount: number;
-      offsets: Array<{ row: number; column: number }>;
-    };
+  | { kind: 'heal'; power: number; target: EffectTarget }
+  | { kind: 'shield'; maxHpPercent: number; target: EffectTarget }
+  | { kind: 'status'; statusId: StatusId; amount: number; durationSeconds: number; target: EffectTarget }
+  | { kind: 'atb'; amount: number; target: EffectTarget }
+  | { kind: 'mp'; amount: number; target: EffectTarget };
 
-export type BlockDefinition = {
+export type SkillDefinition = {
   id: string;
-  code: string;
-  title: string;
+  name: string;
+  description: string;
+  mpCost: number;
+  targetScope: 'single-enemy' | 'single-ally' | 'self' | 'all-enemies' | 'all-allies';
+  effects: EffectDefinition[];
+};
+
+export type TraitStageDefinition = {
+  description: string;
+  battleStartEffects: EffectDefinition[];
+};
+
+export type TraitDefinition = {
+  id: string;
+  name: string;
+  stages: [TraitStageDefinition, TraitStageDefinition, TraitStageDefinition];
+};
+
+export type LineageDefinition = {
+  id: LineageId;
+  name: string;
+  mark: string;
+};
+
+export type AttributeDefinition = {
+  id: AttributeId;
+  name: string;
+  color: string;
+  accent: string;
+};
+
+export type MonsterArchetypeDefinition = {
+  id: string;
+  lineageId: LineageId;
+  attributeId: AttributeId;
+  names: [string, string, string, string, string];
+  glyph: string;
+  baseStats: StatBlock;
+  growthPerLevel: StatBlock;
+  intrinsicSkillIds: [string, string];
+  defaultSkillId: string;
+  traitId: string;
+};
+
+export type MonsterDefinition = {
+  id: string;
+  archetypeId: string;
+  lineageId: LineageId;
+  attributeId: AttributeId;
+  name: string;
+  whiteStars: WhiteStars;
+  glyph: string;
+  baseStats: StatBlock;
+  growthPerLevel: StatBlock;
+  intrinsicSkillIds: [string, string];
+  defaultSkillId: string;
+  traitId: string;
+  price: number;
+  sellPrice: number;
+};
+
+export type EquipmentDefinition = {
+  id: string;
+  name: string;
   description: string;
   glyph: string;
   price: number;
-  rarity: Rarity;
-  shopWeight?: number;
-  ports: Direction[];
-  rotatable?: boolean;
-  buildIds?: string[];
-  effects: BlockEffect[];
-  packet?: PacketProgram;
-  cooldown?: number;
-  fusion?: {
-    title: string;
-    description: string;
-    glyph?: string;
-    cooldown?: number | null;
-    effects: BlockEffect[];
-  };
+  statBonus: Partial<StatBlock>;
+  battleStartEffects: EffectDefinition[];
 };
 
-export type BuildPayoffDefinition = {
+export type SpecialRecipeDefinition = {
   id: string;
-  title: string;
-  strategy: string;
+  parentDefinitionIds: [string, string];
+  resultDefinitionId: string;
 };
 
-export type BuildDefinition = {
+export type EventDefinition = {
   id: string;
-  axisId: string;
-  title: string;
-  placementIdentity: string;
-  strength: string;
-  risk: string;
-  gamePlan: string;
-  payoffs: BuildPayoffDefinition[];
-};
-
-export type BuildAxisDefinition = {
-  id: string;
-  title: string;
+  name: string;
   description: string;
-  values: Array<{ id: string; title: string; description: string; color?: string }>;
+  glyph: string;
+  effect: { kind: 'coins'; amount: number } | { kind: 'roster-xp'; amount: number };
 };
 
-export type SkillAxisLink = {
-  axisId: string;
-  valueIds: string[];
-};
-
-export type SkillBuildLink = {
-  buildId: string;
-  roles: BuildRole[];
-  payoffIds: string[];
-};
-
-export type SkillDesignDefinition = {
-  id: string;
-  title: string;
-  summary: string;
-  status: SkillDesignStatus;
-  blockId?: string;
-  scope: SkillDesignScope;
-  sharedSynergies: string[];
-  placementPatternId: PlacementPatternId;
-  circuitCoreRoles?: BuildRole[];
-  axisLinks: SkillAxisLink[];
-  buildLinks: SkillBuildLink[];
-};
-
-export type BuildDesign = {
-  rules: {
-    requiredRoles: BuildRole[];
-    requiredPayoffRoles: BuildRole[];
-    minimumPayoffsPerBuild: number;
-    minimumOpenSkillsPerBuild: number;
-    maximumExclusiveSkillRatio: number;
-    minimumPlayableSkillsPerBuild: number;
-    requiredAxisIds: string[];
-    minimumHybridSkillsPerBuild: number;
-    minimumWeaponTypesPerBuild: number;
-    requireSkillDesignForEveryBlock: boolean;
-  };
-  placementPatterns: Array<{
-    id: PlacementPatternId;
-    title: string;
-    description: string;
-    category: 'condition' | 'core';
-  }>;
-  axes: BuildAxisDefinition[];
-  builds: BuildDefinition[];
-  skills: SkillDesignDefinition[];
-};
-
-export type UnitDefinition = {
-  id: string;
-  name: string;
-  code: string;
-  maxHp: number;
-  color: string;
-};
-
-export type PlacedBlock = {
-  blockId: string;
-  rotation: Rotation;
-  stars?: SkillStars;
-};
-
-export type SkillFusionRules = {
-  copiesRequired: number;
-  rewardChoices: number;
-  effectMultiplier: number;
-  cooldownReduction: number;
-};
-
-export type MagicSigilRules = {
+export type GameRules = {
+  contentVersion: string;
+  maxCycles: number;
+  maxLosses: number;
+  rosterLimit: number;
+  activeLimit: number;
+  benchLimit: number;
+  initialCoins: number;
+  cycleIncome: number;
+  breedingCoinBonus: number;
+  levelThresholds: number[];
   maxLevel: number;
-  effectPowerPerLevel: number;
-  hasteLevel: number;
-  cooldownReduction: number;
-};
-
-export type BalanceFormulaRules = {
-  version: number;
-  reference: {
-    windowSeconds: number;
-    enemyPoison: number;
-    charge: number;
-    pathLength: number;
-    straightLineLength: number;
-    magicSigilLevel: number;
-    magicSigilCount: number;
-    adjacentPoweredCount: number;
-    downstreamCount: number;
-    upstreamCount: number;
-    poweredAxisCount: number;
-    targetCooldownBeats: number;
-    targetEffectAmount: number;
-  };
-  effectValue: {
-    shield: number;
-    repair: number;
-    poisonTicks: number;
-    supportPoint: number;
-    coin: number;
-  };
-  conditionAvailability: {
-    minimum: number;
-    enemyPoisoned: number;
-    inCycle: number;
-    pathLengthBase: number;
-    pathLengthPenaltyPerRequiredNode: number;
-    straightLineBase: number;
-    straightLinePenaltyPerRequiredNode: number;
-    allPortsConnectedBase: number;
-    allPortsConnectedPenaltyPerPort: number;
-    magicSigilBase: number;
-    magicSigilPenaltyPerRequiredLevel: number;
-    adjacentPoweredBase: number;
-    adjacentPoweredPenaltyPerRequiredNode: number;
-    branchBase: number;
-    branchPenaltyPerRequiredRoute: number;
-    mergeBase: number;
-    mergePenaltyPerRequiredRoute: number;
-  };
-  resourceAvailability: {
-    charge: number;
-    rupturePoison: number;
-    magicSigil: number;
-    poweredAxis: number;
-  };
-  chargeAttribution: {
-    producer: number;
-    consumer: number;
-  };
-  topologyUtility: {
-    perAdditionalPort: number;
-    rotatable: number;
-  };
-  targetCvpsByRarity: Record<Rarity, number>;
-  referencePriceByRarity: Record<Rarity, number>;
-  acceptableBudgetRatio: {
-    minimum: number;
-    maximum: number;
-  };
-};
-
-export type LevelProgressionRules = {
-  runsPerLevel: number;
-  maxLevel: number;
-  rarityWeightMultiplierPerLevel: RarityWeights;
-};
-
-export type HeartRules = {
-  initialPosition: CellPosition;
-  ports: Direction[];
-};
-
-export type BodyUpgradeRules = {
-  maxLevel: number;
-  hpPerLevel: number;
-  upgradeCosts: number[];
-  rivalRunsPerLevel: number;
-};
-
-export type CircuitBoard = Array<Array<PlacedBlock | null>>;
-
-export type GameData = {
-  schemaVersion: number;
-  rules: {
-    boardSize: number;
-    heart: HeartRules;
-    bodyUpgrades: BodyUpgradeRules;
-    battleStepMs: number;
-    pulseAnimationMs: number;
-    suddenDeathSeconds: number;
-    suddenDeathBaseDamage: number;
-    suddenDeathGrowth: number;
-    poisonTickSeconds: number;
-    poisonDecay: number;
-    mergeEffectMultiplier: number;
-    startingCoins: number;
-    winReward: number;
-    retryReward: number;
+  activeXpByCycleBand: [number, number, number, number];
+  battleWinXp: number;
+  benchXpRate: number;
+  shop: {
+    monsterSlots: number;
+    equipmentSlots: number;
     rerollCost: number;
-    shopSize: number;
-    rarityWeights: RarityWeights;
-    levelProgression: LevelProgressionRules;
-    skillFusion: SkillFusionRules;
-    magicSigils: MagicSigilRules;
-    balanceFormula: BalanceFormulaRules;
-    enemyGeneration: {
-      startingNodes: number;
-      nodesPerRun: number;
-      maxNodes: number;
-    };
+    luckyUpgradeChance: number;
   };
-  units: UnitDefinition[];
-  playerUnitId: string;
-  enemyUnitId: string;
-  buildDesign: BuildDesign;
-  blocks: BlockDefinition[];
-  startingRack: string[];
-  playerBoard: CircuitBoard;
+  breeding: {
+    minimumLevel: number;
+    inheritanceRatesByTotalColorStars: [number, number, number, number, number];
+    colorGrowthBonus: [number, number, number];
+  };
+  battle: {
+    tickSeconds: number;
+    gaugeMaximum: number;
+    baseActionSeconds: number;
+    criticalMultiplier: number;
+    criticalCap: number;
+    environmentStartSeconds: number;
+    environmentIntervalSeconds: number;
+    environmentInitialPercent: number;
+    environmentGrowth: number;
+    maximumSeconds: number;
+    shieldCapPercent: number;
+  };
+  eventCycles: number[];
 };
 
-export type CellPosition = { row: number; column: number };
+export type RawGameData = {
+  schemaVersion: number;
+  rules: GameRules;
+  lineages: LineageDefinition[];
+  attributes: AttributeDefinition[];
+  rankStatMultipliers: [number, number, number, number, number];
+  archetypes: MonsterArchetypeDefinition[];
+  skills: SkillDefinition[];
+  traits: TraitDefinition[];
+  equipment: EquipmentDefinition[];
+  specialRecipes: SpecialRecipeDefinition[];
+  events: EventDefinition[];
+};
 
-export type FighterState = {
-  instanceId: string;
-  unitId: string;
-  name: string;
-  code: string;
-  color: string;
+export type GameData = RawGameData & {
+  monsters: MonsterDefinition[];
+};
+
+export type MonsterInstance = {
+  id: string;
+  definitionId: string;
+  colorStars: ColorStars;
+  level: number;
+  xp: number;
+  inheritedStats: StatBlock;
+  inheritedSkillId?: string;
+  gambits: [GambitRule, GambitRule, GambitRule];
+  equipmentId?: string;
+};
+
+export type BreedingCandidateKind = 'generic' | 'same-name' | 'special';
+
+export type BreedingCandidate = {
+  id: string;
+  kind: BreedingCandidateKind;
+  definitionId: string;
+  colorStars: ColorStars;
+  label: string;
+};
+
+export type ShopMonsterOffer = {
+  id: string;
+  definitionId: string;
+  lucky: boolean;
+};
+
+export type ShopEquipmentOffer = {
+  id: string;
+  equipmentId: string;
+};
+
+export type ShopState = {
+  seed: number;
+  frozen: boolean;
+  monsters: Array<ShopMonsterOffer | null>;
+  equipment: Array<ShopEquipmentOffer | null>;
+};
+
+export type RunPhase = 'draft' | 'event' | 'prepare' | 'result' | 'finished';
+
+export type CasualRunState = {
+  schemaVersion: 1;
+  mode: 'casual';
+  seed: number;
+  commandIndex: number;
+  phase: RunPhase;
+  cycle: number;
+  completedCycles: number;
+  wins: number;
+  losses: number;
+  coins: number;
+  roster: MonsterInstance[];
+  activeIds: string[];
+  equipmentInventory: string[];
+  shop: ShopState | null;
+  draftRound: number;
+  draftChoices: string[];
+  eventChoices: string[];
+  lastBattle?: BattleResult;
+};
+
+export type TimedStatus = {
+  id: StatusId;
+  amount: number;
+  remainingSeconds: number;
+};
+
+export type FighterSnapshot = {
+  id: string;
   team: Team;
+  name: string;
+  definitionId: string;
+  colorStars: ColorStars;
+  whiteStars: WhiteStars;
   hp: number;
   maxHp: number;
+  mp: number;
+  maxMp: number;
+  gauge: number;
   shield: number;
-  poison: number;
+  statuses: StatusId[];
+  alive: boolean;
 };
 
-export type BattleTraceEvent =
-  | {
-      id: string;
-      tick: number;
-      team: Team;
-      kind: 'damage' | 'shield' | 'repair' | 'poison' | 'growth' | 'rupture' | 'coin';
-      blockId: string;
-      row: number;
-      column: number;
-      value: number;
-      targetId: string;
-      buffStat?: BuffStat;
-      mergeMultiplier?: number;
-      charge?: number;
-      stars?: SkillStars;
-    }
-  | {
-      id: string;
-      tick: number;
-      team: Team;
-      kind: 'overload' | 'poison-tick';
-      value: number;
-      targetId: string;
-    };
-
-export type BattleState = {
-  tick: number;
-  fighters: FighterState[];
-  playerBoard: CircuitBoard;
-  enemyBoard: CircuitBoard;
-  playerHeartPosition: CellPosition;
-  enemyHeartPosition: CellPosition;
-  playerPowered: string[];
-  enemyPowered: string[];
-  skillBuffs: Record<Team, Record<string, SkillBuffState>>;
-  activePulse: Record<Team, string[]>;
-  pulseStep: number;
-  pulseStepCount: number;
-  trace: BattleTraceEvent[];
-  overloadLevel: number;
-  overloadDamage: number;
-  winner: Winner;
+export type BattleFrame = {
+  atSeconds: number;
+  kind: 'start' | 'action' | 'environment' | 'defeat' | 'finish';
+  actorId?: string;
+  targetIds: string[];
+  text: string;
+  fighters: FighterSnapshot[];
 };
 
-export type ShopOffer = {
-  id: string;
-  slot: number;
-  blockId: string;
-  rotation: Rotation;
-  locked: boolean;
+export type BattleResult = {
+  winner: BattleWinner;
+  durationSeconds: number;
+  frames: BattleFrame[];
+  damageByTeam: Record<Team, number>;
+};
+
+export type BattleInput = {
+  player: MonsterInstance[];
+  enemy: MonsterInstance[];
+  seed: number;
+};
+
+export type CommandResult<T> = { ok: true; state: T } | { ok: false; state: T; error: string };
+
+export const EMPTY_STATS: StatBlock = {
+  maxHp: 0,
+  maxMp: 0,
+  attack: 0,
+  defense: 0,
+  speed: 0,
+  wisdom: 0,
+  crit: 0,
 };

@@ -1,1428 +1,712 @@
 {
-  "schemaVersion": 27,
+  "schemaVersion": 1,
   "rules": {
-    "boardSize": 5,
-    "heart": {
-      "initialPosition": {
-        "row": 2,
-        "column": 2
-      },
-      "ports": ["north", "east", "south", "west"]
+    "contentVersion": "casual-prototype-1",
+    "maxCycles": 12,
+    "maxLosses": 5,
+    "rosterLimit": 7,
+    "activeLimit": 3,
+    "benchLimit": 4,
+    "initialCoins": 10,
+    "cycleIncome": 10,
+    "breedingCoinBonus": 1,
+    "levelThresholds": [0, 4, 10, 18, 28, 40, 54, 70, 88, 108],
+    "maxLevel": 10,
+    "activeXpByCycleBand": [4, 5, 6, 7],
+    "battleWinXp": 1,
+    "benchXpRate": 0.5,
+    "shop": {
+      "monsterSlots": 3,
+      "equipmentSlots": 2,
+      "rerollCost": 1,
+      "luckyUpgradeChance": 0.02
     },
-    "bodyUpgrades": {
-      "maxLevel": 6,
-      "hpPerLevel": 2500,
-      "upgradeCosts": [6, 8, 10, 12, 14],
-      "rivalRunsPerLevel": 1
+    "breeding": {
+      "minimumLevel": 3,
+      "inheritanceRatesByTotalColorStars": [0.25, 0.3, 0.35, 0.4, 0.45],
+      "colorGrowthBonus": [1, 1.1, 1.2]
     },
-    "battleStepMs": 500,
-    "pulseAnimationMs": 480,
-    "suddenDeathSeconds": 20,
-    "suddenDeathBaseDamage": 250,
-    "suddenDeathGrowth": 2,
-    "poisonTickSeconds": 1,
-    "poisonDecay": 15,
-    "mergeEffectMultiplier": 2,
-    "startingCoins": 32,
-    "winReward": 16,
-    "retryReward": 12,
-    "rerollCost": 3,
-    "shopSize": 6,
-    "rarityWeights": {
-      "common": 100,
-      "rare": 50,
-      "epic": 30,
-      "legendary": 15
+    "battle": {
+      "tickSeconds": 0.1,
+      "gaugeMaximum": 100,
+      "baseActionSeconds": 4,
+      "criticalMultiplier": 1.5,
+      "criticalCap": 50,
+      "environmentStartSeconds": 45,
+      "environmentIntervalSeconds": 3,
+      "environmentInitialPercent": 0.05,
+      "environmentGrowth": 1.5,
+      "maximumSeconds": 66,
+      "shieldCapPercent": 0.5
     },
-    "levelProgression": {
-      "runsPerLevel": 1,
-      "maxLevel": 9,
-      "rarityWeightMultiplierPerLevel": {
-        "common": 0.96,
-        "rare": 1.02,
-        "epic": 1.08,
-        "legendary": 1.14
-      }
-    },
-    "skillFusion": {
-      "copiesRequired": 3,
-      "rewardChoices": 3,
-      "effectMultiplier": 1.5,
-      "cooldownReduction": 1
-    },
-    "magicSigils": {
-      "maxLevel": 3,
-      "effectPowerPerLevel": 15,
-      "hasteLevel": 3,
-      "cooldownReduction": 1
-    },
-    "balanceFormula": {
-      "version": 1,
-      "reference": {
-        "windowSeconds": 10,
-        "enemyPoison": 250,
-        "charge": 5,
-        "pathLength": 5,
-        "straightLineLength": 5,
-        "magicSigilLevel": 2,
-        "magicSigilCount": 4,
-        "downstreamCount": 2,
-        "upstreamCount": 2,
-        "poweredAxisCount": 4,
-        "targetCooldownBeats": 3,
-        "targetEffectAmount": 220,
-        "adjacentPoweredCount": 4
-      },
-      "effectValue": {
-        "shield": 0.9,
-        "repair": 0.8,
-        "poisonTicks": 5,
-        "supportPoint": 1,
-        "coin": 160
-      },
-      "conditionAvailability": {
-        "minimum": 0.25,
-        "enemyPoisoned": 0.8,
-        "inCycle": 0.5,
-        "pathLengthBase": 1,
-        "pathLengthPenaltyPerRequiredNode": 0.12,
-        "straightLineBase": 0.95,
-        "straightLinePenaltyPerRequiredNode": 0.15,
-        "allPortsConnectedBase": 0.95,
-        "allPortsConnectedPenaltyPerPort": 0.15,
-        "magicSigilBase": 0.85,
-        "magicSigilPenaltyPerRequiredLevel": 0.15,
-        "branchBase": 0.9,
-        "branchPenaltyPerRequiredRoute": 0.1,
-        "mergeBase": 0.85,
-        "mergePenaltyPerRequiredRoute": 0.1,
-        "adjacentPoweredBase": 1,
-        "adjacentPoweredPenaltyPerRequiredNode": 0.04
-      },
-      "resourceAvailability": {
-        "charge": 0.7,
-        "rupturePoison": 0.65,
-        "magicSigil": 0.7,
-        "poweredAxis": 0.7
-      },
-      "chargeAttribution": {
-        "producer": 0.65,
-        "consumer": 0.35
-      },
-      "topologyUtility": {
-        "perAdditionalPort": 15,
-        "rotatable": 10
-      },
-      "targetCvpsByRarity": {
-        "common": 150,
-        "rare": 220,
-        "epic": 340,
-        "legendary": 520
-      },
-      "referencePriceByRarity": {
-        "common": 4.5,
-        "rare": 8,
-        "epic": 13.5,
-        "legendary": 21
-      },
-      "acceptableBudgetRatio": {
-        "minimum": 0.75,
-        "maximum": 1.25
-      }
-    },
-    "enemyGeneration": {
-      "startingNodes": 7,
-      "nodesPerRun": 1,
-      "maxNodes": 15
-    }
+    "eventCycles": [3, 6, 9]
   },
-  "units": [
+  "lineages": [
+    { "id": "dragon", "name": "竜系", "mark": "竜" },
+    { "id": "demon", "name": "悪魔系", "mark": "魔" },
+    { "id": "spirit", "name": "精霊系", "mark": "精" }
+  ],
+  "attributes": [
+    { "id": "light", "name": "光", "color": "#f2d98b", "accent": "#fff1ba" },
+    { "id": "dark", "name": "闇", "color": "#8c78c6", "accent": "#c9b7ff" },
+    { "id": "fire", "name": "火", "color": "#ea6b52", "accent": "#ffb06f" }
+  ],
+  "rankStatMultipliers": [1, 1.26, 1.58, 1.95, 2.38],
+  "archetypes": [
     {
-      "id": "volt",
-      "name": "ヴォルト",
-      "code": "V-01",
-      "maxHp": 5000,
-      "color": "#5de7f2"
+      "id": "light-dragon",
+      "lineageId": "dragon",
+      "attributeId": "light",
+      "names": ["ハクリュウコ", "曙光ドレイク", "天環ワイバーン", "白耀竜レグナ", "光冠竜アステリオン"],
+      "glyph": "◇",
+      "baseStats": { "maxHp": 92, "maxMp": 28, "attack": 24, "defense": 27, "speed": 19, "wisdom": 16, "crit": 6 },
+      "growthPerLevel": { "maxHp": 8, "maxMp": 2, "attack": 3, "defense": 3, "speed": 2, "wisdom": 2, "crit": 0 },
+      "intrinsicSkillIds": ["halo-bite", "ward-roar"],
+      "defaultSkillId": "tail-swipe",
+      "traitId": "sunscale"
     },
     {
-      "id": "rust",
-      "name": "ラスト",
-      "code": "R-09",
-      "maxHp": 5000,
-      "color": "#ff786e"
+      "id": "dark-dragon",
+      "lineageId": "dragon",
+      "attributeId": "dark",
+      "names": ["ヨイヤモリ", "黒月ドレイク", "蝕影ワイバーン", "冥鱗竜ノクス", "深淵竜ヴェスパー"],
+      "glyph": "◆",
+      "baseStats": { "maxHp": 84, "maxMp": 30, "attack": 28, "defense": 21, "speed": 24, "wisdom": 17, "crit": 10 },
+      "growthPerLevel": { "maxHp": 7, "maxMp": 2, "attack": 3, "defense": 2, "speed": 3, "wisdom": 2, "crit": 1 },
+      "intrinsicSkillIds": ["night-claw", "blood-focus"],
+      "defaultSkillId": "tail-swipe",
+      "traitId": "eclipse-fang"
+    },
+    {
+      "id": "fire-dragon",
+      "lineageId": "dragon",
+      "attributeId": "fire",
+      "names": ["ヒノコトカゲ", "熾火ドレイク", "炎脈ワイバーン", "爆鱗竜イグナ", "劫火竜ヴォルカ"],
+      "glyph": "△",
+      "baseStats": { "maxHp": 88, "maxMp": 27, "attack": 29, "defense": 23, "speed": 22, "wisdom": 15, "crit": 8 },
+      "growthPerLevel": { "maxHp": 8, "maxMp": 2, "attack": 4, "defense": 2, "speed": 2, "wisdom": 1, "crit": 0 },
+      "intrinsicSkillIds": ["ember-drive", "scale-wall"],
+      "defaultSkillId": "tail-swipe",
+      "traitId": "furnace-heart"
+    },
+    {
+      "id": "light-demon",
+      "lineageId": "demon",
+      "attributeId": "light",
+      "names": ["ランプインプ", "聖灯グレムリン", "白翼アークデーモン", "戒光魔ラディウス", "審判魔セフィラ"],
+      "glyph": "✦",
+      "baseStats": { "maxHp": 72, "maxMp": 44, "attack": 16, "defense": 18, "speed": 23, "wisdom": 30, "crit": 5 },
+      "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 2, "wisdom": 4, "crit": 0 },
+      "intrinsicSkillIds": ["lumen-bolt", "mend"],
+      "defaultSkillId": "arc-shot",
+      "traitId": "merciful-contract"
+    },
+    {
+      "id": "dark-demon",
+      "lineageId": "demon",
+      "attributeId": "dark",
+      "names": ["スミインプ", "夜帳グレムリン", "影翼アークデーモン", "禁呪魔アビス", "宵王魔メフィスト"],
+      "glyph": "✧",
+      "baseStats": { "maxHp": 75, "maxMp": 42, "attack": 17, "defense": 17, "speed": 25, "wisdom": 31, "crit": 7 },
+      "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 3, "wisdom": 4, "crit": 0 },
+      "intrinsicSkillIds": ["void-needle", "silence-mark"],
+      "defaultSkillId": "arc-shot",
+      "traitId": "black-covenant"
+    },
+    {
+      "id": "fire-demon",
+      "lineageId": "demon",
+      "attributeId": "fire",
+      "names": ["アカインプ", "火遊グレムリン", "炎翼アークデーモン", "灼契魔フレア", "紅蓮魔ベリアル"],
+      "glyph": "✷",
+      "baseStats": { "maxHp": 78, "maxMp": 38, "attack": 22, "defense": 18, "speed": 21, "wisdom": 28, "crit": 7 },
+      "growthPerLevel": { "maxHp": 7, "maxMp": 3, "attack": 2, "defense": 2, "speed": 2, "wisdom": 4, "crit": 0 },
+      "intrinsicSkillIds": ["fury-orb", "battle-chant"],
+      "defaultSkillId": "arc-shot",
+      "traitId": "riot-pact"
+    },
+    {
+      "id": "light-spirit",
+      "lineageId": "spirit",
+      "attributeId": "light",
+      "names": ["ヒカリノコ", "朝露ピクシー", "陽だまりシルフ", "光庭精ルーチェ", "星祈精エリュシア"],
+      "glyph": "○",
+      "baseStats": { "maxHp": 74, "maxMp": 40, "attack": 15, "defense": 20, "speed": 27, "wisdom": 27, "crit": 5 },
+      "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 1, "defense": 2, "speed": 3, "wisdom": 4, "crit": 0 },
+      "intrinsicSkillIds": ["gentle-ray", "aegis-dust"],
+      "defaultSkillId": "spirit-spark",
+      "traitId": "morning-dew"
+    },
+    {
+      "id": "dark-spirit",
+      "lineageId": "spirit",
+      "attributeId": "dark",
+      "names": ["カゲノコ", "宵露ピクシー", "夜凪シルフ", "月庭精ウンブラ", "夢渡精レヴェリィ"],
+      "glyph": "●",
+      "baseStats": { "maxHp": 70, "maxMp": 42, "attack": 16, "defense": 18, "speed": 29, "wisdom": 28, "crit": 6 },
+      "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 4, "wisdom": 3, "crit": 0 },
+      "intrinsicSkillIds": ["dusk-pulse", "wither"],
+      "defaultSkillId": "spirit-spark",
+      "traitId": "moon-mist"
+    },
+    {
+      "id": "fire-spirit",
+      "lineageId": "spirit",
+      "attributeId": "fire",
+      "names": ["ホムラノコ", "火花ピクシー", "焔風シルフ", "火庭精エンバー", "日輪精サラマンナ"],
+      "glyph": "◎",
+      "baseStats": { "maxHp": 73, "maxMp": 37, "attack": 19, "defense": 18, "speed": 31, "wisdom": 24, "crit": 7 },
+      "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 2, "defense": 2, "speed": 4, "wisdom": 3, "crit": 0 },
+      "intrinsicSkillIds": ["quick-flare", "haste-song"],
+      "defaultSkillId": "spirit-spark",
+      "traitId": "wildfire-dance"
     }
   ],
-  "playerUnitId": "volt",
-  "enemyUnitId": "rust",
-  "buildDesign": {
-    "rules": {
-      "requiredRoles": ["starter", "grower", "cycler", "sustain", "payoff"],
-      "requiredPayoffRoles": ["grower", "cycler", "payoff"],
-      "minimumPayoffsPerBuild": 2,
-      "minimumOpenSkillsPerBuild": 3,
-      "maximumExclusiveSkillRatio": 0.5,
-      "minimumPlayableSkillsPerBuild": 0,
-      "requiredAxisIds": ["trait", "weapon"],
-      "minimumHybridSkillsPerBuild": 2,
-      "minimumWeaponTypesPerBuild": 4,
-      "requireSkillDesignForEveryBlock": true
-    },
-    "placementPatterns": [
-      {
-        "id": "free",
-        "title": "生成・変換",
-        "description": "状態をパケットへ加えるか、届いた状態を戦闘出力へ変換する",
-        "category": "condition"
-      },
-      {
-        "id": "loop",
-        "title": "再循環",
-        "description": "輪の中でパケット全体を1回だけ再通過させる",
-        "category": "condition"
-      },
-      {
-        "id": "fully-connected",
-        "title": "合流",
-        "description": "同じ拍に別経路から届いたパケットを1つへまとめる",
-        "category": "condition"
-      },
-      {
-        "id": "magic-sigil",
-        "title": "出力刻印",
-        "description": "状態の種類を問わず、終端の出力先を攻撃・防御・回復へ書き換える",
-        "category": "core"
-      },
-      {
-        "id": "resonance",
-        "title": "状態複製",
-        "description": "最後に追加された状態だけを1回複製し、再帰的な複製は止める",
-        "category": "core"
-      },
-      {
-        "id": "light-vein",
-        "title": "分岐",
-        "description": "量を保存したまま、パケットを複数経路へ分ける",
-        "category": "core"
-      }
-    ],
-    "axes": [
-      {
-        "id": "trait",
-        "title": "状態",
-        "description": "ノードがパケットへ生成する状態。回路演算子は状態を問わず再利用できる",
-        "values": [
-          {
-            "id": "neutral",
-            "title": "無属性",
-            "description": "状態を作らず、どのパケットにも使える回路演算子",
-            "color": "#486977"
-          },
-          {
-            "id": "damage",
-            "title": "攻撃",
-            "description": "終端で相手へのダメージになる状態",
-            "color": "#ff786e"
-          },
-          {
-            "id": "poison",
-            "title": "毒",
-            "description": "終端で相手へ残り、時間経過か破裂でダメージになる状態",
-            "color": "#8bd450"
-          },
-          {
-            "id": "charge",
-            "title": "チャージ",
-            "description": "そのパケット内だけに残り、変換ノードで使われる一時状態",
-            "color": "#ffd36a"
-          },
-          {
-            "id": "shield",
-            "title": "防御",
-            "description": "終端で自分のシールドになる状態",
-            "color": "#5de7f2"
-          },
-          {
-            "id": "repair",
-            "title": "回復",
-            "description": "終端で自分のHP回復になる状態",
-            "color": "#ff9bd7"
-          },
-          {
-            "id": "coin",
-            "title": "コイン",
-            "description": "終端で戦闘後の獲得コインになる状態",
-            "color": "#ffb454"
-          }
-        ]
-      },
-      {
-        "id": "weapon",
-        "title": "出力",
-        "description": "運ばれた状態を、戦闘でどの結果へ変えるかを示す",
-        "values": [
-          {
-            "id": "attack",
-            "title": "攻撃",
-            "description": "ダメージか毒として相手へ出力する"
-          },
-          {
-            "id": "guard",
-            "title": "防御",
-            "description": "シールドとして自分へ出力する"
-          },
-          {
-            "id": "repair",
-            "title": "回復",
-            "description": "HP回復として自分へ出力する"
-          },
-          {
-            "id": "economy",
-            "title": "資金",
-            "description": "戦闘後のコインとして出力する"
-          },
-          {
-            "id": "operator",
-            "title": "回路演算",
-            "description": "状態を問わずパケットの経路や出力先を変える"
-          }
-        ]
-      }
-    ],
-    "builds": [
-      {
-        "id": "poison",
-        "axisId": "trait",
-        "title": "毒",
-        "placementIdentity": "毒を生成し、汎用演算子を通して培養か破裂の終端へ届ける",
-        "strength": "後半の継続成長",
-        "risk": "立ち上がりが遅い",
-        "gamePlan": "毒パケットを複製して長期蓄積するか、分岐・合流で束ねて破裂へ変換する",
-        "payoffs": [
-          {
-            "id": "cultivate",
-            "title": "培養",
-            "strategy": "毒を残して育てる"
-          },
-          {
-            "id": "burst",
-            "title": "破裂",
-            "strategy": "毒を一気に破裂させる"
-          }
-        ]
-      },
-      {
-        "id": "charge",
-        "axisId": "trait",
-        "title": "チャージ",
-        "placementIdentity": "チャージを生成し、汎用演算子を通して攻撃か防御の終端へ届ける",
-        "strength": "完成した経路からの瞬間出力",
-        "risk": "充電ノードが足りないか経路が切れると弱い",
-        "gamePlan": "一時的なチャージパケットを経路で加工し、砲撃か防壁として終端で解放する",
-        "payoffs": [
-          {
-            "id": "burst",
-            "title": "一括解放",
-            "strategy": "全チャージを大ダメージへ変える"
-          },
-          {
-            "id": "guard",
-            "title": "防壁解放",
-            "strategy": "全チャージをシールドへ変える"
-          }
-        ]
-      }
-    ],
-    "skills": [
-      {
-        "id": "strike",
-        "title": "斬撃",
-        "summary": "毎拍、通過するパケットへダメージ55を加える。",
-        "status": "playable",
-        "blockId": "strike",
-        "scope": "shared",
-        "sharedSynergies": ["foundation", "blade"],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["damage"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["starter", "cycler"],
-            "payoffIds": ["cultivate", "burst"]
-          },
-          {
-            "buildId": "charge",
-            "roles": ["starter", "cycler"],
-            "payoffIds": ["burst", "guard"]
-          }
-        ]
-      },
-      {
-        "id": "repair-dividend",
-        "title": "配当修復機",
-        "summary": "5拍ごとに、通過するパケットへシールド270を加える。5拍ごとに、通過するパケットへ回復180を加える。5拍ごとに、通過するパケットへコイン1を加える。",
-        "status": "playable",
-        "blockId": "repair-dividend",
-        "scope": "shared",
-        "sharedSynergies": ["economy", "sustain", "device"],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["shield", "repair", "coin"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["guard", "repair", "economy"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["sustain"],
-            "payoffIds": ["cultivate", "burst"]
-          },
-          {
-            "buildId": "charge",
-            "roles": ["sustain"],
-            "payoffIds": ["burst", "guard"]
-          }
-        ]
-      },
-      {
-        "id": "poison-needle",
-        "title": "毒矢",
-        "summary": "2拍ごとに、通過するパケットへダメージ55を加える。2拍ごとに、通過するパケットへ毒12を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
-        "status": "playable",
-        "blockId": "poison-needle",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["damage", "poison"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack", "operator"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["starter", "grower"],
-            "payoffIds": ["cultivate", "burst"]
-          }
-        ]
-      },
-      {
-        "id": "venom-bloom",
-        "title": "猛毒花",
-        "summary": "3拍ごとに、通過するパケットへ毒110を加える。",
-        "status": "playable",
-        "blockId": "venom-bloom",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["poison"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["payoff"],
-            "payoffIds": ["cultivate"]
-          }
-        ]
-      },
-      {
-        "id": "rupture-stake",
-        "title": "破裂砲",
-        "summary": "届いた毒パケットを消費し、その量1につき14ダメージを加えて相手の毒を35%破裂させる。",
-        "status": "playable",
-        "blockId": "rupture-stake",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["poison"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["payoff"],
-            "payoffIds": ["burst"]
-          }
-        ]
-      },
-      {
-        "id": "return-coil",
-        "title": "帰還コイル",
-        "summary": "2拍ごとに、通過するパケットへシールド170を加える。輪の中に置くと、パケット全体を1回だけ再循環させる。",
-        "status": "playable",
-        "blockId": "return-coil",
-        "scope": "shared",
-        "sharedSynergies": ["cycle", "combat-growth"],
-        "placementPatternId": "loop",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["shield"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["guard", "operator"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["cycler"],
-            "payoffIds": ["cultivate", "burst"]
-          },
-          {
-            "buildId": "charge",
-            "roles": ["cycler"],
-            "payoffIds": ["burst", "guard"]
-          }
-        ]
-      },
-      {
-        "id": "amplifier",
-        "title": "増幅術",
-        "summary": "最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
-        "status": "playable",
-        "blockId": "amplifier",
-        "scope": "shared",
-        "sharedSynergies": ["echo"],
-        "placementPatternId": "resonance",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["neutral"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["operator"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["grower"],
-            "payoffIds": ["cultivate", "burst"]
-          },
-          {
-            "buildId": "charge",
-            "roles": ["grower"],
-            "payoffIds": ["burst", "guard"]
-          }
-        ],
-        "circuitCoreRoles": ["starter", "grower", "cycler", "payoff"]
-      },
-      {
-        "id": "accelerator",
-        "title": "加速術",
-        "summary": "同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
-        "status": "playable",
-        "blockId": "accelerator",
-        "scope": "shared",
-        "sharedSynergies": ["cooldown"],
-        "placementPatternId": "fully-connected",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["neutral"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["operator"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["cycler"],
-            "payoffIds": ["cultivate", "burst"]
-          },
-          {
-            "buildId": "charge",
-            "roles": ["cycler"],
-            "payoffIds": ["burst", "guard"]
-          }
-        ]
-      },
-      {
-        "id": "charge-blade",
-        "title": "充電刃",
-        "summary": "2拍ごとに、通過するパケットへチャージ2を加える。2拍ごとに、通過するパケットへダメージ75を加える。",
-        "status": "playable",
-        "blockId": "charge-blade",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["charge", "damage"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "charge",
-            "roles": ["starter", "grower"],
-            "payoffIds": ["burst", "guard"]
-          }
-        ]
-      },
-      {
-        "id": "discharge-bow",
-        "title": "放電弓",
-        "summary": "届いたチャージをすべて消費し、ダメージ150＋1あたり140へ変換する。",
-        "status": "playable",
-        "blockId": "discharge-bow",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["charge"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "charge",
-            "roles": ["payoff"],
-            "payoffIds": ["burst"]
-          }
-        ]
-      },
-      {
-        "id": "charge-bastion",
-        "title": "防壁展開",
-        "summary": "届いたチャージをすべて消費し、シールド210＋1あたり200へ変換する。3拍ごとに、通過するパケットへ回復175を加える。",
-        "status": "playable",
-        "blockId": "charge-bastion",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["charge", "repair"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["guard", "repair"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "charge",
-            "roles": ["sustain", "payoff"],
-            "payoffIds": ["guard"]
-          }
-        ]
-      },
-      {
-        "id": "overcharge-cannon",
-        "title": "超過解放砲",
-        "summary": "届いたチャージをすべて消費し、ダメージ940＋1あたり400へ変換する。",
-        "status": "playable",
-        "blockId": "overcharge-cannon",
-        "scope": "exclusive",
-        "sharedSynergies": [],
-        "placementPatternId": "free",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["charge"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "charge",
-            "roles": ["payoff"],
-            "payoffIds": ["burst"]
-          }
-        ]
-      },
-      {
-        "id": "guiding-bolt",
-        "title": "導刻矢",
-        "summary": "2拍ごとに、通過するパケットへダメージ75を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
-        "status": "playable",
-        "blockId": "guiding-bolt",
-        "scope": "shared",
-        "sharedSynergies": ["imprint"],
-        "placementPatternId": "magic-sigil",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["damage"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack", "operator"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["cycler"],
-            "payoffIds": ["cultivate", "burst"]
-          },
-          {
-            "buildId": "charge",
-            "roles": ["cycler"],
-            "payoffIds": ["burst", "guard"]
-          }
-        ],
-        "circuitCoreRoles": ["starter", "grower", "cycler", "payoff"]
-      },
-      {
-        "id": "prism-arrow",
-        "title": "枝光矢",
-        "summary": "2拍ごとに、通過するパケットへダメージ90を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
-        "status": "playable",
-        "blockId": "prism-arrow",
-        "scope": "shared",
-        "sharedSynergies": ["split"],
-        "placementPatternId": "light-vein",
-        "axisLinks": [
-          {
-            "axisId": "trait",
-            "valueIds": ["damage"]
-          },
-          {
-            "axisId": "weapon",
-            "valueIds": ["attack", "operator"]
-          }
-        ],
-        "buildLinks": [
-          {
-            "buildId": "poison",
-            "roles": ["cycler"],
-            "payoffIds": ["cultivate", "burst"]
-          },
-          {
-            "buildId": "charge",
-            "roles": ["cycler"],
-            "payoffIds": ["burst", "guard"]
-          }
-        ],
-        "circuitCoreRoles": ["starter", "grower", "cycler", "payoff"]
-      }
-    ]
-  },
-  "blocks": [
+  "skills": [
     {
-      "id": "strike",
-      "code": "SLASH",
-      "title": "斬撃",
-      "description": "毎拍、通過するパケットへダメージ55を加える。",
-      "glyph": "斬",
-      "price": 4,
-      "rarity": "common",
-      "shopWeight": 1,
-      "ports": ["west", "east"],
-      "buildIds": ["poison", "charge"],
-      "cooldown": 1,
-      "effects": [
-        {
-          "kind": "damage",
-          "amount": 55
-        }
-      ],
-      "fusion": {
-        "title": "攻防連斬",
-        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
-        "effects": [
-          {
-            "kind": "damage",
-            "amount": 80
-          },
-          {
-            "kind": "shield",
-            "amount": 30
-          }
-        ]
-      },
-      "packet": {
-        "role": "source",
-        "effects": [
-          {
-            "kind": "generate-packet",
-            "payload": "damage",
-            "amount": 55
-          }
-        ]
-      }
+      "id": "tail-swipe",
+      "name": "テイルスイープ",
+      "description": "堅実な物理攻撃。",
+      "mpCost": 2,
+      "targetScope": "single-enemy",
+      "effects": [{ "kind": "damage", "scaling": "physical", "power": 105, "target": "action-target", "canCrit": true }]
     },
     {
-      "id": "repair-dividend",
-      "code": "DIVIDEND",
-      "title": "配当修復機",
-      "description": "5拍ごとに、通過するパケットへシールド270を加える。5拍ごとに、通過するパケットへ回復180を加える。5拍ごとに、通過するパケットへコイン1を加える。",
-      "glyph": "配",
-      "price": 20,
-      "rarity": "legendary",
-      "shopWeight": 0.72,
-      "ports": ["west", "north"],
-      "buildIds": ["poison", "charge"],
-      "cooldown": 5,
+      "id": "arc-shot",
+      "name": "アークショット",
+      "description": "知恵を集めて放つ魔弾。",
+      "mpCost": 3,
+      "targetScope": "single-enemy",
+      "effects": [{ "kind": "damage", "scaling": "magic", "power": 105, "target": "action-target" }]
+    },
+    {
+      "id": "spirit-spark",
+      "name": "スピリットスパーク",
+      "description": "素早い精霊弾。",
+      "mpCost": 2,
+      "targetScope": "single-enemy",
+      "effects": [{ "kind": "damage", "scaling": "magic", "power": 90, "target": "action-target" }]
+    },
+    {
+      "id": "halo-bite",
+      "name": "ハローバイト",
+      "description": "噛みつきと同時に防護を得る。",
+      "mpCost": 5,
+      "targetScope": "single-enemy",
       "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 125, "target": "action-target", "canCrit": true },
+        { "kind": "shield", "maxHpPercent": 7, "target": "self" }
+      ]
+    },
+    {
+      "id": "ward-roar",
+      "name": "守護の咆哮",
+      "description": "味方全体の守りを固める。",
+      "mpCost": 7,
+      "targetScope": "all-allies",
+      "effects": [
+        { "kind": "status", "statusId": "defense-up", "amount": 20, "durationSeconds": 9, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "night-claw",
+      "name": "ナイトクロー",
+      "description": "会心を狙う鋭い一撃。",
+      "mpCost": 5,
+      "targetScope": "single-enemy",
+      "effects": [{ "kind": "damage", "scaling": "physical", "power": 138, "target": "action-target", "canCrit": true }]
+    },
+    {
+      "id": "blood-focus",
+      "name": "ブラッドフォーカス",
+      "description": "自分の会心率を高める。",
+      "mpCost": 5,
+      "targetScope": "self",
+      "effects": [{ "kind": "status", "statusId": "crit-up", "amount": 18, "durationSeconds": 10, "target": "self" }]
+    },
+    {
+      "id": "ember-drive",
+      "name": "エンバードライブ",
+      "description": "勢いをつける物理攻撃。",
+      "mpCost": 6,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 132, "target": "action-target", "canCrit": true },
+        { "kind": "status", "statusId": "speed-up", "amount": 15, "durationSeconds": 8, "target": "self" }
+      ]
+    },
+    {
+      "id": "scale-wall",
+      "name": "スケイルウォール",
+      "description": "鱗を立てて盾を作る。",
+      "mpCost": 4,
+      "targetScope": "self",
+      "effects": [{ "kind": "shield", "maxHpPercent": 18, "target": "self" }]
+    },
+    {
+      "id": "lumen-bolt",
+      "name": "ルーメンボルト",
+      "description": "知恵で貫く魔弾。",
+      "mpCost": 6,
+      "targetScope": "single-enemy",
+      "effects": [{ "kind": "damage", "scaling": "magic", "power": 132, "target": "action-target" }]
+    },
+    {
+      "id": "mend",
+      "name": "メンド",
+      "description": "最も傷ついた味方を癒す。",
+      "mpCost": 7,
+      "targetScope": "single-ally",
+      "effects": [{ "kind": "heal", "power": 115, "target": "action-target" }]
+    },
+    {
+      "id": "void-needle",
+      "name": "ヴォイドニードル",
+      "description": "知恵を削る魔針。",
+      "mpCost": 6,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 110, "target": "action-target" },
+        { "kind": "status", "statusId": "wisdom-down", "amount": 18, "durationSeconds": 8, "target": "action-target" }
+      ]
+    },
+    {
+      "id": "silence-mark",
+      "name": "沈黙の印",
+      "description": "一時的にスキルを封じる。",
+      "mpCost": 8,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 5, "target": "action-target" }
+      ]
+    },
+    {
+      "id": "fury-orb",
+      "name": "フューリーオーブ",
+      "description": "攻撃的な高威力魔弾。",
+      "mpCost": 7,
+      "targetScope": "single-enemy",
+      "effects": [{ "kind": "damage", "scaling": "magic", "power": 145, "target": "action-target" }]
+    },
+    {
+      "id": "battle-chant",
+      "name": "闘争の詠唱",
+      "description": "味方全体の攻撃と知恵を高める。",
+      "mpCost": 8,
+      "targetScope": "all-allies",
+      "effects": [
+        { "kind": "status", "statusId": "attack-up", "amount": 16, "durationSeconds": 9, "target": "all-allies" },
+        { "kind": "status", "statusId": "wisdom-up", "amount": 16, "durationSeconds": 9, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "gentle-ray",
+      "name": "ジェントルレイ",
+      "description": "やわらかな光で味方を癒す。",
+      "mpCost": 6,
+      "targetScope": "single-ally",
+      "effects": [{ "kind": "heal", "power": 108, "target": "action-target" }]
+    },
+    {
+      "id": "aegis-dust",
+      "name": "イージスダスト",
+      "description": "味方全体へ薄い盾をまく。",
+      "mpCost": 8,
+      "targetScope": "all-allies",
+      "effects": [{ "kind": "shield", "maxHpPercent": 10, "target": "all-allies" }]
+    },
+    {
+      "id": "dusk-pulse",
+      "name": "ダスクパルス",
+      "description": "敵全体を包む夕闇の波。",
+      "mpCost": 9,
+      "targetScope": "all-enemies",
+      "effects": [{ "kind": "damage", "scaling": "magic", "power": 72, "target": "all-enemies" }]
+    },
+    {
+      "id": "wither",
+      "name": "ウィザー",
+      "description": "敵の攻撃力をしぼませる。",
+      "mpCost": 6,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "status", "statusId": "attack-down", "amount": 20, "durationSeconds": 8, "target": "action-target" }
+      ]
+    },
+    {
+      "id": "quick-flare",
+      "name": "クイックフレア",
+      "description": "攻撃後に行動ゲージを取り戻す。",
+      "mpCost": 5,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 105, "target": "action-target" },
+        { "kind": "atb", "amount": 28, "target": "self" }
+      ]
+    },
+    {
+      "id": "haste-song",
+      "name": "早駆けの歌",
+      "description": "味方全体の素早さを高める。",
+      "mpCost": 8,
+      "targetScope": "all-allies",
+      "effects": [
+        { "kind": "status", "statusId": "speed-up", "amount": 20, "durationSeconds": 9, "target": "all-allies" }
+      ]
+    }
+  ],
+  "traits": [
+    {
+      "id": "sunscale",
+      "name": "陽鱗",
+      "stages": [
         {
-          "kind": "shield",
-          "amount": 270
+          "description": "開戦時、自分に盾を得る。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 10, "target": "self" }]
         },
         {
-          "kind": "repair",
-          "amount": 180
+          "description": "盾に加え、行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "shield", "maxHpPercent": 12, "target": "self" },
+            { "kind": "atb", "amount": 18, "target": "self" }
+          ]
         },
         {
-          "kind": "coin",
-          "amount": 1
+          "description": "陽鱗が味方全体を守る。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 10, "target": "all-allies" }]
         }
-      ],
-      "fusion": {
-        "title": "複利修復機",
-        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
-        "cooldown": 4,
-        "effects": [
-          {
-            "kind": "shield",
-            "amount": 300
-          },
-          {
-            "kind": "repair",
-            "amount": 240
-          },
-          {
-            "kind": "coin",
-            "amount": 1
-          }
-        ]
-      },
-      "packet": {
-        "role": "source",
-        "effects": [
-          {
-            "kind": "generate-packet",
-            "payload": "shield",
-            "amount": 270
-          },
-          {
-            "kind": "generate-packet",
-            "payload": "repair",
-            "amount": 180
-          },
-          {
-            "kind": "generate-packet",
-            "payload": "coin",
-            "amount": 1
-          }
-        ]
-      }
+      ]
     },
     {
-      "id": "amplifier",
-      "code": "AMP",
-      "title": "増幅術",
-      "description": "最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
-      "glyph": "増",
-      "price": 8,
-      "rarity": "rare",
-      "shopWeight": 1,
-      "ports": ["west", "east"],
-      "buildIds": ["poison", "charge"],
-      "effects": [
+      "id": "eclipse-fang",
+      "name": "蝕牙",
+      "stages": [
         {
-          "kind": "amplify",
-          "amount": 220
-        }
-      ],
-      "fusion": {
-        "title": "可変増幅術",
-        "description": "★化すると、発動間隔が可能なら1拍短くなる。",
-        "effects": [
-          {
-            "kind": "amplify",
-            "amount": 250
-          },
-          {
-            "kind": "haste",
-            "amount": 1
-          }
-        ]
-      },
-      "packet": {
-        "role": "operator",
-        "effects": [
-          {
-            "kind": "echo-packet"
-          }
-        ]
-      }
-    },
-    {
-      "id": "accelerator",
-      "code": "FAST",
-      "title": "加速術",
-      "description": "同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
-      "glyph": "速",
-      "price": 13,
-      "rarity": "epic",
-      "shopWeight": 1,
-      "ports": ["west", "east", "south"],
-      "buildIds": ["poison", "charge"],
-      "effects": [
-        {
-          "kind": "haste",
-          "amount": 1,
-          "trigger": {
-            "kind": "all-ports-connected"
-          }
+          "description": "開戦時、会心率が上がる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
         },
         {
-          "kind": "amplify",
-          "amount": 305,
-          "trigger": {
-            "kind": "all-ports-connected"
-          }
+          "description": "会心率と行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 14, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "敵全体の会心率を奪う。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 16, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "crit-down", "amount": 10, "durationSeconds": 60, "target": "all-enemies" }
+          ]
         }
-      ],
-      "fusion": {
-        "title": "常動加速術",
-        "description": "★化すると、発動間隔が可能なら1拍短くなる。",
-        "effects": [
-          {
-            "kind": "haste",
-            "amount": 1
-          },
-          {
-            "kind": "amplify",
-            "amount": 360,
-            "trigger": {
-              "kind": "all-ports-connected"
+      ]
+    },
+    {
+      "id": "furnace-heart",
+      "name": "炉心",
+      "stages": [
+        {
+          "description": "開戦時、攻撃力が上がる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 12, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "攻撃力を上げ、盾を得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 15, "durationSeconds": 60, "target": "self" },
+            { "kind": "shield", "maxHpPercent": 8, "target": "self" }
+          ]
+        },
+        {
+          "description": "炉熱が味方全体の攻撃力を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 12, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "merciful-contract",
+      "name": "慈契",
+      "stages": [
+        {
+          "description": "開戦時、自分のMPを少し拡張する。",
+          "battleStartEffects": [{ "kind": "mp", "amount": 4, "target": "self" }]
+        },
+        {
+          "description": "MP拡張に加え、味方を癒す。",
+          "battleStartEffects": [
+            { "kind": "mp", "amount": 6, "target": "self" },
+            { "kind": "heal", "power": 35, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "味方全体に再生を授ける。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "regeneration", "amount": 3, "durationSeconds": 15, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "black-covenant",
+      "name": "黒契",
+      "stages": [
+        {
+          "description": "敵一体の知恵を下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "action-target"
             }
-          }
-        ]
-      },
-      "packet": {
-        "role": "operator",
-        "effects": [
-          {
-            "kind": "merge-packet"
-          }
-        ]
-      }
-    },
-    {
-      "id": "poison-needle",
-      "code": "VENOM",
-      "title": "毒矢",
-      "description": "2拍ごとに、通過するパケットへダメージ55を加える。2拍ごとに、通過するパケットへ毒12を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
-      "glyph": "毒",
-      "price": 5,
-      "rarity": "common",
-      "shopWeight": 1,
-      "ports": ["west", "north", "east"],
-      "rotatable": false,
-      "buildIds": ["poison"],
-      "cooldown": 2,
-      "effects": [
-        {
-          "kind": "damage",
-          "amount": 55
+          ]
         },
         {
-          "kind": "poison",
-          "amount": 12
+          "description": "敵一体を沈黙させる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 3, "target": "action-target" }
+          ]
         },
         {
-          "kind": "growth",
-          "amount": 1,
-          "target": "self",
-          "stat": "poison",
-          "trigger": {
-            "kind": "enemy-poisoned"
-          }
-        }
-      ],
-      "packet": {
-        "role": "hybrid",
-        "effects": [
-          {
-            "kind": "generate-packet",
-            "payload": "damage",
-            "amount": 55
-          },
-          {
-            "kind": "generate-packet",
-            "payload": "poison",
-            "amount": 12
-          },
-          {
-            "kind": "echo-packet"
-          }
-        ]
-      }
-    },
-    {
-      "id": "venom-bloom",
-      "code": "BLOOM",
-      "title": "猛毒花",
-      "description": "3拍ごとに、通過するパケットへ毒110を加える。",
-      "glyph": "花",
-      "price": 20,
-      "rarity": "legendary",
-      "shopWeight": 1,
-      "ports": ["west", "east"],
-      "rotatable": false,
-      "buildIds": ["poison"],
-      "cooldown": 3,
-      "effects": [
-        {
-          "kind": "poison",
-          "amount": 110,
-          "scaling": {
-            "kind": "enemy-poison",
-            "every": 250,
-            "amount": 20
-          }
-        }
-      ],
-      "packet": {
-        "role": "source",
-        "effects": [
-          {
-            "kind": "generate-packet",
-            "payload": "poison",
-            "amount": 110
-          }
-        ]
-      }
-    },
-    {
-      "id": "rupture-stake",
-      "code": "BURST",
-      "title": "破裂砲",
-      "description": "届いた毒パケットを消費し、その量1につき14ダメージを加えて相手の毒を35%破裂させる。",
-      "glyph": "裂",
-      "price": 13,
-      "rarity": "epic",
-      "shopWeight": 1,
-      "ports": ["west"],
-      "rotatable": false,
-      "buildIds": ["poison"],
-      "cooldown": 4,
-      "effects": [
-        {
-          "kind": "rupture-poison",
-          "fraction": 0.35,
-          "damagePerStack": 14
-        }
-      ],
-      "packet": {
-        "role": "sink",
-        "terminal": true,
-        "effects": [
-          {
-            "kind": "convert-packet",
-            "input": "poison",
-            "output": "rupture",
-            "amount": 0,
-            "perUnit": 14,
-            "consume": 0.35
-          }
-        ]
-      }
-    },
-    {
-      "id": "return-coil",
-      "code": "RETURN",
-      "title": "帰還コイル",
-      "description": "2拍ごとに、通過するパケットへシールド170を加える。輪の中に置くと、パケット全体を1回だけ再循環させる。",
-      "glyph": "還",
-      "price": 8,
-      "rarity": "rare",
-      "shopWeight": 1,
-      "ports": ["south", "west"],
-      "rotatable": false,
-      "buildIds": ["poison", "charge"],
-      "cooldown": 2,
-      "effects": [
-        {
-          "kind": "shield",
-          "amount": 170
-        },
-        {
-          "kind": "growth",
-          "amount": 15,
-          "target": "self",
-          "stat": "shield",
-          "trigger": {
-            "kind": "in-cycle"
-          }
-        },
-        {
-          "kind": "growth",
-          "amount": 15,
-          "target": "downstream",
-          "stat": "all",
-          "trigger": {
-            "kind": "in-cycle"
-          }
-        }
-      ],
-      "fusion": {
-        "title": "回生コイル",
-        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
-        "effects": [
-          {
-            "kind": "shield",
-            "amount": 200
-          },
-          {
-            "kind": "repair",
-            "amount": 60
-          },
-          {
-            "kind": "growth",
-            "amount": 18,
-            "target": "self",
-            "stat": "shield",
-            "trigger": {
-              "kind": "in-cycle"
+          "description": "敵全体の知恵を下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "all-enemies"
             }
-          },
-          {
-            "kind": "growth",
-            "amount": 18,
-            "target": "downstream",
-            "stat": "all",
-            "trigger": {
-              "kind": "in-cycle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "riot-pact",
+      "name": "騒契",
+      "stages": [
+        {
+          "description": "開戦時、知恵が上がる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 12, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "知恵と素早さが上がる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 14, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体の知恵を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 12, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "morning-dew",
+      "name": "朝露",
+      "stages": [
+        {
+          "description": "開戦時、自分に再生を付与する。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "regeneration", "amount": 3, "durationSeconds": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "再生が味方一体にも届く。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "regeneration",
+              "amount": 3,
+              "durationSeconds": 12,
+              "target": "action-target"
             }
-          }
-        ]
-      },
-      "packet": {
-        "role": "hybrid",
-        "effects": [
-          {
-            "kind": "generate-packet",
-            "payload": "shield",
-            "amount": 170
-          },
-          {
-            "kind": "recirculate-packet"
-          }
-        ]
-      }
-    },
-    {
-      "id": "charge-blade",
-      "code": "CHG-B",
-      "title": "充電刃",
-      "description": "2拍ごとに、通過するパケットへチャージ2を加える。2拍ごとに、通過するパケットへダメージ75を加える。",
-      "glyph": "充",
-      "price": 5,
-      "rarity": "common",
-      "shopWeight": 1,
-      "ports": ["west", "east"],
-      "rotatable": false,
-      "buildIds": ["charge"],
-      "cooldown": 2,
-      "effects": [
-        {
-          "kind": "charge",
-          "amount": 2
+          ]
         },
         {
-          "kind": "damage",
-          "amount": 75
+          "description": "味方全体に再生を付与する。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "regeneration", "amount": 3, "durationSeconds": 12, "target": "all-allies" }
+          ]
         }
-      ],
-      "packet": {
-        "role": "source",
-        "effects": [
-          {
-            "kind": "generate-packet",
-            "payload": "charge",
-            "amount": 2
-          },
-          {
-            "kind": "generate-packet",
-            "payload": "damage",
-            "amount": 75
-          }
-        ]
-      }
+      ]
     },
     {
-      "id": "discharge-bow",
-      "code": "SPARK",
-      "title": "放電弓",
-      "description": "届いたチャージをすべて消費し、ダメージ150＋1あたり140へ変換する。",
-      "glyph": "放",
-      "price": 9,
-      "rarity": "rare",
-      "shopWeight": 1,
-      "ports": ["west"],
-      "rotatable": false,
-      "buildIds": ["charge"],
-      "cooldown": 3,
-      "effects": [
+      "id": "moon-mist",
+      "name": "月霧",
+      "stages": [
         {
-          "kind": "release-charge",
-          "output": "damage",
-          "amount": 150,
-          "perCharge": 140
-        }
-      ],
-      "packet": {
-        "role": "sink",
-        "terminal": true,
-        "effects": [
-          {
-            "kind": "convert-packet",
-            "input": "charge",
-            "output": "damage",
-            "amount": 150,
-            "perUnit": 140
-          }
-        ]
-      }
-    },
-    {
-      "id": "charge-bastion",
-      "code": "BASTION",
-      "title": "防壁展開",
-      "description": "届いたチャージをすべて消費し、シールド210＋1あたり200へ変換する。3拍ごとに、通過するパケットへ回復175を加える。",
-      "glyph": "壁",
-      "price": 14,
-      "rarity": "epic",
-      "shopWeight": 1,
-      "ports": ["west"],
-      "rotatable": false,
-      "buildIds": ["charge"],
-      "cooldown": 3,
-      "effects": [
-        {
-          "kind": "release-charge",
-          "output": "shield",
-          "amount": 210,
-          "perCharge": 200
+          "description": "敵一体の攻撃力を下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "action-target"
+            }
+          ]
         },
         {
-          "kind": "repair",
-          "amount": 175
-        }
-      ],
-      "packet": {
-        "role": "hybrid",
-        "terminal": true,
-        "effects": [
-          {
-            "kind": "convert-packet",
-            "input": "charge",
-            "output": "shield",
-            "amount": 210,
-            "perUnit": 200
-          },
-          {
-            "kind": "generate-packet",
-            "payload": "repair",
-            "amount": 175
-          }
-        ]
-      }
-    },
-    {
-      "id": "overcharge-cannon",
-      "code": "OVER",
-      "title": "超過解放砲",
-      "description": "届いたチャージをすべて消費し、ダメージ940＋1あたり400へ変換する。",
-      "glyph": "極",
-      "price": 22,
-      "rarity": "legendary",
-      "shopWeight": 1,
-      "ports": ["west"],
-      "rotatable": false,
-      "buildIds": ["charge"],
-      "cooldown": 5,
-      "effects": [
-        {
-          "kind": "release-charge",
-          "output": "damage",
-          "amount": 940,
-          "perCharge": 400
-        }
-      ],
-      "packet": {
-        "role": "sink",
-        "terminal": true,
-        "effects": [
-          {
-            "kind": "convert-packet",
-            "input": "charge",
-            "output": "damage",
-            "amount": 940,
-            "perUnit": 400
-          }
-        ]
-      }
-    },
-    {
-      "id": "guiding-bolt",
-      "code": "SCRIBE",
-      "title": "導刻矢",
-      "description": "2拍ごとに、通過するパケットへダメージ75を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
-      "glyph": "導",
-      "price": 5,
-      "rarity": "common",
-      "shopWeight": 1,
-      "ports": ["west", "north", "east"],
-      "buildIds": ["poison", "charge"],
-      "cooldown": 2,
-      "effects": [
-        {
-          "kind": "damage",
-          "amount": 75
-        }
-      ],
-      "fusion": {
-        "title": "導刻矢・改",
-        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
-        "effects": [
-          {
-            "kind": "damage",
-            "amount": 94
-          }
-        ]
-      },
-      "packet": {
-        "role": "hybrid",
-        "effects": [
-          {
-            "kind": "generate-packet",
-            "payload": "damage",
-            "amount": 75
-          },
-          {
-            "kind": "imprint-packet",
-            "imprint": "assault"
-          }
-        ]
-      }
-    },
-    {
-      "id": "prism-arrow",
-      "code": "BRANCH-R",
-      "title": "枝光矢",
-      "description": "2拍ごとに、通過するパケットへダメージ90を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
-      "glyph": "枝",
-      "price": 5,
-      "rarity": "common",
-      "shopWeight": 1,
-      "ports": ["west", "north", "east"],
-      "buildIds": ["poison", "charge"],
-      "cooldown": 2,
-      "effects": [
-        {
-          "kind": "damage",
-          "amount": 90,
-          "trigger": {
-            "kind": "branch-at-least",
-            "amount": 2
-          },
-          "scaling": {
-            "kind": "downstream-count",
-            "every": 1,
-            "amount": 40,
-            "maxStacks": 3
-          }
-        }
-      ],
-      "fusion": {
-        "title": "枝光矢・改",
-        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
-        "effects": [
-          {
-            "kind": "damage",
-            "amount": 113,
-            "trigger": {
-              "kind": "branch-at-least",
-              "amount": 2
+          "description": "攻撃力と素早さを下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "action-target"
             },
-            "scaling": {
-              "kind": "downstream-count",
-              "every": 1,
-              "amount": 50,
-              "maxStacks": 3
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "action-target"
             }
-          }
-        ]
-      },
-      "packet": {
-        "role": "hybrid",
-        "effects": [
-          {
-            "kind": "generate-packet",
-            "payload": "damage",
-            "amount": 90
-          },
-          {
-            "kind": "split-packet"
-          }
-        ]
-      }
+          ]
+        },
+        {
+          "description": "敵全体の攻撃力を下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wildfire-dance",
+      "name": "野火の舞",
+      "stages": [
+        {
+          "description": "開戦時、行動ゲージを得る。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 18, "target": "self" }]
+        },
+        {
+          "description": "行動ゲージと素早さを得る。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 22, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 12, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体へ行動ゲージを配る。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 15, "target": "all-allies" }]
+        }
+      ]
     }
   ],
-  "startingRack": [],
-  "playerBoard": [
-    [null, null, null, null, null],
-    [null, null, null, null, null],
-    [null, null, null, null, null],
-    [null, null, null, null, null],
-    [null, null, null, null, null]
+  "equipment": [
+    {
+      "id": "iron-fang",
+      "name": "鉄牙",
+      "description": "攻撃 +5",
+      "glyph": "牙",
+      "price": 2,
+      "statBonus": { "attack": 5 },
+      "battleStartEffects": []
+    },
+    {
+      "id": "shell-buckle",
+      "name": "甲羅留め",
+      "description": "防御 +5 / HP +8",
+      "glyph": "甲",
+      "price": 2,
+      "statBonus": { "defense": 5, "maxHp": 8 },
+      "battleStartEffects": []
+    },
+    {
+      "id": "sage-charm",
+      "name": "賢者飾り",
+      "description": "知恵 +7 / MP +4",
+      "glyph": "賢",
+      "price": 4,
+      "statBonus": { "wisdom": 7, "maxMp": 4 },
+      "battleStartEffects": []
+    },
+    {
+      "id": "wind-feather",
+      "name": "風切羽",
+      "description": "素早さ +8",
+      "glyph": "羽",
+      "price": 4,
+      "statBonus": { "speed": 8 },
+      "battleStartEffects": []
+    },
+    {
+      "id": "red-lens",
+      "name": "紅の照準器",
+      "description": "会心率 +8%",
+      "glyph": "眼",
+      "price": 6,
+      "statBonus": { "crit": 8 },
+      "battleStartEffects": []
+    },
+    {
+      "id": "opening-drum",
+      "name": "開戦太鼓",
+      "description": "開戦時、行動ゲージ +18",
+      "glyph": "鼓",
+      "price": 6,
+      "statBonus": {},
+      "battleStartEffects": [{ "kind": "atb", "amount": 18, "target": "self" }]
+    }
+  ],
+  "specialRecipes": [
+    {
+      "id": "dawn-chimera",
+      "parentDefinitionIds": ["light-dragon-2", "dark-demon-2"],
+      "resultDefinitionId": "fire-spirit-3"
+    },
+    {
+      "id": "night-oracle",
+      "parentDefinitionIds": ["dark-spirit-2", "light-demon-2"],
+      "resultDefinitionId": "dark-demon-3"
+    },
+    {
+      "id": "flare-guardian",
+      "parentDefinitionIds": ["fire-dragon-2", "light-spirit-2"],
+      "resultDefinitionId": "light-dragon-3"
+    }
+  ],
+  "events": [
+    {
+      "id": "merchant-gift",
+      "name": "旅商人の餞別",
+      "description": "コインを4枚受け取る。",
+      "glyph": "貨",
+      "effect": { "kind": "coins", "amount": 4 }
+    },
+    {
+      "id": "moon-camp",
+      "name": "月下の野営",
+      "description": "仲間全員が経験値を3得る。",
+      "glyph": "営",
+      "effect": { "kind": "roster-xp", "amount": 3 }
+    },
+    {
+      "id": "training-ring",
+      "name": "放浪の訓練場",
+      "description": "仲間全員が経験値を2得る。",
+      "glyph": "鍛",
+      "effect": { "kind": "roster-xp", "amount": 2 }
+    }
   ]
 }

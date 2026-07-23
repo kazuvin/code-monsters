@@ -1,725 +1,487 @@
-import {
-  analyzeCircuit,
-  analyzeMagicSigils,
-  axisValueCountKey,
-  adjacentPoweredNeighbors,
-  calculateChargeByCell,
-  cellKey,
-  cloneBoard,
-  countPoweredAxisValue,
-  countActiveMagicSigils,
-  matchesCircuitTrigger,
-} from './circuit';
-import { upgradeBlockDefinition } from './fusion';
-import { resolvePacketCircuit } from './packet';
-import {
-  buffStatForEffect,
-  buffStatsForBlock,
-  combineSkillModifiers,
-  effectScalingBonus,
-  incomingSkillModifiers,
-  magicSigilModifiers,
-} from './skill-progress';
+import { chooseGambitAction, type GambitFighterView } from './gambit';
+import { battleStatsFor, definitionFor } from './monster';
+import { createSeededRandom } from './rng';
 import type {
-  BattleState,
-  BattleTraceEvent,
-  BlockDefinition,
-  BlockEffect,
-  CellPosition,
-  CircuitBoard,
-  EffectTrigger,
-  FighterState,
+  BattleFrame,
+  BattleInput,
+  BattleResult,
+  EffectDefinition,
+  FighterSnapshot,
   GameData,
-  SkillBuffState,
+  MonsterInstance,
+  StatBlock,
+  StatId,
+  StatusId,
   Team,
-  Winner,
+  TimedStatus,
 } from './types';
-import type { PacketAction } from './packet';
 
-type PlannedActivation = {
+type BattleFighter = {
+  id: string;
   team: Team;
-  block: BlockDefinition;
-  position: CellPosition;
-  pathLength: number;
-  inCycle: boolean;
-  allPortsConnected: boolean;
-  straightLineLength: number;
-  upstream: CellPosition[];
-  downstream: CellPosition[];
-  boost: number;
-  waveStep: number;
-  mergeMultiplier: number;
-  charge: number;
-  magicSigilLevel: number;
-  magicSigilCount: number;
-  adjacentPoweredCount: number;
-  poweredAxisCounts: Readonly<Record<string, number>>;
-  stars: 0 | 1;
+  monster: MonsterInstance;
+  name: string;
+  stats: StatBlock;
+  hp: number;
+  mp: number;
+  gauge: number;
+  shield: number;
+  statuses: TimedStatus[];
+  tieOrder: number;
+  damageDealt: number;
 };
 
-export type BattleOptions = {
-  playerMaxHpBonus?: number;
-  enemyMaxHpBonus?: number;
-  playerHeartPosition?: CellPosition;
-  enemyHeartPosition?: CellPosition;
+const ROUND_PRECISION = 1000;
+const round = (value: number) => Math.round(value * ROUND_PRECISION) / ROUND_PRECISION;
+const alive = (fighter: BattleFighter) => fighter.hp > 0;
+const relation = (fighter: BattleFighter, candidate: BattleFighter) =>
+  fighter.team === candidate.team ? 'ally' : 'enemy';
+
+const statusModifier = (fighter: BattleFighter, statId: StatId) => {
+  const pairs: Partial<Record<StatId, [StatusId, StatusId]>> = {
+    attack: ['attack-up', 'attack-down'],
+    defense: ['defense-up', 'defense-down'],
+    speed: ['speed-up', 'speed-down'],
+    wisdom: ['wisdom-up', 'wisdom-down'],
+    crit: ['crit-up', 'crit-down'],
+  };
+  const pair = pairs[statId];
+  if (!pair) return 0;
+  const increase = fighter.statuses.find((status) => status.id === pair[0])?.amount ?? 0;
+  const decrease = fighter.statuses.find((status) => status.id === pair[1])?.amount ?? 0;
+  return Math.max(-50, Math.min(50, increase - decrease));
 };
 
-const otherTeam = (team: Team): Team => (team === 'player' ? 'enemy' : 'player');
-
-const winnerOf = (fighters: FighterState[]): Winner => {
-  const player = fighters.find((fighter) => fighter.team === 'player');
-  const enemy = fighters.find((fighter) => fighter.team === 'enemy');
-  if (!player || !enemy) return null;
-  if (player.hp <= 0 && enemy.hp <= 0) return 'draw';
-  if (player.hp <= 0) return 'enemy';
-  if (enemy.hp <= 0) return 'player';
-  return null;
+const effectiveStat = (fighter: BattleFighter, statId: StatId, criticalCap: number) => {
+  const base = fighter.stats[statId];
+  const modifier = statusModifier(fighter, statId);
+  if (statId === 'crit') return Math.max(0, Math.min(criticalCap, base + modifier));
+  return Math.max(1, Math.floor(base * (1 + modifier / 100)));
 };
 
-export const suddenDeathStartTick = (data: GameData) =>
-  Math.ceil((data.rules.suddenDeathSeconds * 1000) / data.rules.battleStepMs);
+const snapshots = (data: GameData, fighters: BattleFighter[]): FighterSnapshot[] =>
+  fighters.map((fighter) => {
+    const definition = definitionFor(data, fighter.monster);
+    return {
+      id: fighter.id,
+      team: fighter.team,
+      name: fighter.name,
+      definitionId: definition.id,
+      colorStars: fighter.monster.colorStars,
+      whiteStars: definition.whiteStars,
+      hp: Math.max(0, fighter.hp),
+      maxHp: fighter.stats.maxHp,
+      mp: Math.max(0, fighter.mp),
+      maxMp: fighter.stats.maxMp,
+      gauge: round(fighter.gauge),
+      shield: fighter.shield,
+      statuses: fighter.statuses.map((status) => status.id),
+      alive: alive(fighter),
+    };
+  });
 
-export const overloadLevelAtTick = (data: GameData, tick: number) => Math.max(0, tick - suddenDeathStartTick(data) + 1);
+const makeFrame = (
+  data: GameData,
+  fighters: BattleFighter[],
+  atSeconds: number,
+  kind: BattleFrame['kind'],
+  text: string,
+  actorId?: string,
+  targetIds: string[] = [],
+): BattleFrame => ({
+  atSeconds: round(atSeconds),
+  kind,
+  actorId,
+  targetIds,
+  text,
+  fighters: snapshots(data, fighters),
+});
 
-export const overloadDamageAtTick = (data: GameData, tick: number) => {
-  const level = overloadLevelAtTick(data, tick);
-  if (level === 0) return 0;
-  return Math.round(data.rules.suddenDeathBaseDamage * data.rules.suddenDeathGrowth ** (level - 1));
+const addStatus = (fighter: BattleFighter, status: TimedStatus) => {
+  const current = fighter.statuses.find((entry) => entry.id === status.id);
+  if (!current) {
+    fighter.statuses.push(status);
+    return;
+  }
+  current.amount = Math.abs(status.amount) > Math.abs(current.amount) ? status.amount : current.amount;
+  current.remainingSeconds = Math.max(current.remainingSeconds, status.remainingSeconds);
 };
 
-const fighterFor = (data: GameData, team: Team, options: BattleOptions): FighterState => {
-  const unitId = team === 'player' ? data.playerUnitId : data.enemyUnitId;
-  const unit = data.units.find((candidate) => candidate.id === unitId);
-  if (!unit) throw new Error(`Missing ${team} unit "${unitId}"`);
-  const maxHp = unit.maxHp + (team === 'player' ? (options.playerMaxHpBonus ?? 0) : (options.enemyMaxHpBonus ?? 0));
+const applyDamage = (fighter: BattleFighter, damage: number) => {
+  const wholeDamage = Math.max(0, Math.floor(damage));
+  const absorbed = Math.min(fighter.shield, wholeDamage);
+  fighter.shield -= absorbed;
+  const hpDamage = wholeDamage - absorbed;
+  fighter.hp = Math.max(0, fighter.hp - hpDamage);
+  return { total: wholeDamage, hp: hpDamage, absorbed };
+};
+
+const targetsForEffect = (
+  effect: EffectDefinition,
+  actor: BattleFighter,
+  actionTargets: BattleFighter[],
+  fighters: BattleFighter[],
+) => {
+  switch (effect.target) {
+    case 'self':
+      return [actor];
+    case 'all-allies':
+      return fighters.filter((fighter) => alive(fighter) && relation(actor, fighter) === 'ally');
+    case 'all-enemies':
+      return fighters.filter((fighter) => alive(fighter) && relation(actor, fighter) === 'enemy');
+    case 'action-target':
+      return actionTargets.filter(alive);
+  }
+};
+
+const applyEffect = (
+  data: GameData,
+  effect: EffectDefinition,
+  actor: BattleFighter,
+  actionTargets: BattleFighter[],
+  fighters: BattleFighter[],
+  random: ReturnType<typeof createSeededRandom>,
+) => {
+  const targets = targetsForEffect(effect, actor, actionTargets, fighters);
+  const notes: string[] = [];
+  for (const target of targets) {
+    switch (effect.kind) {
+      case 'damage': {
+        const offense = effectiveStat(
+          actor,
+          effect.scaling === 'physical' ? 'attack' : 'wisdom',
+          data.rules.battle.criticalCap,
+        );
+        const defense = effectiveStat(
+          target,
+          effect.scaling === 'physical' ? 'defense' : 'wisdom',
+          data.rules.battle.criticalCap,
+        );
+        const reduction = effect.scaling === 'physical' ? 0.42 : 0.25;
+        let damage = Math.max(1, offense * (effect.power / 100) - defense * reduction);
+        const critical =
+          effect.canCrit && random.next() * 100 < effectiveStat(actor, 'crit', data.rules.battle.criticalCap);
+        if (critical) damage *= data.rules.battle.criticalMultiplier;
+        const applied = applyDamage(target, damage);
+        actor.damageDealt += applied.hp;
+        notes.push(`${target.name}に${applied.total}${critical ? ' 会心' : ''}`);
+        break;
+      }
+      case 'heal': {
+        const amount = Math.max(
+          1,
+          Math.floor(effectiveStat(actor, 'wisdom', data.rules.battle.criticalCap) * (effect.power / 100)),
+        );
+        const restored = Math.min(amount, target.stats.maxHp - target.hp);
+        target.hp += restored;
+        notes.push(`${target.name}を${restored}回復`);
+        break;
+      }
+      case 'shield': {
+        const amount = Math.max(1, Math.floor(target.stats.maxHp * (effect.maxHpPercent / 100)));
+        const cap = Math.floor(target.stats.maxHp * data.rules.battle.shieldCapPercent);
+        const gained = Math.max(0, Math.min(amount, cap - target.shield));
+        target.shield += gained;
+        notes.push(`${target.name}に盾${gained}`);
+        break;
+      }
+      case 'status':
+        addStatus(target, {
+          id: effect.statusId,
+          amount: effect.amount,
+          remainingSeconds: effect.durationSeconds,
+        });
+        notes.push(`${target.name}に${effect.statusId}`);
+        break;
+      case 'atb':
+        target.gauge = Math.max(0, Math.min(data.rules.battle.gaugeMaximum - 0.001, target.gauge + effect.amount));
+        notes.push(`${target.name}のATB${effect.amount >= 0 ? '+' : ''}${effect.amount}`);
+        break;
+      case 'mp': {
+        const before = target.mp;
+        target.mp = Math.max(0, Math.min(target.stats.maxMp, target.mp + effect.amount));
+        notes.push(`${target.name}のMP${target.mp - before >= 0 ? '+' : ''}${target.mp - before}`);
+        break;
+      }
+    }
+  }
+  return { targets, notes };
+};
+
+const chooseTarget = (
+  data: GameData,
+  actor: BattleFighter,
+  targetRule: string,
+  fighters: BattleFighter[],
+  random: ReturnType<typeof createSeededRandom>,
+) => {
+  const allies = fighters.filter((fighter) => alive(fighter) && relation(actor, fighter) === 'ally');
+  const enemies = fighters.filter((fighter) => alive(fighter) && relation(actor, fighter) === 'enemy');
+  if (targetRule === 'self') return actor;
+  if (targetRule === 'lowest-hp-ally') {
+    return [...allies].sort((left, right) => left.hp / left.stats.maxHp - right.hp / right.stats.maxHp)[0];
+  }
+  if (targetRule === 'highest-hp-ally') {
+    return [...allies].sort((left, right) => right.hp / right.stats.maxHp - left.hp / left.stats.maxHp)[0];
+  }
+  if (targetRule === 'lowest-hp-enemy') {
+    return [...enemies].sort((left, right) => left.hp / left.stats.maxHp - right.hp / right.stats.maxHp)[0];
+  }
+  if (targetRule === 'highest-hp-enemy') {
+    return [...enemies].sort((left, right) => right.hp / right.stats.maxHp - left.hp / left.stats.maxHp)[0];
+  }
+  if (targetRule === 'highest-attack-enemy') {
+    return [...enemies].sort(
+      (left, right) =>
+        effectiveStat(right, 'attack', data.rules.battle.criticalCap) -
+        effectiveStat(left, 'attack', data.rules.battle.criticalCap),
+    )[0];
+  }
+  return enemies.length > 0 ? random.pick(enemies) : undefined;
+};
+
+const toGambitView = (fighter: BattleFighter): GambitFighterView => ({
+  id: fighter.id,
+  team: fighter.team,
+  monster: fighter.monster,
+  hp: fighter.hp,
+  maxHp: fighter.stats.maxHp,
+  mp: fighter.mp,
+  maxMp: fighter.stats.maxMp,
+  attack: fighter.stats.attack,
+  alive: alive(fighter),
+  statuses: fighter.statuses.map((status) => status.id),
+});
+
+const winnerFor = (fighters: BattleFighter[]) => {
+  const playerAlive = fighters.some((fighter) => fighter.team === 'player' && alive(fighter));
+  const enemyAlive = fighters.some((fighter) => fighter.team === 'enemy' && alive(fighter));
+  if (playerAlive && enemyAlive) return null;
+  if (playerAlive) return 'player' as const;
+  if (enemyAlive) return 'enemy' as const;
+  return 'draw' as const;
+};
+
+const teamHpRatio = (fighters: BattleFighter[], team: Team) => {
+  const teamFighters = fighters.filter((fighter) => fighter.team === team);
+  const maximum = teamFighters.reduce((total, fighter) => total + fighter.stats.maxHp, 0);
+  return maximum === 0 ? 0 : teamFighters.reduce((total, fighter) => total + fighter.hp, 0) / maximum;
+};
+
+const determineTimeoutWinner = (fighters: BattleFighter[]) => {
+  const playerRatio = teamHpRatio(fighters, 'player');
+  const enemyRatio = teamHpRatio(fighters, 'enemy');
+  if (Math.abs(playerRatio - enemyRatio) > 0.0001) return playerRatio > enemyRatio ? 'player' : 'enemy';
+  const playerDamage = fighters
+    .filter((fighter) => fighter.team === 'player')
+    .reduce((total, fighter) => total + fighter.damageDealt, 0);
+  const enemyDamage = fighters
+    .filter((fighter) => fighter.team === 'enemy')
+    .reduce((total, fighter) => total + fighter.damageDealt, 0);
+  if (playerDamage !== enemyDamage) return playerDamage > enemyDamage ? 'player' : 'enemy';
+  return 'draw';
+};
+
+const startEffectsFor = (data: GameData, fighter: BattleFighter) => {
+  const definition = definitionFor(data, fighter.monster);
+  const trait = data.traits.find((entry) => entry.id === definition.traitId);
+  const equipment = data.equipment.find((entry) => entry.id === fighter.monster.equipmentId);
+  return [
+    ...(trait?.stages[fighter.monster.colorStars].battleStartEffects ?? []),
+    ...(equipment?.battleStartEffects ?? []),
+  ];
+};
+
+const applyBattleStart = (data: GameData, fighters: BattleFighter[], random: ReturnType<typeof createSeededRandom>) => {
+  for (const fighter of fighters) {
+    for (const effect of startEffectsFor(data, fighter)) {
+      const positiveStatus =
+        effect.kind === 'status' && (effect.statusId.endsWith('-up') || effect.statusId === 'regeneration');
+      const defaultTarget =
+        effect.kind === 'heal' ||
+        effect.kind === 'shield' ||
+        effect.kind === 'mp' ||
+        effect.kind === 'atb' ||
+        positiveStatus
+          ? fighter
+          : chooseTarget(data, fighter, 'random-enemy', fighters, random);
+      applyEffect(data, effect, fighter, defaultTarget ? [defaultTarget] : [], fighters, random);
+    }
+  }
+};
+
+const processPeriodicStatuses = (fighters: BattleFighter[]) => {
+  for (const fighter of fighters.filter(alive)) {
+    for (const status of fighter.statuses) {
+      if (status.id === 'regeneration') {
+        fighter.hp = Math.min(
+          fighter.stats.maxHp,
+          fighter.hp + Math.max(1, Math.floor(fighter.stats.maxHp * (status.amount / 100))),
+        );
+      }
+      if (status.id === 'damage-over-time') {
+        applyDamage(fighter, Math.max(1, Math.floor(fighter.stats.maxHp * (status.amount / 100))));
+      }
+    }
+  }
+};
+
+const decayStatuses = (fighters: BattleFighter[], seconds: number) => {
+  for (const fighter of fighters) {
+    for (const status of fighter.statuses) status.remainingSeconds = round(status.remainingSeconds - seconds);
+    fighter.statuses = fighter.statuses.filter((status) => status.remainingSeconds > 0);
+  }
+};
+
+const createFighter = (data: GameData, monster: MonsterInstance, team: Team, tieOrder: number): BattleFighter => {
+  const stats = battleStatsFor(data, monster);
   return {
-    instanceId: `${team}-${unit.id}`,
-    unitId: unit.id,
-    name: unit.name,
-    code: unit.code,
-    color: unit.color,
+    id: monster.id,
     team,
-    hp: maxHp,
-    maxHp,
+    monster,
+    name: definitionFor(data, monster).name,
+    stats,
+    hp: stats.maxHp,
+    mp: stats.maxMp,
+    gauge: 0,
     shield: 0,
-    poison: 0,
+    statuses: [],
+    tieOrder,
+    damageDealt: 0,
   };
 };
 
-export function createBattle(
-  data: GameData,
-  playerBoard: CircuitBoard,
-  enemyBoard: CircuitBoard,
-  options: BattleOptions = {},
-): BattleState {
-  const playerHeartPosition = options.playerHeartPosition ?? data.rules.heart.initialPosition;
-  const enemyHeartPosition = options.enemyHeartPosition ?? data.rules.heart.initialPosition;
-  const playerAnalysis = analyzeCircuit(playerBoard, data.blocks, playerHeartPosition, data.rules.heart.ports);
-  const enemyAnalysis = analyzeCircuit(enemyBoard, data.blocks, enemyHeartPosition, data.rules.heart.ports);
-  return {
-    tick: 0,
-    fighters: [fighterFor(data, 'player', options), fighterFor(data, 'enemy', options)],
-    playerBoard: cloneBoard(playerBoard),
-    enemyBoard: cloneBoard(enemyBoard),
-    playerHeartPosition: { ...playerHeartPosition },
-    enemyHeartPosition: { ...enemyHeartPosition },
-    playerPowered: [...playerAnalysis.poweredCells],
-    enemyPowered: [...enemyAnalysis.poweredCells],
-    skillBuffs: { player: {}, enemy: {} },
-    activePulse: { player: [], enemy: [] },
-    pulseStep: 0,
-    pulseStepCount: 0,
-    trace: [],
-    overloadLevel: 0,
-    overloadDamage: 0,
-    winner: null,
-  };
-}
+export function simulateBattle(data: GameData, input: BattleInput): BattleResult {
+  if (input.player.length !== data.rules.activeLimit || input.enemy.length !== data.rules.activeLimit) {
+    throw new Error(`Battle requires ${data.rules.activeLimit} monsters on each team`);
+  }
+  const random = createSeededRandom(input.seed);
+  const fighters = [
+    ...input.player.map((monster) => createFighter(data, monster, 'player', random.next())),
+    ...input.enemy.map((monster) => createFighter(data, monster, 'enemy', random.next())),
+  ];
+  const frames: BattleFrame[] = [];
+  applyBattleStart(data, fighters, random);
+  frames.push(makeFrame(data, fighters, 0, 'start', '両チーム、戦闘開始'));
 
-const hasActivation = (block: BlockDefinition) =>
-  block.effects.some((effect) => !['amplify', 'haste', 'charge', 'inscribe-magic-sigil'].includes(effect.kind));
+  let time = 0;
+  let nextPeriodicSecond = 1;
+  let nextEnvironment = data.rules.battle.environmentStartSeconds;
+  let environmentCount = 0;
+  let winner = winnerFor(fighters);
 
-const usesAdjacentPoweredCount = (block: BlockDefinition) =>
-  block.effects.some(
-    (effect) =>
-      ('trigger' in effect && effect.trigger?.kind === 'adjacent-powered-at-least') ||
-      ('scaling' in effect && effect.scaling?.kind === 'adjacent-powered'),
-  );
+  while (!winner && time < data.rules.battle.maximumSeconds) {
+    time = round(time + data.rules.battle.tickSeconds);
+    decayStatuses(fighters, data.rules.battle.tickSeconds);
 
-const poweredAxisValuesFor = (block: BlockDefinition) => [
-  ...new Map(
-    block.effects.flatMap((effect) =>
-      'scaling' in effect && effect.scaling?.kind === 'powered-axis'
-        ? [[axisValueCountKey(effect.scaling.axisId, effect.scaling.valueId), effect.scaling] as const]
-        : [],
-    ),
-  ).values(),
-];
+    if (time + 0.0001 >= nextPeriodicSecond) {
+      processPeriodicStatuses(fighters);
+      nextPeriodicSecond += 1;
+      winner = winnerFor(fighters);
+      if (winner) break;
+    }
 
-function plannedActivations(
-  data: GameData,
-  board: CircuitBoard,
-  heartPosition: CellPosition,
-  team: Team,
-  tick: number,
-): PlannedActivation[] {
-  const definitions = new Map(data.blocks.map((block) => [block.id, block]));
-  const analysis = analyzeCircuit(board, data.blocks, heartPosition, data.rules.heart.ports);
-  const magicSigils = analyzeMagicSigils(board, data.blocks, analysis, data.rules.skillFusion, data.rules.magicSigils);
-  const magicSigilCount = countActiveMagicSigils(board, analysis, magicSigils);
-  const chargeByCell = calculateChargeByCell(board, data.blocks, analysis, data.rules.skillFusion);
-  const plans: PlannedActivation[] = [];
+    if (time + 0.0001 >= nextEnvironment) {
+      const prePlayerRatio = teamHpRatio(fighters, 'player');
+      const preEnemyRatio = teamHpRatio(fighters, 'enemy');
+      const percent =
+        data.rules.battle.environmentInitialPercent * data.rules.battle.environmentGrowth ** environmentCount;
+      const affected = fighters.filter(alive);
+      for (const fighter of affected) applyDamage(fighter, fighter.stats.maxHp * percent);
+      frames.push(
+        makeFrame(
+          data,
+          fighters,
+          time,
+          'environment',
+          `環境崩壊 ${Math.round(percent * 100)}%`,
+          undefined,
+          affected.map((fighter) => fighter.id),
+        ),
+      );
+      winner = winnerFor(fighters);
+      if (winner === 'draw') {
+        if (Math.abs(prePlayerRatio - preEnemyRatio) > 0.0001) {
+          winner = prePlayerRatio > preEnemyRatio ? 'player' : 'enemy';
+        } else {
+          winner = determineTimeoutWinner(fighters);
+        }
+      }
+      environmentCount += 1;
+      nextEnvironment += data.rules.battle.environmentIntervalSeconds;
+      if (winner) break;
+    }
 
-  board.forEach((row, rowIndex) =>
-    row.forEach((placed, columnIndex) => {
-      const position = { row: rowIndex, column: columnIndex };
-      const key = cellKey(position);
-      if (!placed || !analysis.poweredCells.has(key)) return;
-      const baseBlock = definitions.get(placed.blockId);
-      if (!baseBlock) return;
-      const stars = placed.stars ?? 0;
-      const block = upgradeBlockDefinition(baseBlock, stars, data.rules.skillFusion);
-      if (!hasActivation(block)) return;
-      const upstream = analysis.upstreamCells.get(key) ?? [];
-      const magicSigilLevel = magicSigils.levels.get(key) ?? 0;
-      const adjacentPoweredCount = usesAdjacentPoweredCount(block)
-        ? adjacentPoweredNeighbors(board, data.blocks, analysis, position).length
-        : 0;
-      const poweredAxisCounts = Object.fromEntries(
-        poweredAxisValuesFor(block).map((scaling) => [
-          axisValueCountKey(scaling.axisId, scaling.valueId),
-          countPoweredAxisValue(board, analysis.poweredCells, data.buildDesign, scaling.axisId, scaling.valueId),
+    for (const fighter of fighters.filter(alive)) {
+      const speed = effectiveStat(fighter, 'speed', data.rules.battle.criticalCap);
+      fighter.gauge +=
+        (data.rules.battle.gaugeMaximum / data.rules.battle.baseActionSeconds) *
+        Math.sqrt(speed / 25) *
+        data.rules.battle.tickSeconds;
+    }
+
+    while (!winner) {
+      const actor = fighters
+        .filter((fighter) => alive(fighter) && fighter.gauge >= data.rules.battle.gaugeMaximum)
+        .sort((left, right) => right.gauge - left.gauge || left.tieOrder - right.tieOrder)[0];
+      if (!actor) break;
+      actor.gauge = 0;
+      const views = fighters.map(toGambitView);
+      const action = chooseGambitAction(data, toGambitView(actor), views);
+      const chosenTarget = chooseTarget(data, actor, action.target, fighters, random);
+      if (!chosenTarget) break;
+      const skill =
+        action.skillId === 'normal-attack' ? undefined : data.skills.find((entry) => entry.id === action.skillId);
+      const effects: EffectDefinition[] = skill
+        ? skill.effects
+        : [
+            {
+              kind: 'damage',
+              scaling: 'physical',
+              power: 92,
+              target: 'action-target',
+              canCrit: true,
+            },
+          ];
+      if (skill) actor.mp -= skill.mpCost;
+      const notes: string[] = [];
+      const targetIds = new Set<string>();
+      for (const effect of effects) {
+        const applied = applyEffect(data, effect, actor, [chosenTarget], fighters, random);
+        applied.notes.forEach((note) => notes.push(note));
+        applied.targets.forEach((target) => targetIds.add(target.id));
+      }
+      const actionName = skill?.name ?? '通常攻撃';
+      frames.push(
+        makeFrame(data, fighters, time, 'action', `${actor.name}の${actionName}｜${notes.join(' / ')}`, actor.id, [
+          ...targetIds,
         ]),
       );
-      const modifiers = combineSkillModifiers(
-        incomingSkillModifiers(board, data.blocks, analysis, position, data.rules.skillFusion),
-        magicSigilModifiers(magicSigilLevel, data.rules.magicSigils),
-      );
-      const cooldown = Math.max(1, (block.cooldown ?? 1) - modifiers.cooldownReduction);
-      if ((tick - 1) % cooldown !== 0) return;
-      plans.push({
-        team,
-        block,
-        position,
-        pathLength: analysis.routeLength.get(key) ?? 1,
-        inCycle: analysis.cyclicCells.has(key),
-        allPortsConnected: analysis.fullyConnectedCells.has(key),
-        straightLineLength: analysis.straightLineLength.get(key) ?? 1,
-        upstream,
-        downstream: analysis.downstreamCells.get(key) ?? [],
-        boost: modifiers.effectPower,
-        waveStep: analysis.waveStep.get(key) ?? 1,
-        mergeMultiplier: analysis.mergeCells.has(key) ? data.rules.mergeEffectMultiplier : 1,
-        charge: chargeByCell.get(key) ?? 0,
-        magicSigilLevel,
-        magicSigilCount,
-        adjacentPoweredCount,
-        poweredAxisCounts,
-        stars,
-      });
-    }),
+      winner = winnerFor(fighters);
+    }
+  }
+
+  winner ??= determineTimeoutWinner(fighters);
+  frames.push(
+    makeFrame(
+      data,
+      fighters,
+      Math.min(time, data.rules.battle.maximumSeconds),
+      'finish',
+      winner === 'draw' ? '引き分け' : `${winner === 'player' ? '自軍' : '相手'}の勝利`,
+    ),
   );
-
-  return plans.sort(
-    (left, right) =>
-      left.waveStep - right.waveStep ||
-      left.position.row - right.position.row ||
-      left.position.column - right.position.column,
-  );
-}
-
-const triggerMatches = (
-  trigger: EffectTrigger | undefined,
-  context: {
-    enemyPoison: number;
-    pathLength: number;
-    inCycle: boolean;
-    allPortsConnected: boolean;
-    straightLineLength: number;
-    magicSigilLevel: number;
-    adjacentPoweredCount: number;
-    downstreamCount: number;
-    upstreamCount: number;
-  },
-) => {
-  if (!trigger) return true;
-  if (trigger.kind === 'enemy-poisoned') return context.enemyPoison > 0;
-  return matchesCircuitTrigger(trigger, context);
-};
-
-const traceEvent = (
-  tick: number,
-  action: PlannedActivation,
-  kind: Extract<BattleTraceEvent, { blockId: string }>['kind'],
-  value: number,
-  targetId: string,
-  sequence: number,
-  buffStat?: Extract<BattleTraceEvent, { blockId: string }>['buffStat'],
-  charge?: number,
-): BattleTraceEvent => ({
-  id: `${tick}-${action.team}-${action.position.row}-${action.position.column}-${sequence}`,
-  tick,
-  team: action.team,
-  kind,
-  blockId: action.block.id,
-  row: action.position.row,
-  column: action.position.column,
-  value,
-  targetId,
-  ...(buffStat ? { buffStat } : {}),
-  ...(action.mergeMultiplier > 1 ? { mergeMultiplier: action.mergeMultiplier } : {}),
-  ...(charge === undefined ? {} : { charge }),
-  ...(action.stars > 0 ? { stars: action.stars } : {}),
-});
-
-const systemTraceEvent = (
-  tick: number,
-  fighter: FighterState,
-  kind: 'overload' | 'poison-tick',
-  value: number,
-): BattleTraceEvent => ({
-  id: `${tick}-${kind}-${fighter.team}`,
-  tick,
-  team: fighter.team,
-  kind,
-  value,
-  targetId: fighter.instanceId,
-});
-
-const numericAmount = (
-  effect: Extract<BlockEffect, { amount: number }>,
-  action: PlannedActivation,
-  context: { selfBuffs: SkillBuffState; enemyPoison: number },
-) => {
-  const buffStat = buffStatForEffect(effect);
-  const amount =
-    effect.amount +
-    ('scaling' in effect
-      ? effectScalingBonus(effect.scaling, {
-          enemyPoison: context.enemyPoison,
-          pathLength: action.pathLength,
-          straightLineLength: action.straightLineLength,
-          magicSigilLevel: action.magicSigilLevel,
-          magicSigilCount: action.magicSigilCount,
-          adjacentPoweredCount: action.adjacentPoweredCount,
-          downstreamCount: action.downstream.length,
-          upstreamCount: action.upstream.length,
-          poweredAxisCounts: action.poweredAxisCounts,
-        })
-      : 0) +
-    (buffStat ? (context.selfBuffs[buffStat] ?? 0) + action.boost : 0);
-  return amount * action.mergeMultiplier;
-};
-
-const cloneSkillBuffs = (buffs: BattleState['skillBuffs']): BattleState['skillBuffs'] => ({
-  player: Object.fromEntries(Object.entries(buffs.player).map(([key, value]) => [key, { ...value }])),
-  enemy: Object.fromEntries(Object.entries(buffs.enemy).map(([key, value]) => [key, { ...value }])),
-});
-
-const packetTraceEvent = (
-  tick: number,
-  team: Team,
-  action: PacketAction,
-  value: number,
-  targetId: string,
-  sequence: number,
-  stars: 0 | 1,
-): BattleTraceEvent => ({
-  id: `${tick}-${team}-${action.position.row}-${action.position.column}-${sequence}`,
-  tick,
-  team,
-  kind: action.kind,
-  blockId: action.blockId,
-  row: action.position.row,
-  column: action.position.column,
-  value,
-  targetId,
-  ...('charge' in action && action.charge !== undefined ? { charge: action.charge } : {}),
-  ...(stars > 0 ? { stars } : {}),
-});
-
-const resolvePacketWave = (data: GameData, state: BattleState, tick: number): BattleState[] => {
-  const fighters = state.fighters.map((fighter) => ({ ...fighter }));
-  const analyses = {
-    player: analyzeCircuit(state.playerBoard, data.blocks, state.playerHeartPosition, data.rules.heart.ports),
-    enemy: analyzeCircuit(state.enemyBoard, data.blocks, state.enemyHeartPosition, data.rules.heart.ports),
+  return {
+    winner,
+    durationSeconds: Math.min(round(time), data.rules.battle.maximumSeconds),
+    frames,
+    damageByTeam: {
+      player: fighters
+        .filter((fighter) => fighter.team === 'player')
+        .reduce((total, fighter) => total + fighter.damageDealt, 0),
+      enemy: fighters
+        .filter((fighter) => fighter.team === 'enemy')
+        .reduce((total, fighter) => total + fighter.damageDealt, 0),
+    },
   };
-  const resolutions = {
-    player: resolvePacketCircuit({
-      board: state.playerBoard,
-      blocks: data.blocks,
-      analysis: analyses.player,
-      tick,
-      fusionRules: data.rules.skillFusion,
-    }),
-    enemy: resolvePacketCircuit({
-      board: state.enemyBoard,
-      blocks: data.blocks,
-      analysis: analyses.enemy,
-      tick,
-      fusionRules: data.rules.skillFusion,
-    }),
-  };
-  const trace = [...state.trace];
-  const fighter = (team: Team) => fighters.find((candidate) => candidate.team === team)!;
-  const boardFor = (team: Team) => (team === 'player' ? state.playerBoard : state.enemyBoard);
-  const pulseStepCount = Math.max(1, ...analyses.player.waveStep.values(), ...analyses.enemy.waveStep.values());
-  const frames: BattleState[] = [];
-
-  for (let pulseStep = 1; pulseStep <= pulseStepCount; pulseStep += 1) {
-    const pendingDamage = new Map<Team, number>();
-    (['player', 'enemy'] as const).forEach((team) => {
-      const actor = fighter(team);
-      const target = fighter(otherTeam(team));
-      const actions = resolutions[team].actions
-        .filter((action) => (analyses[team].waveStep.get(cellKey(action.position)) ?? pulseStepCount) === pulseStep)
-        .sort(
-          (left, right) =>
-            left.position.row - right.position.row ||
-            left.position.column - right.position.column ||
-            left.blockId.localeCompare(right.blockId),
-        );
-      actions.forEach((action) => {
-        const placed = boardFor(team)[action.position.row]?.[action.position.column];
-        const stars = placed?.stars ?? 0;
-        if (action.kind === 'damage') {
-          pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + action.amount);
-          trace.push(packetTraceEvent(tick, team, action, action.amount, target.instanceId, trace.length, stars));
-        }
-        if (action.kind === 'shield') {
-          actor.shield += action.amount;
-          trace.push(packetTraceEvent(tick, team, action, action.amount, actor.instanceId, trace.length, stars));
-        }
-        if (action.kind === 'repair') {
-          const previousHp = actor.hp;
-          actor.hp = Math.min(actor.maxHp, actor.hp + action.amount);
-          trace.push(
-            packetTraceEvent(tick, team, action, actor.hp - previousHp, actor.instanceId, trace.length, stars),
-          );
-        }
-        if (action.kind === 'poison') {
-          target.poison += action.amount;
-          trace.push(packetTraceEvent(tick, team, action, action.amount, target.instanceId, trace.length, stars));
-        }
-        if (action.kind === 'coin') {
-          trace.push(packetTraceEvent(tick, team, action, action.amount, actor.instanceId, trace.length, stars));
-        }
-        if (action.kind === 'rupture') {
-          const consumed = Math.floor(target.poison * action.consume);
-          if (consumed <= 0 && action.amount <= 0) return;
-          target.poison -= consumed;
-          const damage = action.amount + consumed;
-          pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + damage);
-          trace.push(packetTraceEvent(tick, team, action, damage, target.instanceId, trace.length, stars));
-        }
-      });
-    });
-
-    for (const [team, amount] of pendingDamage) {
-      const target = fighter(team);
-      const blocked = Math.min(target.shield, amount);
-      target.shield -= blocked;
-      target.hp = Math.max(0, target.hp - (amount - blocked));
-    }
-
-    const finalStep = pulseStep === pulseStepCount;
-    let winner: Winner = winnerOf(fighters);
-    let overloadLevel = state.overloadLevel;
-    let overloadDamage = 0;
-    if (finalStep) {
-      const poisonTickInterval = Math.max(
-        1,
-        Math.ceil((data.rules.poisonTickSeconds * 1000) / data.rules.battleStepMs),
-      );
-      if (!winner && tick % poisonTickInterval === 0) {
-        fighters.forEach((target) => {
-          if (target.poison <= 0 || target.hp <= 0) return;
-          const applied = Math.min(target.hp, target.poison);
-          target.hp = Math.max(0, target.hp - target.poison);
-          trace.push(systemTraceEvent(tick, target, 'poison-tick', applied));
-          target.poison = Math.max(0, target.poison - data.rules.poisonDecay);
-        });
-        winner = winnerOf(fighters);
-      }
-
-      overloadLevel = overloadLevelAtTick(data, tick);
-      overloadDamage = winner ? 0 : overloadDamageAtTick(data, tick);
-      if (!winner && overloadDamage > 0) {
-        const healthBeforeOverload = new Map(fighters.map((target) => [target.team, target.hp]));
-        fighters.forEach((target) => {
-          const applied = Math.min(target.hp, overloadDamage);
-          target.hp = Math.max(0, target.hp - overloadDamage);
-          trace.push(systemTraceEvent(tick, target, 'overload', applied));
-        });
-        winner = winnerOf(fighters);
-        if (winner === 'draw') {
-          const playerHp = healthBeforeOverload.get('player') ?? 0;
-          const enemyHp = healthBeforeOverload.get('enemy') ?? 0;
-          if (playerHp !== enemyHp) winner = playerHp > enemyHp ? 'player' : 'enemy';
-        }
-      }
-    }
-
-    const activePulse = {
-      player: [...analyses.player.waveStep]
-        .filter(([, step]) => step === pulseStep)
-        .map(([key]) => key)
-        .sort(),
-      enemy: [...analyses.enemy.waveStep]
-        .filter(([, step]) => step === pulseStep)
-        .map(([key]) => key)
-        .sort(),
-    };
-    frames.push({
-      ...state,
-      tick,
-      fighters: fighters.map((target) => ({ ...target })),
-      activePulse,
-      pulseStep,
-      pulseStepCount,
-      trace: [...trace],
-      overloadLevel,
-      overloadDamage,
-      winner,
-    });
-    if (winner) break;
-  }
-
-  return frames;
-};
-
-export function resolveWave(data: GameData, state: BattleState, tick: number): BattleState[] {
-  if (state.winner) return [state];
-  if (data.blocks.some((block) => block.packet)) return resolvePacketWave(data, state, tick);
-  const fighters = state.fighters.map((fighter) => ({ ...fighter }));
-  const skillBuffs = cloneSkillBuffs(state.skillBuffs);
-  const playerAnalysis = analyzeCircuit(
-    state.playerBoard,
-    data.blocks,
-    state.playerHeartPosition,
-    data.rules.heart.ports,
-  );
-  const enemyAnalysis = analyzeCircuit(state.enemyBoard, data.blocks, state.enemyHeartPosition, data.rules.heart.ports);
-  const plans = [
-    ...plannedActivations(data, state.playerBoard, state.playerHeartPosition, 'player', tick),
-    ...plannedActivations(data, state.enemyBoard, state.enemyHeartPosition, 'enemy', tick),
-  ];
-  const trace = [...state.trace];
-  const fighter = (team: Team) => fighters.find((candidate) => candidate.team === team)!;
-  const pulseStepCount = Math.max(1, ...playerAnalysis.waveStep.values(), ...enemyAnalysis.waveStep.values());
-  const frames: BattleState[] = [];
-
-  for (let pulseStep = 1; pulseStep <= pulseStepCount; pulseStep += 1) {
-    const pendingDamage = new Map<Team, number>();
-    const stagePlans = plans
-      .filter((plan) => plan.waveStep === pulseStep)
-      .sort(
-        (left, right) =>
-          left.team.localeCompare(right.team) ||
-          left.position.row - right.position.row ||
-          left.position.column - right.position.column,
-      );
-
-    for (const plan of stagePlans) {
-      const actor = fighter(plan.team);
-      const target = fighter(otherTeam(plan.team));
-      const planKey = cellKey(plan.position);
-      const context = {
-        enemyPoison: target.poison,
-        pathLength: plan.pathLength,
-        inCycle: plan.inCycle,
-        allPortsConnected: plan.allPortsConnected,
-        straightLineLength: plan.straightLineLength,
-        magicSigilLevel: plan.magicSigilLevel,
-        adjacentPoweredCount: plan.adjacentPoweredCount,
-        downstreamCount: plan.downstream.length,
-        upstreamCount: plan.upstream.length,
-        selfBuffs: skillBuffs[plan.team][planKey] ?? {},
-      };
-
-      for (const effect of plan.block.effects) {
-        if (
-          effect.kind === 'amplify' ||
-          effect.kind === 'haste' ||
-          effect.kind === 'charge' ||
-          effect.kind === 'inscribe-magic-sigil'
-        )
-          continue;
-        if (!triggerMatches(effect.trigger, context)) continue;
-
-        if (effect.kind === 'release-charge') {
-          const value =
-            (effect.amount + plan.charge * effect.perCharge + (context.selfBuffs[effect.output] ?? 0) + plan.boost) *
-            plan.mergeMultiplier;
-          if (effect.output === 'damage') {
-            pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
-            trace.push(
-              traceEvent(tick, plan, 'damage', value, target.instanceId, trace.length, undefined, plan.charge),
-            );
-          } else {
-            actor.shield += value;
-            trace.push(traceEvent(tick, plan, 'shield', value, actor.instanceId, trace.length, undefined, plan.charge));
-          }
-          continue;
-        }
-
-        if (effect.kind === 'rupture-poison') {
-          const consumed = Math.floor(target.poison * effect.fraction);
-          if (consumed === 0) continue;
-          target.poison -= consumed;
-          const value =
-            (consumed * effect.damagePerStack + (context.selfBuffs.rupture ?? 0) + plan.boost) * plan.mergeMultiplier;
-          pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + value);
-          trace.push(traceEvent(tick, plan, 'rupture', value, target.instanceId, trace.length));
-          continue;
-        }
-
-        if (effect.kind === 'coin') {
-          trace.push(traceEvent(tick, plan, 'coin', effect.amount, actor.instanceId, trace.length));
-          continue;
-        }
-
-        const amount = numericAmount(effect, plan, context);
-        if (effect.kind === 'damage') {
-          pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + amount);
-          trace.push(traceEvent(tick, plan, 'damage', amount, target.instanceId, trace.length));
-        }
-        if (effect.kind === 'shield') {
-          actor.shield += amount;
-          trace.push(traceEvent(tick, plan, 'shield', amount, actor.instanceId, trace.length));
-        }
-        if (effect.kind === 'repair') {
-          const previousHp = actor.hp;
-          actor.hp = Math.min(actor.maxHp, actor.hp + amount);
-          trace.push(traceEvent(tick, plan, 'repair', actor.hp - previousHp, actor.instanceId, trace.length));
-        }
-        if (effect.kind === 'poison') {
-          target.poison += amount;
-          trace.push(traceEvent(tick, plan, 'poison', amount, target.instanceId, trace.length));
-        }
-        if (effect.kind === 'growth') {
-          const targets =
-            effect.target === 'self' ? [plan.position] : effect.target === 'upstream' ? plan.upstream : plan.downstream;
-          targets.forEach((position) => {
-            const targetKey = cellKey(position);
-            const targetPlaced = (plan.team === 'player' ? state.playerBoard : state.enemyBoard)[position.row][
-              position.column
-            ];
-            const targetBlock = targetPlaced
-              ? data.blocks.find((block) => block.id === targetPlaced.blockId)
-              : undefined;
-            if (!targetBlock) return;
-            const stats = effect.stat === 'all' ? buffStatsForBlock(targetBlock) : [effect.stat];
-            stats.forEach((stat) => {
-              const current = skillBuffs[plan.team][targetKey] ?? {};
-              skillBuffs[plan.team][targetKey] = { ...current, [stat]: (current[stat] ?? 0) + amount };
-              trace.push(traceEvent(tick, plan, 'growth', amount, `${plan.team}:${targetKey}`, trace.length, stat));
-            });
-          });
-        }
-      }
-    }
-
-    for (const [team, amount] of pendingDamage) {
-      const target = fighter(team);
-      const blocked = Math.min(target.shield, amount);
-      target.shield -= blocked;
-      target.hp = Math.max(0, target.hp - (amount - blocked));
-    }
-
-    const finalStep = pulseStep === pulseStepCount;
-    let winner: Winner = winnerOf(fighters);
-    let overloadLevel = state.overloadLevel;
-    let overloadDamage = 0;
-    if (finalStep) {
-      const poisonTickInterval = Math.max(
-        1,
-        Math.ceil((data.rules.poisonTickSeconds * 1000) / data.rules.battleStepMs),
-      );
-      if (!winner && tick % poisonTickInterval === 0) {
-        fighters.forEach((target) => {
-          if (target.poison <= 0 || target.hp <= 0) return;
-          const applied = Math.min(target.hp, target.poison);
-          target.hp = Math.max(0, target.hp - target.poison);
-          trace.push(systemTraceEvent(tick, target, 'poison-tick', applied));
-          target.poison = Math.max(0, target.poison - data.rules.poisonDecay);
-        });
-        winner = winnerOf(fighters);
-      }
-
-      overloadLevel = overloadLevelAtTick(data, tick);
-      overloadDamage = winner ? 0 : overloadDamageAtTick(data, tick);
-      if (!winner && overloadDamage > 0) {
-        const healthBeforeOverload = new Map(fighters.map((target) => [target.team, target.hp]));
-        for (const target of fighters) {
-          const applied = Math.min(target.hp, overloadDamage);
-          target.hp = Math.max(0, target.hp - overloadDamage);
-          trace.push(systemTraceEvent(tick, target, 'overload', applied));
-        }
-
-        winner = winnerOf(fighters);
-        if (winner === 'draw') {
-          const playerHp = healthBeforeOverload.get('player') ?? 0;
-          const enemyHp = healthBeforeOverload.get('enemy') ?? 0;
-          if (playerHp !== enemyHp) winner = playerHp > enemyHp ? 'player' : 'enemy';
-        }
-      }
-    }
-
-    const activePulse = {
-      player: [...playerAnalysis.waveStep]
-        .filter(([, step]) => step === pulseStep)
-        .map(([key]) => key)
-        .sort(),
-      enemy: [...enemyAnalysis.waveStep]
-        .filter(([, step]) => step === pulseStep)
-        .map(([key]) => key)
-        .sort(),
-    };
-    frames.push({
-      ...state,
-      tick,
-      fighters: fighters.map((target) => ({ ...target })),
-      skillBuffs: cloneSkillBuffs(skillBuffs),
-      activePulse,
-      pulseStep,
-      pulseStepCount,
-      trace: [...trace],
-      overloadLevel,
-      overloadDamage,
-      winner,
-    });
-    if (winner) break;
-  }
-
-  return frames;
-}
-
-export function resolveTick(data: GameData, state: BattleState, tick: number): BattleState {
-  return resolveWave(data, state, tick).at(-1)!;
-}
-
-export function createPlayback(
-  data: GameData,
-  playerBoard: CircuitBoard,
-  enemyBoard: CircuitBoard,
-  options: BattleOptions = {},
-): BattleState[] {
-  let state = createBattle(data, playerBoard, enemyBoard, options);
-  const frames = [state];
-  for (let tick = 1; !state.winner; tick += 1) {
-    const waveFrames = resolveWave(data, state, tick);
-    frames.push(...waveFrames);
-    state = waveFrames.at(-1)!;
-  }
-  return frames;
-}
-
-export function runBattle(
-  data: GameData,
-  playerBoard: CircuitBoard,
-  enemyBoard: CircuitBoard,
-  options: BattleOptions = {},
-): BattleState {
-  return createPlayback(data, playerBoard, enemyBoard, options).at(-1)!;
 }

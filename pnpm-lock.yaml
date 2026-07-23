@@ -45,9 +45,6 @@ importers:
       playwright-core:
         specifier: ^1.61.1
         version: 1.61.1
-      tsx:
-        specifier: ^4.23.1
-        version: 4.23.1
       vitest:
         specifier: latest
         version: 4.1.10(@types/node@26.1.1)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(tsx@4.23.1)(yaml@2.9.0))
@@ -2093,6 +2090,7 @@ snapshots:
       esbuild: 0.28.1
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   typescript@7.0.2:
     optionalDependencies:

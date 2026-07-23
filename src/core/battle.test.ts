@@ -1,311 +1,52 @@
 import { describe, expect, it } from 'vitest';
-import { createBattle, createPlayback, resolveTick, resolveWave, runBattle } from './battle';
-import type { CircuitBoard, GameData } from './types';
 import { GAME_DATA } from '../game/game-data';
+import { simulateBattle } from './battle';
+import { createMonster } from './monster';
 
-const emptyBoard = (size = 3): CircuitBoard =>
-  Array.from({ length: size }, () => Array.from({ length: size }, () => null));
+const team = (prefix: string, definitions: string[]) =>
+  definitions.map((definitionId, index) =>
+    createMonster(GAME_DATA, definitionId, `${prefix}-${index}`, {
+      xp: 18,
+    }),
+  );
 
-const testData = (): GameData => ({
-  schemaVersion: 2,
-  rules: {
-    boardSize: 3,
-    heart: {
-      initialPosition: { row: 1, column: -1 },
-      ports: ['north', 'east', 'south', 'west'],
-    },
-    bodyUpgrades: {
-      maxLevel: 3,
-      hpPerLevel: 5,
-      upgradeCosts: [1, 2],
-      rivalRunsPerLevel: 1,
-    },
-    battleStepMs: 1000,
-    pulseAnimationMs: 480,
-    suddenDeathSeconds: 4,
-    suddenDeathBaseDamage: 2,
-    suddenDeathGrowth: 2,
-    poisonTickSeconds: 1,
-    poisonDecay: 1,
-    mergeEffectMultiplier: 2,
-    startingCoins: 7,
-    winReward: 4,
-    retryReward: 1,
-    rerollCost: 1,
-    shopSize: 3,
-    rarityWeights: { common: 100, rare: 45, epic: 15, legendary: 4 },
-    levelProgression: {
-      runsPerLevel: 1,
-      maxLevel: 3,
-      rarityWeightMultiplierPerLevel: { common: 0.96, rare: 1.02, epic: 1.08, legendary: 1.14 },
-    },
-    skillFusion: {
-      copiesRequired: 3,
-      rewardChoices: 3,
-      effectMultiplier: 1.5,
-      cooldownReduction: 1,
-    },
-    magicSigils: GAME_DATA.rules.magicSigils,
-    balanceFormula: GAME_DATA.rules.balanceFormula,
-    enemyGeneration: {
-      startingNodes: 2,
-      nodesPerRun: 1,
-      maxNodes: 3,
-    },
-  },
-  units: [
-    { id: 'player-bot', name: 'プレイヤー', code: 'P-01', maxHp: 12, color: '#5de7f2' },
-    { id: 'enemy-bot', name: 'ライバル', code: 'R-01', maxHp: 12, color: '#ff786e' },
-  ],
-  playerUnitId: 'player-bot',
-  enemyUnitId: 'enemy-bot',
-  buildDesign: {
-    rules: {
-      requiredRoles: ['starter', 'grower', 'cycler', 'sustain', 'payoff'],
-      requiredPayoffRoles: ['grower', 'cycler', 'payoff'],
-      minimumPayoffsPerBuild: 2,
-      minimumOpenSkillsPerBuild: 2,
-      maximumExclusiveSkillRatio: 0.75,
-      minimumPlayableSkillsPerBuild: 0,
-      requiredAxisIds: [],
-      minimumHybridSkillsPerBuild: 0,
-      minimumWeaponTypesPerBuild: 1,
-      requireSkillDesignForEveryBlock: false,
-    },
-    placementPatterns: [],
-    axes: [],
-    builds: [],
-    skills: [],
-  },
-  blocks: [
-    {
-      id: 'strike',
-      code: 'HIT',
-      title: '斬撃',
-      description: '',
-      glyph: '斬',
-      price: 2,
-      rarity: 'common',
-      ports: ['west', 'east'],
-      cooldown: 1,
-      effects: [{ kind: 'damage', amount: 3 }],
-    },
-    {
-      id: 'guard',
-      code: 'GRD',
-      title: '装甲',
-      description: '',
-      glyph: '盾',
-      price: 2,
-      rarity: 'common',
-      ports: ['west', 'east'],
-      cooldown: 2,
-      effects: [{ kind: 'shield', amount: 2 }],
-    },
-    {
-      id: 'repair',
-      code: 'FIX',
-      title: '修復',
-      description: '',
-      glyph: '修',
-      price: 2,
-      rarity: 'common',
-      ports: ['west', 'east'],
-      cooldown: 1,
-      effects: [{ kind: 'repair', amount: 3 }],
-    },
-    {
-      id: 'amp',
-      code: 'AMP',
-      title: '増幅',
-      description: '',
-      glyph: '増',
-      price: 2,
-      rarity: 'common',
-      ports: ['west', 'east'],
-      effects: [{ kind: 'amplify', amount: 2 }],
-    },
-    {
-      id: 'haste',
-      code: 'SPD',
-      title: '加速',
-      description: '',
-      glyph: '速',
-      price: 2,
-      rarity: 'common',
-      ports: ['west', 'east'],
-      effects: [{ kind: 'haste', amount: 1 }],
-    },
-  ],
-  startingRack: [],
-  playerBoard: emptyBoard(),
-});
+describe('deterministic 3v3 battle', () => {
+  it('replays the same battle exactly from the same seed and inputs', () => {
+    const input = {
+      player: team('p', ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1']),
+      enemy: team('e', ['dark-dragon-1', 'fire-demon-1', 'light-spirit-1']),
+      seed: 7261,
+    };
 
-const route = (...blockIds: string[]): CircuitBoard => {
-  const board = emptyBoard();
-  blockIds.forEach((blockId, column) => {
-    board[1][column] = { blockId, rotation: 0 };
+    expect(simulateBattle(GAME_DATA, input)).toEqual(simulateBattle(GAME_DATA, input));
   });
-  return board;
-};
 
-describe('1vs1 circuit battle', () => {
-  it('can apply the same level health bonus to both teams', () => {
-    const state = createBattle(testData(), emptyBoard(), emptyBoard(), {
-      playerMaxHpBonus: 5,
-      enemyMaxHpBonus: 5,
+  it('resolves a full team battle and emits serializable playback frames', () => {
+    const result = simulateBattle(GAME_DATA, {
+      player: team('p', ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1']),
+      enemy: team('e', ['dark-dragon-1', 'fire-demon-1', 'light-spirit-1']),
+      seed: 18,
     });
 
-    expect(state.fighters.map((fighter) => fighter.maxHp)).toEqual([17, 17]);
+    expect(['player', 'enemy', 'draw']).toContain(result.winner);
+    expect(result.durationSeconds).toBeLessThanOrEqual(66);
+    expect(result.frames.length).toBeGreaterThan(3);
+    expect(() => JSON.stringify(result)).not.toThrow();
   });
 
-  it('activates powered skills on their own cooldowns', () => {
-    const data = testData();
-    const state = createBattle(data, route('guard'), emptyBoard());
-    const tick1 = resolveTick(data, state, 1);
-    const tick2 = resolveTick(data, tick1, 2);
+  it('starts exponential environment-collapse damage at 45 seconds', () => {
+    const slowData = structuredClone(GAME_DATA);
+    slowData.rules.battle.baseActionSeconds = 1000;
+    const result = simulateBattle(slowData, {
+      player: team('p', ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1']),
+      enemy: team('e', ['dark-dragon-1', 'fire-demon-1', 'light-spirit-1']),
+      seed: 88,
+    });
+    const environmentFrames = result.frames.filter((frame) => frame.kind === 'environment');
 
-    expect(tick1.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
-    expect(tick2.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
-  });
-
-  it('lets a powered skill pass the circuit to the next skill', () => {
-    const data = testData();
-    const result = resolveTick(data, createBattle(data, route('guard', 'strike'), emptyBoard()), 1);
-
-    expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(9);
-    expect(result.fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
-  });
-
-  it('applies upgraded parameters and cooldowns to a starred skill', () => {
-    const data = testData();
-    const board = route('strike');
-    board[1][0] = { blockId: 'strike', rotation: 0, stars: 1 };
-    const tick1 = resolveTick(data, createBattle(data, board, emptyBoard()), 1);
-    const tick2 = resolveTick(data, tick1, 2);
-
-    expect(tick1.trace.find((event) => event.kind === 'damage')?.value).toBe(5);
-    expect(tick2.trace.filter((event) => event.kind === 'damage')).toHaveLength(2);
-  });
-
-  it('records coin income each time a powered economy skill acts', () => {
-    const data = testData();
-    data.blocks.find((block) => block.id === 'strike')!.effects = [
-      { kind: 'damage', amount: 1 },
-      { kind: 'coin', amount: 2 } as never,
-    ];
-    data.blocks.find((block) => block.id === 'strike')!.cooldown = 2;
-    const tick1 = resolveTick(data, createBattle(data, route('strike'), emptyBoard()), 1);
-    const tick2 = resolveTick(data, tick1, 2);
-    const tick3 = resolveTick(data, tick2, 3);
-
-    expect(tick3.trace.filter((event) => event.kind === 'coin').map((event) => event.value)).toEqual([2, 2]);
-  });
-
-  it('activates a straight-line condition only when its minimum segment is complete', () => {
-    const data = testData();
-    data.blocks.find((block) => block.id === 'strike')!.effects = [
-      { kind: 'damage', amount: 3, trigger: { kind: 'straight-line-at-least', amount: 3 } },
-    ];
-
-    const short = resolveTick(data, createBattle(data, route('strike', 'guard'), emptyBoard()), 1);
-    const complete = resolveTick(data, createBattle(data, route('strike', 'guard', 'repair'), emptyBoard()), 1);
-
-    expect(short.trace.filter((event) => event.kind === 'damage')).toHaveLength(0);
-    expect(complete.trace.filter((event) => event.kind === 'damage')).toHaveLength(1);
-  });
-
-  it('plays one frame per circuit depth while parallel cells share a frame', () => {
-    const data = testData();
-    const frames = createPlayback(data, route('guard', 'strike'), emptyBoard()).filter((frame) => frame.tick === 1);
-
-    expect(frames).toHaveLength(2);
-    expect(frames.map((frame) => frame.pulseStep)).toEqual([1, 2]);
-    expect(frames.map((frame) => frame.activePulse.player)).toEqual([['1:0'], ['1:1']]);
-    expect(frames.every((frame) => frame.pulseStepCount === 2)).toBe(true);
-    expect(frames[0].fighters.find((fighter) => fighter.team === 'player')?.shield).toBe(2);
-    expect(frames[0].fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(12);
-    expect(frames[1].fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(9);
-  });
-
-  it('conducts through a cooldown skill without reporting a node activation', () => {
-    const data = testData();
-    const tick1 = resolveTick(data, createBattle(data, route('guard', 'strike'), emptyBoard()), 1);
-    const traceLength = tick1.trace.length;
-    const tick2Frames = resolveWave(data, tick1, 2);
-
-    expect(tick2Frames[0].activePulse.player).toEqual(['1:0']);
-    expect(tick2Frames[0].trace).toHaveLength(traceLength);
-    expect(tick2Frames[1].activePulse.player).toEqual(['1:1']);
-    expect(tick2Frames[1].trace.slice(traceLength)).toEqual([
-      expect.objectContaining({ blockId: 'strike', kind: 'damage' }),
-    ]);
-  });
-
-  it('boosts a directly connected skill with a powered amplifier', () => {
-    const data = testData();
-    const result = resolveTick(data, createBattle(data, route('amp', 'strike'), emptyBoard()), 1);
-
-    expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(7);
-  });
-
-  it('reports only the health that a repair actually restores', () => {
-    const data = testData();
-    const result = resolveTick(data, createBattle(data, route('repair'), route('strike')), 1);
-
-    expect(result.trace.find((event) => event.kind === 'repair')?.value).toBe(0);
-  });
-
-  it('resolves lethal attacks simultaneously', () => {
-    const data = testData();
-    data.units = data.units.map((unit) => ({ ...unit, maxHp: 3 }));
-    const result = resolveTick(data, createBattle(data, route('strike'), route('strike')), 1);
-
-    expect(result.winner).toBe('draw');
-    expect(result.fighters.every((fighter) => fighter.hp === 0)).toBe(true);
-  });
-
-  it('ends the wave when lethal damage lands before the opponent repair step', () => {
-    const data = testData();
-    data.units = data.units.map((unit) => ({ ...unit, maxHp: 3 }));
-    const frames = resolveWave(data, createBattle(data, route('strike'), route('amp', 'repair')), 1);
-    const result = frames.at(-1)!;
-
-    expect(frames).toHaveLength(1);
-    expect(result.winner).toBe('player');
-    expect(result.fighters.find((fighter) => fighter.team === 'enemy')?.hp).toBe(0);
-    expect(result.trace.some((event) => event.kind === 'repair' && event.team === 'enemy')).toBe(false);
-  });
-
-  it('continues past a fixed beat count and applies exponential overload damage', () => {
-    const data = testData();
-    const playback = createPlayback(data, route('guard'), route('guard'));
-    const result = playback.at(-1)!;
-    const overload = result.trace.filter((event) => event.kind === 'overload' && event.team === 'player');
-    const overloadPulses = playback.filter((frame) => frame.overloadLevel > 0).map((frame) => frame.overloadDamage);
-
-    expect(result.winner).toBe('draw');
-    expect(result.tick).toBe(6);
-    expect(overloadPulses).toEqual([2, 4, 8]);
-    expect(overload.map((event) => event.value)).toEqual([2, 4, 6]);
-    expect(result.fighters.every((fighter) => fighter.shield > 0)).toBe(true);
-  });
-
-  it('awards a simultaneous overload knockout to the fighter with more health before the pulse', () => {
-    const data = testData();
-    data.rules.suddenDeathSeconds = 1;
-    data.rules.suddenDeathBaseDamage = 16;
-    const state = createBattle(data, route('guard'), route('guard'));
-    state.fighters.find((fighter) => fighter.team === 'player')!.hp = 10;
-    state.fighters.find((fighter) => fighter.team === 'enemy')!.hp = 8;
-
-    expect(resolveTick(data, state, 1).winner).toBe('player');
-  });
-
-  it('runs to an actual knockout instead of comparing health at a time limit', () => {
-    const result = runBattle(testData(), route('guard'), route('guard'));
-
-    expect(result.tick).toBe(6);
-    expect(result.fighters.every((fighter) => fighter.hp === 0)).toBe(true);
+    expect(environmentFrames[0]?.atSeconds).toBe(45);
+    expect(environmentFrames[0]?.text).toContain('5%');
+    expect(environmentFrames[1]?.text).toContain('8%');
+    expect(result.durationSeconds).toBeLessThanOrEqual(66);
   });
 });
