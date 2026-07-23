@@ -34,10 +34,9 @@ describe('packet build design', () => {
       '生成・変換',
       '再循環',
       '合流',
-      '中継複製',
       '出力刻印',
       '状態複製',
-      '分岐・合流',
+      '分岐',
     ]);
     GAME_DATA.buildDesign.skills.forEach((skill) => {
       expect(skill.axisLinks.map((link) => link.axisId)).toEqual(['trait', 'weapon']);
@@ -52,7 +51,7 @@ describe('packet build design', () => {
       GAME_DATA.buildDesign.placementPatterns.length *
         GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'trait')!.values.length,
     );
-    expect(rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'poison')?.counts).toEqual(
+    expect(rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'neutral')?.counts).toEqual(
       expect.objectContaining({ attack: expect.any(Number), operator: expect.any(Number) }),
     );
   });
@@ -110,6 +109,6 @@ describe('packet build design', () => {
     expect(markdown).toContain('| 状態 | ノードがパケットへ生成する状態');
     expect(markdown).toContain('| ノード | 状態 | 出力 | 回路演算 |');
     expect(markdown).toContain('## 回路演算 × 状態 × 出力（スキル数）');
-    expect(markdown).toContain('| `prism-arrow` | `damage` | `attack`、`operator` | 分岐・合流 |');
+    expect(markdown).toContain('| `prism-arrow` | `damage` | `attack`、`operator` | 分岐 |');
   });
 });

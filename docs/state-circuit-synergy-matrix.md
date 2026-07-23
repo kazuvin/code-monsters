@@ -24,6 +24,28 @@
 
 配置と接続はシナジーを生む内部文法であり、カード上の第3軸にはしない。
 
+## 14枚の検証セット
+
+| レア | カード | 主な役割 |
+| --- | --- | --- |
+| コモン | `strike` | ダメージ生成の基準 |
+| コモン | `poison-needle` | 毒生成＋最後の状態を複製 |
+| コモン | `charge-blade` | チャージ生成 |
+| コモン | `guiding-bolt` | 出力先を攻撃へ刻印 |
+| コモン | `prism-arrow` | 合計量を保ったまま分岐 |
+| レア | `amplifier` | 状態を問わない複製 |
+| レア | `return-coil` | 輪の中で1回だけ再循環 |
+| レア | `discharge-bow` | チャージを攻撃へ変換 |
+| エピック | `accelerator` | 別経路のパケットを合流 |
+| エピック | `rupture-stake` | 毒を破裂へ変換 |
+| エピック | `charge-bastion` | チャージを防御へ変換 |
+| レジェンダリー | `repair-dividend` | 防御・回復・コインを同時生成 |
+| レジェンダリー | `venom-bloom` | 毒を残して育てる決め手 |
+| レジェンダリー | `overcharge-cannon` | チャージを大ダメージへ変換 |
+
+この14枚で、6状態、5演算子、毒の培養／破裂、チャージの攻撃／防御を一通り試せる。
+同じ役割の威力違いは置かず、遊びの違いを確認できるカードだけを残す。
+
 ## 汎用回路演算子
 
 | 演算子 | 入力 | 処理 | 制約 | 使い分け |
@@ -52,11 +74,11 @@
 
 | 狙い | 生成 | 演算 | 終端 | 盤面上の判断 |
 | --- | --- | --- | --- | --- |
-| 毒培養 | `poison-needle` | `amplifier` / `venom-chorus` | `venom-bloom` | 複製の直前に毒を最後の状態として追加する |
-| 毒破裂 | `poison-needle` | `prism-arrow` → `convergence-cannon` | `rupture-stake` | 等分した毒を別経路で運び、合流後に破裂させる |
-| チャージ砲撃 | `charge-blade` / `charge-coil` | `thunder-prism` → `convergence-cannon` | `rail-cannon` | チャージを合流点へ集め、攻撃へ変換する |
-| チャージ防壁 | `charge-blade` / `charge-coil` | `convergence-sigil` | `charge-bastion` | 防御刻印を通し、同じチャージ源を守りへ切り替える |
-| 汎用反転 | 任意の攻撃・防御・回復源 | 出力刻印 | 経路終端 | ショップの引きに応じて出力先だけを変える |
+| 毒培養 | `poison-needle` | `amplifier` / `return-coil` | `venom-bloom` | 複製の直前に毒を最後の状態として追加する |
+| 毒破裂 | `poison-needle` | `prism-arrow` → `accelerator` | `rupture-stake` | 等分した毒を別経路で運び、合流後に破裂させる |
+| チャージ砲撃 | `charge-blade` | `amplifier` / `accelerator` | `discharge-bow` / `overcharge-cannon` | チャージを複製または合流し、攻撃へ変換する |
+| チャージ防壁 | `charge-blade` | `return-coil` | `charge-bastion` | チャージと防御を同じ経路へまとめる |
+| 汎用反転 | `repair-dividend` | `guiding-bolt` | 経路終端 | 防御・回復を攻撃へ変え、コインだけは残す |
 
 ## 拡張契約
 

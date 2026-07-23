@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA, validateGameData } from './game-data';
 
+const CURATED_BLOCK_IDS = [
+  'accelerator',
+  'amplifier',
+  'charge-bastion',
+  'charge-blade',
+  'discharge-bow',
+  'guiding-bolt',
+  'overcharge-cannon',
+  'poison-needle',
+  'prism-arrow',
+  'repair-dividend',
+  'return-coil',
+  'rupture-stake',
+  'strike',
+  'venom-bloom',
+];
+
 describe('game data', () => {
   it('contains complete 5x5 circuits and valid stable references', () => {
     expect(validateGameData(GAME_DATA)).toEqual([]);
@@ -16,7 +33,7 @@ describe('game data', () => {
   });
 
   it('explains packet generation, operators, and conversion in player-facing sentences', () => {
-    expect(GAME_DATA.blocks).toHaveLength(63);
+    expect(GAME_DATA.blocks.map((block) => block.id).sort()).toEqual(CURATED_BLOCK_IDS);
     const descriptions = GAME_DATA.blocks.flatMap((block) => [block.description, block.fusion?.description ?? '']);
     expect(descriptions.filter((description) => description.includes('エッジ'))).toEqual([]);
     expect(descriptions.filter((description) => description.includes('無特性'))).toEqual([]);
@@ -26,8 +43,8 @@ describe('game data', () => {
     expect(GAME_DATA.blocks.find((block) => block.id === 'prism-arrow')?.description).toBe(
       '2拍ごとに、通過するパケットへダメージ90を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。',
     );
-    expect(GAME_DATA.blocks.find((block) => block.id === 'rail-cannon')?.description).toBe(
-      '届いたチャージをすべて消費し、ダメージ298＋1あたり210へ変換する。',
+    expect(GAME_DATA.blocks.find((block) => block.id === 'charge-bastion')?.description).toBe(
+      '届いたチャージをすべて消費し、シールド210＋1あたり200へ変換する。3拍ごとに、通過するパケットへ回復175を加える。',
     );
   });
 
@@ -126,24 +143,24 @@ describe('game data', () => {
     expect(operatorKinds).toEqual(
       new Set(['split-packet', 'merge-packet', 'echo-packet', 'imprint-packet', 'recirculate-packet']),
     );
-    expect(economy).toHaveLength(3);
+    expect(economy.map((block) => block.id)).toEqual(['repair-dividend']);
   });
 
-  it('uses difficult circuit conditions for stronger existing and new skills', () => {
+  it('covers every generic circuit operator with one of the curated skills', () => {
     const skill = (blockId: string) => GAME_DATA.buildDesign.skills.find((candidate) => candidate.blockId === blockId)!;
     const block = (blockId: string) => GAME_DATA.blocks.find((candidate) => candidate.id === blockId)!;
+    const packetKinds = (blockId: string) => block(blockId).packet?.effects.map((effect) => effect.kind);
 
     expect(skill('return-coil').placementPatternId).toBe('loop');
-    expect(skill('long-route-fang').placementPatternId).toBe('straight-line');
     expect(skill('accelerator').placementPatternId).toBe('fully-connected');
-    expect(block('venom-orbit').effects).toContainEqual(expect.objectContaining({ trigger: { kind: 'in-cycle' } }));
-    expect(block('sealed-junction').effects).toContainEqual(
-      expect.objectContaining({ trigger: { kind: 'all-ports-connected' } }),
-    );
-    expect(block('charge-line-lance').effects).toEqual([
-      { kind: 'charge', amount: 6 },
-      { kind: 'charge', amount: 5, trigger: { kind: 'straight-line-at-least', amount: 5 } },
-    ]);
+    expect(skill('amplifier').placementPatternId).toBe('resonance');
+    expect(skill('guiding-bolt').placementPatternId).toBe('magic-sigil');
+    expect(skill('prism-arrow').placementPatternId).toBe('light-vein');
+    expect(packetKinds('return-coil')).toContain('recirculate-packet');
+    expect(packetKinds('accelerator')).toContain('merge-packet');
+    expect(packetKinds('amplifier')).toContain('echo-packet');
+    expect(packetKinds('guiding-bolt')).toContain('imprint-packet');
+    expect(packetKinds('prism-arrow')).toContain('split-packet');
   });
 
   it('makes every higher rarity stronger and more expensive as a tier', () => {
@@ -156,7 +173,7 @@ describe('game data', () => {
 
     expect(ranges).toEqual({
       common: { min: 4, max: 5 },
-      rare: { min: 7, max: 9 },
+      rare: { min: 8, max: 9 },
       epic: { min: 13, max: 14 },
       legendary: { min: 20, max: 22 },
     });
@@ -179,17 +196,28 @@ describe('game data', () => {
       });
     });
 
-    const effectAmount = (blockId: string, kind: 'damage' | 'poison' | 'shield' | 'charge') => {
-      const effect = GAME_DATA.blocks.find((block) => block.id === blockId)?.effects.find((item) => item.kind === kind);
-      if (!effect || !('amount' in effect)) throw new Error(`missing ${blockId} ${kind} fixture`);
+    const generatedAmount = (blockId: string, payload: 'damage' | 'poison') => {
+      const effect = GAME_DATA.blocks
+        .find((block) => block.id === blockId)
+        ?.packet?.effects.find((item) => item.kind === 'generate-packet' && item.payload === payload);
+      if (!effect || effect.kind !== 'generate-packet') throw new Error(`missing ${blockId} ${payload} fixture`);
       return effect.amount;
     };
-    expect(effectAmount('arc-shot', 'damage')).toBeGreaterThan(effectAmount('strike', 'damage'));
-    expect(effectAmount('charge-guard', 'shield')).toBeGreaterThan(effectAmount('barrier', 'shield'));
-    expect(effectAmount('charge-coil', 'charge')).toBeGreaterThan(effectAmount('charge-blade', 'charge'));
-    expect(effectAmount('toxic-reservoir', 'charge')).toBeGreaterThan(effectAmount('charge-coil', 'charge'));
-    expect(effectAmount('charge-line-lance', 'charge')).toBeGreaterThan(effectAmount('toxic-reservoir', 'charge'));
-    expect(effectAmount('venom-bloom', 'poison')).toBeGreaterThan(effectAmount('poison-needle', 'poison'));
+    const conversionRatio = (blockId: string) => {
+      const effect = GAME_DATA.blocks
+        .find((block) => block.id === blockId)
+        ?.packet?.effects.find((item) => item.kind === 'convert-packet');
+      if (!effect || effect.kind !== 'convert-packet') throw new Error(`missing ${blockId} converter fixture`);
+      return effect.perUnit;
+    };
+
+    expect(generatedAmount('venom-bloom', 'poison')).toBeGreaterThan(generatedAmount('poison-needle', 'poison'));
+    expect(conversionRatio('overcharge-cannon')).toBeGreaterThan(conversionRatio('discharge-bow'));
+    expect(
+      GAME_DATA.blocks
+        .find((block) => block.id === 'repair-dividend')
+        ?.packet?.effects.filter((effect) => effect.kind === 'generate-packet'),
+    ).toHaveLength(3);
   });
 
   it('keeps one or two charge release nodes in each high rarity', () => {
@@ -200,7 +228,7 @@ describe('game data', () => {
 
     expect(releaseCount('common')).toBe(0);
     expect(releaseCount('rare')).toBe(1);
-    expect(releaseCount('epic')).toBe(2);
+    expect(releaseCount('epic')).toBe(1);
     expect(releaseCount('legendary')).toBe(1);
   });
 
@@ -238,22 +266,13 @@ describe('game data', () => {
     expect(trait?.values.find((value) => value.id === 'neutral')?.title).toBe('無属性');
   });
 
-  it('defines capped magic sigils that grant power and late-rank haste', () => {
-    expect(GAME_DATA.rules.magicSigils).toEqual({
-      maxLevel: 3,
-      effectPowerPerLevel: 15,
-      hasteLevel: 3,
-      cooldownReduction: 1,
-    });
+  it('uses packet imprinting without retaining the old magic-sigil scalar effects', () => {
+    const guidingBolt = GAME_DATA.blocks.find((block) => block.id === 'guiding-bolt');
 
-    const inscribers = GAME_DATA.blocks.filter((block) =>
-      block.effects.some((effect) => effect.kind === 'inscribe-magic-sigil'),
+    expect(GAME_DATA.blocks.flatMap((block) => block.effects.map((effect) => effect.kind))).not.toContain(
+      'inscribe-magic-sigil',
     );
-    expect(inscribers.map((block) => block.id)).toEqual(
-      expect.arrayContaining(['inscription-stone', 'guiding-bolt', 'twin-inscription', 'convergence-sigil']),
-    );
-    expect(inscribers.length).toBeGreaterThanOrEqual(5);
-    expect(inscribers.every((block) => !block.description.includes('未通電なら魔紋は消える'))).toBe(true);
+    expect(guidingBolt?.packet?.effects).toContainEqual({ kind: 'imprint-packet', imprint: 'assault' });
   });
 
   it('defines a rival generator that attempts to add one affordable node per round', () => {
@@ -270,7 +289,7 @@ describe('game data', () => {
         .find((skill) => skill.blockId === blockId)
         ?.axisLinks.find((link) => link.axisId === 'trait')?.valueIds;
     expect(traitIds('strike')).toEqual(['damage']);
-    expect(traitIds('charge-guard')).toEqual(['charge', 'shield']);
+    expect(traitIds('charge-bastion')).toEqual(['charge', 'repair']);
     expect(traitIds('repair-dividend')).toEqual(['shield', 'repair', 'coin']);
     expect(traitIds('amplifier')).toEqual(['neutral']);
     expect(
@@ -300,7 +319,7 @@ describe('game data', () => {
     );
 
     expect(poisonDesigns.every((skill) => skill.status === 'playable' && skill.blockId)).toBe(true);
-    expect(poisonPrograms.length).toBeGreaterThanOrEqual(4);
+    expect(poisonPrograms.length).toBeGreaterThanOrEqual(3);
     expect(sharedOperators.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -324,37 +343,7 @@ describe('game data', () => {
     const branchingSkills = GAME_DATA.blocks.filter((block) => block.ports.length >= 3);
 
     expect(branchingSkills.map((block) => block.id).sort()).toEqual(
-      [
-        'accelerator',
-        'adaptive-arsenal',
-        'adaptive-bulwark',
-        'all-sigil-resonance',
-        'arc-shot',
-        'barrier',
-        'bounty-arrow',
-        'branchlight-barrage',
-        'bridge-core',
-        'celestial-echo-cannon',
-        'charge-arrow',
-        'convergence-cannon',
-        'echo-arrow',
-        'grand-harmony',
-        'guiding-bolt',
-        'harmonic-sanctuary',
-        'myriad-light-array',
-        'poison-needle',
-        'prism-arrow',
-        'radiant-fork',
-        'resonance-cannon',
-        'resonance-circle',
-        'sealed-junction',
-        'solar-convergence',
-        'thunder-prism',
-        'twin-inscription',
-        'venom-chorus',
-        'venom-orbit',
-        'venom-ray',
-      ].sort(),
+      ['accelerator', 'guiding-bolt', 'poison-needle', 'prism-arrow'].sort(),
     );
     branchingSkills.forEach((block) => {
       if (block.cooldown) expect(block.cooldown, `${block.id} should pay a cooldown tax`).toBeGreaterThanOrEqual(2);
@@ -425,7 +414,7 @@ describe('game data', () => {
 
   it('rejects overlapping node price tiers', () => {
     const invalid = structuredClone(GAME_DATA);
-    invalid.blocks.find((block) => block.id === 'rail-cannon')!.price = 9;
+    invalid.blocks.find((block) => block.id === 'accelerator')!.price = 9;
 
     expect(validateGameData(invalid)).toContain('epic nodes must cost more than every rare node');
   });
@@ -452,52 +441,26 @@ describe('game data', () => {
 
   it('rejects an effect scaling interval that cannot progress', () => {
     const invalid = structuredClone(GAME_DATA);
-    const fang = invalid.blocks.find((block) => block.id === 'long-route-fang')!;
-    const damage = fang.effects.find((effect) => effect.kind === 'damage');
+    const prism = invalid.blocks.find((block) => block.id === 'prism-arrow')!;
+    const damage = prism.effects.find((effect) => effect.kind === 'damage');
     if (!damage || damage.kind !== 'damage' || !damage.scaling) throw new Error('missing damage scaling fixture');
     damage.scaling.every = 0;
 
-    expect(validateGameData(invalid)).toContain(
-      'block "long-route-fang" effect "damage" scaling every must be positive',
-    );
+    expect(validateGameData(invalid)).toContain('block "prism-arrow" effect "damage" scaling every must be positive');
   });
 
-  it('rejects an unknown powered axis, an invalid cap, or a neutral operator without a fusion transform', () => {
+  it('rejects an invalid scaling cap or a neutral operator without a fusion transform', () => {
     const invalid = structuredClone(GAME_DATA);
-    const arsenal = invalid.blocks.find((block) => block.id === 'adaptive-arsenal')!;
-    const damage = arsenal.effects.find((effect) => effect.kind === 'damage');
-    if (!damage || damage.kind !== 'damage' || damage.scaling?.kind !== 'powered-axis') {
-      throw new Error('missing powered-axis fixture');
-    }
-    damage.scaling.valueId = 'missing';
+    const prism = invalid.blocks.find((block) => block.id === 'prism-arrow')!;
+    const damage = prism.effects.find((effect) => effect.kind === 'damage');
+    if (!damage || damage.kind !== 'damage' || !damage.scaling) throw new Error('missing scaling fixture');
     damage.scaling.maxStacks = 0;
     delete invalid.blocks.find((block) => block.id === 'amplifier')!.fusion;
 
     expect(validateGameData(invalid)).toEqual(
       expect.arrayContaining([
-        'block "adaptive-arsenal" effect "damage" references unknown powered axis "trait/missing"',
-        'block "adaptive-arsenal" effect "damage" scaling maxStacks must be a positive integer',
+        'block "prism-arrow" effect "damage" scaling maxStacks must be a positive integer',
         'neutral block "amplifier" needs an explicit fusion transformation',
-      ]),
-    );
-  });
-
-  it('rejects magic sigils that target their source cell or exceed the configured rank', () => {
-    const invalid = structuredClone(GAME_DATA);
-    const inscription = invalid.blocks
-      .find((block) => block.id === 'inscription-stone')!
-      .effects.find((effect) => effect.kind === 'inscribe-magic-sigil');
-    if (!inscription || inscription.kind !== 'inscribe-magic-sigil') throw new Error('missing inscription fixture');
-    inscription.offsets = [{ row: 0, column: 0 }];
-    const cannon = invalid.blocks.find((block) => block.id === 'deep-sigil-cannon')!;
-    const damage = cannon.effects.find((effect) => effect.kind === 'damage');
-    if (!damage || damage.kind !== 'damage') throw new Error('missing sigil damage fixture');
-    damage.trigger = { kind: 'magic-sigil-level-at-least', amount: 4 };
-
-    expect(validateGameData(invalid)).toEqual(
-      expect.arrayContaining([
-        'block "inscription-stone" cannot inscribe its own cell',
-        'block "deep-sigil-cannon" effect "damage" magic sigil level is invalid',
       ]),
     );
   });

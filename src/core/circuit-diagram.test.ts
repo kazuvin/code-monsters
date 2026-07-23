@@ -12,13 +12,12 @@ describe('packet circuit diagram', () => {
   it.each([
     ['return-coil', 'cycle'],
     ['accelerator', 'merge'],
-    ['long-route-fang', 'resonance'],
+    ['amplifier', 'resonance'],
     ['guiding-bolt', 'inscription'],
-    ['spirit-blade', 'resonance'],
+    ['poison-needle', 'resonance'],
     ['prism-arrow', 'branch'],
-    ['convergence-cannon', 'merge'],
-    ['charge-coil', 'charge-flow'],
-    ['rail-cannon', 'charge-release'],
+    ['charge-blade', 'charge-flow'],
+    ['discharge-bow', 'charge-release'],
     ['rupture-stake', 'charge-release'],
   ] as const)('maps %s to a %s packet diagram', (blockId, kind) => {
     const result = circuitDiagramForBlock(block(blockId), 0);
@@ -42,6 +41,6 @@ describe('packet circuit diagram', () => {
   });
 
   it('uses all 25 cells as a fixed visual frame', () => {
-    expect(circuitDiagramForBlock(block('spirit-blade'), 0)?.size).toBe(5);
+    expect(circuitDiagramForBlock(block('amplifier'), 0)?.size).toBe(5);
   });
 });

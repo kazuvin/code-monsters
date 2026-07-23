@@ -267,21 +267,21 @@ const createInitialPlayerBoard = () => {
   const initial = GAME_DATA.playerBoard.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
   if (magicSigilFixture === 'focus') {
     initial[2][1] = { blockId: 'guiding-bolt', rotation: 0 };
-    initial[1][2] = { blockId: 'convergence-sigil', rotation: 0 };
-    initial[2][2] = { blockId: 'deep-sigil-cannon', rotation: 0 };
+    initial[1][2] = { blockId: 'amplifier', rotation: 1 };
+    initial[2][2] = { blockId: 'rupture-stake', rotation: 0 };
     return initial;
   }
   if (resonanceFixture === 'surround') {
     const fixture: Array<[number, number, string, SkillStars?]> = [
-      [1, 0, 'grand-harmony'],
-      [1, 1, 'harmonic-sanctuary'],
-      [1, 2, 'sealed-junction'],
-      [2, 0, 'sealed-junction'],
-      [2, 1, 'grand-harmony', 1],
-      [2, 2, 'sealed-junction'],
-      [3, 0, 'sealed-junction'],
-      [3, 1, 'harmonic-sanctuary'],
-      [3, 2, 'harmonic-sanctuary'],
+      [1, 0, 'amplifier'],
+      [1, 1, 'repair-dividend'],
+      [1, 2, 'guiding-bolt'],
+      [2, 0, 'guiding-bolt'],
+      [2, 1, 'amplifier', 1],
+      [2, 2, 'guiding-bolt'],
+      [3, 0, 'guiding-bolt'],
+      [3, 1, 'repair-dividend'],
+      [3, 2, 'repair-dividend'],
     ];
     fixture.forEach(([row, column, blockId, stars]) => {
       initial[row][column] = { blockId, rotation: 0, ...(stars ? { stars } : {}) };
@@ -290,15 +290,15 @@ const createInitialPlayerBoard = () => {
   }
   if (lightVeinFixture === 'converge') {
     const fixture: Array<[number, number, string, Rotation, SkillStars?]> = [
-      [2, 1, 'radiant-fork', 0],
-      [1, 1, 'light-guide', 3],
+      [2, 1, 'prism-arrow', 0],
+      [1, 1, 'guiding-bolt', 3],
       [1, 2, 'prism-arrow', 2],
-      [1, 3, 'light-guide', 0],
-      [2, 2, 'light-guide', 2],
-      [3, 1, 'light-guide', 2],
-      [3, 2, 'light-vein-blade', 0],
-      [3, 3, 'light-guide', 1],
-      [2, 3, 'solar-convergence', 0, 1],
+      [1, 3, 'guiding-bolt', 0],
+      [2, 2, 'accelerator', 2],
+      [3, 1, 'guiding-bolt', 2],
+      [3, 2, 'strike', 0],
+      [3, 3, 'guiding-bolt', 1],
+      [2, 3, 'accelerator', 0, 1],
     ];
     fixture.forEach(([row, column, blockId, rotation, stars]) => {
       initial[row][column] = { blockId, rotation, ...(stars ? { stars } : {}) };
@@ -306,11 +306,9 @@ const createInitialPlayerBoard = () => {
     return initial;
   }
   if (topologyFixture !== 'straight') return initial;
-  ['charge-blade', 'charge-coil', 'charge-arrow', 'charge-line-lance', 'overcharge-cannon'].forEach(
-    (blockId, column) => {
-      initial[1][column] = { blockId, rotation: blockId === 'charge-arrow' ? 2 : 0 };
-    },
-  );
+  ['charge-blade', 'amplifier', 'guiding-bolt', 'strike', 'overcharge-cannon'].forEach((blockId, column) => {
+    initial[1][column] = { blockId, rotation: 0 };
+  });
   return initial;
 };
 

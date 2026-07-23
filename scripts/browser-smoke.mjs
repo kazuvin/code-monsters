@@ -54,7 +54,8 @@ if (
 
 await desktop.getByRole('button', { name: /カード一覧/ }).click();
 await desktop.locator('.catalog-screen').waitFor();
-if ((await desktop.locator('.catalog-card').count()) !== 63) throw new Error('Catalog does not show all 63 cards');
+if ((await desktop.locator('.catalog-card').count()) !== 14)
+  throw new Error('Catalog does not show the curated 14 cards');
 for (const label of ['無属性', '毒', 'チャージ', 'コイン', '回路演算']) {
   if ((await desktop.locator('.catalog-filters button').filter({ hasText: label }).count()) === 0) {
     throw new Error(`Catalog is missing the ${label} filter`);
@@ -62,7 +63,7 @@ for (const label of ['無属性', '毒', 'チャージ', 'コイン', '回路演
 }
 await desktop.locator('.catalog-filters button').filter({ hasText: '回路演算' }).click();
 const operatorCount = await desktop.locator('.catalog-card').count();
-if (operatorCount <= 0 || operatorCount >= 63) throw new Error('Circuit operator filter did not narrow the catalog');
+if (operatorCount <= 0 || operatorCount >= 14) throw new Error('Circuit operator filter did not narrow the catalog');
 await desktop.getByRole('button', { name: /すべて/ }).click();
 
 const splitter = desktop.locator('.catalog-card').filter({ hasText: '枝光矢' });
@@ -129,7 +130,7 @@ watchErrors(mobile);
 await mobile.goto(target.toString(), { waitUntil: 'networkidle' });
 await mobile.getByRole('button', { name: /カード一覧/ }).click();
 await mobile.locator('.catalog-screen').waitFor();
-if ((await mobile.locator('.catalog-card').count()) !== 63) throw new Error('Mobile catalog is incomplete');
+if ((await mobile.locator('.catalog-card').count()) !== 14) throw new Error('Mobile catalog is incomplete');
 await mobile.locator('.catalog-card').filter({ hasText: '枝光矢' }).click();
 await mobile.getByRole('dialog').waitFor();
 const mobileDiagram = mobile.locator('.circuit-scope-diagram[data-diagram-kind="branch"]');

@@ -16,6 +16,7 @@
 - Model every playable node with a data-driven `packet` program. The battle grammar is state generation → generic packet → state-independent circuit operators → state or combat output.
 - Keep packet state and circuit operators separate. Adding a state must not require new split, merge, echo, imprint, or recirculation code.
 - Preserve the operator laws: split conserves total payload, merge combines distinct incoming routes from the same beat, echo copies only the last generated state once, recirculation happens at most once, and traversal order is deterministic.
+- Keep the exploratory playable catalog at exactly 14 cards. Replace an existing card when testing a new idea; record additional concepts as planned skills instead of expanding the shop pool.
 - Define a build as a placement identity, strength, risk, game plan, and payoff paths in `src/game/game.json` before expanding its skills.
 - Give every build coverage for starter, grower, cycler, sustain, and payoff roles. A label or status type alone is not a build.
 - Give every build at least two distinct payoff paths. Each path must have its own payoff skill plus supporting grower and cycler skills.

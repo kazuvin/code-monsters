@@ -113,26 +113,12 @@ describe('balance simulation', () => {
       battles: 2,
       runs: [5],
       skillTrials: 1,
-      skillIds: ['rail-cannon'],
+      skillIds: ['discharge-bow'],
     });
-    const railCannon = result.skills.find((skill) => skill.blockId === 'rail-cannon');
+    const dischargeBow = result.skills.find((skill) => skill.blockId === 'discharge-bow');
 
-    expect(railCannon?.counterfactual.samples).toBe(0);
-    expect(railCannon?.ablation.samples).toBe(1);
-  });
-
-  it('does not compare a bridge skill with a payoff just because they share a secondary role', () => {
-    const result = runBalanceSimulation(GAME_DATA, {
-      ...quickConfig,
-      battles: 2,
-      runs: [9],
-      skillTrials: 1,
-      skillIds: ['bridge-core'],
-    });
-    const bridgeCore = result.skills.find((skill) => skill.blockId === 'bridge-core');
-
-    expect(bridgeCore?.counterfactual.samples).toBe(0);
-    expect(bridgeCore?.ablation.samples).toBe(1);
+    expect(dischargeBow?.counterfactual.samples).toBe(0);
+    expect(dischargeBow?.ablation.samples).toBe(1);
   });
 
   it('does not compare skills with different placement identities', () => {
@@ -141,12 +127,12 @@ describe('balance simulation', () => {
       battles: 2,
       runs: [9],
       skillTrials: 1,
-      skillIds: ['adaptive-bulwark'],
+      skillIds: ['return-coil'],
     });
-    const adaptiveBulwark = result.skills.find((skill) => skill.blockId === 'adaptive-bulwark');
+    const returnCoil = result.skills.find((skill) => skill.blockId === 'return-coil');
 
-    expect(adaptiveBulwark?.counterfactual.samples).toBe(0);
-    expect(adaptiveBulwark?.ablation.samples).toBe(1);
+    expect(returnCoil?.counterfactual.samples).toBe(0);
+    expect(returnCoil?.ablation.samples).toBe(1);
   });
 
   it('renders machine-readable CSV and a human-readable Markdown report', () => {
@@ -189,18 +175,18 @@ describe('balance simulation', () => {
     };
     setAblation('overcharge-cannon', 0.65, 0.54, 0.76);
     setAblation('venom-bloom', 0.32, 0.22, 0.42);
-    setAblation('charge-line-lance', 0, -0.07, 0.07);
+    setAblation('repair-dividend', 0, -0.07, 0.07);
     setAblation('rupture-stake', 0, -0.07, 0.07);
-    setAblation('rail-cannon', 0.3, 0.2, 0.4);
-    setAblation('sealed-junction', 0.3, 0.2, 0.4);
+    setAblation('charge-bastion', 0.3, 0.2, 0.4);
+    setAblation('accelerator', 0.3, 0.2, 0.4);
     const overcharge = skills.find((skill) => skill.blockId === 'overcharge-cannon')!;
     overcharge.matchedSamples = 80;
     overcharge.matchedControlSamples = 80;
     overcharge.matchedScoreLift = 0.2;
-    const lance = skills.find((skill) => skill.blockId === 'charge-line-lance')!;
-    lance.matchedSamples = 80;
-    lance.matchedControlSamples = 80;
-    lance.matchedScoreLift = -0.2;
+    const dividend = skills.find((skill) => skill.blockId === 'repair-dividend')!;
+    dividend.matchedSamples = 80;
+    dividend.matchedControlSamples = 80;
+    dividend.matchedScoreLift = -0.2;
     const rupture = skills.find((skill) => skill.blockId === 'rupture-stake')!;
     rupture.matchedSamples = 1000;
     rupture.matchedControlSamples = 40;
@@ -216,11 +202,11 @@ describe('balance simulation', () => {
       suspectedOutlier: true,
       signals: expect.arrayContaining(['ablation-rarity-high']),
     });
-    expect(classified.find((skill) => skill.blockId === 'charge-line-lance')).toMatchObject({
+    expect(classified.find((skill) => skill.blockId === 'repair-dividend')).toMatchObject({
       ablationRarityDelta: -0.32,
       suspectedOutlier: false,
     });
-    expect(classified.find((skill) => skill.blockId === 'charge-line-lance')?.signals).not.toContain(
+    expect(classified.find((skill) => skill.blockId === 'repair-dividend')?.signals).not.toContain(
       'ablation-rarity-low',
     );
     expect(classified.find((skill) => skill.blockId === 'rupture-stake')).toMatchObject({

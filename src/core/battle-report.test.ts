@@ -54,7 +54,7 @@ const trace: BattleTraceEvent[] = [
     tick: 1,
     team: 'player',
     kind: 'shield',
-    blockId: 'barrier',
+    blockId: 'repair-dividend',
     row: 1,
     column: 0,
     value: 130,
@@ -62,12 +62,12 @@ const trace: BattleTraceEvent[] = [
   },
   {
     id: '2-player-1-1-5',
-    tick: 2,
+    tick: 1,
     team: 'player',
     kind: 'repair',
-    blockId: 'repair',
+    blockId: 'repair-dividend',
     row: 1,
-    column: 1,
+    column: 0,
     value: 50,
     targetId: 'player-volt',
   },
@@ -76,7 +76,7 @@ const trace: BattleTraceEvent[] = [
     tick: 1,
     team: 'enemy',
     kind: 'damage',
-    blockId: 'arc-shot',
+    blockId: 'strike',
     row: 2,
     column: 0,
     value: 190,
@@ -87,7 +87,7 @@ const trace: BattleTraceEvent[] = [
     tick: 1,
     team: 'enemy',
     kind: 'poison',
-    blockId: 'toxic-reservoir',
+    blockId: 'venom-bloom',
     row: 2,
     column: 1,
     value: 120,
@@ -98,8 +98,8 @@ const trace: BattleTraceEvent[] = [
     tick: 1,
     team: 'player',
     kind: 'coin',
-    blockId: 'salvage-blade',
-    row: 0,
+    blockId: 'repair-dividend',
+    row: 1,
     column: 0,
     value: 1,
     targetId: 'player-volt',
@@ -148,12 +148,14 @@ describe('battle report', () => {
       coinsEarned: 0,
     });
     expect(rupture).toMatchObject({ activations: 1, damage: 1430 });
-    expect(report.player.skills.find((skill) => skill.blockId === 'salvage-blade')).toMatchObject({
+    expect(report.player.skills.find((skill) => skill.blockId === 'repair-dividend')).toMatchObject({
       activations: 1,
+      shield: 130,
+      repair: 50,
       coinsEarned: 1,
     });
-    expect(report.enemy.skills.find((skill) => skill.blockId === 'arc-shot')).toMatchObject({
-      title: 'アーク弾',
+    expect(report.enemy.skills.find((skill) => skill.blockId === 'strike')).toMatchObject({
+      title: '斬撃',
       activations: 1,
       damage: 190,
     });
