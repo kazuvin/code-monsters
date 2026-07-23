@@ -12,21 +12,22 @@ describe('game data', () => {
     expect(GAME_DATA.startingRack).toEqual([]);
     expect(GAME_DATA.playerBoard.flat().every((cell) => cell === null)).toBe(true);
     expect(GAME_DATA.blocks.flatMap((block) => block.effects.map((effect) => effect.kind))).not.toContain('wire');
+    expect(GAME_DATA.blocks.every((block) => block.packet && block.packet.effects.length > 0)).toBe(true);
   });
 
-  it('uses player-facing card descriptions instead of internal circuit terminology', () => {
+  it('explains packet generation, operators, and conversion in player-facing sentences', () => {
     expect(GAME_DATA.blocks).toHaveLength(63);
     const descriptions = GAME_DATA.blocks.flatMap((block) => [block.description, block.fusion?.description ?? '']);
     expect(descriptions.filter((description) => description.includes('エッジ'))).toEqual([]);
     expect(descriptions.filter((description) => description.includes('無特性'))).toEqual([]);
     expect(GAME_DATA.blocks.find((block) => block.id === 'strike')?.description).toBe(
-      '毎拍、相手に55ダメージ。左右につないで、次の技へ通電する。',
+      '毎拍、通過するパケットへダメージ55を加える。',
     );
     expect(GAME_DATA.blocks.find((block) => block.id === 'prism-arrow')?.description).toBe(
-      '下流が2方向以上なら、2拍ごとに90ダメージ。通電した下流1方向につき、ダメージが40増える（最大3方向）。',
+      '2拍ごとに、通過するパケットへダメージ90を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。',
     );
     expect(GAME_DATA.blocks.find((block) => block.id === 'rail-cannon')?.description).toBe(
-      '3拍ごとに、298＋チャージ1につき210ダメージ。チャージをすべて使い、このノードで通電が止まる。',
+      '届いたチャージをすべて消費し、ダメージ298＋1あたり210へ変換する。',
     );
   });
 
@@ -103,39 +104,29 @@ describe('game data', () => {
     ).toEqual([]);
   });
 
-  it('adds neutral economy skills and restrained high-rarity neutral-count payoffs', () => {
-    const neutralBlockIds = new Set(
-      GAME_DATA.buildDesign.skills
-        .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.includes('neutral'))
-        .map((skill) => skill.blockId),
+  it('expresses every source, operator, converter, and hybrid through the same packet grammar', () => {
+    const roles = new Set(GAME_DATA.blocks.map((block) => block.packet?.role));
+    const operatorKinds = new Set(
+      GAME_DATA.blocks.flatMap(
+        (block) =>
+          block.packet?.effects.flatMap((effect) =>
+            ['split-packet', 'merge-packet', 'echo-packet', 'imprint-packet', 'recirculate-packet'].includes(
+              effect.kind,
+            )
+              ? [effect.kind]
+              : [],
+          ) ?? [],
+      ),
     );
-    const neutralBlocks = GAME_DATA.blocks.filter((block) => neutralBlockIds.has(block.id));
-    const economy = neutralBlocks.filter((block) =>
-      block.effects.some((effect) => (effect as { kind: string }).kind === 'coin'),
-    );
-    const neutralPayoffs = neutralBlocks.filter(
-      (block) =>
-        (block.rarity === 'epic' || block.rarity === 'legendary') &&
-        block.effects.some(
-          (effect) =>
-            'scaling' in effect &&
-            effect.scaling?.kind === ('powered-axis' as never) &&
-            (effect.scaling as unknown as { axisId: string; valueId: string }).axisId === 'trait' &&
-            (effect.scaling as unknown as { axisId: string; valueId: string }).valueId === 'neutral',
-        ),
+    const economy = GAME_DATA.blocks.filter((block) =>
+      block.packet?.effects.some((effect) => effect.kind === 'generate-packet' && effect.payload === 'coin'),
     );
 
+    expect(roles).toEqual(new Set(['source', 'operator', 'sink', 'hybrid']));
+    expect(operatorKinds).toEqual(
+      new Set(['split-packet', 'merge-packet', 'echo-packet', 'imprint-packet', 'recirculate-packet']),
+    );
     expect(economy).toHaveLength(3);
-    expect(economy.every((block) => (block.shopWeight ?? 1) < 1)).toBe(true);
-    expect(neutralPayoffs).toHaveLength(3);
-    expect(new Set(neutralPayoffs.map((block) => block.rarity))).toEqual(new Set(['epic', 'legendary']));
-    expect(
-      neutralPayoffs
-        .find((block) => block.id === 'adaptive-bulwark')
-        ?.effects.flatMap((effect) =>
-          'scaling' in effect && effect.scaling?.kind === 'powered-axis' ? [effect.scaling] : [],
-        )[0]?.maxStacks,
-    ).toBe(3);
   });
 
   it('uses difficult circuit conditions for stronger existing and new skills', () => {
@@ -213,7 +204,7 @@ describe('game data', () => {
     expect(releaseCount('legendary')).toBe(1);
   });
 
-  it('gives every charge-trait node an explicit charge or release effect', () => {
+  it('gives every charge-state node an explicit packet generator or converter', () => {
     const chargeBlocks = GAME_DATA.buildDesign.skills
       .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.includes('charge'))
       .map((skill) => GAME_DATA.blocks.find((block) => block.id === skill.blockId)!);
@@ -221,24 +212,30 @@ describe('game data', () => {
     expect(
       chargeBlocks
         .filter(
-          (block) => !block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge'),
+          (block) =>
+            !block.packet?.effects.some(
+              (effect) =>
+                (effect.kind === 'generate-packet' && effect.payload === 'charge') ||
+                (effect.kind === 'convert-packet' && effect.input === 'charge'),
+            ),
         )
         .map((block) => block.id),
     ).toEqual([]);
   });
 
-  it('defines a presentation color for every trait axis value', () => {
+  it('defines a presentation color for every state axis value', () => {
     const trait = GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'trait');
 
     expect(trait?.values.map((value) => [value.id, value.color])).toEqual([
       ['neutral', '#486977'],
+      ['damage', '#ff786e'],
       ['poison', '#8bd450'],
       ['charge', '#ffd36a'],
-      ['magic-sigil', '#aa88ff'],
-      ['resonance', '#ff9bd7'],
-      ['light-vein', '#5de7f2'],
+      ['shield', '#5de7f2'],
+      ['repair', '#ff9bd7'],
+      ['coin', '#ffb454'],
     ]);
-    expect(trait?.values.find((value) => value.id === 'neutral')?.title).toBe('汎用');
+    expect(trait?.values.find((value) => value.id === 'neutral')?.title).toBe('無属性');
   });
 
   it('defines capped magic sigils that grant power and late-rank haste', () => {
@@ -267,81 +264,44 @@ describe('game data', () => {
     });
   });
 
-  it('uses neutral for generic nodes and visible circuit traits for core nodes', () => {
+  it('uses state values only for carried packet state and keeps circuit operators neutral', () => {
     const traitIds = (blockId: string) =>
       GAME_DATA.buildDesign.skills
         .find((skill) => skill.blockId === blockId)
         ?.axisLinks.find((link) => link.axisId === 'trait')?.valueIds;
-    const genericIds = [
-      'strike',
-      'breaker',
-      'arc-shot',
-      'barrier',
-      'repair',
-      'return-coil',
-      'long-route-fang',
-      'amplifier',
-      'accelerator',
-    ];
-
-    genericIds.forEach((blockId) => {
-      const block = GAME_DATA.blocks.find((candidate) => candidate.id === blockId)!;
-      expect(traitIds(blockId), blockId).toEqual(['neutral']);
-      expect(
-        block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge'),
-        blockId,
-      ).toBe(false);
-    });
-    expect(traitIds('charge-guard')).toEqual(['charge']);
+    expect(traitIds('strike')).toEqual(['damage']);
+    expect(traitIds('charge-guard')).toEqual(['charge', 'shield']);
+    expect(traitIds('repair-dividend')).toEqual(['shield', 'repair', 'coin']);
+    expect(traitIds('amplifier')).toEqual(['neutral']);
     expect(
       GAME_DATA.buildDesign.skills
-        .filter((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2)
-        .map((skill) => skill.id)
-        .sort(),
-    ).toEqual([
-      'resonance-circle',
-      'status-relay',
-      'thunder-echo',
-      'thunder-prism',
-      'thunder-sigil',
-      'toxic-reservoir',
-      'venom-chorus',
-      'venom-ray',
-    ]);
-    expect(traitIds('sigil-blade')).toEqual(['magic-sigil']);
-    expect(traitIds('spirit-blade')).toEqual(['resonance']);
-    expect(traitIds('light-vein-blade')).toEqual(['light-vein']);
+        .flatMap((skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [])
+        .filter((value) => ['magic-sigil', 'resonance', 'light-vein'].includes(value)),
+    ).toEqual([]);
   });
 
-  it('replaces poison-only nodes with weapon combinations and cross-trait nodes', () => {
+  it('lets poison sources and sinks combine with state-independent operators', () => {
     const poisonDesigns = GAME_DATA.buildDesign.skills.filter((skill) =>
       skill.buildLinks.some((link) => link.buildId === 'poison'),
     );
-    const poisonBlocks = GAME_DATA.blocks.filter((block) => block.buildIds?.includes('poison'));
-    const effectBuildIds = new Set(GAME_DATA.buildDesign.builds.map((build) => build.id));
-    const poisonOnly = poisonDesigns.filter((skill) => {
-      const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
-      const effectTraits = traits.filter((trait) => effectBuildIds.has(trait));
-      return effectTraits.length === 1 && effectTraits[0] === 'poison';
-    });
-
-    expect(poisonOnly).toHaveLength(8);
-    expect(poisonDesigns.length).toBeGreaterThan(poisonOnly.length);
-    expect(poisonBlocks).toHaveLength(poisonDesigns.length);
-    expect(poisonDesigns.every((skill) => skill.status === 'playable' && skill.blockId)).toBe(true);
-    expect(
-      poisonOnly
-        .filter((skill) => skill.placementPatternId === 'free')
-        .every((skill) => GAME_DATA.blocks.find((block) => block.id === skill.blockId)?.rotatable === false),
-    ).toBe(true);
-    expect(
-      poisonOnly
-        .filter((skill) => ['magic-sigil', 'resonance', 'light-vein'].includes(skill.placementPatternId))
-        .map((skill) => skill.id),
-    ).toEqual(['resonance-circle', 'venom-chorus', 'venom-ray']);
-    expect(new Set(poisonDesigns.map((skill) => skill.blockId))).toEqual(
-      new Set(poisonBlocks.map((block) => block.id)),
+    const poisonPrograms = GAME_DATA.blocks.filter((block) =>
+      block.packet?.effects.some(
+        (effect) =>
+          (effect.kind === 'generate-packet' && effect.payload === 'poison') ||
+          (effect.kind === 'convert-packet' && effect.input === 'poison'),
+      ),
     );
+    const sharedOperators = GAME_DATA.blocks.filter(
+      (block) =>
+        block.packet?.role === 'operator' &&
+        GAME_DATA.buildDesign.skills
+          .find((skill) => skill.blockId === block.id)
+          ?.buildLinks.some((link) => link.buildId === 'poison'),
+    );
+
+    expect(poisonDesigns.every((skill) => skill.status === 'playable' && skill.blockId)).toBe(true);
+    expect(poisonPrograms.length).toBeGreaterThanOrEqual(4);
+    expect(sharedOperators.length).toBeGreaterThanOrEqual(1);
   });
 
   it('assigns every playable node to both design axes exactly once', () => {
@@ -418,6 +378,19 @@ describe('game data', () => {
     expect(validateGameData(invalid)).toContain('playerBoard[0][0] references unknown block "missing-block"');
   });
 
+  it('rejects a missing packet program or an impossible branch operator', () => {
+    const invalid = structuredClone(GAME_DATA);
+    delete invalid.blocks.find((block) => block.id === 'strike')!.packet;
+    invalid.blocks.find((block) => block.id === 'prism-arrow')!.ports = ['west', 'east'];
+
+    expect(validateGameData(invalid)).toEqual(
+      expect.arrayContaining([
+        'block "strike" must define a packet program',
+        'block "prism-arrow" packet split-packet needs at least three ports',
+      ]),
+    );
+  });
+
   it('rejects an overload rule that cannot escalate', () => {
     const invalid = structuredClone(GAME_DATA);
     invalid.rules.suddenDeathGrowth = 1;
@@ -465,13 +438,15 @@ describe('game data', () => {
     expect(validateGameData(invalid)).toContain('legendary rarity needs one or two charge release nodes');
   });
 
-  it('rejects a charge-trait node without a charge or release effect', () => {
+  it('rejects a charge-state node without packet generation or conversion', () => {
     const invalid = structuredClone(GAME_DATA);
     const blade = invalid.blocks.find((block) => block.id === 'charge-blade')!;
-    blade.effects = blade.effects.filter((effect) => effect.kind !== 'charge');
+    blade.packet!.effects = blade.packet!.effects.filter(
+      (effect) => !(effect.kind === 'generate-packet' && effect.payload === 'charge'),
+    );
 
     expect(validateGameData(invalid)).toContain(
-      'block "charge-blade" is tagged with charge but has no charge or release effect',
+      'block "charge-blade" is tagged with charge but does not generate or convert charge packets',
     );
   });
 
@@ -487,7 +462,7 @@ describe('game data', () => {
     );
   });
 
-  it('rejects an unknown powered axis, an invalid cap, or a neutral node without a fusion transform', () => {
+  it('rejects an unknown powered axis, an invalid cap, or a neutral operator without a fusion transform', () => {
     const invalid = structuredClone(GAME_DATA);
     const arsenal = invalid.blocks.find((block) => block.id === 'adaptive-arsenal')!;
     const damage = arsenal.effects.find((effect) => effect.kind === 'damage');
@@ -496,13 +471,13 @@ describe('game data', () => {
     }
     damage.scaling.valueId = 'missing';
     damage.scaling.maxStacks = 0;
-    delete invalid.blocks.find((block) => block.id === 'strike')!.fusion;
+    delete invalid.blocks.find((block) => block.id === 'amplifier')!.fusion;
 
     expect(validateGameData(invalid)).toEqual(
       expect.arrayContaining([
         'block "adaptive-arsenal" effect "damage" references unknown powered axis "trait/missing"',
         'block "adaptive-arsenal" effect "damage" scaling maxStacks must be a positive integer',
-        'neutral block "strike" needs an explicit fusion transformation',
+        'neutral block "amplifier" needs an explicit fusion transformation',
       ]),
     );
   });

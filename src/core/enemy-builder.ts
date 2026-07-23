@@ -346,6 +346,172 @@ const weightedPick = (candidates: PlacementCandidate[], rarityWeights: RarityWei
   return candidates[candidates.length - 1];
 };
 
+const rotationWithPorts = (block: BlockDefinition, requiredPorts: Direction[]): Rotation | null =>
+  ROTATIONS.find((rotation) => {
+    const ports = rotatePorts(block.ports, rotation);
+    return requiredPorts.every((port) => ports.includes(port));
+  }) ?? null;
+
+const generatePacketEnemyBuild = (
+  data: GameData,
+  safeRun: number,
+  seed: number,
+  options: EnemyBuildOptions,
+): EnemyBuild => {
+  const bodyLevel =
+    options.bodyLevel === undefined
+      ? bodyLevelForRun(data, safeRun)
+      : Math.min(data.rules.bodyUpgrades.maxLevel, Math.max(1, Math.floor(options.bodyLevel)));
+  const level = options.bodyLevel === undefined ? levelForRun(data, safeRun) : bodyLevel;
+  const budget = Math.max(0, Math.floor(options.budget ?? cumulativeBudgetForRun(data, safeRun)));
+  const bodyUpgradeCost = totalBodyUpgradeCost(data, bodyLevel);
+  const skillBudget = Math.max(0, budget - bodyUpgradeCost);
+  const builds = data.buildDesign.builds;
+  const build = options.buildId
+    ? builds.find((candidate) => candidate.id === options.buildId)
+    : builds[Math.floor(randomUnit(seed * 17 + safeRun * 31) * builds.length)];
+  if (!build) throw new Error(`Unknown enemy build "${options.buildId}"`);
+
+  const corePatterns = data.buildDesign.placementPatterns.filter((pattern) => pattern.category === 'core');
+  const requiredDesign = options.requiredBlockId
+    ? data.buildDesign.skills.find((skill) => skill.blockId === options.requiredBlockId)
+    : undefined;
+  const requiredCore =
+    requiredDesign && corePatterns.some((pattern) => pattern.id === requiredDesign.placementPatternId);
+  const circuitCoreId =
+    options.circuitCoreId ??
+    (requiredCore
+      ? requiredDesign.placementPatternId
+      : corePatterns[Math.floor(randomUnit(seed * 29 + safeRun * 43) * corePatterns.length)]?.id);
+  if (!circuitCoreId || !corePatterns.some((pattern) => pattern.id === circuitCoreId)) {
+    throw new Error(`Unknown circuit core "${circuitCoreId}"`);
+  }
+  if (options.circuitCoreId && requiredCore && options.circuitCoreId !== requiredDesign.placementPatternId) {
+    throw new Error(
+      `Playable skill "${options.requiredBlockId}" belongs to circuit core "${requiredDesign.placementPatternId}", not "${options.circuitCoreId}"`,
+    );
+  }
+
+  const excluded = new Set(options.excludedBlockIds ?? []);
+  const designByBlockId = new Map(
+    data.buildDesign.skills.flatMap((skill) => (skill.blockId ? [[skill.blockId, skill] as const] : [])),
+  );
+  const candidates = data.blocks.filter((block) => {
+    const design = designByBlockId.get(block.id);
+    return (
+      block.packet &&
+      !excluded.has(block.id) &&
+      design?.status === 'playable' &&
+      design.buildLinks.some((link) => link.buildId === build.id)
+    );
+  });
+  const required = options.requiredBlockId
+    ? candidates.find((block) => block.id === options.requiredBlockId)
+    : undefined;
+  if (options.requiredBlockId && !required) {
+    throw new Error(`Playable skill "${options.requiredBlockId}" is not linked to build "${build.id}"`);
+  }
+
+  const sourceStates = new Set<string>(
+    candidates.flatMap(
+      (block) =>
+        block.packet?.effects.flatMap((effect) => (effect.kind === 'generate-packet' ? [effect.payload] : [])) ?? [],
+    ),
+  );
+  const sinkStates = new Set<string>(
+    candidates.flatMap(
+      (block) =>
+        block.packet?.effects.flatMap((effect) => (effect.kind === 'convert-packet' ? [effect.input] : [])) ?? [],
+    ),
+  );
+  const carriedState =
+    [build.id, 'charge', 'poison'].find((state) => sourceStates.has(state) && sinkStates.has(state)) ??
+    [...sourceStates].find((state) => sinkStates.has(state));
+  if (!carriedState) throw new Error(`Build "${build.id}" needs a packet source and converter for one shared state`);
+
+  const sourceCandidates = candidates.filter(
+    (block) =>
+      block.packet?.effects.some((effect) => effect.kind === 'generate-packet' && effect.payload === carriedState) &&
+      rotationWithPorts(block, ['west', 'east']) !== null,
+  );
+  const operatorCandidates = candidates.filter(
+    (block) =>
+      designByBlockId.get(block.id)?.placementPatternId === circuitCoreId &&
+      block.packet?.effects.some((effect) => effect.kind !== 'generate-packet' && effect.kind !== 'convert-packet') &&
+      rotationWithPorts(block, ['west', 'east']) !== null,
+  );
+  const sinkCandidates = candidates.filter(
+    (block) =>
+      block.packet?.effects.some((effect) => effect.kind === 'convert-packet' && effect.input === carriedState) &&
+      rotationWithPorts(block, ['west']) !== null,
+  );
+  if (sourceCandidates.length === 0 || operatorCandidates.length === 0 || sinkCandidates.length === 0) {
+    throw new Error(`Build "${build.id}" + "${circuitCoreId}" lacks a source, operator, or converter`);
+  }
+
+  const combinations = sourceCandidates.flatMap((source) =>
+    operatorCandidates.flatMap((operator) =>
+      sinkCandidates.flatMap((sink) => {
+        const blocks = [...new Map([source, operator, sink].map((block) => [block.id, block])).values()];
+        if (blocks.length < 3) return [];
+        if (required && !blocks.some((block) => block.id === required.id)) {
+          if (required.packet?.effects.some((effect) => effect.kind === 'convert-packet')) {
+            blocks[2] = required;
+          } else if (required.packet?.effects.some((effect) => effect.kind === 'generate-packet')) {
+            blocks[0] = required;
+          } else {
+            blocks[1] = required;
+          }
+        }
+        if (new Set(blocks.map((block) => block.id)).size < 3) return [];
+        const rotations = blocks.map((block, index) =>
+          rotationWithPorts(block, index === blocks.length - 1 ? ['west'] : ['west', 'east']),
+        );
+        if (rotations.some((rotation) => rotation === null)) return [];
+        const skillCost = blocks.reduce((total, block) => total + block.price, 0);
+        return skillCost <= skillBudget ? [{ blocks, rotations: rotations as Rotation[], skillCost }] : [];
+      }),
+    ),
+  );
+  if (combinations.length === 0) {
+    const requiredLabel = required ? ` containing ${required.id}` : '';
+    throw new Error(
+      `No ${build.id} + ${circuitCoreId} packet build${requiredLabel} fits budget ${budget} on run ${safeRun}`,
+    );
+  }
+  combinations.sort(
+    (left, right) =>
+      left.skillCost - right.skillCost ||
+      left.blocks
+        .map((block) => block.id)
+        .join(':')
+        .localeCompare(right.blocks.map((block) => block.id).join(':')),
+  );
+  const affordable = combinations.slice(0, Math.min(6, combinations.length));
+  const selected = affordable[Math.floor(randomUnit(seed * 97 + safeRun * 53) * affordable.length)];
+  const board: CircuitBoard = Array.from({ length: data.rules.boardSize }, () =>
+    Array.from({ length: data.rules.boardSize }, () => null),
+  );
+  selected.blocks.forEach((block, index) => {
+    board[2][index + 1] = { blockId: block.id, rotation: selected.rotations[index] };
+  });
+
+  return {
+    board,
+    heartPosition: { row: 2, column: 0 },
+    buildId: build.id,
+    circuitCoreId,
+    nodeCount: selected.blocks.length,
+    level,
+    bodyLevel,
+    budget,
+    skillCost: selected.skillCost,
+    bodyUpgradeCost,
+    totalCost: selected.skillCost + bodyUpgradeCost,
+    maxHpBonus: maxHpBonusForBodyLevel(data, bodyLevel),
+  };
+};
+
 export function generateEnemyBuild(
   data: GameData,
   run: number,
@@ -354,6 +520,9 @@ export function generateEnemyBuild(
 ): EnemyBuild {
   if (data.rules.boardSize !== 5) throw new Error('Enemy generator currently requires a 5x5 board');
   const safeRun = Math.max(1, Math.floor(run));
+  if (data.blocks.some((block) => block.packet)) {
+    return generatePacketEnemyBuild(data, safeRun, seed, options);
+  }
   const rules = data.rules.enemyGeneration;
   const targetNodeCount = Math.min(rules.maxNodes, rules.startingNodes + (safeRun - 1) * rules.nodesPerRun);
   const bodyLevel =

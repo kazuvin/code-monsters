@@ -131,6 +131,7 @@ const enemyRequiredBlockFixture = query.get('enemyRequiredBlockFixture');
 const HOLD_DELAY = 320;
 const blockById = new Map(GAME_DATA.blocks.map((block) => [block.id, block]));
 const shopBlocks = GAME_DATA.blocks.filter((block) => block.price > 0);
+const PACKET_MODEL = GAME_DATA.blocks.every((block) => Boolean(block.packet));
 const ownedBlockIdsFor = (board: CircuitBoard, rack: PlacedBlock[]) =>
   new Set([
     ...rack.map((placed) => placed.blockId),
@@ -155,7 +156,13 @@ const RARITY_COPY: Record<Rarity, { label: string; code: string; color: string; 
 };
 const RARITY_ORDER: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 const formatRarityRate = (rate: number) => `${(rate * 100).toFixed(1)}%`;
-const WEAPON_MARK: Record<string, string> = { blade: '剣', bow: '弓', cannon: '砲', device: '機', magic: '術' };
+const WEAPON_MARK: Record<string, string> = {
+  attack: '攻',
+  guard: '盾',
+  repair: '癒',
+  economy: '金',
+  operator: '算',
+};
 const FEEDBACK_COPY: Record<FeedbackKind, string> = {
   damage: 'ダメージ',
   poison: '毒付与',
@@ -419,6 +426,29 @@ const CircuitScopeDiagram = ({ block, rotation }: { block: BlockDefinition; rota
 };
 
 const effectLabel = (block: BlockDefinition, progress?: SkillProgress, multiplier = 1, charge = 0) => {
+  if (block.packet) {
+    const payloadLabels = {
+      damage: '攻撃',
+      poison: '毒',
+      charge: 'チャージ',
+      shield: '防御',
+      repair: '回復',
+      coin: 'コイン',
+    };
+    const imprintLabels = { assault: '攻撃', guard: '防御', renew: '回復' };
+    return block.packet.effects
+      .map((effect) => {
+        if (effect.kind === 'generate-packet') return `${payloadLabels[effect.payload]} +${effect.amount}`;
+        if (effect.kind === 'split-packet') return 'パケットを等分';
+        if (effect.kind === 'merge-packet') return '別経路を合流';
+        if (effect.kind === 'echo-packet') return '最後の状態を1回複製';
+        if (effect.kind === 'imprint-packet') return `出力先 → ${imprintLabels[effect.imprint]}`;
+        if (effect.kind === 'recirculate-packet') return '輪の中で全状態を1回再循環';
+        const output = effect.output === 'rupture' ? '毒破裂' : payloadLabels[effect.output];
+        return `${payloadLabels[effect.input]}を${output} ${effect.amount}＋1あたり${effect.perUnit}へ変換`;
+      })
+      .join(' / ');
+  }
   const progressByEffect = new Map(progress?.effects.map((effect) => [effect.effectIndex, effect]));
   return block.effects
     .map((effect, effectIndex) => {
@@ -494,18 +524,36 @@ const BlockVisual = ({
   const traits = axisValuesForBlock(block.id, 'trait');
   const [weapon] = axisValuesForBlock(block.id, 'weapon');
   const placementPatternId = skillDesignByBlockId.get(block.id)?.placementPatternId;
-  const visualEffect =
-    placementPatternId === 'light-vein'
-      ? 'light-vein'
-      : placementPatternId === 'resonance'
-        ? 'resonance'
-        : placementPatternId === 'magic-sigil'
-          ? 'magic-sigil'
-          : block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
-            ? 'charge'
-            : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
-              ? 'poison'
-              : block.effects[0]?.kind;
+  const packetEffects = block.packet?.effects ?? [];
+  const visualEffect = packetEffects.some((effect) => effect.kind === 'split-packet' || effect.kind === 'merge-packet')
+    ? 'light-vein'
+    : packetEffects.some((effect) => effect.kind === 'echo-packet')
+      ? 'resonance'
+      : packetEffects.some((effect) => effect.kind === 'imprint-packet')
+        ? 'magic-sigil'
+        : packetEffects.some(
+              (effect) =>
+                (effect.kind === 'generate-packet' && effect.payload === 'charge') ||
+                (effect.kind === 'convert-packet' && effect.input === 'charge'),
+            )
+          ? 'charge'
+          : packetEffects.some(
+                (effect) =>
+                  (effect.kind === 'generate-packet' && effect.payload === 'poison') ||
+                  (effect.kind === 'convert-packet' && effect.input === 'poison'),
+              )
+            ? 'poison'
+            : placementPatternId === 'light-vein'
+              ? 'light-vein'
+              : placementPatternId === 'resonance'
+                ? 'resonance'
+                : placementPatternId === 'magic-sigil'
+                  ? 'magic-sigil'
+                  : block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
+                    ? 'charge'
+                    : block.effects.some((effect) => effect.kind === 'poison' || effect.kind === 'rupture-poison')
+                      ? 'poison'
+                      : block.effects[0]?.kind;
   return (
     <span
       className={`block-visual effect-${visualEffect} rarity-${block.rarity} ${traits.length > 1 ? 'is-hybrid-trait' : ''} ${powered ? 'is-powered' : ''} ${compact ? 'is-compact' : ''}`}
@@ -550,7 +598,7 @@ const CatalogScreen = ({
       <div>
         <small>NODE ARCHIVE / {String(GAME_DATA.blocks.length).padStart(2, '0')}</small>
         <h2>カードカタログ</h2>
-        <p>特性を選び、汎用ノードでつなぎ、武器で届ける。すべての組み合わせと接続数を確認できます。</p>
+        <p>状態を作り、汎用パケットを回路で加工し、終端で攻撃・防御・回復へ変換します。</p>
       </div>
       <div className="rarity-legend" aria-label="レアリティの色">
         {RARITY_ORDER.map((rarity) => (
@@ -930,7 +978,9 @@ const BattleCircuitSummary = ({
       if (!baseBlock || !placed) return;
       const block = upgradeBlockDefinition(baseBlock, placed.stars ?? 0, GAME_DATA.rules.skillFusion);
       const position = { row: rowIndex, column: columnIndex };
-      const conditions = circuitConditionsForBlock(board, GAME_DATA.blocks, analysis, position, block, magicSigils);
+      const conditions = block.packet
+        ? []
+        : circuitConditionsForBlock(board, GAME_DATA.blocks, analysis, position, block, magicSigils);
       if (conditions.length > 0) conditionStatusesByCell.set(`${rowIndex}:${columnIndex}`, conditions);
     }),
   );
@@ -983,12 +1033,16 @@ const BattleCircuitSummary = ({
           <small>{team === 'player' ? 'YOUR CIRCUIT' : 'RIVAL CIRCUIT'}</small>
           <strong>
             {label}
-            {activeMagicSigilCount > 0 && <i className="battle-sigil-count">魔紋 {activeMagicSigilCount}</i>}
+            {!PACKET_MODEL && activeMagicSigilCount > 0 && (
+              <i className="battle-sigil-count">魔紋 {activeMagicSigilCount}</i>
+            )}
           </strong>
         </span>
         <em>
           {mergingCells.size > 0
-            ? `MERGE ×${GAME_DATA.rules.mergeEffectMultiplier}`
+            ? PACKET_MODEL
+              ? 'PACKET MERGE'
+              : `MERGE ×${GAME_DATA.rules.mergeEffectMultiplier}`
             : firingLabels.length > 0
               ? firingLabels.slice(0, 2).join('・')
               : pulseStep > 0
@@ -1024,7 +1078,9 @@ const BattleCircuitSummary = ({
               const adjacentPoweredCount = block ? adjacentPoweredCountForBlock(board, analysis, position, block) : 0;
               const resonanceCount = block && usesAdjacentPoweredCount(block) ? adjacentPoweredCount : undefined;
               const stateLabel = mergingCells.has(key)
-                ? `合流 効果${GAME_DATA.rules.mergeEffectMultiplier}倍`
+                ? PACKET_MODEL
+                  ? 'パケット合流'
+                  : `合流 効果${GAME_DATA.rules.mergeEffectMultiplier}倍`
                 : activatedCells.has(key)
                   ? '発動'
                   : conductingCells.has(key)
@@ -1085,10 +1141,12 @@ const BattleCircuitSummary = ({
                       })
                     }
                   >
-                    <MagicSigilMark
-                      level={magicSigilLevel}
-                      active={conductingCells.has(key) || activatedCells.has(key)}
-                    />
+                    {!block.packet && (
+                      <MagicSigilMark
+                        level={magicSigilLevel}
+                        active={conductingCells.has(key) || activatedCells.has(key)}
+                      />
+                    )}
                     <BlockVisual
                       block={block}
                       rotation={placed.rotation}
@@ -1132,7 +1190,7 @@ const BattleCircuitSummary = ({
                   data-magic-sigil-level={magicSigilLevel || undefined}
                   aria-label={magicSigilLevel > 0 ? `空き・魔紋位階${SIGIL_LEVEL_LABELS[magicSigilLevel]}` : '空き'}
                 >
-                  <MagicSigilMark level={magicSigilLevel} />
+                  {!PACKET_MODEL && <MagicSigilMark level={magicSigilLevel} />}
                 </span>
               );
             }),
@@ -1216,14 +1274,9 @@ export function App() {
         if (!baseBlock || !placed) return;
         const block = upgradeBlockDefinition(baseBlock, placed.stars ?? 0, GAME_DATA.rules.skillFusion);
         const position = { row: rowIndex, column: columnIndex };
-        const conditions = circuitConditionsForBlock(
-          board,
-          GAME_DATA.blocks,
-          circuitAnalysis,
-          position,
-          block,
-          magicSigils,
-        );
+        const conditions = block.packet
+          ? []
+          : circuitConditionsForBlock(board, GAME_DATA.blocks, circuitAnalysis, position, block, magicSigils);
         if (conditions.length > 0) statuses.set(`${rowIndex}:${columnIndex}`, conditions);
       }),
     );
@@ -1745,7 +1798,9 @@ export function App() {
       ? adjacentPoweredCountForBlock(detailBoard, detailAnalysis, detail.position, detailBlock)
       : 0;
   const detailResonanceCount =
-    detailBlock && usesAdjacentPoweredCount(detailBlock) ? detailAdjacentPoweredCount : undefined;
+    detailBlock && !detailBlock.packet && usesAdjacentPoweredCount(detailBlock)
+      ? detailAdjacentPoweredCount
+      : undefined;
   const detailIsLightVein = detailBlock
     ? skillDesignByBlockId.get(detailBlock.id)?.placementPatternId === 'light-vein'
     : false;
@@ -1792,23 +1847,37 @@ export function App() {
     : undefined;
   const detailMergeMultiplier =
     detailCellKey && detailAnalysis.mergeCells.has(detailCellKey) ? GAME_DATA.rules.mergeEffectMultiplier : 1;
-  const detailTopology = detailCellKey
-    ? [
-        detailAnalysis.branchCells.has(detailCellKey) ? '自動分岐' : '',
-        detailAnalysis.mergeCells.has(detailCellKey) ? '合流' : '',
-        detailAnalysis.cyclicCells.has(detailCellKey) ? '循環' : '',
-        detailAnalysis.fullyConnectedCells.has(detailCellKey) ? '全接続' : '',
-        detailMagicSigilLevel > 0 ? `魔紋${SIGIL_LEVEL_LABELS[detailMagicSigilLevel]}` : '',
-        detailResonanceCount !== undefined ? `共鳴${detailResonanceCount}` : '',
-        (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) >= 4
-          ? `直線${detailAnalysis.straightLineLength.get(detailCellKey)}`
-          : '',
-      ]
-        .filter(Boolean)
-        .join('・')
-    : detailBlock && detailBlock.ports.length >= 3
-      ? '3方向'
-      : '';
+  const detailPacketOperations =
+    detailBlock?.packet?.effects.flatMap((effect) => {
+      if (effect.kind === 'split-packet') return ['等分'];
+      if (effect.kind === 'merge-packet') return ['合流'];
+      if (effect.kind === 'echo-packet') return ['複製'];
+      if (effect.kind === 'imprint-packet') return ['刻印'];
+      if (effect.kind === 'recirculate-packet') return ['再循環'];
+      if (effect.kind === 'convert-packet') return ['変換'];
+      return [];
+    }) ?? [];
+  const detailTopology = detailBlock?.packet
+    ? detailPacketOperations.length > 0
+      ? detailPacketOperations.join('・')
+      : '状態生成'
+    : detailCellKey
+      ? [
+          detailAnalysis.branchCells.has(detailCellKey) ? '自動分岐' : '',
+          detailAnalysis.mergeCells.has(detailCellKey) ? '合流' : '',
+          detailAnalysis.cyclicCells.has(detailCellKey) ? '循環' : '',
+          detailAnalysis.fullyConnectedCells.has(detailCellKey) ? '全接続' : '',
+          detailMagicSigilLevel > 0 ? `魔紋${SIGIL_LEVEL_LABELS[detailMagicSigilLevel]}` : '',
+          detailResonanceCount !== undefined ? `共鳴${detailResonanceCount}` : '',
+          (detailAnalysis.straightLineLength.get(detailCellKey) ?? 0) >= 4
+            ? `直線${detailAnalysis.straightLineLength.get(detailCellKey)}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('・')
+      : detailBlock && detailBlock.ports.length >= 3
+        ? '3方向'
+        : '';
 
   return (
     <main className={`app-shell phase-${phase}`}>
@@ -1911,7 +1980,9 @@ export function App() {
                               role="gridcell"
                               key={key}
                             >
-                              {!isHeart && <MagicSigilMark level={magicSigilLevel} active={powered.has(key)} />}
+                              {!PACKET_MODEL && !isHeart && (
+                                <MagicSigilMark level={magicSigilLevel} active={powered.has(key)} />
+                              )}
                               {isHeart ? (
                                 <button
                                   type="button"
@@ -1963,7 +2034,7 @@ export function App() {
                                     powered={powered.has(key)}
                                     resonanceCount={resonanceCount}
                                   />
-                                  {circuitAnalysis.mergeCells.has(key) && (
+                                  {!block.packet && circuitAnalysis.mergeCells.has(key) && (
                                     <b className="merge-preview">×{GAME_DATA.rules.mergeEffectMultiplier}</b>
                                   )}
                                   <CircuitConditionChips conditions={conditions} />
@@ -2437,13 +2508,13 @@ export function App() {
                     : `全効果 ×${GAME_DATA.rules.skillFusion.effectMultiplier}・発動間隔 -${GAME_DATA.rules.skillFusion.cooldownReduction}拍`}
                 </div>
               )}
-              {detailResonanceCount !== undefined && (
+              {!detailBlock.packet && detailResonanceCount !== undefined && (
                 <div className="dialog-resonance-rule">
                   <span>SPIRIT RESONANCE · {detailResonanceCount}/8</span>
                   周囲8マスにある、特性を問わないすべての通電ノードを数える。
                 </div>
               )}
-              {detailIsLightVein && detail?.position && (
+              {!detailBlock.packet && detailIsLightVein && detail?.position && (
                 <div className="dialog-light-vein-rule">
                   <span>
                     LIGHT VEIN · 分岐 {detailDownstreamCount} / 合流 {detailUpstreamCount}
@@ -2451,13 +2522,13 @@ export function App() {
                   通電した下流を枝光として数え、同じ波で届いた上流を収光として数える。
                 </div>
               )}
-              {detailMergeMultiplier > 1 && (
+              {!detailBlock.packet && detailMergeMultiplier > 1 && (
                 <div className="dialog-merge-rule">
                   <span>MERGE</span>
                   合流時、発動効果 ×{detailMergeMultiplier}
                 </div>
               )}
-              {detailMagicSigilLevel > 0 && (
+              {!detailBlock.packet && detailMagicSigilLevel > 0 && (
                 <div className="dialog-magic-sigil-rule">
                   <span>MAGIC SIGIL · {SIGIL_LEVEL_LABELS[detailMagicSigilLevel]}</span>
                   発動効果 +{detailMagicSigilLevel * GAME_DATA.rules.magicSigils.effectPowerPerLevel}
@@ -2520,7 +2591,7 @@ export function App() {
                   </dd>
                 </div>
                 <div>
-                  <dt>特性軸</dt>
+                  <dt>状態軸</dt>
                   <dd>
                     {axisValuesForBlock(detailBlock.id, 'trait')
                       .map((value) => value.title)
@@ -2528,20 +2599,20 @@ export function App() {
                   </dd>
                 </div>
                 <div>
-                  <dt>武器軸</dt>
+                  <dt>出力軸</dt>
                   <dd>
                     {axisValuesForBlock(detailBlock.id, 'weapon')
                       .map((value) => value.title)
                       .join('・')}
                   </dd>
                 </div>
-                {detailCellKey && detailPoweredCells.has(detailCellKey) && (
+                {!detailBlock.packet && detailCellKey && detailPoweredCells.has(detailCellKey) && (
                   <div>
                     <dt>チャージ</dt>
                     <dd>{detailChargeByCell.get(detailCellKey) ?? 0}</dd>
                   </div>
                 )}
-                {detailMagicSigilLevel > 0 && (
+                {!detailBlock.packet && detailMagicSigilLevel > 0 && (
                   <div>
                     <dt>魔紋</dt>
                     <dd>
@@ -2549,7 +2620,7 @@ export function App() {
                     </dd>
                   </div>
                 )}
-                {detailResonanceCount !== undefined && (
+                {!detailBlock.packet && detailResonanceCount !== undefined && (
                   <div>
                     <dt>共鳴度</dt>
                     <dd>{detailResonanceCount} / 8</dd>

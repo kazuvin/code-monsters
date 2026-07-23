@@ -59,6 +59,25 @@ const diagram = (
   nodes: CircuitDiagramNode[],
   links: CircuitDiagramLink[],
 ): CircuitDiagram => ({ size: 5, kind, title, caption, nodes: [target, ...nodes], links });
+const rotateDiagram = (value: CircuitDiagram, rotation: Rotation): CircuitDiagram => {
+  const rotatePosition = ([row, column]: [number, number]): [number, number] => {
+    let result: [number, number] = [row, column];
+    for (let step = 0; step < rotation; step += 1) result = [result[1], 4 - result[0]];
+    return result;
+  };
+  return {
+    ...value,
+    nodes: value.nodes.map((item) => {
+      const [row, column] = rotatePosition([item.row, item.column]);
+      return { ...item, row, column };
+    }),
+    links: value.links.map((item) => ({
+      ...item,
+      from: rotatePosition(item.from),
+      to: rotatePosition(item.to),
+    })),
+  };
+};
 
 const effectTriggerKinds = (block: BlockDefinition) =>
   block.effects.flatMap((effect) => ('trigger' in effect && effect.trigger ? [effect.trigger.kind] : []));
@@ -66,6 +85,144 @@ const effectScalingKinds = (block: BlockDefinition) =>
   block.effects.flatMap((effect) => ('scaling' in effect && effect.scaling ? [effect.scaling.kind] : []));
 
 export function circuitDiagramForBlock(block: BlockDefinition, rotation: Rotation): CircuitDiagram | null {
+  const packetEffects = block.packet?.effects ?? [];
+  if (packetEffects.some((effect) => effect.kind === 'split-packet')) {
+    return rotateDiagram(
+      diagram(
+        'branch',
+        'パケットを等分する',
+        '左から入ったパケットを中央で下流の接続数に等分する。各経路の量を足すと、分ける前と同じになる。',
+        [
+          node(2, 0, 'source', '状'),
+          node(2, 1, 'route'),
+          node(0, 2, 'affected', '½'),
+          node(2, 4, 'affected', '½'),
+          node(4, 2, 'affected', '½'),
+        ],
+        [link([2, 0], [2, 1]), link([2, 1], [2, 2]), link([2, 2], [0, 2]), link([2, 2], [2, 4]), link([2, 2], [4, 2])],
+      ),
+      rotation,
+    );
+  }
+
+  if (packetEffects.some((effect) => effect.kind === 'merge-packet')) {
+    return rotateDiagram(
+      diagram(
+        'merge',
+        '別経路を1つに束ねる',
+        '同じ拍に別経路から入ったパケットを中央で合流し、合計した1個のパケットを右へ送る。',
+        [
+          node(0, 2, 'source', '状'),
+          node(1, 2, 'route'),
+          node(4, 2, 'source', '状'),
+          node(3, 2, 'route'),
+          node(2, 3, 'affected', 'Σ'),
+          node(2, 4, 'route'),
+        ],
+        [
+          link([0, 2], [1, 2]),
+          link([1, 2], [2, 2]),
+          link([4, 2], [3, 2]),
+          link([3, 2], [2, 2]),
+          link([2, 2], [2, 3]),
+          link([2, 3], [2, 4]),
+        ],
+      ),
+      rotation,
+    );
+  }
+
+  if (packetEffects.some((effect) => effect.kind === 'recirculate-packet')) {
+    const route = [
+      [1, 2],
+      [1, 3],
+      [2, 3],
+      [3, 3],
+      [3, 2],
+    ] as const;
+    const path = [[2, 2], ...route, [2, 2]] as Array<readonly [number, number]>;
+    return rotateDiagram(
+      diagram(
+        'cycle',
+        '輪の中で1回だけ再循環',
+        '中央を含む輪を作ると、パケット全体がもう1周した結果を得る。再循環は1回で止まる。',
+        route.map(([row, column]) => node(row, column, 'condition')),
+        path.slice(0, -1).map((from, index) => link([from[0], from[1]], [path[index + 1][0], path[index + 1][1]])),
+      ),
+      rotation,
+    );
+  }
+
+  if (packetEffects.some((effect) => effect.kind === 'echo-packet')) {
+    return rotateDiagram(
+      diagram(
+        'resonance',
+        '最後の状態を1回複製',
+        '左から来たパケットで最後に追加された状態だけを中央で複製し、2倍になった状態を右へ送る。',
+        [node(2, 0, 'source', '状'), node(2, 1, 'route'), node(2, 3, 'affected', '×2'), node(2, 4, 'route')],
+        [link([2, 0], [2, 1]), link([2, 1], [2, 2]), link([2, 2], [2, 3]), link([2, 3], [2, 4])],
+      ),
+      rotation,
+    );
+  }
+
+  const imprint = packetEffects.find((effect) => effect.kind === 'imprint-packet');
+  if (imprint?.kind === 'imprint-packet') {
+    const output = { assault: '攻', guard: '盾', renew: '癒' }[imprint.imprint];
+    return rotateDiagram(
+      diagram(
+        'inscription',
+        `${output}出力を刻印`,
+        `左から来た状態は変えず、中央で出力先だけを「${output}」へ書き換えて右へ送る。`,
+        [node(2, 0, 'source', '状'), node(2, 1, 'route'), node(2, 3, 'affected', output), node(2, 4, 'route')],
+        [link([2, 0], [2, 1]), link([2, 1], [2, 2]), link([2, 2], [2, 3]), link([2, 3], [2, 4])],
+      ),
+      rotation,
+    );
+  }
+
+  const conversion = packetEffects.find((effect) => effect.kind === 'convert-packet');
+  if (conversion?.kind === 'convert-packet') {
+    const input = conversion.input === 'charge' ? '充' : '毒';
+    const output =
+      conversion.output === 'damage' || conversion.output === 'rupture'
+        ? '攻'
+        : conversion.output === 'shield'
+          ? '盾'
+          : '癒';
+    return rotateDiagram(
+      diagram(
+        'charge-release',
+        `${input}を${output}へ変換`,
+        `左から届いた「${input}」を中央ですべて使い、「${output}」として出力する。このノードが経路の終端になる。`,
+        [node(2, 0, 'source', input), node(2, 1, 'route'), node(2, 3, 'affected', output)],
+        [link([2, 0], [2, 1]), link([2, 1], [2, 2]), link([2, 2], [2, 3])],
+      ),
+      rotation,
+    );
+  }
+
+  if (
+    packetEffects.some(
+      (effect) => effect.kind === 'generate-packet' && (effect.payload === 'charge' || effect.payload === 'poison'),
+    )
+  ) {
+    const generated = packetEffects.find(
+      (effect) => effect.kind === 'generate-packet' && (effect.payload === 'charge' || effect.payload === 'poison'),
+    );
+    const glyph = generated?.kind === 'generate-packet' && generated.payload === 'charge' ? '充' : '毒';
+    return rotateDiagram(
+      diagram(
+        'charge-flow',
+        `${glyph}をパケットへ追加`,
+        `左から来たパケットへ中央で「${glyph}」を追加し、状態を保ったまま右のノードへ運ぶ。`,
+        [node(2, 0, 'source', '信'), node(2, 1, 'route'), node(2, 3, 'affected', glyph), node(2, 4, 'route')],
+        [link([2, 0], [2, 1]), link([2, 1], [2, 2]), link([2, 2], [2, 3]), link([2, 3], [2, 4])],
+      ),
+      rotation,
+    );
+  }
+
   const triggers = effectTriggerKinds(block);
   const scalings = effectScalingKinds(block);
   const inscriptions = block.effects.filter((effect) => effect.kind === 'inscribe-magic-sigil');

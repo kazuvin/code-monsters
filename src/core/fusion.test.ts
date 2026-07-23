@@ -110,6 +110,38 @@ describe('skill fusion', () => {
     ]);
   });
 
+  it('upgrades packet generation and conversion without changing generic operators', () => {
+    const block: BlockDefinition = {
+      id: 'packet-node',
+      code: 'PKT',
+      title: 'パケット',
+      description: '試験用。',
+      glyph: '信',
+      price: 1,
+      rarity: 'rare',
+      ports: ['west', 'east'],
+      cooldown: 2,
+      effects: [{ kind: 'damage', amount: 1 }],
+      packet: {
+        role: 'hybrid',
+        effects: [
+          { kind: 'generate-packet', payload: 'charge', amount: 4 },
+          { kind: 'echo-packet' },
+          { kind: 'convert-packet', input: 'charge', output: 'damage', amount: 10, perUnit: 5 },
+        ],
+      },
+    };
+
+    const upgraded = upgradeBlockDefinition(block, 1, rules);
+
+    expect(upgraded.packet?.effects).toEqual([
+      { kind: 'generate-packet', payload: 'charge', amount: 6 },
+      { kind: 'echo-packet' },
+      { kind: 'convert-packet', input: 'charge', output: 'damage', amount: 15, perUnit: 8 },
+    ]);
+    expect(upgraded.cooldown).toBe(1);
+  });
+
   it('offers three deterministic unique rewards from the fused rarity', () => {
     const blocks = Array.from(
       { length: 5 },

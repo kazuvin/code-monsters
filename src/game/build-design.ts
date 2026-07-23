@@ -127,7 +127,7 @@ export function createBuildMatrix(design: BuildDesign): BuildMatrixRow[] {
 
 export function createSkillCoverageMatrix(design: BuildDesign): SkillCoverageMatrixRow[] {
   const traits = design.axes.find((axis) => axis.id === 'trait')?.values ?? [];
-  const weapons = design.axes.find((axis) => axis.id === 'weapon')?.values ?? [];
+  const outputs = design.axes.find((axis) => axis.id === 'weapon')?.values ?? [];
   return design.placementPatterns.flatMap((pattern) =>
     traits.map((trait) => ({
       placementPatternId: pattern.id,
@@ -135,13 +135,13 @@ export function createSkillCoverageMatrix(design: BuildDesign): SkillCoverageMat
       traitId: trait.id,
       traitTitle: trait.title,
       counts: Object.fromEntries(
-        weapons.map((weapon) => [
-          weapon.id,
+        outputs.map((output) => [
+          output.id,
           design.skills.filter(
             (skill) =>
               skill.placementPatternId === pattern.id &&
               (axisLinkFor(skill, 'trait')?.valueIds.includes(trait.id) ?? false) &&
-              (axisLinkFor(skill, 'weapon')?.valueIds.includes(weapon.id) ?? false),
+              (axisLinkFor(skill, 'weapon')?.valueIds.includes(output.id) ?? false),
           ).length,
         ]),
       ),
@@ -165,9 +165,6 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
   const axisIds = new Set(design.axes.map((axis) => axis.id));
   const axisValues = new Map(design.axes.map((axis) => [axis.id, new Set(axis.values.map((value) => value.id))]));
   const placementPatternIds = new Set(design.placementPatterns.map((pattern) => pattern.id));
-  const circuitCoreIds = new Set(
-    design.placementPatterns.filter((pattern) => pattern.category === 'core').map((pattern) => pattern.id),
-  );
 
   pushDuplicateErrors(
     'placement pattern',
@@ -316,34 +313,11 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
     if (traitValues.includes('neutral') && (traitValues.length !== 1 || skill.scope !== 'shared')) {
       errors.push(`skill design "${skill.id}" must use neutral as its only trait and remain shared`);
     }
-    if (placementPattern?.category === 'core' && !traitValues.includes(skill.placementPatternId)) {
-      errors.push(`circuit core skill design "${skill.id}" needs trait "${skill.placementPatternId}"`);
-    }
-    const mismatchedCircuitTraits = traitValues.filter(
-      (valueId) =>
-        circuitCoreIds.has(valueId as SkillDesignDefinition['placementPatternId']) &&
-        valueId !== skill.placementPatternId,
-    );
-    mismatchedCircuitTraits.forEach((valueId) => {
-      errors.push(`skill design "${skill.id}" cannot use circuit trait "${valueId}" outside that core`);
-    });
     skill.buildLinks.forEach((link) => {
       const build = design.builds.find((candidate) => candidate.id === link.buildId);
       if (!buildIds.has(link.buildId) || !build) {
         errors.push(`skill design "${skill.id}" references unknown build "${link.buildId}"`);
         return;
-      }
-      const buildAxisValues = axisLinkFor(skill, build.axisId)?.valueIds ?? [];
-      const isNeutralSharedSkill =
-        build.axisId === 'trait' && skill.scope === 'shared' && buildAxisValues[0] === 'neutral';
-      const isCircuitCoreOnlySharedSkill =
-        build.axisId === 'trait' &&
-        skill.scope === 'shared' &&
-        placementPattern?.category === 'core' &&
-        buildAxisValues.includes(skill.placementPatternId) &&
-        !buildAxisValues.some((valueId) => buildIds.has(valueId));
-      if (!buildAxisValues.includes(build.id) && !isNeutralSharedSkill && !isCircuitCoreOnlySharedSkill) {
-        errors.push(`skill design "${skill.id}" does not tag linked build "${build.axisId}/${build.id}"`);
       }
       link.roles.forEach((role) => {
         if (!validRoles.has(role)) errors.push(`skill design "${skill.id}" contains unknown role "${role}"`);
@@ -430,7 +404,7 @@ export function validateBuildDesign(design: BuildDesign, playableBlockIds: strin
 const codeList = (ids: string[]) => (ids.length === 0 ? '—' : ids.map((id) => `\`${id}\``).join('、'));
 
 export function renderBuildMatrixMarkdown(design: BuildDesign): string {
-  const weapons = design.axes.find((axis) => axis.id === 'weapon')?.values ?? [];
+  const outputs = design.axes.find((axis) => axis.id === 'weapon')?.values ?? [];
   const patternTitles = new Map(design.placementPatterns.map((pattern) => [pattern.id, pattern.title]));
   const lines = [
     '# ビルド・シナジーマトリクス',
@@ -457,22 +431,22 @@ export function renderBuildMatrixMarkdown(design: BuildDesign): string {
     '',
     '## ノードの組み合わせ',
     '',
-    '| ノード | 特性 | 武器・装置 | 配置条件 |',
+    '| ノード | 状態 | 出力 | 回路演算 |',
     '| --- | --- | --- | --- |',
     ...design.skills.map(
       (skill) =>
         `| \`${skill.id}\` | ${codeList(axisLinkFor(skill, 'trait')?.valueIds ?? [])} | ${codeList(axisLinkFor(skill, 'weapon')?.valueIds ?? [])} | ${patternTitles.get(skill.placementPatternId) ?? skill.placementPatternId} |`,
     ),
     '',
-    '## 配置条件 × 特性 × 武器・装置（スキル数）',
+    '## 回路演算 × 状態 × 出力（スキル数）',
     '',
     '> 0または少数のセルを、次に追加するスキル候補として優先します。',
     '',
-    `| 配置条件 × 特性 | ${weapons.map((weapon) => weapon.title).join(' | ')} |`,
-    `| --- | ${weapons.map(() => '---:').join(' | ')} |`,
+    `| 回路演算 × 状態 | ${outputs.map((output) => output.title).join(' | ')} |`,
+    `| --- | ${outputs.map(() => '---:').join(' | ')} |`,
     ...createSkillCoverageMatrix(design).map(
       (row) =>
-        `| ${row.placementPatternTitle} × ${row.traitTitle} | ${weapons.map((weapon) => row.counts[weapon.id] ?? 0).join(' | ')} |`,
+        `| ${row.placementPatternTitle} × ${row.traitTitle} | ${outputs.map((output) => row.counts[output.id] ?? 0).join(' | ')} |`,
     ),
     '',
   ];
@@ -514,7 +488,7 @@ export function renderBuildMatrixMarkdown(design: BuildDesign): string {
       '',
       `- 開放スキル: ${codeList(row.openSkillIds)}`,
       `- 複合特性スキル: ${codeList(row.hybridSkillIds)}`,
-      `- 武器・装置の幅: ${codeList(row.axisCoverage.weapon ?? [])}`,
+      `- 出力の幅: ${codeList(row.axisCoverage.weapon ?? [])}`,
       `- 専用技率: ${Math.round(row.exclusiveSkillRatio * 100)}%（上限 ${Math.round(design.rules.maximumExclusiveSkillRatio * 100)}%）`,
       `- 計画中: ${codeList(row.plannedSkillIds)}`,
       `- 実装済み: ${codeList(row.playableSkillIds)}（最低 ${design.rules.minimumPlayableSkillsPerBuild}）`,

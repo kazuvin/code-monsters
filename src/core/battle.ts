@@ -11,6 +11,7 @@ import {
   matchesCircuitTrigger,
 } from './circuit';
 import { upgradeBlockDefinition } from './fusion';
+import { resolvePacketCircuit } from './packet';
 import {
   buffStatForEffect,
   buffStatsForBlock,
@@ -33,6 +34,7 @@ import type {
   Team,
   Winner,
 } from './types';
+import type { PacketAction } from './packet';
 
 type PlannedActivation = {
   team: Team;
@@ -314,8 +316,181 @@ const cloneSkillBuffs = (buffs: BattleState['skillBuffs']): BattleState['skillBu
   enemy: Object.fromEntries(Object.entries(buffs.enemy).map(([key, value]) => [key, { ...value }])),
 });
 
+const packetTraceEvent = (
+  tick: number,
+  team: Team,
+  action: PacketAction,
+  value: number,
+  targetId: string,
+  sequence: number,
+  stars: 0 | 1,
+): BattleTraceEvent => ({
+  id: `${tick}-${team}-${action.position.row}-${action.position.column}-${sequence}`,
+  tick,
+  team,
+  kind: action.kind,
+  blockId: action.blockId,
+  row: action.position.row,
+  column: action.position.column,
+  value,
+  targetId,
+  ...('charge' in action && action.charge !== undefined ? { charge: action.charge } : {}),
+  ...(stars > 0 ? { stars } : {}),
+});
+
+const resolvePacketWave = (data: GameData, state: BattleState, tick: number): BattleState[] => {
+  const fighters = state.fighters.map((fighter) => ({ ...fighter }));
+  const analyses = {
+    player: analyzeCircuit(state.playerBoard, data.blocks, state.playerHeartPosition, data.rules.heart.ports),
+    enemy: analyzeCircuit(state.enemyBoard, data.blocks, state.enemyHeartPosition, data.rules.heart.ports),
+  };
+  const resolutions = {
+    player: resolvePacketCircuit({
+      board: state.playerBoard,
+      blocks: data.blocks,
+      analysis: analyses.player,
+      tick,
+      fusionRules: data.rules.skillFusion,
+    }),
+    enemy: resolvePacketCircuit({
+      board: state.enemyBoard,
+      blocks: data.blocks,
+      analysis: analyses.enemy,
+      tick,
+      fusionRules: data.rules.skillFusion,
+    }),
+  };
+  const trace = [...state.trace];
+  const fighter = (team: Team) => fighters.find((candidate) => candidate.team === team)!;
+  const boardFor = (team: Team) => (team === 'player' ? state.playerBoard : state.enemyBoard);
+  const pulseStepCount = Math.max(1, ...analyses.player.waveStep.values(), ...analyses.enemy.waveStep.values());
+  const frames: BattleState[] = [];
+
+  for (let pulseStep = 1; pulseStep <= pulseStepCount; pulseStep += 1) {
+    const pendingDamage = new Map<Team, number>();
+    (['player', 'enemy'] as const).forEach((team) => {
+      const actor = fighter(team);
+      const target = fighter(otherTeam(team));
+      const actions = resolutions[team].actions
+        .filter((action) => (analyses[team].waveStep.get(cellKey(action.position)) ?? pulseStepCount) === pulseStep)
+        .sort(
+          (left, right) =>
+            left.position.row - right.position.row ||
+            left.position.column - right.position.column ||
+            left.blockId.localeCompare(right.blockId),
+        );
+      actions.forEach((action) => {
+        const placed = boardFor(team)[action.position.row]?.[action.position.column];
+        const stars = placed?.stars ?? 0;
+        if (action.kind === 'damage') {
+          pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + action.amount);
+          trace.push(packetTraceEvent(tick, team, action, action.amount, target.instanceId, trace.length, stars));
+        }
+        if (action.kind === 'shield') {
+          actor.shield += action.amount;
+          trace.push(packetTraceEvent(tick, team, action, action.amount, actor.instanceId, trace.length, stars));
+        }
+        if (action.kind === 'repair') {
+          const previousHp = actor.hp;
+          actor.hp = Math.min(actor.maxHp, actor.hp + action.amount);
+          trace.push(
+            packetTraceEvent(tick, team, action, actor.hp - previousHp, actor.instanceId, trace.length, stars),
+          );
+        }
+        if (action.kind === 'poison') {
+          target.poison += action.amount;
+          trace.push(packetTraceEvent(tick, team, action, action.amount, target.instanceId, trace.length, stars));
+        }
+        if (action.kind === 'coin') {
+          trace.push(packetTraceEvent(tick, team, action, action.amount, actor.instanceId, trace.length, stars));
+        }
+        if (action.kind === 'rupture') {
+          const consumed = Math.floor(target.poison * action.consume);
+          if (consumed <= 0 && action.amount <= 0) return;
+          target.poison -= consumed;
+          const damage = action.amount + consumed;
+          pendingDamage.set(target.team, (pendingDamage.get(target.team) ?? 0) + damage);
+          trace.push(packetTraceEvent(tick, team, action, damage, target.instanceId, trace.length, stars));
+        }
+      });
+    });
+
+    for (const [team, amount] of pendingDamage) {
+      const target = fighter(team);
+      const blocked = Math.min(target.shield, amount);
+      target.shield -= blocked;
+      target.hp = Math.max(0, target.hp - (amount - blocked));
+    }
+
+    const finalStep = pulseStep === pulseStepCount;
+    let winner: Winner = winnerOf(fighters);
+    let overloadLevel = state.overloadLevel;
+    let overloadDamage = 0;
+    if (finalStep) {
+      const poisonTickInterval = Math.max(
+        1,
+        Math.ceil((data.rules.poisonTickSeconds * 1000) / data.rules.battleStepMs),
+      );
+      if (!winner && tick % poisonTickInterval === 0) {
+        fighters.forEach((target) => {
+          if (target.poison <= 0 || target.hp <= 0) return;
+          const applied = Math.min(target.hp, target.poison);
+          target.hp = Math.max(0, target.hp - target.poison);
+          trace.push(systemTraceEvent(tick, target, 'poison-tick', applied));
+          target.poison = Math.max(0, target.poison - data.rules.poisonDecay);
+        });
+        winner = winnerOf(fighters);
+      }
+
+      overloadLevel = overloadLevelAtTick(data, tick);
+      overloadDamage = winner ? 0 : overloadDamageAtTick(data, tick);
+      if (!winner && overloadDamage > 0) {
+        const healthBeforeOverload = new Map(fighters.map((target) => [target.team, target.hp]));
+        fighters.forEach((target) => {
+          const applied = Math.min(target.hp, overloadDamage);
+          target.hp = Math.max(0, target.hp - overloadDamage);
+          trace.push(systemTraceEvent(tick, target, 'overload', applied));
+        });
+        winner = winnerOf(fighters);
+        if (winner === 'draw') {
+          const playerHp = healthBeforeOverload.get('player') ?? 0;
+          const enemyHp = healthBeforeOverload.get('enemy') ?? 0;
+          if (playerHp !== enemyHp) winner = playerHp > enemyHp ? 'player' : 'enemy';
+        }
+      }
+    }
+
+    const activePulse = {
+      player: [...analyses.player.waveStep]
+        .filter(([, step]) => step === pulseStep)
+        .map(([key]) => key)
+        .sort(),
+      enemy: [...analyses.enemy.waveStep]
+        .filter(([, step]) => step === pulseStep)
+        .map(([key]) => key)
+        .sort(),
+    };
+    frames.push({
+      ...state,
+      tick,
+      fighters: fighters.map((target) => ({ ...target })),
+      activePulse,
+      pulseStep,
+      pulseStepCount,
+      trace: [...trace],
+      overloadLevel,
+      overloadDamage,
+      winner,
+    });
+    if (winner) break;
+  }
+
+  return frames;
+};
+
 export function resolveWave(data: GameData, state: BattleState, tick: number): BattleState[] {
   if (state.winner) return [state];
+  if (data.blocks.some((block) => block.packet)) return resolvePacketWave(data, state, tick);
   const fighters = state.fighters.map((fighter) => ({ ...fighter }));
   const skillBuffs = cloneSkillBuffs(state.skillBuffs);
   const playerAnalysis = analyzeCircuit(

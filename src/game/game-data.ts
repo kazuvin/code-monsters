@@ -267,6 +267,46 @@ export function validateGameData(data: GameData): string[] {
       if (!directions.has(port)) errors.push(`block "${block.id}" has invalid port "${port}"`);
     });
     if (block.effects.length === 0) errors.push(`block "${block.id}" must have an effect`);
+    if (!block.packet) {
+      errors.push(`block "${block.id}" must define a packet program`);
+    } else {
+      if (block.packet.effects.length === 0) errors.push(`block "${block.id}" packet program must have an effect`);
+      const hasSource = block.packet.effects.some((effect) => effect.kind === 'generate-packet');
+      const hasSink = block.packet.effects.some((effect) => effect.kind === 'convert-packet');
+      const hasOperator = block.packet.effects.some(
+        (effect) => effect.kind !== 'generate-packet' && effect.kind !== 'convert-packet',
+      );
+      const expectedRole =
+        [hasSource, hasSink, hasOperator].filter(Boolean).length > 1
+          ? 'hybrid'
+          : hasSource
+            ? 'source'
+            : hasSink
+              ? 'sink'
+              : 'operator';
+      if (block.packet.role !== expectedRole) {
+        errors.push(`block "${block.id}" packet role must be "${expectedRole}"`);
+      }
+      if (hasSink && block.packet.terminal !== true) {
+        errors.push(`block "${block.id}" packet converter must be terminal`);
+      }
+      block.packet.effects.forEach((effect) => {
+        if (effect.kind === 'generate-packet' && effect.amount <= 0) {
+          errors.push(`block "${block.id}" packet generation amount must be positive`);
+        }
+        if (effect.kind === 'convert-packet') {
+          if (effect.amount < 0 || effect.perUnit <= 0) {
+            errors.push(`block "${block.id}" packet conversion values are invalid`);
+          }
+          if (effect.consume !== undefined && (effect.consume <= 0 || effect.consume > 1)) {
+            errors.push(`block "${block.id}" packet conversion consume must be within (0, 1]`);
+          }
+        }
+        if ((effect.kind === 'split-packet' || effect.kind === 'merge-packet') && new Set(block.ports).size < 3) {
+          errors.push(`block "${block.id}" packet ${effect.kind} needs at least three ports`);
+        }
+      });
+    }
     if (neutralBlockIds.has(block.id) && !block.fusion) {
       errors.push(`neutral block "${block.id}" needs an explicit fusion transformation`);
     }
@@ -284,9 +324,13 @@ export function validateGameData(data: GameData): string[] {
     }
     if (
       chargeBlockIds.has(block.id) &&
-      !block.effects.some((effect) => effect.kind === 'charge' || effect.kind === 'release-charge')
+      !block.packet?.effects.some(
+        (effect) =>
+          (effect.kind === 'generate-packet' && effect.payload === 'charge') ||
+          (effect.kind === 'convert-packet' && effect.input === 'charge'),
+      )
     ) {
-      errors.push(`block "${block.id}" is tagged with charge but has no charge or release effect`);
+      errors.push(`block "${block.id}" is tagged with charge but does not generate or convert charge packets`);
     }
     const active = block.effects.some(
       (effect) => !['amplify', 'haste', 'charge', 'inscribe-magic-sigil'].includes(effect.kind),
@@ -449,7 +493,9 @@ export function validateGameData(data: GameData): string[] {
   });
   (['rare', 'epic', 'legendary'] as Rarity[]).forEach((rarity) => {
     const releaseCount = data.blocks.filter(
-      (block) => block.rarity === rarity && block.effects.some((effect) => effect.kind === 'release-charge'),
+      (block) =>
+        block.rarity === rarity &&
+        block.packet?.effects.some((effect) => effect.kind === 'convert-packet' && effect.input === 'charge'),
     ).length;
     if (releaseCount < 1 || releaseCount > 2) {
       errors.push(`${rarity} rarity needs one or two charge release nodes`);

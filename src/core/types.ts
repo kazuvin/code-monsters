@@ -19,6 +19,30 @@ export type SkillStars = 0 | 1;
 export type BuffStat = 'damage' | 'poison' | 'shield' | 'repair' | 'rupture';
 export type BuffTarget = BuffStat | 'all';
 export type SkillBuffState = Partial<Record<BuffStat, number>>;
+export type PacketPayloadKind = 'damage' | 'poison' | 'charge' | 'shield' | 'repair' | 'coin';
+export type PacketImprint = 'assault' | 'guard' | 'renew';
+
+export type PacketNodeEffect =
+  | { kind: 'generate-packet'; payload: PacketPayloadKind; amount: number }
+  | { kind: 'split-packet' }
+  | { kind: 'merge-packet' }
+  | { kind: 'echo-packet' }
+  | { kind: 'imprint-packet'; imprint: PacketImprint }
+  | { kind: 'recirculate-packet' }
+  | {
+      kind: 'convert-packet';
+      input: 'charge' | 'poison';
+      output: 'damage' | 'shield' | 'repair' | 'rupture';
+      amount: number;
+      perUnit: number;
+      consume?: number;
+    };
+
+export type PacketProgram = {
+  role: 'source' | 'operator' | 'sink' | 'hybrid';
+  terminal?: boolean;
+  effects: PacketNodeEffect[];
+};
 
 export type EffectTrigger =
   | { kind: 'enemy-poisoned' }
@@ -97,6 +121,7 @@ export type BlockDefinition = {
   rotatable?: boolean;
   buildIds?: string[];
   effects: BlockEffect[];
+  packet?: PacketProgram;
   cooldown?: number;
   fusion?: {
     title: string;

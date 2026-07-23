@@ -4,6 +4,7 @@ import type {
   BlockEffect,
   CircuitBoard,
   PlacedBlock,
+  PacketNodeEffect,
   Rarity,
   SkillFusionRules,
   SkillStars,
@@ -15,6 +16,26 @@ const randomUnit = (seed: number) => {
 };
 
 const boosted = (value: number, multiplier: number) => Math.round(value * multiplier);
+
+const upgradePacketEffect = (effect: PacketNodeEffect, multiplier: number): PacketNodeEffect => {
+  if (effect.kind === 'generate-packet') return { ...effect, amount: boosted(effect.amount, multiplier) };
+  if (effect.kind === 'convert-packet') {
+    return {
+      ...effect,
+      amount: boosted(effect.amount, multiplier),
+      perUnit: boosted(effect.perUnit, multiplier),
+    };
+  }
+  return { ...effect };
+};
+
+const upgradePacket = (block: BlockDefinition, multiplier: number) =>
+  block.packet
+    ? {
+        ...block.packet,
+        effects: block.packet.effects.map((effect) => upgradePacketEffect(effect, multiplier)),
+      }
+    : undefined;
 
 const upgradeEffect = (effect: BlockEffect, multiplier: number): BlockEffect => {
   if (effect.kind === 'coin') return { ...effect };
@@ -56,12 +77,14 @@ export function upgradeBlockDefinition(
       glyph: block.fusion.glyph ?? block.glyph,
       cooldown: block.fusion.cooldown === null ? undefined : (block.fusion.cooldown ?? block.cooldown),
       effects: block.fusion.effects.map((effect) => ({ ...effect })),
+      ...(block.packet ? { packet: upgradePacket(block, rules.effectMultiplier) } : {}),
     };
   }
   return {
     ...block,
     cooldown: block.cooldown ? Math.max(1, block.cooldown - rules.cooldownReduction) : undefined,
     effects: block.effects.map((effect) => upgradeEffect(effect, rules.effectMultiplier)),
+    ...(block.packet ? { packet: upgradePacket(block, rules.effectMultiplier) } : {}),
   };
 }
 

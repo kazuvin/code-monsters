@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 25,
+  "schemaVersion": 26,
   "rules": {
     "boardSize": 5,
     "heart": {
@@ -164,126 +164,132 @@
       "minimumPlayableSkillsPerBuild": 8,
       "requiredAxisIds": ["trait", "weapon"],
       "minimumHybridSkillsPerBuild": 2,
-      "minimumWeaponTypesPerBuild": 5,
+      "minimumWeaponTypesPerBuild": 4,
       "requireSkillDesignForEveryBlock": true
     },
     "placementPatterns": [
       {
         "id": "free",
-        "title": "条件なし",
-        "description": "接続できれば効果を発揮する基礎配置",
+        "title": "生成・変換",
+        "description": "状態をパケットへ加えるか、届いた状態を戦闘出力へ変換する",
         "category": "condition"
       },
       {
         "id": "loop",
-        "title": "循環",
-        "description": "ノードが閉じた輪の一部として通電する配置",
+        "title": "再循環",
+        "description": "輪の中でパケット全体を1回だけ再通過させる",
         "category": "condition"
       },
       {
         "id": "fully-connected",
-        "title": "全接続",
-        "description": "ノードが持つ接続部をすべて相互接続する配置",
+        "title": "合流",
+        "description": "同じ拍に別経路から届いたパケットを1つへまとめる",
         "category": "condition"
       },
       {
         "id": "straight-line",
-        "title": "長直線",
-        "description": "指定数以上の連続した直線へノードを組み込む配置",
+        "title": "中継複製",
+        "description": "長い直線の途中で、最後に追加された状態だけを1回複製する",
         "category": "condition"
       },
       {
         "id": "magic-sigil",
-        "title": "魔紋",
-        "description": "刻印元で魔紋を重ね、特性を問わずその上の通電ノードを強化する回路コア",
+        "title": "出力刻印",
+        "description": "状態の種類を問わず、終端の出力先を攻撃・防御・回復へ書き換える",
         "category": "core"
       },
       {
         "id": "resonance",
-        "title": "霊響",
-        "description": "中心の周囲8マスにある通電ノード数を共鳴度へ変える回路コア",
+        "title": "状態複製",
+        "description": "最後に追加された状態だけを1回複製し、再帰的な複製は止める",
         "category": "core"
       },
       {
         "id": "light-vein",
-        "title": "光脈",
-        "description": "通電信号を複数の枝へ分け、異なる経路を一点へ合流させる回路コア",
+        "title": "分岐・合流",
+        "description": "量を保存して複数経路へ分け、別経路のパケットを再び1つへまとめる",
         "category": "core"
       }
     ],
     "axes": [
       {
         "id": "trait",
-        "title": "特性",
-        "description": "ノードの効果と回路上の個性を示す。複数特性は混成を表す",
+        "title": "状態",
+        "description": "ノードがパケットへ生成する状態。回路演算子は状態を問わず再利用できる",
         "values": [
           {
             "id": "neutral",
-            "title": "汎用",
-            "description": "固有の効果や回路コアを持たず、どの構成にも組み込める",
+            "title": "無属性",
+            "description": "状態を作らず、どのパケットにも使える回路演算子",
             "color": "#486977"
+          },
+          {
+            "id": "damage",
+            "title": "攻撃",
+            "description": "終端で相手へのダメージになる状態",
+            "color": "#ff786e"
           },
           {
             "id": "poison",
             "title": "毒",
-            "description": "毒を残して育てるか、破裂させて使う",
+            "description": "終端で相手へ残り、時間経過か破裂でダメージになる状態",
             "color": "#8bd450"
           },
           {
             "id": "charge",
             "title": "チャージ",
-            "description": "充電ノードで蓄え、遠い解放点で使う",
+            "description": "そのパケット内だけに残り、変換ノードで使われる一時状態",
             "color": "#ffd36a"
           },
           {
-            "id": "magic-sigil",
-            "title": "魔紋",
-            "description": "魔紋を刻み、その上の通電ノードを強化する",
-            "color": "#aa88ff"
+            "id": "shield",
+            "title": "防御",
+            "description": "終端で自分のシールドになる状態",
+            "color": "#5de7f2"
           },
           {
-            "id": "resonance",
-            "title": "霊響",
-            "description": "周囲の通電ノード数を共鳴度へ変える",
+            "id": "repair",
+            "title": "回復",
+            "description": "終端で自分のHP回復になる状態",
             "color": "#ff9bd7"
           },
           {
-            "id": "light-vein",
-            "title": "光脈",
-            "description": "通電経路の分岐と合流を出力へ変える",
-            "color": "#5de7f2"
+            "id": "coin",
+            "title": "コイン",
+            "description": "終端で戦闘後の獲得コインになる状態",
+            "color": "#ffb454"
           }
         ]
       },
       {
         "id": "weapon",
-        "title": "武器・装置",
-        "description": "特性を運び、攻撃や防御へ変換する手段",
+        "title": "出力",
+        "description": "運ばれた状態を、戦闘でどの結果へ変えるかを示す",
         "values": [
           {
-            "id": "blade",
-            "title": "剣",
-            "description": "短い間隔で攻撃しながら次へつなぐ"
+            "id": "attack",
+            "title": "攻撃",
+            "description": "ダメージか毒として相手へ出力する"
           },
           {
-            "id": "bow",
-            "title": "弓",
-            "description": "分岐しやすい射撃で複数の経路を作る"
+            "id": "guard",
+            "title": "防御",
+            "description": "シールドとして自分へ出力する"
           },
           {
-            "id": "cannon",
-            "title": "砲",
-            "description": "終端で蓄積を大きな一撃へ変換する"
+            "id": "repair",
+            "title": "回復",
+            "description": "HP回復として自分へ出力する"
           },
           {
-            "id": "device",
-            "title": "装置",
-            "description": "特性の育成、循環、維持を支える"
+            "id": "economy",
+            "title": "資金",
+            "description": "戦闘後のコインとして出力する"
           },
           {
-            "id": "magic",
-            "title": "魔法",
-            "description": "難しい配置条件を満たして効果を跳ね上げる"
+            "id": "operator",
+            "title": "回路演算",
+            "description": "状態を問わずパケットの経路や出力先を変える"
           }
         ]
       }
@@ -293,10 +299,10 @@
         "id": "poison",
         "axisId": "trait",
         "title": "毒",
-        "placementIdentity": "毒を持つ武器と循環装置の組み合わせ",
+        "placementIdentity": "毒を生成し、汎用演算子を通して培養か破裂の終端へ届ける",
         "strength": "後半の継続成長",
         "risk": "立ち上がりが遅い",
-        "gamePlan": "剣・弓・砲へ毒を組み込み、毒を残す培養か消費する破裂へつなぐ",
+        "gamePlan": "毒パケットを複製して長期蓄積するか、分岐・合流で束ねて破裂へ変換する",
         "payoffs": [
           {
             "id": "cultivate",
@@ -314,10 +320,10 @@
         "id": "charge",
         "axisId": "trait",
         "title": "チャージ",
-        "placementIdentity": "充電ノードを連ねた経路と遠い解放点",
+        "placementIdentity": "チャージを生成し、汎用演算子を通して攻撃か防御の終端へ届ける",
         "strength": "完成した経路からの瞬間出力",
         "risk": "充電ノードが足りないか経路が切れると弱い",
-        "gamePlan": "充電ノードを通るたびにチャージし、砲撃か防壁として終端でまとめて解放する",
+        "gamePlan": "一時的なチャージパケットを経路で加工し、砲撃か防壁として終端で解放する",
         "payoffs": [
           {
             "id": "burst",
@@ -336,7 +342,7 @@
       {
         "id": "strike",
         "title": "斬撃",
-        "summary": "特性を持たず、どの経路にも置ける基本の剣技",
+        "summary": "毎拍、通過するパケットへダメージ55を加える。",
         "status": "playable",
         "blockId": "strike",
         "scope": "shared",
@@ -345,11 +351,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -368,7 +374,7 @@
       {
         "id": "breaker",
         "title": "破砕撃",
-        "summary": "特性を持たず、素の火力を足せる重い剣技",
+        "summary": "2拍ごとに、通過するパケットへダメージ160を加える。",
         "status": "playable",
         "blockId": "breaker",
         "scope": "shared",
@@ -377,11 +383,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -400,7 +406,7 @@
       {
         "id": "arc-shot",
         "title": "アーク弾",
-        "summary": "特性を持たず、経路を分岐できる基本の弓技",
+        "summary": "2拍ごとに、通過するパケットへダメージ190を加える。",
         "status": "playable",
         "blockId": "arc-shot",
         "scope": "shared",
@@ -409,11 +415,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -432,7 +438,7 @@
       {
         "id": "barrier",
         "title": "障壁",
-        "summary": "特性を持たず、完成を待つ時間を作る共有装置",
+        "summary": "2拍ごとに、通過するパケットへシールド110を加える。",
         "status": "playable",
         "blockId": "barrier",
         "scope": "shared",
@@ -441,11 +447,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard"]
           }
         ],
         "buildLinks": [
@@ -464,7 +470,7 @@
       {
         "id": "repair",
         "title": "修復",
-        "summary": "特性を持たず、長い経路を維持する共有装置",
+        "summary": "3拍ごとに、通過するパケットへ回復260を加える。",
         "status": "playable",
         "blockId": "repair",
         "scope": "shared",
@@ -473,11 +479,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["repair"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["repair"]
           }
         ],
         "buildLinks": [
@@ -496,7 +502,7 @@
       {
         "id": "salvage-blade",
         "title": "回収刃",
-        "summary": "攻撃を続けながらコインを回収する序盤向けの共有剣技",
+        "summary": "4拍ごとに、通過するパケットへダメージ130を加える。4拍ごとに、通過するパケットへコイン1を加える。",
         "status": "playable",
         "blockId": "salvage-blade",
         "scope": "shared",
@@ -505,11 +511,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["damage", "coin"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack", "economy"]
           }
         ],
         "buildLinks": [
@@ -528,7 +534,7 @@
       {
         "id": "bounty-arrow",
         "title": "賞金矢",
-        "summary": "分岐を作りながらコインを得る中盤向けの共有弓技",
+        "summary": "5拍ごとに、通過するパケットへダメージ280を加える。5拍ごとに、通過するパケットへコイン1を加える。",
         "status": "playable",
         "blockId": "bounty-arrow",
         "scope": "shared",
@@ -537,11 +543,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["damage", "coin"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "economy"]
           }
         ],
         "buildLinks": [
@@ -560,7 +566,7 @@
       {
         "id": "repair-dividend",
         "title": "配当修復機",
-        "summary": "防護と回復を行いながらコインを得る共有装置",
+        "summary": "5拍ごとに、通過するパケットへシールド270を加える。5拍ごとに、通過するパケットへ回復180を加える。5拍ごとに、通過するパケットへコイン1を加える。",
         "status": "playable",
         "blockId": "repair-dividend",
         "scope": "shared",
@@ -569,11 +575,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["shield", "repair", "coin"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard", "repair", "economy"]
           }
         ],
         "buildLinks": [
@@ -592,7 +598,7 @@
       {
         "id": "poison-needle",
         "title": "毒矢",
-        "summary": "弓で毒を始動し、既に毒なら付与量も育つ",
+        "summary": "2拍ごとに、通過するパケットへダメージ55を加える。2拍ごとに、通過するパケットへ毒12を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "poison-needle",
         "scope": "exclusive",
@@ -601,11 +607,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison"]
+            "valueIds": ["damage", "poison"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -619,7 +625,7 @@
       {
         "id": "cultivation-blade",
         "title": "培養刃",
-        "summary": "毒を与えた後、通電先を戦闘中強化する",
+        "summary": "2拍ごとに、通過するパケットへダメージ170を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "cultivation-blade",
         "scope": "exclusive",
@@ -628,11 +634,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -646,7 +652,7 @@
       {
         "id": "toxic-reservoir",
         "title": "毒電池",
-        "summary": "毒とチャージを同時に運び、両ビルドの維持力を作る",
+        "summary": "3拍ごとに、通過するパケットへチャージ5を加える。3拍ごとに、通過するパケットへ毒16を加える。3拍ごとに、通過するパケットへシールド35を加える。",
         "status": "playable",
         "blockId": "toxic-reservoir",
         "scope": "shared",
@@ -655,11 +661,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison", "charge"]
+            "valueIds": ["charge", "poison", "shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["attack", "guard"]
           }
         ],
         "buildLinks": [
@@ -678,7 +684,7 @@
       {
         "id": "venom-bloom",
         "title": "猛毒花",
-        "summary": "毒を消さず、相手に蓄積した毒を養分として付与量を増やす",
+        "summary": "3拍ごとに、通過するパケットへ毒110を加える。",
         "status": "playable",
         "blockId": "venom-bloom",
         "scope": "exclusive",
@@ -691,7 +697,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -705,7 +711,7 @@
       {
         "id": "rupture-stake",
         "title": "破裂砲",
-        "summary": "砲撃で毒を減らし、その量を即時ダメージへ変える",
+        "summary": "届いた毒パケットを消費し、その量1につき14ダメージを加えて相手の毒を35%破裂させる。",
         "status": "playable",
         "blockId": "rupture-stake",
         "scope": "exclusive",
@@ -718,7 +724,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -732,7 +738,7 @@
       {
         "id": "status-relay",
         "title": "異常伝送",
-        "summary": "状態異常が付くと通電先を戦闘中強化する",
+        "summary": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへダメージ120を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "status-relay",
         "scope": "shared",
@@ -741,11 +747,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison", "charge"]
+            "valueIds": ["charge", "damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -764,7 +770,7 @@
       {
         "id": "return-coil",
         "title": "帰還コイル",
-        "summary": "特性を持たず、循環する経路へ強化を残す共有装置",
+        "summary": "2拍ごとに、通過するパケットへシールド170を加える。輪の中に置くと、パケット全体を1回だけ再循環させる。",
         "status": "playable",
         "blockId": "return-coil",
         "scope": "shared",
@@ -773,11 +779,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard", "operator"]
           }
         ],
         "buildLinks": [
@@ -796,7 +802,7 @@
       {
         "id": "long-route-fang",
         "title": "長路の牙",
-        "summary": "特性を持たず、通過した技が多いほど育つ汎用攻撃",
+        "summary": "2拍ごとに、通過するパケットへダメージ130を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "long-route-fang",
         "scope": "shared",
@@ -805,11 +811,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -828,7 +834,7 @@
       {
         "id": "amplifier",
         "title": "増幅術",
-        "summary": "特性を持たず、接続先の効果を直接強化する共有装置",
+        "summary": "最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "amplifier",
         "scope": "shared",
@@ -841,7 +847,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["operator"]
           }
         ],
         "buildLinks": [
@@ -860,7 +866,7 @@
       {
         "id": "accelerator",
         "title": "加速術",
-        "summary": "特性を持たず、接続先の発動を早める共有装置",
+        "summary": "同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
         "status": "playable",
         "blockId": "accelerator",
         "scope": "shared",
@@ -873,7 +879,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["operator"]
           }
         ],
         "buildLinks": [
@@ -892,7 +898,7 @@
       {
         "id": "charge-guard",
         "title": "蓄電装甲",
-        "summary": "守りながらチャージを先へ渡す専用装置",
+        "summary": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへシールド150を加える。",
         "status": "playable",
         "blockId": "charge-guard",
         "scope": "exclusive",
@@ -901,11 +907,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge"]
+            "valueIds": ["charge", "shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard"]
           }
         ],
         "buildLinks": [
@@ -919,7 +925,7 @@
       {
         "id": "charge-blade",
         "title": "充電刃",
-        "summary": "剣で攻撃しながらチャージを増やす",
+        "summary": "2拍ごとに、通過するパケットへチャージ2を加える。2拍ごとに、通過するパケットへダメージ75を加える。",
         "status": "playable",
         "blockId": "charge-blade",
         "scope": "exclusive",
@@ -928,11 +934,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge"]
+            "valueIds": ["charge", "damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -946,7 +952,7 @@
       {
         "id": "charge-arrow",
         "title": "充電矢",
-        "summary": "弓で分岐しながらチャージを運ぶ",
+        "summary": "2拍ごとに、通過するパケットへチャージ2を加える。2拍ごとに、通過するパケットへダメージ50を加える。",
         "status": "playable",
         "blockId": "charge-arrow",
         "scope": "exclusive",
@@ -955,11 +961,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge"]
+            "valueIds": ["charge", "damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -973,7 +979,7 @@
       {
         "id": "charge-coil",
         "title": "充電コイル",
-        "summary": "効果を持たず、通過するチャージを大きく増やす",
+        "summary": "毎拍、通過するパケットへチャージ4を加える。",
         "status": "playable",
         "blockId": "charge-coil",
         "scope": "exclusive",
@@ -986,7 +992,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["operator"]
           }
         ],
         "buildLinks": [
@@ -1000,7 +1006,7 @@
       {
         "id": "discharge-bow",
         "title": "放電弓",
-        "summary": "短い間隔でチャージを放つレアの決め手",
+        "summary": "届いたチャージをすべて消費し、ダメージ150＋1あたり140へ変換する。",
         "status": "playable",
         "blockId": "discharge-bow",
         "scope": "exclusive",
@@ -1013,7 +1019,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -1027,7 +1033,7 @@
       {
         "id": "rail-cannon",
         "title": "解放砲",
-        "summary": "放電弓より高効率でチャージを放つエピック砲",
+        "summary": "届いたチャージをすべて消費し、ダメージ298＋1あたり210へ変換する。",
         "status": "playable",
         "blockId": "rail-cannon",
         "scope": "exclusive",
@@ -1040,7 +1046,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -1054,7 +1060,7 @@
       {
         "id": "charge-bastion",
         "title": "防壁展開",
-        "summary": "遠方で全チャージをシールドへ変える",
+        "summary": "届いたチャージをすべて消費し、シールド210＋1あたり200へ変換する。3拍ごとに、通過するパケットへ回復175を加える。",
         "status": "playable",
         "blockId": "charge-bastion",
         "scope": "exclusive",
@@ -1063,11 +1069,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge"]
+            "valueIds": ["charge", "repair"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard", "repair"]
           }
         ],
         "buildLinks": [
@@ -1081,7 +1087,7 @@
       {
         "id": "venom-orbit",
         "title": "輪毒術",
-        "summary": "輪の一部に組み込むと毒を大きく重ねる配置魔法",
+        "summary": "3拍ごとに、通過するパケットへ毒50を加える。3拍ごとに、通過するパケットへ毒100を加える。輪の中に置くと、パケット全体を1回だけ再循環させる。",
         "status": "playable",
         "blockId": "venom-orbit",
         "scope": "exclusive",
@@ -1094,7 +1100,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1108,7 +1114,7 @@
       {
         "id": "sealed-junction",
         "title": "封環結界",
-        "summary": "すべての接続部を埋めると強固な防壁を作る共有魔法",
+        "summary": "3拍ごとに、通過するパケットへシールド160を加える。3拍ごとに、通過するパケットへシールド720を加える。同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
         "status": "playable",
         "blockId": "sealed-junction",
         "scope": "shared",
@@ -1117,11 +1123,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["guard", "operator"]
           }
         ],
         "buildLinks": [
@@ -1140,7 +1146,7 @@
       {
         "id": "adaptive-arsenal",
         "title": "汎用兵装",
-        "summary": "通電した無特性を数えて火力へ変えつつ、どのビルドにも接続できる共有砲",
+        "summary": "3拍ごとに、通過するパケットへダメージ220を加える。",
         "status": "playable",
         "blockId": "adaptive-arsenal",
         "scope": "shared",
@@ -1149,11 +1155,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -1172,7 +1178,7 @@
       {
         "id": "adaptive-bulwark",
         "title": "汎用防壁",
-        "summary": "通電した無特性を数えて防護へ変えつつ、他ビルドの完成を待つ共有装置",
+        "summary": "4拍ごとに、通過するパケットへシールド250を加える。",
         "status": "playable",
         "blockId": "adaptive-bulwark",
         "scope": "shared",
@@ -1181,11 +1187,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard"]
           }
         ],
         "buildLinks": [
@@ -1204,7 +1210,7 @@
       {
         "id": "bridge-core",
         "title": "架橋中枢",
-        "summary": "通電した無特性を攻防へ変換し、混成回路の中央を担う共有魔法",
+        "summary": "5拍ごとに、通過するパケットへダメージ380を加える。5拍ごとに、通過するパケットへシールド200を加える。",
         "status": "playable",
         "blockId": "bridge-core",
         "scope": "shared",
@@ -1213,11 +1219,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["neutral"]
+            "valueIds": ["damage", "shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["attack", "guard"]
           }
         ],
         "buildLinks": [
@@ -1236,7 +1242,7 @@
       {
         "id": "charge-line-lance",
         "title": "雷路槍",
-        "summary": "直線経路の途中で大量のチャージを後続へ渡す中継槍",
+        "summary": "毎拍、通過するパケットへチャージ6を加える。毎拍、通過するパケットへチャージ5を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "charge-line-lance",
         "scope": "exclusive",
@@ -1249,7 +1255,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["operator"]
           }
         ],
         "buildLinks": [
@@ -1263,7 +1269,7 @@
       {
         "id": "overcharge-cannon",
         "title": "超過解放砲",
-        "summary": "長い待ち時間と引き換えに最高DPSでチャージを放つ",
+        "summary": "届いたチャージをすべて消費し、ダメージ940＋1あたり400へ変換する。",
         "status": "playable",
         "blockId": "overcharge-cannon",
         "scope": "exclusive",
@@ -1276,7 +1282,7 @@
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -1290,7 +1296,7 @@
       {
         "id": "inscription-stone",
         "title": "刻印碑",
-        "summary": "前方のマスへ魔紋を刻み、守りながら強化先を作る",
+        "summary": "2拍ごとに、通過するパケットへシールド90を加える。通過するパケットへ防御刻印を付け、終端の出力先を防御へ変える。",
         "status": "playable",
         "blockId": "inscription-stone",
         "scope": "shared",
@@ -1299,11 +1305,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard", "operator"]
           }
         ],
         "buildLinks": [
@@ -1323,7 +1329,7 @@
       {
         "id": "guiding-bolt",
         "title": "導刻矢",
-        "summary": "射線の先へ二つの魔紋を刻み、序盤から受け手を増やす",
+        "summary": "2拍ごとに、通過するパケットへダメージ75を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
         "status": "playable",
         "blockId": "guiding-bolt",
         "scope": "shared",
@@ -1332,11 +1338,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1356,7 +1362,7 @@
       {
         "id": "sigil-blade",
         "title": "魔紋刃",
-        "summary": "刻印マスへ置くほど斬撃が強くなる基礎の受け手",
+        "summary": "2拍ごとに、通過するパケットへダメージ80を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
         "status": "playable",
         "blockId": "sigil-blade",
         "scope": "shared",
@@ -1365,11 +1371,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1389,7 +1395,7 @@
       {
         "id": "guardian-sigil",
         "title": "守護紋",
-        "summary": "刻印マスの位階を防壁と修復へ変える維持技",
+        "summary": "3拍ごとに、通過するパケットへシールド150を加える。3拍ごとに、通過するパケットへ回復60を加える。通過するパケットへ回復刻印を付け、終端の出力先を回復へ変える。",
         "status": "playable",
         "blockId": "guardian-sigil",
         "scope": "shared",
@@ -1398,11 +1404,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["shield", "repair"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard", "repair", "operator"]
           }
         ],
         "buildLinks": [
@@ -1422,7 +1428,7 @@
       {
         "id": "twin-inscription",
         "title": "双刻碑",
-        "summary": "異なる二方向へ魔紋を刻み、連環の面積を広げる",
+        "summary": "3拍ごとに、通過するパケットへダメージ180を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
         "status": "playable",
         "blockId": "twin-inscription",
         "scope": "shared",
@@ -1431,11 +1437,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1455,7 +1461,7 @@
       {
         "id": "thunder-sigil",
         "title": "雷紋",
-        "summary": "二つの魔紋を刻みながらチャージを後続へ渡す",
+        "summary": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへダメージ100を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
         "status": "playable",
         "blockId": "thunder-sigil",
         "scope": "shared",
@@ -1464,11 +1470,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge", "magic-sigil"]
+            "valueIds": ["charge", "damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1483,7 +1489,7 @@
       {
         "id": "convergence-sigil",
         "title": "集束紋",
-        "summary": "一つのマスへ二重の魔紋を刻み、重刻を完成へ近づける",
+        "summary": "3拍ごとに、通過するパケットへシールド360を加える。通過するパケットへ防御刻印を付け、終端の出力先を防御へ変える。",
         "status": "playable",
         "blockId": "convergence-sigil",
         "scope": "shared",
@@ -1492,11 +1498,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["guard", "operator"]
           }
         ],
         "buildLinks": [
@@ -1516,7 +1522,7 @@
       {
         "id": "sigil-cannon",
         "title": "紋章砲",
-        "summary": "自分の魔紋位階を火力へ変える重刻の決め手",
+        "summary": "3拍ごとに、通過するパケットへダメージ300を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
         "status": "playable",
         "blockId": "sigil-cannon",
         "scope": "shared",
@@ -1525,11 +1531,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1549,7 +1555,7 @@
       {
         "id": "resonance-circle",
         "title": "連環陣",
-        "summary": "通電した刻印マスの数を毒へ変える連環の決め手",
+        "summary": "3拍ごとに、通過するパケットへ毒30を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
         "status": "playable",
         "blockId": "resonance-circle",
         "scope": "shared",
@@ -1558,11 +1564,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison", "magic-sigil"]
+            "valueIds": ["poison"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1577,7 +1583,7 @@
       {
         "id": "deep-sigil-cannon",
         "title": "深奥砲",
-        "summary": "位階IIIの魔紋だけを巨大な一撃へ変える重刻の奥義",
+        "summary": "4拍ごとに、通過するパケットへダメージ900を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
         "status": "playable",
         "blockId": "deep-sigil-cannon",
         "scope": "shared",
@@ -1586,11 +1592,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1610,7 +1616,7 @@
       {
         "id": "all-sigil-resonance",
         "title": "万象連環",
-        "summary": "通電したすべての刻印マスを攻防へ変える連環の奥義",
+        "summary": "4拍ごとに、通過するパケットへダメージ300を加える。4拍ごとに、通過するパケットへシールド200を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
         "status": "playable",
         "blockId": "all-sigil-resonance",
         "scope": "shared",
@@ -1619,11 +1625,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["magic-sigil"]
+            "valueIds": ["damage", "shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["attack", "guard", "operator"]
           }
         ],
         "buildLinks": [
@@ -1643,7 +1649,7 @@
       {
         "id": "spirit-blade",
         "title": "霊響刃",
-        "summary": "周囲8マスの霊響を刃へ集め、素早く斬り込む",
+        "summary": "毎拍、通過するパケットへダメージ20を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "spirit-blade",
         "scope": "shared",
@@ -1652,11 +1658,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["resonance"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1676,7 +1682,7 @@
       {
         "id": "echo-arrow",
         "title": "残響矢",
-        "summary": "斜めの霊響も拾いながら経路を分岐する矢",
+        "summary": "2拍ごとに、通過するパケットへダメージ60を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "echo-arrow",
         "scope": "shared",
@@ -1685,11 +1691,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["resonance"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1709,7 +1715,7 @@
       {
         "id": "tuning-stone",
         "title": "調律碑",
-        "summary": "周囲の響きを整えて防壁へ変える基礎の魔法碑",
+        "summary": "2拍ごとに、通過するパケットへシールド60を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "tuning-stone",
         "scope": "shared",
@@ -1718,11 +1724,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["resonance"]
+            "valueIds": ["shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["guard", "operator"]
           }
         ],
         "buildLinks": [
@@ -1742,7 +1748,7 @@
       {
         "id": "harmony-ward",
         "title": "響護壁",
-        "summary": "三つ以上の響きで回復まで目覚める守護装置",
+        "summary": "2拍ごとに、通過するパケットへシールド85を加える。2拍ごとに、通過するパケットへ回復60を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "harmony-ward",
         "scope": "shared",
@@ -1751,11 +1757,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["resonance"]
+            "valueIds": ["shield", "repair"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard", "repair", "operator"]
           }
         ],
         "buildLinks": [
@@ -1775,7 +1781,7 @@
       {
         "id": "thunder-echo",
         "title": "雷響器",
-        "summary": "霊響とチャージを同時に運ぶ雷の中継装置",
+        "summary": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへダメージ50を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "thunder-echo",
         "scope": "shared",
@@ -1784,11 +1790,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge", "resonance"]
+            "valueIds": ["charge", "damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1803,7 +1809,7 @@
       {
         "id": "venom-chorus",
         "title": "蝕響矢",
-        "summary": "密集する霊響を毒へ変える二系統の弓",
+        "summary": "2拍ごとに、通過するパケットへ毒14を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "venom-chorus",
         "scope": "shared",
@@ -1812,11 +1818,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison", "resonance"]
+            "valueIds": ["poison"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1831,7 +1837,7 @@
       {
         "id": "resonance-cannon",
         "title": "霊響砲",
-        "summary": "共鳴度4以上を一撃へ集中させる集響の決め手",
+        "summary": "3拍ごとに、通過するパケットへダメージ200を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "resonance-cannon",
         "scope": "shared",
@@ -1840,11 +1846,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["resonance"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1864,7 +1870,7 @@
       {
         "id": "harmonic-sanctuary",
         "title": "交響結界",
-        "summary": "共鳴度4以上を防壁と回復へ分ける交響の決め手",
+        "summary": "3拍ごとに、通過するパケットへシールド150を加える。3拍ごとに、通過するパケットへ回復120を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "harmonic-sanctuary",
         "scope": "shared",
@@ -1873,11 +1879,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["resonance"]
+            "valueIds": ["shield", "repair"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["guard", "repair", "operator"]
           }
         ],
         "buildLinks": [
@@ -1897,7 +1903,7 @@
       {
         "id": "celestial-echo-cannon",
         "title": "天響砲",
-        "summary": "六つ以上の響きを天へ束ねる集響の奥義",
+        "summary": "4拍ごとに、通過するパケットへダメージ600を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "celestial-echo-cannon",
         "scope": "shared",
@@ -1906,11 +1912,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["resonance"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -1930,7 +1936,7 @@
       {
         "id": "grand-harmony",
         "title": "万象交響",
-        "summary": "周囲8マスすべての響きを攻防へ変える交響の奥義",
+        "summary": "4拍ごとに、通過するパケットへダメージ600を加える。4拍ごとに、通過するパケットへシールド300を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
         "status": "playable",
         "blockId": "grand-harmony",
         "scope": "shared",
@@ -1939,11 +1945,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["resonance"]
+            "valueIds": ["damage", "shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["attack", "guard", "operator"]
           }
         ],
         "buildLinks": [
@@ -1963,7 +1969,7 @@
       {
         "id": "light-vein-blade",
         "title": "光脈刃",
-        "summary": "枝分かれする光路の起点となる素早い刃",
+        "summary": "毎拍、通過するパケットへダメージ70を加える。",
         "status": "playable",
         "blockId": "light-vein-blade",
         "scope": "shared",
@@ -1972,11 +1978,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["light-vein"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["blade"]
+            "valueIds": ["attack"]
           }
         ],
         "buildLinks": [
@@ -1996,7 +2002,7 @@
       {
         "id": "prism-arrow",
         "title": "枝光矢",
-        "summary": "二本以上の下流へ光を分け、枝数を射撃へ変える",
+        "summary": "2拍ごとに、通過するパケットへダメージ90を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
         "status": "playable",
         "blockId": "prism-arrow",
         "scope": "shared",
@@ -2005,11 +2011,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["light-vein"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -2029,7 +2035,7 @@
       {
         "id": "light-guide",
         "title": "導光器",
-        "summary": "光路を曲げながら防壁と回復を維持する装置",
+        "summary": "2拍ごとに、通過するパケットへシールド100を加える。2拍ごとに、通過するパケットへ回復50を加える。",
         "status": "playable",
         "blockId": "light-guide",
         "scope": "shared",
@@ -2038,11 +2044,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["light-vein"]
+            "valueIds": ["shield", "repair"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["guard", "repair"]
           }
         ],
         "buildLinks": [
@@ -2062,7 +2068,7 @@
       {
         "id": "thunder-prism",
         "title": "雷光器",
-        "summary": "分けた光へチャージを載せ、二つのビルドを育てる",
+        "summary": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへダメージ80を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
         "status": "playable",
         "blockId": "thunder-prism",
         "scope": "shared",
@@ -2071,11 +2077,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["charge", "light-vein"]
+            "valueIds": ["charge", "damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["device"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -2090,7 +2096,7 @@
       {
         "id": "venom-ray",
         "title": "蝕光矢",
-        "summary": "枝数に応じて毒を広げ、毒と枝光を同時に育てる",
+        "summary": "2拍ごとに、通過するパケットへ毒18を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
         "status": "playable",
         "blockId": "venom-ray",
         "scope": "shared",
@@ -2099,11 +2105,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["poison", "light-vein"]
+            "valueIds": ["poison"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -2118,7 +2124,7 @@
       {
         "id": "radiant-fork",
         "title": "輝叉術",
-        "summary": "三方向へ伸びる光路を守り、下流の技を増幅する",
+        "summary": "2拍ごとに、通過するパケットへシールド90を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
         "status": "playable",
         "blockId": "radiant-fork",
         "scope": "shared",
@@ -2127,11 +2133,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["light-vein"]
+            "valueIds": ["shield"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["guard", "operator"]
           }
         ],
         "buildLinks": [
@@ -2151,7 +2157,7 @@
       {
         "id": "branchlight-barrage",
         "title": "枝光連弩",
-        "summary": "二本以上の枝を維持して連射へ変える枝光の決め手",
+        "summary": "3拍ごとに、通過するパケットへダメージ420を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
         "status": "playable",
         "blockId": "branchlight-barrage",
         "scope": "shared",
@@ -2160,11 +2166,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["light-vein"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["bow"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -2184,7 +2190,7 @@
       {
         "id": "convergence-cannon",
         "title": "収光砲",
-        "summary": "二つ以上の光路を一撃へ束ねる収光の決め手",
+        "summary": "3拍ごとに、通過するパケットへダメージ220を加える。同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
         "status": "playable",
         "blockId": "convergence-cannon",
         "scope": "shared",
@@ -2193,11 +2199,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["light-vein"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -2217,7 +2223,7 @@
       {
         "id": "myriad-light-array",
         "title": "万条光陣",
-        "summary": "三本の枝すべてを攻防へ変える枝光の奥義",
+        "summary": "4拍ごとに、通過するパケットへダメージ1000を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
         "status": "playable",
         "blockId": "myriad-light-array",
         "scope": "shared",
@@ -2226,11 +2232,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["light-vein"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["magic"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -2250,7 +2256,7 @@
       {
         "id": "solar-convergence",
         "title": "天光収束砲",
-        "summary": "三つの光路を一点へ戻して撃ち出す収光の奥義",
+        "summary": "4拍ごとに、通過するパケットへダメージ500を加える。同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
         "status": "playable",
         "blockId": "solar-convergence",
         "scope": "shared",
@@ -2259,11 +2265,11 @@
         "axisLinks": [
           {
             "axisId": "trait",
-            "valueIds": ["light-vein"]
+            "valueIds": ["damage"]
           },
           {
             "axisId": "weapon",
-            "valueIds": ["cannon"]
+            "valueIds": ["attack", "operator"]
           }
         ],
         "buildLinks": [
@@ -2287,7 +2293,7 @@
       "id": "strike",
       "code": "SLASH",
       "title": "斬撃",
-      "description": "毎拍、相手に55ダメージ。左右につないで、次の技へ通電する。",
+      "description": "毎拍、通過するパケットへダメージ55を加える。",
       "glyph": "斬",
       "price": 4,
       "rarity": "common",
@@ -2303,7 +2309,7 @@
       ],
       "fusion": {
         "title": "攻防連斬",
-        "description": "1拍ごとに80ダメージを与え、シールド30を得る。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -2314,13 +2320,23 @@
             "amount": 30
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 55
+          }
+        ]
       }
     },
     {
       "id": "breaker",
       "code": "BREAK",
       "title": "破砕撃",
-      "description": "2拍ごとに、相手に160ダメージ。曲がる2方向へつないで、回路を折り返せる。",
+      "description": "2拍ごとに、通過するパケットへダメージ160を加える。",
       "glyph": "破",
       "price": 5,
       "rarity": "common",
@@ -2336,7 +2352,7 @@
       ],
       "fusion": {
         "title": "破砕防衛",
-        "description": "2拍ごとに200ダメージを与え、シールド70を得る。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -2347,13 +2363,23 @@
             "amount": 70
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 160
+          }
+        ]
       }
     },
     {
       "id": "arc-shot",
       "code": "ARC",
       "title": "アーク弾",
-      "description": "2拍ごとに、相手に190ダメージ。3方向へ通電を分けられる。",
+      "description": "2拍ごとに、通過するパケットへダメージ190を加える。",
       "glyph": "弧",
       "price": 7,
       "rarity": "rare",
@@ -2369,7 +2395,7 @@
       ],
       "fusion": {
         "title": "分岐弾幕",
-        "description": "2拍ごとに240ダメージを与え、シールド55を得る。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -2380,13 +2406,23 @@
             "amount": 55
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 190
+          }
+        ]
       }
     },
     {
       "id": "barrier",
       "code": "GUARD",
       "title": "障壁",
-      "description": "2拍ごとに、シールド110を得る。3方向へ通電を分けられる。",
+      "description": "2拍ごとに、通過するパケットへシールド110を加える。",
       "glyph": "盾",
       "price": 4,
       "rarity": "common",
@@ -2402,7 +2438,7 @@
       ],
       "fusion": {
         "title": "反射障壁",
-        "description": "2拍ごとにシールド165を得て、相手へ45ダメージを返す。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "shield",
@@ -2413,13 +2449,23 @@
             "amount": 45
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 110
+          }
+        ]
       }
     },
     {
       "id": "repair",
       "code": "REPAIR",
       "title": "修復",
-      "description": "3拍ごとに、失ったHPを260回復。曲がる2方向へつなげられる。",
+      "description": "3拍ごとに、通過するパケットへ回復260を加える。",
       "glyph": "修",
       "price": 7,
       "rarity": "rare",
@@ -2435,7 +2481,7 @@
       ],
       "fusion": {
         "title": "再生機構",
-        "description": "2拍ごとにHPを230回復し、シールド80を得る。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "cooldown": 2,
         "effects": [
           {
@@ -2447,13 +2493,23 @@
             "amount": 80
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "repair",
+            "amount": 260
+          }
+        ]
       }
     },
     {
       "id": "salvage-blade",
       "code": "SALVAGE",
       "title": "回収刃",
-      "description": "4拍ごとに、相手に130ダメージ。さらにコイン1を得る。",
+      "description": "4拍ごとに、通過するパケットへダメージ130を加える。4拍ごとに、通過するパケットへコイン1を加える。",
       "glyph": "収",
       "price": 5,
       "rarity": "common",
@@ -2473,7 +2529,7 @@
       ],
       "fusion": {
         "title": "分配刃",
-        "description": "3拍ごとに140ダメージを与えてコインを1枚回収し、この先の技の各効果を45増やす。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "cooldown": 3,
         "effects": [
           {
@@ -2489,13 +2545,28 @@
             "amount": 45
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 130
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "coin",
+            "amount": 1
+          }
+        ]
       }
     },
     {
       "id": "bounty-arrow",
       "code": "BOUNTY",
       "title": "賞金矢",
-      "description": "5拍ごとに、相手に280ダメージ。コイン1を得て、3方向へ通電を分けられる。",
+      "description": "5拍ごとに、通過するパケットへダメージ280を加える。5拍ごとに、通過するパケットへコイン1を加える。",
       "glyph": "賞",
       "price": 8,
       "rarity": "rare",
@@ -2515,7 +2586,7 @@
       ],
       "fusion": {
         "title": "護衛賞金矢",
-        "description": "4拍ごとに300ダメージを与え、コインを1枚回収し、シールド80を得る。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "cooldown": 4,
         "effects": [
           {
@@ -2531,13 +2602,28 @@
             "amount": 80
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 280
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "coin",
+            "amount": 1
+          }
+        ]
       }
     },
     {
       "id": "repair-dividend",
       "code": "DIVIDEND",
       "title": "配当修復機",
-      "description": "5拍ごとに、シールド270とHP回復180を得る。さらにコイン1を得る。",
+      "description": "5拍ごとに、通過するパケットへシールド270を加える。5拍ごとに、通過するパケットへ回復180を加える。5拍ごとに、通過するパケットへコイン1を加える。",
       "glyph": "配",
       "price": 9,
       "rarity": "rare",
@@ -2561,7 +2647,7 @@
       ],
       "fusion": {
         "title": "複利修復機",
-        "description": "4拍ごとにシールド300と回復240を得て、コインを1枚回収する。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "cooldown": 4,
         "effects": [
           {
@@ -2577,13 +2663,33 @@
             "amount": 1
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 270
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "repair",
+            "amount": 180
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "coin",
+            "amount": 1
+          }
+        ]
       }
     },
     {
       "id": "rail-cannon",
       "code": "RAIL",
       "title": "解放砲",
-      "description": "3拍ごとに、298＋チャージ1につき210ダメージ。チャージをすべて使い、このノードで通電が止まる。",
+      "description": "届いたチャージをすべて消費し、ダメージ298＋1あたり210へ変換する。",
       "glyph": "砲",
       "price": 14,
       "rarity": "epic",
@@ -2599,13 +2705,26 @@
           "amount": 298,
           "perCharge": 210
         }
-      ]
+      ],
+      "packet": {
+        "role": "sink",
+        "terminal": true,
+        "effects": [
+          {
+            "kind": "convert-packet",
+            "input": "charge",
+            "output": "damage",
+            "amount": 298,
+            "perUnit": 210
+          }
+        ]
+      }
     },
     {
       "id": "amplifier",
       "code": "AMP",
       "title": "増幅術",
-      "description": "直後につながる技のダメージ・毒・シールド・回復・破裂を、それぞれ220増やす。",
+      "description": "最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "増",
       "price": 8,
       "rarity": "rare",
@@ -2620,7 +2739,7 @@
       ],
       "fusion": {
         "title": "可変増幅術",
-        "description": "この先の技の各効果を250増やし、発動間隔を1拍短くする。",
+        "description": "★化すると、発動間隔が可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "amplify",
@@ -2631,13 +2750,21 @@
             "amount": 1
           }
         ]
+      },
+      "packet": {
+        "role": "operator",
+        "effects": [
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "accelerator",
       "code": "FAST",
       "title": "加速術",
-      "description": "3つの接続口をすべてつなぐと、直後の技が1拍早く発動し、各効果と破裂が305増える。",
+      "description": "同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
       "glyph": "速",
       "price": 8,
       "rarity": "rare",
@@ -2662,7 +2789,7 @@
       ],
       "fusion": {
         "title": "常動加速術",
-        "description": "接続状態を問わず、この先の技の発動間隔を1拍短くする。全接続なら各効果も360増やす。",
+        "description": "★化すると、発動間隔が可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "haste",
@@ -2676,13 +2803,21 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "operator",
+        "effects": [
+          {
+            "kind": "merge-packet"
+          }
+        ]
       }
     },
     {
       "id": "poison-needle",
       "code": "VENOM",
       "title": "毒矢",
-      "description": "2拍ごとに、55ダメージと毒12を与える。相手がすでに毒なら、発動するたびにこの技の毒が1増える。",
+      "description": "2拍ごとに、通過するパケットへダメージ55を加える。2拍ごとに、通過するパケットへ毒12を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "毒",
       "price": 5,
       "rarity": "common",
@@ -2709,13 +2844,31 @@
             "kind": "enemy-poisoned"
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 55
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "poison",
+            "amount": 12
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
+      }
     },
     {
       "id": "cultivation-blade",
       "code": "CULT",
       "title": "培養刃",
-      "description": "2拍ごとに、相手に170ダメージ。相手が毒なら、発動するたびに直後の技の各効果が15増える。",
+      "description": "2拍ごとに、通過するパケットへダメージ170を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "培",
       "price": 8,
       "rarity": "rare",
@@ -2738,13 +2891,26 @@
             "kind": "enemy-poisoned"
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 170
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
+      }
     },
     {
       "id": "toxic-reservoir",
       "code": "TANK",
       "title": "毒電池",
-      "description": "通電へチャージ5を加えて先へ渡す。3拍ごとに、毒16を与え、シールド35を得る。",
+      "description": "3拍ごとに、通過するパケットへチャージ5を加える。3拍ごとに、通過するパケットへ毒16を加える。3拍ごとに、通過するパケットへシールド35を加える。",
       "glyph": "溜",
       "price": 14,
       "rarity": "epic",
@@ -2766,13 +2932,33 @@
           "kind": "shield",
           "amount": 35
         }
-      ]
+      ],
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 5
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "poison",
+            "amount": 16
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 35
+          }
+        ]
+      }
     },
     {
       "id": "venom-bloom",
       "code": "BLOOM",
       "title": "猛毒花",
-      "description": "3拍ごとに毒110を与える。相手の毒250につき付与量が20増え、たまった毒は消費しない。",
+      "description": "3拍ごとに、通過するパケットへ毒110を加える。",
       "glyph": "花",
       "price": 20,
       "rarity": "legendary",
@@ -2791,13 +2977,23 @@
             "amount": 20
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "poison",
+            "amount": 110
+          }
+        ]
+      }
     },
     {
       "id": "rupture-stake",
       "code": "BURST",
       "title": "破裂砲",
-      "description": "4拍ごとに、相手の毒を35%消費する。消費した毒1につき14ダメージ。",
+      "description": "届いた毒パケットを消費し、その量1につき14ダメージを加えて相手の毒を35%破裂させる。",
       "glyph": "裂",
       "price": 13,
       "rarity": "epic",
@@ -2812,13 +3008,27 @@
           "fraction": 0.35,
           "damagePerStack": 14
         }
-      ]
+      ],
+      "packet": {
+        "role": "sink",
+        "terminal": true,
+        "effects": [
+          {
+            "kind": "convert-packet",
+            "input": "poison",
+            "output": "rupture",
+            "amount": 0,
+            "perUnit": 14,
+            "consume": 0.35
+          }
+        ]
+      }
     },
     {
       "id": "status-relay",
       "code": "RELAY",
       "title": "異常伝送",
-      "description": "通電へチャージ1を加えて先へ渡す。2拍ごとに120ダメージを与え、相手が毒なら直後の技の各効果が8増える。",
+      "description": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへダメージ120を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "伝",
       "price": 8,
       "rarity": "rare",
@@ -2845,13 +3055,31 @@
             "kind": "enemy-poisoned"
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 1
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 120
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
+      }
     },
     {
       "id": "return-coil",
       "code": "RETURN",
       "title": "帰還コイル",
-      "description": "2拍ごとにシールド170を得る。中央を含む回路が一周すると、発動するたびに自身のシールドと直後の技の各効果が15増える。",
+      "description": "2拍ごとに、通過するパケットへシールド170を加える。輪の中に置くと、パケット全体を1回だけ再循環させる。",
       "glyph": "還",
       "price": 8,
       "rarity": "rare",
@@ -2886,7 +3114,7 @@
       ],
       "fusion": {
         "title": "回生コイル",
-        "description": "2拍ごとにシールド200と回復60を得る。循環中は自身とこの先の技を18ずつ強化する。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "shield",
@@ -2915,13 +3143,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 170
+          },
+          {
+            "kind": "recirculate-packet"
+          }
+        ]
       }
     },
     {
       "id": "long-route-fang",
       "code": "LONG",
       "title": "長路の牙",
-      "description": "2拍ごとに130ダメージ。中央を含む直線の通電ノード1個につき15増え、4ノード以上なら発動するたびにさらに13増える。",
+      "description": "2拍ごとに、通過するパケットへダメージ130を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "路",
       "price": 8,
       "rarity": "rare",
@@ -2953,7 +3194,7 @@
       ],
       "fusion": {
         "title": "護路の牙",
-        "description": "2拍ごとに160ダメージとシールド70を得る。直線上の技1個につきダメージが18増える。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -2969,13 +3210,26 @@
             "amount": 70
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 130
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "charge-blade",
       "code": "CHG-B",
       "title": "充電刃",
-      "description": "通電へチャージ2を加えて先へ渡す。2拍ごとに、相手に75ダメージ。",
+      "description": "2拍ごとに、通過するパケットへチャージ2を加える。2拍ごとに、通過するパケットへダメージ75を加える。",
       "glyph": "充",
       "price": 5,
       "rarity": "common",
@@ -2993,13 +3247,28 @@
           "kind": "damage",
           "amount": 75
         }
-      ]
+      ],
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 2
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 75
+          }
+        ]
+      }
     },
     {
       "id": "charge-arrow",
       "code": "CHG-A",
       "title": "充電矢",
-      "description": "通電へチャージ2を加えて先へ渡す。2拍ごとに、相手に50ダメージ。",
+      "description": "2拍ごとに、通過するパケットへチャージ2を加える。2拍ごとに、通過するパケットへダメージ50を加える。",
       "glyph": "矢",
       "price": 5,
       "rarity": "common",
@@ -3017,13 +3286,28 @@
           "kind": "damage",
           "amount": 50
         }
-      ]
+      ],
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 2
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 50
+          }
+        ]
+      }
     },
     {
       "id": "charge-coil",
       "code": "COIL",
       "title": "充電コイル",
-      "description": "通電へチャージ4を加え、先の解放ノードへ渡す。自身は攻撃しない。",
+      "description": "毎拍、通過するパケットへチャージ4を加える。",
       "glyph": "蓄",
       "price": 8,
       "rarity": "rare",
@@ -3036,13 +3320,23 @@
           "kind": "charge",
           "amount": 4
         }
-      ]
+      ],
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 4
+          }
+        ]
+      }
     },
     {
       "id": "discharge-bow",
       "code": "SPARK",
       "title": "放電弓",
-      "description": "3拍ごとに、150＋チャージ1につき140ダメージ。チャージをすべて使い、このノードで通電が止まる。",
+      "description": "届いたチャージをすべて消費し、ダメージ150＋1あたり140へ変換する。",
       "glyph": "放",
       "price": 9,
       "rarity": "rare",
@@ -3058,13 +3352,26 @@
           "amount": 150,
           "perCharge": 140
         }
-      ]
+      ],
+      "packet": {
+        "role": "sink",
+        "terminal": true,
+        "effects": [
+          {
+            "kind": "convert-packet",
+            "input": "charge",
+            "output": "damage",
+            "amount": 150,
+            "perUnit": 140
+          }
+        ]
+      }
     },
     {
       "id": "charge-guard",
       "code": "CHG-G",
       "title": "蓄電装甲",
-      "description": "通電へチャージ1を加えて先へ渡す。2拍ごとに、シールド150を得る。",
+      "description": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへシールド150を加える。",
       "glyph": "蓄",
       "price": 8,
       "rarity": "rare",
@@ -3082,13 +3389,28 @@
           "kind": "shield",
           "amount": 150
         }
-      ]
+      ],
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 1
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 150
+          }
+        ]
+      }
     },
     {
       "id": "charge-bastion",
       "code": "BASTION",
       "title": "防壁展開",
-      "description": "3拍ごとに、シールド210＋チャージ1につき200と、HP回復175を得る。チャージをすべて使い、このノードで通電が止まる。",
+      "description": "届いたチャージをすべて消費し、シールド210＋1あたり200へ変換する。3拍ごとに、通過するパケットへ回復175を加える。",
       "glyph": "壁",
       "price": 14,
       "rarity": "epic",
@@ -3108,13 +3430,31 @@
           "kind": "repair",
           "amount": 175
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "terminal": true,
+        "effects": [
+          {
+            "kind": "convert-packet",
+            "input": "charge",
+            "output": "shield",
+            "amount": 210,
+            "perUnit": 200
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "repair",
+            "amount": 175
+          }
+        ]
+      }
     },
     {
       "id": "venom-orbit",
       "code": "ORBIT",
       "title": "輪毒術",
-      "description": "3拍ごとに毒50を与える。中央を含む回路が一周していれば、さらに毒100を与える。",
+      "description": "3拍ごとに、通過するパケットへ毒50を加える。3拍ごとに、通過するパケットへ毒100を加える。輪の中に置くと、パケット全体を1回だけ再循環させる。",
       "glyph": "輪",
       "price": 14,
       "rarity": "epic",
@@ -3135,13 +3475,31 @@
             "kind": "in-cycle"
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "poison",
+            "amount": 50
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "poison",
+            "amount": 100
+          },
+          {
+            "kind": "recirculate-packet"
+          }
+        ]
+      }
     },
     {
       "id": "sealed-junction",
       "code": "SEAL",
       "title": "封環結界",
-      "description": "3拍ごとにシールド160を得る。4つの接続口をすべて隣へつなぐと、さらにシールド720を得る。",
+      "description": "3拍ごとに、通過するパケットへシールド160を加える。3拍ごとに、通過するパケットへシールド720を加える。同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
       "glyph": "封",
       "price": 13,
       "rarity": "epic",
@@ -3165,7 +3523,7 @@
       ],
       "fusion": {
         "title": "転換結界",
-        "description": "2拍ごとにシールド160を得る。全接続ならシールド600とダメージ280を追加する。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "cooldown": 2,
         "effects": [
           {
@@ -3187,13 +3545,31 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 160
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 720
+          },
+          {
+            "kind": "merge-packet"
+          }
+        ]
       }
     },
     {
       "id": "adaptive-arsenal",
       "code": "ADAPT",
       "title": "汎用兵装",
-      "description": "3拍ごとに220ダメージ。通電中の汎用ノード2個につき110増える（最大4回）。",
+      "description": "3拍ごとに、通過するパケットへダメージ220を加える。",
       "glyph": "汎",
       "price": 13,
       "rarity": "epic",
@@ -3217,7 +3593,7 @@
       ],
       "fusion": {
         "title": "連携兵装",
-        "description": "3拍ごとに250ダメージを与え、通電した汎用ノード2個につき120増やす。増加は4回までで、この先の技も100強化する。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -3236,13 +3612,23 @@
             "amount": 100
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 220
+          }
+        ]
       }
     },
     {
       "id": "adaptive-bulwark",
       "code": "BULWARK",
       "title": "汎用防壁",
-      "description": "4拍ごとにシールド250を得る。通電中の汎用ノード2個につき180増える（最大3回）。",
+      "description": "4拍ごとに、通過するパケットへシールド250を加える。",
       "glyph": "汎",
       "price": 14,
       "rarity": "epic",
@@ -3267,7 +3653,7 @@
       ],
       "fusion": {
         "title": "汎用要塞",
-        "description": "3拍ごとにシールド280と回復180を得て、通電した汎用ノード2個につきシールドが190増える。増加は3回まで。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "cooldown": 3,
         "effects": [
           {
@@ -3287,13 +3673,23 @@
             "amount": 180
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 250
+          }
+        ]
       }
     },
     {
       "id": "bridge-core",
       "code": "BRIDGE",
       "title": "架橋中枢",
-      "description": "5拍ごとに380ダメージとシールド200。通電中の汎用ノード2個につき、ダメージ210・シールド110が増える（最大4回）。",
+      "description": "5拍ごとに、通過するパケットへダメージ380を加える。5拍ごとに、通過するパケットへシールド200を加える。",
       "glyph": "架",
       "price": 21,
       "rarity": "legendary",
@@ -3330,7 +3726,7 @@
       ],
       "fusion": {
         "title": "架橋主機",
-        "description": "4拍ごとにダメージ420、シールド240、回復80を得る。通電した汎用ノード2個につき攻防が増え、増加は4回まで。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "cooldown": 4,
         "effects": [
           {
@@ -3362,13 +3758,28 @@
             "amount": 80
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 380
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 200
+          }
+        ]
       }
     },
     {
       "id": "charge-line-lance",
       "code": "LANCE",
       "title": "雷路槍",
-      "description": "通電へチャージ6を加えて先へ渡す。中央を含む直線が5ノード以上なら、さらにチャージ5を加える。",
+      "description": "毎拍、通過するパケットへチャージ6を加える。毎拍、通過するパケットへチャージ5を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "槍",
       "price": 21,
       "rarity": "legendary",
@@ -3389,13 +3800,31 @@
             "amount": 5
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 6
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 5
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
+      }
     },
     {
       "id": "overcharge-cannon",
       "code": "OVER",
       "title": "超過解放砲",
-      "description": "5拍ごとに、940＋チャージ1につき400ダメージ。チャージをすべて使い、このノードで通電が止まる。",
+      "description": "届いたチャージをすべて消費し、ダメージ940＋1あたり400へ変換する。",
       "glyph": "極",
       "price": 22,
       "rarity": "legendary",
@@ -3411,13 +3840,26 @@
           "amount": 940,
           "perCharge": 400
         }
-      ]
+      ],
+      "packet": {
+        "role": "sink",
+        "terminal": true,
+        "effects": [
+          {
+            "kind": "convert-packet",
+            "input": "charge",
+            "output": "damage",
+            "amount": 940,
+            "perUnit": 400
+          }
+        ]
+      }
     },
     {
       "id": "inscription-stone",
       "code": "RUNE",
       "title": "刻印碑",
-      "description": "このノードが未通電でも、前方1マスへ魔紋を1段階刻む。通電中は2拍ごとにシールド90を得る。",
+      "description": "2拍ごとに、通過するパケットへシールド90を加える。通過するパケットへ防御刻印を付け、終端の出力先を防御へ変える。",
       "glyph": "刻",
       "price": 4,
       "rarity": "common",
@@ -3443,7 +3885,7 @@
       ],
       "fusion": {
         "title": "刻印碑・改",
-        "description": "「刻印碑」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "inscribe-magic-sigil",
@@ -3460,13 +3902,27 @@
             "amount": 113
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 90
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "guard"
+          }
+        ]
       }
     },
     {
       "id": "guiding-bolt",
       "code": "SCRIBE",
       "title": "導刻矢",
-      "description": "前方1・2マスへ魔紋を1段階ずつ刻む。2拍ごとに、相手に75ダメージ。",
+      "description": "2拍ごとに、通過するパケットへダメージ75を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
       "glyph": "導",
       "price": 5,
       "rarity": "common",
@@ -3496,7 +3952,7 @@
       ],
       "fusion": {
         "title": "導刻矢・改",
-        "description": "「導刻矢」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "inscribe-magic-sigil",
@@ -3517,13 +3973,27 @@
             "amount": 94
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 75
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "assault"
+          }
+        ]
       }
     },
     {
       "id": "sigil-blade",
       "code": "GLYPH",
       "title": "魔紋刃",
-      "description": "2拍ごとに80ダメージ。中央の魔紋位階1段階につき、ダメージが30増える。",
+      "description": "2拍ごとに、通過するパケットへダメージ80を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
       "glyph": "紋",
       "price": 5,
       "rarity": "common",
@@ -3544,7 +4014,7 @@
       ],
       "fusion": {
         "title": "魔紋刃・改",
-        "description": "「魔紋刃」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -3556,13 +4026,27 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 80
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "assault"
+          }
+        ]
       }
     },
     {
       "id": "guardian-sigil",
       "code": "WARD",
       "title": "守護紋",
-      "description": "3拍ごとにシールド150とHP回復60を得る。中央の魔紋位階1段階につき、シールドが40増える。",
+      "description": "3拍ごとに、通過するパケットへシールド150を加える。3拍ごとに、通過するパケットへ回復60を加える。通過するパケットへ回復刻印を付け、終端の出力先を回復へ変える。",
       "glyph": "護",
       "price": 7,
       "rarity": "rare",
@@ -3587,7 +4071,7 @@
       ],
       "fusion": {
         "title": "守護紋・改",
-        "description": "「守護紋」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "shield",
@@ -3603,13 +4087,32 @@
             "amount": 75
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 150
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "repair",
+            "amount": 60
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "renew"
+          }
+        ]
       }
     },
     {
       "id": "twin-inscription",
       "code": "TWIN",
       "title": "双刻碑",
-      "description": "前方1マスと左1マスへ魔紋を1段階ずつ刻む。3拍ごとに、相手に180ダメージ。",
+      "description": "3拍ごとに、通過するパケットへダメージ180を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
       "glyph": "双",
       "price": 8,
       "rarity": "rare",
@@ -3639,7 +4142,7 @@
       ],
       "fusion": {
         "title": "双刻碑・改",
-        "description": "「双刻碑」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "inscribe-magic-sigil",
@@ -3660,13 +4163,27 @@
             "amount": 225
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 180
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "assault"
+          }
+        ]
       }
     },
     {
       "id": "thunder-sigil",
       "code": "THRUNE",
       "title": "雷紋",
-      "description": "前方1・2マスへ魔紋を1段階ずつ刻み、通電へチャージ1を加える。2拍ごとに100ダメージ。",
+      "description": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへダメージ100を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
       "glyph": "雷",
       "price": 9,
       "rarity": "rare",
@@ -3697,13 +4214,32 @@
           "kind": "damage",
           "amount": 100
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 1
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 100
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "assault"
+          }
+        ]
+      }
     },
     {
       "id": "convergence-sigil",
       "code": "FOCUS",
       "title": "集束紋",
-      "description": "前方1マスへ魔紋を2段階刻む。3拍ごとに、シールド360を得る。",
+      "description": "3拍ごとに、通過するパケットへシールド360を加える。通過するパケットへ防御刻印を付け、終端の出力先を防御へ変える。",
       "glyph": "集",
       "price": 13,
       "rarity": "epic",
@@ -3729,7 +4265,7 @@
       ],
       "fusion": {
         "title": "集束紋・改",
-        "description": "「集束紋」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "inscribe-magic-sigil",
@@ -3746,13 +4282,27 @@
             "amount": 450
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 360
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "guard"
+          }
+        ]
       }
     },
     {
       "id": "sigil-cannon",
       "code": "SIGCANN",
       "title": "紋章砲",
-      "description": "中央に魔紋があると、3拍ごとに300ダメージ。魔紋位階1段階につき220増える。",
+      "description": "3拍ごとに、通過するパケットへダメージ300を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
       "glyph": "砲",
       "price": 14,
       "rarity": "epic",
@@ -3778,7 +4328,7 @@
       ],
       "fusion": {
         "title": "紋章砲・改",
-        "description": "「紋章砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -3794,13 +4344,27 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 300
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "assault"
+          }
+        ]
       }
     },
     {
       "id": "resonance-circle",
       "code": "CIRCLE",
       "title": "連環陣",
-      "description": "中央に魔紋があると、3拍ごとに毒30を与える。通電中の魔紋1マスにつき、毒が18増える。",
+      "description": "3拍ごとに、通過するパケットへ毒30を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
       "glyph": "環",
       "price": 13,
       "rarity": "epic",
@@ -3822,13 +4386,27 @@
             "amount": 18
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "poison",
+            "amount": 30
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "assault"
+          }
+        ]
+      }
     },
     {
       "id": "deep-sigil-cannon",
       "code": "ARCANA",
       "title": "深奥砲",
-      "description": "中央の魔紋が位階IIIなら、4拍ごとに900ダメージ。魔紋位階1段階につき550増える。",
+      "description": "4拍ごとに、通過するパケットへダメージ900を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
       "glyph": "奥",
       "price": 21,
       "rarity": "legendary",
@@ -3854,7 +4432,7 @@
       ],
       "fusion": {
         "title": "深奥砲・改",
-        "description": "「深奥砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -3870,13 +4448,27 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 900
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "assault"
+          }
+        ]
       }
     },
     {
       "id": "all-sigil-resonance",
       "code": "OMNIA",
       "title": "万象連環",
-      "description": "中央に魔紋があると、4拍ごとに300ダメージとシールド200。通電中の魔紋1マスにつき、それぞれ150・50増える。",
+      "description": "4拍ごとに、通過するパケットへダメージ300を加える。4拍ごとに、通過するパケットへシールド200を加える。通過するパケットへ攻撃刻印を付け、終端の出力先を攻撃へ変える。",
       "glyph": "万",
       "price": 22,
       "rarity": "legendary",
@@ -3915,7 +4507,7 @@
       ],
       "fusion": {
         "title": "万象連環・改",
-        "description": "「万象連環」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -3944,13 +4536,32 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 300
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 200
+          },
+          {
+            "kind": "imprint-packet",
+            "imprint": "assault"
+          }
+        ]
       }
     },
     {
       "id": "spirit-blade",
       "code": "ECHO-B",
       "title": "霊響刃",
-      "description": "毎拍、20ダメージ。中央の周囲8マスにある通電ノード1個につき、ダメージが9増える。",
+      "description": "毎拍、通過するパケットへダメージ20を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "響",
       "price": 4,
       "rarity": "common",
@@ -3971,7 +4582,7 @@
       ],
       "fusion": {
         "title": "霊響刃・改",
-        "description": "「霊響刃」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -3983,13 +4594,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 20
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "echo-arrow",
       "code": "ECHO-A",
       "title": "残響矢",
-      "description": "2拍ごとに60ダメージ。中央の周囲8マスにある通電ノード1個につき、ダメージが15増える。",
+      "description": "2拍ごとに、通過するパケットへダメージ60を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "残",
       "price": 5,
       "rarity": "common",
@@ -4010,7 +4634,7 @@
       ],
       "fusion": {
         "title": "残響矢・改",
-        "description": "「残響矢」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4022,13 +4646,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 60
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "tuning-stone",
       "code": "TUNE",
       "title": "調律碑",
-      "description": "2拍ごとにシールド60を得る。中央の周囲8マスにある通電ノード1個につき、シールドが16増える。",
+      "description": "2拍ごとに、通過するパケットへシールド60を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "律",
       "price": 5,
       "rarity": "common",
@@ -4049,7 +4686,7 @@
       ],
       "fusion": {
         "title": "調律碑・改",
-        "description": "「調律碑」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "shield",
@@ -4061,13 +4698,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 60
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "harmony-ward",
       "code": "H-WARD",
       "title": "響護壁",
-      "description": "2拍ごとにシールド85＋共鳴度1につき20を得る。共鳴度3以上なら、さらにHPを60回復。",
+      "description": "2拍ごとに、通過するパケットへシールド85を加える。2拍ごとに、通過するパケットへ回復60を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "護",
       "price": 7,
       "rarity": "rare",
@@ -4096,7 +4746,7 @@
       ],
       "fusion": {
         "title": "響護壁・改",
-        "description": "「響護壁」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "shield",
@@ -4116,13 +4766,31 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 85
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "repair",
+            "amount": 60
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "thunder-echo",
       "code": "TH-ECHO",
       "title": "雷響器",
-      "description": "通電へチャージ1を加えて先へ渡す。2拍ごとに50＋共鳴度1につき15ダメージ。",
+      "description": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへダメージ50を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "雷",
       "price": 8,
       "rarity": "rare",
@@ -4144,13 +4812,31 @@
             "amount": 15
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 1
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 50
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
+      }
     },
     {
       "id": "venom-chorus",
       "code": "V-CHOIR",
       "title": "蝕響矢",
-      "description": "2拍ごとに毒14を与える。共鳴度1につき、毒が2増える。",
+      "description": "2拍ごとに、通過するパケットへ毒14を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "蝕",
       "price": 7,
       "rarity": "rare",
@@ -4168,13 +4854,26 @@
             "amount": 2
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "poison",
+            "amount": 14
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
+      }
     },
     {
       "id": "resonance-cannon",
       "code": "ECHO-C",
       "title": "霊響砲",
-      "description": "共鳴度4以上なら、3拍ごとに200＋共鳴度1につき80ダメージ。",
+      "description": "3拍ごとに、通過するパケットへダメージ200を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "砲",
       "price": 14,
       "rarity": "epic",
@@ -4200,7 +4899,7 @@
       ],
       "fusion": {
         "title": "霊響砲・改",
-        "description": "「霊響砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4216,13 +4915,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 200
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "harmonic-sanctuary",
       "code": "CHORUS",
       "title": "交響結界",
-      "description": "共鳴度4以上なら、3拍ごとにシールド150＋共鳴度1につき60と、HP回復120を得る。",
+      "description": "3拍ごとに、通過するパケットへシールド150を加える。3拍ごとに、通過するパケットへ回復120を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "奏",
       "price": 13,
       "rarity": "epic",
@@ -4256,7 +4968,7 @@
       ],
       "fusion": {
         "title": "交響結界・改",
-        "description": "「交響結界」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "shield",
@@ -4280,13 +4992,31 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 150
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "repair",
+            "amount": 120
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "celestial-echo-cannon",
       "code": "CELEST",
       "title": "天響砲",
-      "description": "共鳴度6以上なら、4拍ごとに600＋共鳴度1につき160ダメージ。",
+      "description": "4拍ごとに、通過するパケットへダメージ600を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "天",
       "price": 21,
       "rarity": "legendary",
@@ -4312,7 +5042,7 @@
       ],
       "fusion": {
         "title": "天響砲・改",
-        "description": "「天響砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4328,13 +5058,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 600
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "grand-harmony",
       "code": "GRAND",
       "title": "万象交響",
-      "description": "共鳴度8なら、4拍ごとに600＋共鳴度1につき120ダメージと、シールド300＋共鳴度1につき60を得る。",
+      "description": "4拍ごとに、通過するパケットへダメージ600を加える。4拍ごとに、通過するパケットへシールド300を加える。最後に追加された状態を1回だけ複製する。複製済みのパケットは再複製しない。",
       "glyph": "響",
       "price": 22,
       "rarity": "legendary",
@@ -4373,7 +5116,7 @@
       ],
       "fusion": {
         "title": "万象交響・改",
-        "description": "「万象交響」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4402,13 +5145,31 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 600
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 300
+          },
+          {
+            "kind": "echo-packet"
+          }
+        ]
       }
     },
     {
       "id": "light-vein-blade",
       "code": "LUMEN-B",
       "title": "光脈刃",
-      "description": "毎拍、相手に70ダメージ。左右につないで、光脈の分岐や合流へ通電する。",
+      "description": "毎拍、通過するパケットへダメージ70を加える。",
       "glyph": "光",
       "price": 4,
       "rarity": "common",
@@ -4424,11 +5185,21 @@
       ],
       "fusion": {
         "title": "光脈刃・改",
-        "description": "「光脈刃」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
             "amount": 88
+          }
+        ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 70
           }
         ]
       }
@@ -4437,7 +5208,7 @@
       "id": "prism-arrow",
       "code": "BRANCH-R",
       "title": "枝光矢",
-      "description": "下流が2方向以上なら、2拍ごとに90ダメージ。通電した下流1方向につき、ダメージが40増える（最大3方向）。",
+      "description": "2拍ごとに、通過するパケットへダメージ90を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
       "glyph": "枝",
       "price": 5,
       "rarity": "common",
@@ -4463,7 +5234,7 @@
       ],
       "fusion": {
         "title": "枝光矢・改",
-        "description": "「枝光矢」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4480,13 +5251,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 90
+          },
+          {
+            "kind": "split-packet"
+          }
+        ]
       }
     },
     {
       "id": "light-guide",
       "code": "GUIDE-L",
       "title": "導光器",
-      "description": "2拍ごとに、シールド100とHP回復50を得る。曲がる2方向へつないで、光路を折り返せる。",
+      "description": "2拍ごとに、通過するパケットへシールド100を加える。2拍ごとに、通過するパケットへ回復50を加える。",
       "glyph": "導",
       "price": 5,
       "rarity": "common",
@@ -4506,7 +5290,7 @@
       ],
       "fusion": {
         "title": "導光器・改",
-        "description": "「導光器」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "shield",
@@ -4517,13 +5301,28 @@
             "amount": 63
           }
         ]
+      },
+      "packet": {
+        "role": "source",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 100
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "repair",
+            "amount": 50
+          }
+        ]
       }
     },
     {
       "id": "thunder-prism",
       "code": "TH-LUMEN",
       "title": "雷光器",
-      "description": "下流が2方向以上なら、通電へチャージ1を加える。2拍ごとに80＋通電した下流1方向につき30ダメージ（最大3方向）。",
+      "description": "2拍ごとに、通過するパケットへチャージ1を加える。2拍ごとに、通過するパケットへダメージ80を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
       "glyph": "雷",
       "price": 8,
       "rarity": "rare",
@@ -4554,13 +5353,31 @@
             "maxStacks": 3
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "charge",
+            "amount": 1
+          },
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 80
+          },
+          {
+            "kind": "split-packet"
+          }
+        ]
+      }
     },
     {
       "id": "venom-ray",
       "code": "VEN-LIGHT",
       "title": "蝕光矢",
-      "description": "下流が2方向以上なら、2拍ごとに毒18を与える。通電した下流1方向につき、毒が9増える（最大3方向）。",
+      "description": "2拍ごとに、通過するパケットへ毒18を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
       "glyph": "蝕",
       "price": 8,
       "rarity": "rare",
@@ -4583,13 +5400,26 @@
             "maxStacks": 3
           }
         }
-      ]
+      ],
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "poison",
+            "amount": 18
+          },
+          {
+            "kind": "split-packet"
+          }
+        ]
+      }
     },
     {
       "id": "radiant-fork",
       "code": "FORK-L",
       "title": "輝叉術",
-      "description": "下流が2方向以上なら、2拍ごとにシールド90＋通電した下流1方向につき30を得る。直後の技の各効果も90増える。",
+      "description": "2拍ごとに、通過するパケットへシールド90を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
       "glyph": "叉",
       "price": 9,
       "rarity": "rare",
@@ -4624,7 +5454,7 @@
       ],
       "fusion": {
         "title": "輝叉術・改",
-        "description": "「輝叉術」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "shield",
@@ -4649,13 +5479,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "shield",
+            "amount": 90
+          },
+          {
+            "kind": "split-packet"
+          }
+        ]
       }
     },
     {
       "id": "branchlight-barrage",
       "code": "BRANCH-X",
       "title": "枝光連弩",
-      "description": "下流が2方向以上なら、3拍ごとに420ダメージ。通電した下流1方向につき、ダメージが110増える（最大3方向）。",
+      "description": "3拍ごとに、通過するパケットへダメージ420を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
       "glyph": "連",
       "price": 13,
       "rarity": "epic",
@@ -4682,7 +5525,7 @@
       ],
       "fusion": {
         "title": "枝光連弩・改",
-        "description": "「枝光連弩」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4699,13 +5542,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 420
+          },
+          {
+            "kind": "split-packet"
+          }
+        ]
       }
     },
     {
       "id": "convergence-cannon",
       "code": "FOCUS-C",
       "title": "収光砲",
-      "description": "上流が2方向以上から合流すると、3拍ごとに220ダメージ。通電した上流1方向につき75増える（最大3方向）。",
+      "description": "3拍ごとに、通過するパケットへダメージ220を加える。同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
       "glyph": "収",
       "price": 14,
       "rarity": "epic",
@@ -4731,7 +5587,7 @@
       ],
       "fusion": {
         "title": "収光砲・改",
-        "description": "「収光砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4748,13 +5604,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 220
+          },
+          {
+            "kind": "merge-packet"
+          }
+        ]
       }
     },
     {
       "id": "myriad-light-array",
       "code": "MYRIAD-L",
       "title": "万条光陣",
-      "description": "下流が3方向なら、4拍ごとに1000ダメージ。通電した下流1方向につき、ダメージが240増える（最大3方向）。",
+      "description": "4拍ごとに、通過するパケットへダメージ1000を加える。入ったパケットを下流の接続数で等分し、合計量を変えずに各経路へ送る。",
       "glyph": "万",
       "price": 21,
       "rarity": "legendary",
@@ -4781,7 +5650,7 @@
       ],
       "fusion": {
         "title": "万条光陣・改",
-        "description": "「万条光陣」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4798,13 +5667,26 @@
             }
           }
         ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 1000
+          },
+          {
+            "kind": "split-packet"
+          }
+        ]
       }
     },
     {
       "id": "solar-convergence",
       "code": "SOLAR-C",
       "title": "天光収束砲",
-      "description": "上流が3方向から合流すると、4拍ごとに500ダメージ。通電した上流1方向につき160増える（最大3方向）。",
+      "description": "4拍ごとに、通過するパケットへダメージ500を加える。同じ拍に別経路から届いたパケットを1つにまとめる。1経路だけでは先へ通さない。",
       "glyph": "天",
       "price": 22,
       "rarity": "legendary",
@@ -4831,7 +5713,7 @@
       ],
       "fusion": {
         "title": "天光収束砲・改",
-        "description": "「天光収束砲」と同じ条件・範囲で発動し、すべての効果量が1.25倍になる。",
+        "description": "★化すると、パケットの生成量と変換量が1.5倍になり、発動間隔も可能なら1拍短くなる。",
         "effects": [
           {
             "kind": "damage",
@@ -4846,6 +5728,19 @@
               "amount": 200,
               "maxStacks": 3
             }
+          }
+        ]
+      },
+      "packet": {
+        "role": "hybrid",
+        "effects": [
+          {
+            "kind": "generate-packet",
+            "payload": "damage",
+            "amount": 500
+          },
+          {
+            "kind": "merge-packet"
           }
         ]
       }

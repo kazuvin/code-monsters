@@ -11,9 +11,11 @@
 
 ## Build design
 
-- Keep the two user-facing axes in `buildDesign.axes`: traits such as poison or charge, and delivery types such as blade, bow, cannon, device, or magic. Track topology internally through `buildDesign.placementPatterns`; do not expose it as a third named axis in the card UI.
-- Give every playable node exactly one design entry with both visible axis links and one `placementPatternId`. Assign generic nodes to the neutral trait, and use multiple trait values only when the node mechanically combines those traits.
-- Keep trait behavior and weapon delivery separate: traits define what is accumulated or transformed, while weapon types define how the node attacks, branches, sustains, or finishes.
+- Keep the two user-facing axes in `buildDesign.axes`: packet state such as damage, poison, charge, shield, repair, or coin; and output such as attack, guard, repair, economy, or circuit operation. Track topology internally through `buildDesign.placementPatterns`; do not expose it as a third named axis in the card UI.
+- Give every playable node exactly one design entry with both visible axis links and one `placementPatternId`. Assign state-less operators to the neutral state, and use multiple state values only when the node actually generates or consumes those states.
+- Model every playable node with a data-driven `packet` program. The battle grammar is state generation → generic packet → state-independent circuit operators → state or combat output.
+- Keep packet state and circuit operators separate. Adding a state must not require new split, merge, echo, imprint, or recirculation code.
+- Preserve the operator laws: split conserves total payload, merge combines distinct incoming routes from the same beat, echo copies only the last generated state once, recirculation happens at most once, and traversal order is deterministic.
 - Define a build as a placement identity, strength, risk, game plan, and payoff paths in `src/game/game.json` before expanding its skills.
 - Give every build coverage for starter, grower, cycler, sustain, and payoff roles. A label or status type alone is not a build.
 - Give every build at least two distinct payoff paths. Each path must have its own payoff skill plus supporting grower and cycler skills.
@@ -22,17 +24,17 @@
 - Let connector direction and circuit topology express the build identity. Do not replace placement decisions with flat same-tag bonuses.
 - Keep unimplemented concepts in `buildDesign.skills` with `status: "planned"`; only use `status: "playable"` with a valid `blockId`.
 - Keep `minimumPlayableSkillsPerBuild` at `0` while build design is exploratory; raise it deliberately when playable coverage should become a release gate.
-- Before adding a skill, run `pnpm design:matrix` and use the generated placement-condition × trait × delivery-type counts in `docs/build-synergy-matrix.md` to prioritize empty or thin cells. Run it again after editing, then run `pnpm design:matrix:check` to detect stale output and invalid coverage.
-- Make difficult topology conditions such as being in a loop, filling every port, or joining a long straight segment pay noticeably above unconditional effects. Prefer upgrading underused nodes into these cells before duplicating an already dense combination.
-- Treat charge as a transient value carried by one circuit pulse, not a persistent energy meter. Only nodes with an explicit `charge` effect add charge; ordinary traversed nodes merely carry the incoming total, and release nodes convert it into their output.
-- Every playable node tagged with the charge trait must define either a `charge` effect or a `release-charge` effect; reject mismatches in game-data validation.
-- Generate the rival circuit deterministically from the run and seed. Each run must add configured board pressure until the board cap, continue scaling rival health after the cap, and include a starter plus payoff for one real trait with optional neutral support.
+- Before adding a skill, run `pnpm design:matrix` and use the generated circuit-operator × state × output counts in `docs/build-synergy-matrix.md` to prioritize empty or thin cells. Run it again after editing, then run `pnpm design:matrix:check` to detect stale output and invalid coverage.
+- Treat difficult topology as a behavior change, not a scalar condition bonus. A branch divides packets, a merge recombines them, a loop recirculates once, and an imprint redirects output.
+- Treat charge as a transient value carried by one circuit packet, not a persistent energy meter. Only `generate-packet` effects with the charge payload add it; ordinary traversed nodes carry it unchanged, and `convert-packet` nodes consume it.
+- Every playable node tagged with the charge state must generate or convert a charge packet; reject mismatches in game-data validation.
+- Generate the rival circuit deterministically from the run and seed. It must fit the available budget and produce a powered source → operator → converter program for one real state build.
 - Keep rival and balance-simulation build discovery data-driven from `buildDesign.builds`; never add a hard-coded build ID union or list in core code. A new build must be an axis value, have playable starter and payoff coverage, and generate a powered board within the available budget.
 - Keep node price bands strictly separated by rarity, and make higher-rarity nodes meaningfully stronger through output, multi-effects, or payoff efficiency.
 - Give rare, epic, and legendary tiers one or two charge-release nodes each so the build has finishers before its rarest rolls appear.
 - Define the four node rarities and their progressively lower base shop weights in `src/game/game.json`; individual `shopWeight` values may tune nodes only within that rarity baseline.
 - Every playable skill must be included by the default balance run without an explicit `--skills` list. Baseline comparison must reject added or removed playable skills and builds instead of silently inheriting an old catalog.
-- Add a deterministic ceiling test for every payoff that multiplies an accumulated resource or combines with amplification, haste, merge, or fusion. The random tournament measures average generated boards and does not replace a hand-authored high-synergy regression test.
+- Add a deterministic ceiling test for every payoff that combines packet generation with echo, recirculation, conversion, or fusion. The random tournament measures average generated boards and does not replace a hand-authored high-synergy regression test.
 - Run `pnpm test:balance`, `pnpm balance:formula`, `pnpm balance:check`, and the heavier balance simulations only when the user explicitly asks for power-balance work. Keep them out of normal tests, verification, pre-push, and CI.
 - When balance work is requested, size skill parameters with `rules.balanceFormula`, compare reference DPS, condition-weighted CVPS, and rarity/price targets separately, and treat condition availability as a fixed design coefficient rather than an observed win rate.
 - Generate a fresh random seed for every normal shop arrival while keeping seeded core functions and the browser fixture deterministic. Unowned offers must still expose a west connector.

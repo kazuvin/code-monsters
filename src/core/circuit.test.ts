@@ -20,9 +20,9 @@ describe('circuit connectivity', () => {
       ],
     ];
 
-    expect(
-      countPoweredAxisValue(board, new Set(['0:0', '0:1', '0:2']), GAME_DATA.buildDesign, 'trait', 'neutral'),
-    ).toBe(2);
+    expect(countPoweredAxisValue(board, new Set(['0:0', '0:1', '0:2']), GAME_DATA.buildDesign, 'trait', 'damage')).toBe(
+      2,
+    );
   });
 
   it('starts four independent powered routes from a heart without counting the heart as a skill', () => {

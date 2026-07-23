@@ -7,141 +7,88 @@ import {
 } from './build-design';
 import { GAME_DATA } from './game-data';
 
-describe('build design', () => {
-  it('models build concepts as trait and weapon axes with reusable combinations', () => {
+describe('packet build design', () => {
+  it('separates visible state and output axes from internal circuit operators', () => {
+    const [state, output] = GAME_DATA.buildDesign.axes;
+
     expect(GAME_DATA.buildDesign.axes.map((axis) => axis.id)).toEqual(['trait', 'weapon']);
-    expect(GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'trait')?.values.map((value) => value.id)).toEqual([
+    expect(state.title).toBe('状態');
+    expect(state.values.map((value) => value.id)).toEqual([
       'neutral',
+      'damage',
       'poison',
       'charge',
-      'magic-sigil',
-      'resonance',
-      'light-vein',
+      'shield',
+      'repair',
+      'coin',
     ]);
-    expect(GAME_DATA.buildDesign.builds.map((build) => build.id)).toEqual(['poison', 'charge']);
-    expect(GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'weapon')?.values.map((value) => value.id)).toEqual([
-      'blade',
-      'bow',
-      'cannon',
-      'device',
-      'magic',
-    ]);
-
-    const hybridSkills = GAME_DATA.buildDesign.skills.filter(
-      (skill) => skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds.length === 2,
+    expect(output.title).toBe('出力');
+    expect(output.values.map((value) => value.id)).toEqual(['attack', 'guard', 'repair', 'economy', 'operator']);
+    expect(state.values.map((value) => value.id)).not.toEqual(
+      expect.arrayContaining(['magic-sigil', 'resonance', 'light-vein']),
     );
-    expect(hybridSkills.map((skill) => skill.id).sort()).toEqual([
-      'resonance-circle',
-      'status-relay',
-      'thunder-echo',
-      'thunder-prism',
-      'thunder-sigil',
-      'toxic-reservoir',
-      'venom-chorus',
-      'venom-ray',
-    ]);
+  });
 
+  it('tracks circuit grammar through placement patterns instead of a third visible axis', () => {
+    expect(GAME_DATA.buildDesign.placementPatterns.map((pattern) => pattern.title)).toEqual([
+      '生成・変換',
+      '再循環',
+      '合流',
+      '中継複製',
+      '出力刻印',
+      '状態複製',
+      '分岐・合流',
+    ]);
     GAME_DATA.buildDesign.skills.forEach((skill) => {
-      expect(skill.axisLinks.map((link) => link.axisId).sort(), skill.id).toEqual(['trait', 'weapon']);
+      expect(skill.axisLinks.map((link) => link.axisId)).toEqual(['trait', 'weapon']);
+      expect(skill.placementPatternId).toBeTruthy();
     });
   });
 
-  it('tracks internal placement conditions and generates a trait-by-type coverage count', () => {
-    expect(GAME_DATA.buildDesign.placementPatterns.map((pattern) => pattern.id)).toEqual([
-      'free',
-      'loop',
-      'fully-connected',
-      'straight-line',
-      'magic-sigil',
-      'resonance',
-      'light-vein',
-    ]);
-    expect(
-      GAME_DATA.buildDesign.placementPatterns
-        .filter((pattern) => pattern.category === 'core')
-        .map((pattern) => pattern.id),
-    ).toEqual(['magic-sigil', 'resonance', 'light-vein']);
-    expect(GAME_DATA.buildDesign.skills.every((skill) => Boolean(skill.placementPatternId))).toBe(true);
-
+  it('generates an operator × state × output coverage matrix', () => {
     const rows = createSkillCoverageMatrix(GAME_DATA.buildDesign);
-    expect(
-      rows.find((row) => row.placementPatternId === 'loop' && row.traitId === 'poison')?.counts.magic,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      rows.find((row) => row.placementPatternId === 'fully-connected' && row.traitId === 'neutral')?.counts.magic,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      rows.find((row) => row.placementPatternId === 'straight-line' && row.traitId === 'charge')?.counts.blade,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      rows.find((row) => row.placementPatternId === 'magic-sigil' && row.traitId === 'magic-sigil')?.counts.cannon,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'resonance')?.counts.magic,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      rows.find((row) => row.placementPatternId === 'light-vein' && row.traitId === 'light-vein')?.counts.cannon,
-    ).toBeGreaterThanOrEqual(1);
 
-    const circuitCoreIds = new Set(
-      GAME_DATA.buildDesign.placementPatterns
-        .filter((pattern) => pattern.category === 'core')
-        .map((pattern) => pattern.id),
+    expect(rows.length).toBe(
+      GAME_DATA.buildDesign.placementPatterns.length *
+        GAME_DATA.buildDesign.axes.find((axis) => axis.id === 'trait')!.values.length,
     );
-    GAME_DATA.buildDesign.skills
-      .filter((skill) => circuitCoreIds.has(skill.placementPatternId))
-      .forEach((skill) => {
-        const traits = skill.axisLinks.find((link) => link.axisId === 'trait')?.valueIds ?? [];
-        expect(traits, skill.id).toContain(skill.placementPatternId);
-        expect(traits, skill.id).not.toContain('neutral');
-      });
+    expect(rows.find((row) => row.placementPatternId === 'resonance' && row.traitId === 'poison')?.counts).toEqual(
+      expect.objectContaining({ attack: expect.any(Number), operator: expect.any(Number) }),
+    );
   });
 
-  it('adds charge while keeping poison open to weapon and cross-trait combinations', () => {
+  it('keeps poison and charge builds open while preserving two payoff paths', () => {
     const rows = createBuildMatrix(GAME_DATA.buildDesign);
-    const poison = rows.find((row) => row.buildId === 'poison')!;
-    const charge = rows.find((row) => row.buildId === 'charge')!;
 
-    expect(poison.exclusiveSkillRatio).toBeLessThanOrEqual(0.5);
-    expect(poison.axisCoverage.weapon).toEqual(expect.arrayContaining(['blade', 'bow', 'cannon', 'device']));
-    expect(charge.missingRoles).toEqual([]);
-    expect(charge.axisCoverage.weapon).toEqual(expect.arrayContaining(['blade', 'bow', 'cannon', 'device']));
-    expect(charge.payoffs).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ payoffId: 'burst', missingRoles: [] }),
-        expect.objectContaining({ payoffId: 'guard', missingRoles: [] }),
-      ]),
-    );
+    expect(rows.map((row) => row.buildId)).toEqual(['poison', 'charge']);
+    rows.forEach((row) => {
+      expect(row.payoffs).toHaveLength(2);
+      expect(row.missingRoles).toEqual([]);
+      expect(row.openSkillIds.length).toBeGreaterThanOrEqual(GAME_DATA.buildDesign.rules.minimumOpenSkillsPerBuild);
+      expect(row.axisCoverage.weapon?.length).toBeGreaterThanOrEqual(
+        GAME_DATA.buildDesign.rules.minimumWeaponTypesPerBuild,
+      );
+    });
   });
 
-  it('covers every required role and gives poison distinct payoff paths', () => {
-    const [poison] = createBuildMatrix(GAME_DATA.buildDesign);
+  it('allows a shared operator to support multiple builds without pretending to be their state', () => {
+    const invalid = structuredClone(GAME_DATA.buildDesign);
+    const amplifier = invalid.skills.find((skill) => skill.id === 'amplifier')!;
 
-    expect(poison.buildId).toBe('poison');
-    expect(poison.missingRoles).toEqual([]);
-    expect(poison.openSkillIds.length).toBeGreaterThanOrEqual(GAME_DATA.buildDesign.rules.minimumOpenSkillsPerBuild);
-    expect(poison.payoffs).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ payoffId: 'cultivate', missingRoles: [], payoffSkillIds: ['venom-bloom'] }),
-        expect.objectContaining({ payoffId: 'burst', missingRoles: [], payoffSkillIds: ['rupture-stake'] }),
-      ]),
-    );
+    expect(amplifier.axisLinks.find((link) => link.axisId === 'trait')?.valueIds).toEqual(['neutral']);
+    expect(amplifier.buildLinks.map((link) => link.buildId)).toEqual(['poison', 'charge']);
     expect(
       validateBuildDesign(
-        GAME_DATA.buildDesign,
+        invalid,
         GAME_DATA.blocks.map((block) => block.id),
       ),
     ).toEqual([]);
   });
 
-  it('detects a missing role and a payoff path without its own finisher', () => {
+  it('still rejects an unknown state or missing playable block definition', () => {
     const invalid = structuredClone(GAME_DATA.buildDesign);
-    invalid.skills = invalid.skills.filter((skill) => skill.id !== 'rupture-stake');
-    invalid.skills.forEach((skill) => {
-      skill.buildLinks.forEach((link) => {
-        link.roles = link.roles.filter((role) => role !== 'sustain');
-      });
-    });
+    invalid.skills[0].axisLinks[0].valueIds.push('missing');
+    invalid.skills[1].blockId = 'missing-block';
 
     expect(
       validateBuildDesign(
@@ -150,107 +97,19 @@ describe('build design', () => {
       ),
     ).toEqual(
       expect.arrayContaining([
-        'build "poison" is missing required role "sustain"',
-        'build "poison" payoff "burst" is missing required role "payoff"',
-        'build "poison" payoff "burst" needs a distinct payoff skill',
+        `skill design "${invalid.skills[0].id}" references unknown axis value "trait/missing"`,
+        `skill design "${invalid.skills[1].id}" references unknown block "missing-block"`,
       ]),
     );
   });
 
-  it('detects a closed build with too few reusable skills', () => {
-    const invalid = structuredClone(GAME_DATA.buildDesign);
-    invalid.builds = invalid.builds.filter((build) => build.id === 'poison');
-    invalid.skills = invalid.skills.filter((skill) => skill.buildLinks.some((link) => link.buildId === 'poison'));
-    invalid.skills.forEach((skill) => {
-      skill.scope = 'exclusive';
-      skill.sharedSynergies = [];
-      skill.buildLinks = skill.buildLinks.filter((link) => link.buildId === 'poison');
-      const trait = skill.axisLinks.find((link) => link.axisId === 'trait');
-      if (trait) trait.valueIds = ['poison'];
-    });
-
-    expect(
-      validateBuildDesign(
-        invalid,
-        GAME_DATA.blocks.map((block) => block.id),
-      ),
-    ).toEqual(
-      expect.arrayContaining([
-        'build "poison" needs at least 3 open skills but has 0',
-        'build "poison" exclusive skill ratio 1 exceeds 0.5',
-      ]),
-    );
-  });
-
-  it('requires a shared node to tag every linked build on the trait axis', () => {
-    const invalid = structuredClone(GAME_DATA.buildDesign);
-    const relay = invalid.skills.find((skill) => skill.id === 'status-relay')!;
-    relay.axisLinks.find((link) => link.axisId === 'trait')!.valueIds = ['poison'];
-
-    expect(
-      validateBuildDesign(
-        invalid,
-        GAME_DATA.blocks.map((block) => block.id),
-      ),
-    ).toContain('skill design "status-relay" does not tag linked build "trait/charge"');
-  });
-
-  it('allows a neutral shared node to support builds without pretending to own their traits', () => {
-    const strike = GAME_DATA.buildDesign.skills.find((skill) => skill.id === 'strike')!;
-
-    expect(strike.axisLinks.find((link) => link.axisId === 'trait')?.valueIds).toEqual(['neutral']);
-    expect(strike.buildLinks.map((link) => link.buildId).sort()).toEqual(['charge', 'poison']);
-    expect(
-      validateBuildDesign(
-        GAME_DATA.buildDesign,
-        GAME_DATA.blocks.map((block) => block.id),
-      ),
-    ).toEqual([]);
-  });
-
-  it('allows a shared circuit-core node to support effect builds without pretending to own their traits', () => {
-    const sigilBlade = GAME_DATA.buildDesign.skills.find((skill) => skill.id === 'sigil-blade')!;
-
-    expect(sigilBlade.axisLinks.find((link) => link.axisId === 'trait')?.valueIds).toEqual(['magic-sigil']);
-    expect(sigilBlade.buildLinks.map((link) => link.buildId).sort()).toEqual(['charge', 'poison']);
-    expect(
-      validateBuildDesign(
-        GAME_DATA.buildDesign,
-        GAME_DATA.blocks.map((block) => block.id),
-      ),
-    ).toEqual([]);
-  });
-
-  it('requires every circuit-core node to expose its core as a visible trait', () => {
-    const invalid = structuredClone(GAME_DATA.buildDesign);
-    const sigilBlade = invalid.skills.find((skill) => skill.id === 'sigil-blade')!;
-    sigilBlade.axisLinks.find((link) => link.axisId === 'trait')!.valueIds = ['neutral'];
-
-    expect(
-      validateBuildDesign(
-        invalid,
-        GAME_DATA.blocks.map((block) => block.id),
-      ),
-    ).toContain('circuit core skill design "sigil-blade" needs trait "magic-sigil"');
-  });
-
-  it('renders a compact Japanese matrix for design review', () => {
+  it('renders the packet grammar in the generated Japanese matrix', () => {
     const markdown = renderBuildMatrixMarkdown(GAME_DATA.buildDesign);
 
     expect(markdown).toContain('# ビルド・シナジーマトリクス');
-    expect(markdown).toContain('| 特性 | ノードの効果と回路上の個性を示す。複数特性は混成を表す |');
-    expect(markdown).toContain('| `poison-needle` | `poison` | `bow` |');
-    expect(markdown).toContain('## 配置条件 × 特性 × 武器・装置（スキル数）');
-    expect(markdown).toContain('| 循環 × 毒 |');
-    expect(markdown).toContain('配置思想 | 充電ノードを連ねた経路と遠い解放点');
-    expect(markdown).toContain('| 培養 | 毒を残して育てる |');
-    expect(markdown).toContain('| 破裂 | 毒を一気に破裂させる |');
-    expect(markdown).toContain('| 一括解放 | 全チャージを大ダメージへ変える |');
-    expect(markdown).toContain('## 回路コア');
-    expect(markdown).toContain('| 魔紋 | 回路コア |');
-    expect(markdown).toContain('| 霊響 | 回路コア |');
-    expect(markdown).toContain('| 光脈 | 回路コア |');
-    expect(markdown).toContain('`discharge-bow`');
-    expect(markdown).toContain('`status-relay`');
+    expect(markdown).toContain('| 状態 | ノードがパケットへ生成する状態');
+    expect(markdown).toContain('| ノード | 状態 | 出力 | 回路演算 |');
+    expect(markdown).toContain('## 回路演算 × 状態 × 出力（スキル数）');
+    expect(markdown).toContain('| `prism-arrow` | `damage` | `attack`、`operator` | 分岐・合流 |');
   });
 });
