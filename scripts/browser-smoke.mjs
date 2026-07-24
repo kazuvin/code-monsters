@@ -148,8 +148,25 @@ if ((await desktop.locator('.battle-sprite').count()) !== 6) throw new Error('Ba
 if ((await desktop.locator('.battle-fx').count()) !== 1) throw new Error('Battle effect layer is missing');
 const enemyFormationBox = await desktop.locator('.battle-team.is-enemy').boundingBox();
 const playerFormationBox = await desktop.locator('.battle-team.is-player').boundingBox();
-if (!enemyFormationBox || !playerFormationBox || enemyFormationBox.x >= playerFormationBox.x) {
-  throw new Error('Battle teams are not arranged left-to-right');
+if (!enemyFormationBox || !playerFormationBox || playerFormationBox.x >= enemyFormationBox.x) {
+  throw new Error('Player party is not positioned on the left side of the battle');
+}
+const playerBattleSprites = await desktop.locator('.battle-team.is-player .battle-sprite').all();
+const enemyBattleSprites = await desktop.locator('.battle-team.is-enemy .battle-sprite').all();
+const playerSpriteBoxes = await Promise.all(playerBattleSprites.map((sprite) => sprite.boundingBox()));
+const enemySpriteBoxes = await Promise.all(enemyBattleSprites.map((sprite) => sprite.boundingBox()));
+if (
+  !playerSpriteBoxes[0] ||
+  !playerSpriteBoxes[2] ||
+  Math.abs(playerSpriteBoxes[0].y - playerSpriteBoxes[2].y) < 12 ||
+  !enemySpriteBoxes[0] ||
+  !enemySpriteBoxes[2] ||
+  Math.abs(enemySpriteBoxes[0].y - enemySpriteBoxes[2].y) < 12
+) {
+  throw new Error('Battle formations do not face each other on opposing diagonals');
+}
+if ((await desktop.locator('.battle-screen').getAttribute('data-replay-delay-ms')) !== '920') {
+  throw new Error('Normal replay speed is not using the readable 920ms step interval');
 }
 await desktop.getByRole('button', { name: '再生速度 4倍' }).click();
 await desktop.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 3000 });
@@ -162,6 +179,17 @@ if (
 ) {
   throw new Error('Battle skill did not select an effect presentation');
 }
+const actingSkillCallout = desktop.locator('.battle-sprite.is-acting .skill-callout');
+await actingSkillCallout.waitFor();
+if (!(await actingSkillCallout.locator('small').textContent())?.trim()) {
+  throw new Error('Skill callout does not identify the acting monster');
+}
+if ((await desktop.locator('.battle-fx.is-action strong').count()) !== 0) {
+  throw new Error('Action name is still shown in the middle of the battlefield');
+}
+await desktop.locator('.battle-feedback .battle-number, .battle-feedback .status-callout').first().waitFor({
+  timeout: 3000,
+});
 await desktop.screenshot({ path: '/tmp/code-monsters-battle-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: '最後まで送る' }).click();
 await desktop.getByRole('button', { name: '結果を見る →' }).click();
@@ -221,6 +249,40 @@ if ((await desktop.getByRole('button', { name: '配合内容を確認' }).count(
   throw new Error('Breeding flow does not include a confirmation step');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-breeding-desktop.png', fullPage: true });
+await desktop.setViewportSize({ width: 390, height: 844 });
+const mobileBreedingLayout = await desktop.evaluate(() => {
+  const view = document.querySelector('.breeding-view');
+  const parentPool = document.querySelector('.parent-pool');
+  const candidatePool = document.querySelector('.candidate-pool');
+  const preview = document.querySelector('.inheritance-control');
+  if (!view || !parentPool || !candidatePool || !preview) return undefined;
+  const viewBox = view.getBoundingClientRect();
+  const parentBox = parentPool.getBoundingClientRect();
+  const candidateBox = candidatePool.getBoundingClientRect();
+  const previewBox = preview.getBoundingClientRect();
+  return {
+    viewClientWidth: view.clientWidth,
+    viewScrollWidth: view.scrollWidth,
+    parentBottom: parentBox.bottom,
+    candidateTop: candidateBox.top,
+    previewLeft: previewBox.left,
+    previewRight: previewBox.right,
+    viewLeft: viewBox.left,
+    viewRight: viewBox.right,
+  };
+});
+if (
+  !mobileBreedingLayout ||
+  mobileBreedingLayout.viewScrollWidth > mobileBreedingLayout.viewClientWidth + 1 ||
+  mobileBreedingLayout.candidateTop < mobileBreedingLayout.parentBottom - 1 ||
+  mobileBreedingLayout.previewLeft < mobileBreedingLayout.viewLeft - 1 ||
+  mobileBreedingLayout.previewRight > mobileBreedingLayout.viewRight + 1
+) {
+  throw new Error(`Mobile breeding controls are clipped or overlapping: ${JSON.stringify(mobileBreedingLayout)}`);
+}
+await desktop.locator('.inheritance-control').scrollIntoViewIfNeeded();
+await desktop.screenshot({ path: '/tmp/code-monsters-breeding-mobile.png' });
+await desktop.setViewportSize({ width: 1440, height: 1100 });
 await desktop.getByRole('button', { name: '配合内容を確認' }).click();
 await desktop.locator('.breeding-confirm-dialog[open]').waitFor();
 if ((await desktop.locator('.breeding-confirm-dialog li').count()) !== 4) {
@@ -314,6 +376,11 @@ await mobile.locator('.team-zone.is-bench .roster-card').first().click();
 await mobile.getByRole('button', { name: '主力へ出す' }).click();
 await mobile.getByRole('button', { name: '閉じる' }).click();
 await mobile.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
+await mobile.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 4000 });
+if ((await mobile.locator('.battle-sprite.is-acting .skill-callout').count()) !== 1) {
+  throw new Error('Mobile battle does not show the acting monster beside its skill');
+}
+await mobile.screenshot({ path: '/tmp/code-monsters-battle-mobile.png' });
 await mobile.getByRole('button', { name: '最後まで送る' }).click();
 await mobile.getByRole('button', { name: '結果を見る →' }).click();
 const revealMobileRewards = mobile.getByRole('button', { name: '報酬をすべて表示' });
@@ -336,11 +403,13 @@ console.log(
       '/tmp/code-monsters-battle-desktop.png',
       '/tmp/code-monsters-result-desktop.png',
       '/tmp/code-monsters-breeding-desktop.png',
+      '/tmp/code-monsters-breeding-mobile.png',
       '/tmp/code-monsters-breeding-reveal-desktop.png',
       '/tmp/code-monsters-draft-mobile.png',
       '/tmp/code-monsters-stat-breakdown-mobile.png',
       '/tmp/code-monsters-recipes-mobile.png',
       '/tmp/code-monsters-workshop-mobile.png',
+      '/tmp/code-monsters-battle-mobile.png',
       '/tmp/code-monsters-result-mobile.png',
     ],
   }),

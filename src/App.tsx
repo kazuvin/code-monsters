@@ -57,6 +57,10 @@ import { GAME_DATA } from './game/game-data';
 type WorkshopTab = 'shop' | 'breed';
 type InspectorTab = 'profile' | 'gambit';
 type ReplaySpeed = 1 | 2 | 4;
+type BattleFeedback = {
+  label: string;
+  tone: 'buff' | 'debuff' | 'shield';
+};
 type BattleViewState = {
   result: BattleResult;
   enemy: MonsterInstance[];
@@ -66,6 +70,7 @@ type BattleViewState = {
   speed: ReplaySpeed;
 };
 
+const REPLAY_STEP_MS = 920;
 const query = new URLSearchParams(window.location.search);
 const requestedSeed = Number(query.get('seed'));
 const INITIAL_SEED = Number.isInteger(requestedSeed) && requestedSeed > 0 ? requestedSeed : 7261;
@@ -1846,6 +1851,9 @@ function BattleMonster({
   targeted,
   hpDelta,
   actionLabel,
+  feedback,
+  skillFx,
+  pulseKey,
 }: {
   fighter: FighterSnapshot;
   side: 'player' | 'enemy';
@@ -1853,6 +1861,9 @@ function BattleMonster({
   targeted: boolean;
   hpDelta: number;
   actionLabel?: string;
+  feedback: BattleFeedback[];
+  skillFx: string;
+  pulseKey: number;
 }) {
   const definition = definitionById(GAME_DATA, fighter.definitionId);
   const hpPercent = Math.max(0, (fighter.hp / fighter.maxHp) * 100);
@@ -1862,12 +1873,31 @@ function BattleMonster({
       className={`battle-sprite is-${side}${fighter.alive ? '' : ' is-defeated'}${acting ? ' is-acting' : ''}${targeted ? ' is-targeted' : ''}${hpDelta < 0 ? ' is-healed' : ''}`}
       style={monsterStyle(GAME_DATA, definition)}
     >
-      {acting && actionLabel && <span className="skill-callout">{actionLabel}</span>}
-      {hpDelta !== 0 && (
-        <b className={`battle-number${hpDelta < 0 ? ' is-heal' : ''}`}>
-          {hpDelta < 0 ? `+${Math.abs(hpDelta)}` : `-${hpDelta}`}
-        </b>
+      {(acting || hpDelta !== 0 || feedback.length > 0) && (
+        <div className="battle-feedback" key={pulseKey}>
+          {acting && actionLabel && (
+            <span className="skill-callout">
+              <small>{fighter.name}</small>
+              <strong>{actionLabel}</strong>
+            </span>
+          )}
+          {hpDelta !== 0 && (
+            <b className={`battle-number${hpDelta < 0 ? ' is-heal' : ''}`}>
+              {hpDelta < 0 ? `HP +${Math.abs(hpDelta)}` : `-${hpDelta}`}
+            </b>
+          )}
+          {feedback.map((entry, index) => (
+            <span
+              className={`status-callout is-${entry.tone}`}
+              data-feedback-tone={entry.tone}
+              key={`${entry.label}-${index}`}
+            >
+              {entry.label}
+            </span>
+          ))}
+        </div>
       )}
+      {targeted && <span className={`battle-target-fx is-${skillFx}`} key={`target-${pulseKey}`} aria-hidden="true" />}
       <MonsterSigil data={GAME_DATA} definition={definition} colorStars={fighter.colorStars} size="large" />
       <div className="battle-monster-copy">
         <span>{side === 'player' ? 'YOUR LINE' : 'GHOST LINE'}</span>
@@ -1907,7 +1937,7 @@ function BattleScreen({
     if (!battle.playing || battle.frameIndex >= lastIndex) return;
     const timer = window.setTimeout(
       () => onChange({ ...battle, frameIndex: Math.min(lastIndex, battle.frameIndex + 1) }),
-      460 / battle.speed,
+      REPLAY_STEP_MS / battle.speed,
     );
     return () => window.clearTimeout(timer);
   }, [battle, lastIndex, onChange]);
@@ -1915,6 +1945,28 @@ function BattleScreen({
   const previousFrame = battle.result.frames[Math.max(0, battle.frameIndex - 1)] ?? frame;
   const previousFighters = new Map(previousFrame.fighters.map((fighter) => [fighter.id, fighter]));
   const hpDeltaFor = (fighter: FighterSnapshot) => (previousFighters.get(fighter.id)?.hp ?? fighter.hp) - fighter.hp;
+  const feedbackFor = (fighter: FighterSnapshot): BattleFeedback[] => {
+    const previous = previousFighters.get(fighter.id);
+    if (!previous) return [];
+    const statuses = fighter.statuses
+      .filter((status) => !previous.statuses.includes(status))
+      .map((status) => ({
+        label: STATUS_LABELS[status],
+        tone: (status.endsWith('-down') || status === 'damage-over-time' || status === 'silence'
+          ? 'debuff'
+          : 'buff') as BattleFeedback['tone'],
+      }));
+    const shieldDelta = fighter.shield - previous.shield;
+    return shieldDelta === 0
+      ? statuses
+      : [
+          ...statuses,
+          {
+            label: `盾 ${shieldDelta > 0 ? '+' : ''}${shieldDelta}`,
+            tone: 'shield' as const,
+          },
+        ];
+  };
   const players = frame.fighters.filter((fighter) => fighter.team === 'player');
   const enemies = frame.fighters.filter((fighter) => fighter.team === 'enemy');
   const complete = battle.frameIndex >= lastIndex;
@@ -1954,6 +2006,12 @@ function BattleScreen({
     <main
       className={`battle-screen${impact ? ' is-impact' : ''} is-frame-${frame.kind} is-skill-${skillFx}`}
       data-skill-id={frame.skillId}
+      data-replay-delay-ms={Math.round(REPLAY_STEP_MS / battle.speed)}
+      style={
+        {
+          '--battle-pulse-duration': `${Math.max(200, Math.round(760 / battle.speed))}ms`,
+        } as CSSProperties
+      }
     >
       <header className="battle-header">
         <div className="brand-lockup">
@@ -1976,27 +2034,6 @@ function BattleScreen({
           <b>VS</b>
           <small>3 × 3</small>
         </div>
-        <div className="battle-team is-enemy">
-          <span className="team-label">GHOST #{battle.enemy[0]?.id.split('-')[1] ?? '00'}</span>
-          <div className="battle-formation">
-            {enemies.map((fighter) => (
-              <BattleMonster
-                key={fighter.id}
-                fighter={fighter}
-                side="enemy"
-                acting={frame.actorId === fighter.id}
-                targeted={frame.targetIds.includes(fighter.id)}
-                hpDelta={hpDeltaFor(fighter)}
-                actionLabel={frame.actorId === fighter.id ? actionLabel : undefined}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="arena-divider" aria-hidden="true">
-          <i />
-          <span>COMBAT ZONE</span>
-          <i />
-        </div>
         <div className="battle-team is-player">
           <span className="team-label">YOUR PARTY</span>
           <div className="battle-formation">
@@ -2009,6 +2046,33 @@ function BattleScreen({
                 targeted={frame.targetIds.includes(fighter.id)}
                 hpDelta={hpDeltaFor(fighter)}
                 actionLabel={frame.actorId === fighter.id ? actionLabel : undefined}
+                feedback={feedbackFor(fighter)}
+                skillFx={skillFx}
+                pulseKey={battle.frameIndex}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="arena-divider" aria-hidden="true">
+          <i />
+          <span>COMBAT ZONE</span>
+          <i />
+        </div>
+        <div className="battle-team is-enemy">
+          <span className="team-label">GHOST #{battle.enemy[0]?.id.split('-')[1] ?? '00'}</span>
+          <div className="battle-formation">
+            {enemies.map((fighter) => (
+              <BattleMonster
+                key={fighter.id}
+                fighter={fighter}
+                side="enemy"
+                acting={frame.actorId === fighter.id}
+                targeted={frame.targetIds.includes(fighter.id)}
+                hpDelta={hpDeltaFor(fighter)}
+                actionLabel={frame.actorId === fighter.id ? actionLabel : undefined}
+                feedback={feedbackFor(fighter)}
+                skillFx={skillFx}
+                pulseKey={battle.frameIndex}
               />
             ))}
           </div>
@@ -2018,11 +2082,15 @@ function BattleScreen({
           key={battle.frameIndex}
           aria-hidden="true"
         >
-          <div className="fx-burst" />
-          {Array.from({ length: 10 }, (_, index) => (
-            <i key={index} style={{ '--particle-index': index } as CSSProperties} />
-          ))}
-          <strong>{effectLabel}</strong>
+          {frame.kind !== 'action' && (
+            <>
+              <div className="fx-burst" />
+              {Array.from({ length: 10 }, (_, index) => (
+                <i key={index} style={{ '--particle-index': index } as CSSProperties} />
+              ))}
+              <strong>{effectLabel}</strong>
+            </>
+          )}
         </div>
       </section>
       <section className="battle-console">

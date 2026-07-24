@@ -4488,37 +4488,199 @@ button.definition-card:active,
   align-self: center;
 }
 
-.skill-callout {
+.battle-team.is-player .battle-sprite:nth-child(1) {
+  transform: translateY(20px);
+}
+
+.battle-team.is-player .battle-sprite:nth-child(3) {
+  transform: translateY(-20px);
+}
+
+.battle-team.is-enemy .battle-sprite:nth-child(1) {
+  transform: translateY(-20px);
+}
+
+.battle-team.is-enemy .battle-sprite:nth-child(3) {
+  transform: translateY(20px);
+}
+
+.battle-sprite.is-player .monster-sigil {
+  transform: rotate(2deg);
+}
+
+.battle-sprite.is-enemy .monster-sigil {
+  transform: scaleX(-1) rotate(2deg);
+}
+
+.battle-feedback {
+  --feedback-start: -7px;
   position: absolute;
-  z-index: 14;
-  bottom: calc(100% + 2px);
-  left: 50%;
+  z-index: 16;
+  top: 9%;
+  display: flex;
+  width: max-content;
+  max-width: 118px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.battle-sprite.is-player .battle-feedback {
+  left: calc(50% + 21px);
+}
+
+.battle-sprite.is-enemy .battle-feedback {
+  --feedback-start: 7px;
+  right: calc(50% + 21px);
+  align-items: flex-end;
+}
+
+.skill-callout {
+  display: flex;
   width: max-content;
   max-width: 112px;
-  padding: 3px 5px;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
   border: 1px solid var(--paper);
   background: var(--void-deep);
   color: var(--gold);
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 7px;
-  font-weight: 700;
-  text-align: center;
-  transform: translateX(-50%);
-  animation: skill-callout-pop 460ms steps(5) both;
+  text-align: left;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
+  animation: battle-side-callout var(--battle-pulse-duration, 760ms) steps(6) both;
 }
 
-@keyframes skill-callout-pop {
+.battle-sprite.is-enemy .skill-callout {
+  text-align: right;
+}
+
+.skill-callout small {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-callout strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--gold);
+  font-size: 8px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-feedback .battle-number,
+.status-callout {
+  position: relative;
+  top: auto;
+  left: auto;
+  display: inline-flex;
+  min-height: 15px;
+  align-items: center;
+  padding: 2px 4px;
+  border-left: 2px solid currentColor;
+  background: rgba(5, 6, 10, 0.92);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1;
+  text-shadow: 1px 1px #000;
+  animation: battle-side-callout var(--battle-pulse-duration, 760ms) steps(6) both;
+}
+
+.battle-feedback .battle-number {
+  color: var(--paper);
+}
+
+.battle-feedback .battle-number.is-heal,
+.status-callout.is-buff {
+  color: var(--mint);
+}
+
+.status-callout.is-debuff {
+  color: var(--pink);
+}
+
+.status-callout.is-shield {
+  color: #a9dcf6;
+}
+
+.battle-target-fx {
+  position: absolute;
+  z-index: 9;
+  top: 9%;
+  left: 50%;
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--iris);
+  box-shadow:
+    0 0 0 5px rgba(156, 165, 255, 0.18),
+    0 0 20px var(--iris);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) rotate(22deg);
+  animation: battle-target-pulse var(--battle-pulse-duration, 760ms) steps(6) both;
+}
+
+.battle-target-fx.is-heal,
+.battle-target-fx.is-shield {
+  border-color: var(--mint);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 5px rgba(124, 224, 189, 0.2),
+    0 0 22px var(--mint);
+}
+
+.battle-target-fx.is-physical {
+  height: 10px;
+  border-width: 2px 0;
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 3px rgba(241, 123, 157, 0.32),
+    0 0 18px var(--gold);
+  transform: translateX(-50%) rotate(-28deg);
+}
+
+.battle-sprite.is-acting,
+.battle-sprite.is-targeted,
+.battle-sprite.is-healed {
+  animation-duration: var(--battle-pulse-duration, 760ms);
+}
+
+@keyframes battle-side-callout {
   0% {
     opacity: 0;
-    transform: translate(-50%, 6px) scale(0.8);
+    transform: translateX(var(--feedback-start)) scale(0.82);
   }
   35%,
   80% {
     opacity: 1;
-    transform: translate(-50%, 0) scale(1);
+    transform: translateX(0) scale(1);
   }
   100% {
     opacity: 0;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes battle-target-pulse {
+  0% {
+    opacity: 0;
+    scale: 0.45;
+  }
+  38% {
+    opacity: 1;
+    scale: 1.12;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.45;
   }
 }
 
@@ -4559,10 +4721,6 @@ button.definition-card:active,
     0 0 0 3px rgba(241, 123, 157, 0.42),
     0 0 18px var(--gold);
   transform: rotate(-28deg);
-}
-
-.battle-fx.is-action strong {
-  opacity: 1;
 }
 
 .speed-controls {
@@ -4637,8 +4795,91 @@ button.definition-card:active,
     white-space: nowrap;
   }
 
+  .breeding-view {
+    overflow: hidden;
+  }
+
+  .breeding-loom {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    gap: 5px;
+    padding-right: 2px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--pink) var(--void);
+    scrollbar-width: thin;
+  }
+
+  .parent-pool {
+    display: grid;
+    min-height: auto;
+    flex: 0 0 auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+    gap: 3px;
+  }
+
+  .parent-pool h3 {
+    grid-column: 1 / -1;
+  }
+
+  .parent-choice {
+    min-height: 42px;
+  }
+
+  .gene-stitch {
+    min-height: 19px;
+    flex: 0 0 19px;
+    flex-direction: row;
+    gap: 7px;
+  }
+
+  .gene-stitch i {
+    width: auto;
+    height: 1px;
+    flex: 1;
+  }
+
+  .gene-stitch b {
+    transform: rotate(-90deg);
+  }
+
+  .candidate-pool {
+    flex: 0 0 auto;
+    gap: 5px;
+    overflow: visible;
+  }
+
+  .candidate-scroll {
+    min-height: 74px;
+    flex: 0 0 74px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-padding-inline: 1px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .breeding-candidate {
+    min-height: 72px;
+    flex: 0 0 min(82%, 286px);
+    scroll-snap-align: start;
+  }
+
   .candidate-pool > .inheritance-control {
-    max-height: 63%;
+    position: static;
+    width: 100%;
+    max-height: none;
+    flex: 0 0 auto;
+    margin: 0;
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  .inheritance-control > .primary-button {
+    min-height: 38px;
   }
 
   .battlefield {
@@ -4660,6 +4901,22 @@ button.definition-card:active,
   .battle-team.is-enemy .battle-formation,
   .battle-team.is-player .battle-formation {
     gap: 0;
+  }
+
+  .battle-team.is-player .battle-sprite:nth-child(1) {
+    transform: translateY(13px);
+  }
+
+  .battle-team.is-player .battle-sprite:nth-child(3) {
+    transform: translateY(-13px);
+  }
+
+  .battle-team.is-enemy .battle-sprite:nth-child(1) {
+    transform: translateY(-13px);
+  }
+
+  .battle-team.is-enemy .battle-sprite:nth-child(3) {
+    transform: translateY(13px);
   }
 
   .battle-sprite {
@@ -4692,9 +4949,42 @@ button.definition-card:active,
     padding: 1px;
   }
 
+  .battle-feedback {
+    top: 4%;
+    max-width: 82px;
+  }
+
+  .battle-sprite.is-player .battle-feedback {
+    left: calc(50% + 14px);
+  }
+
+  .battle-sprite.is-enemy .battle-feedback {
+    right: calc(50% + 14px);
+  }
+
   .skill-callout {
-    max-width: 80px;
+    max-width: 76px;
+    padding: 3px 4px;
+  }
+
+  .skill-callout strong {
     font-size: 6px;
+  }
+
+  .battle-feedback .battle-number,
+  .status-callout {
+    max-width: 76px;
+    padding: 2px 3px;
+    overflow: hidden;
+    font-size: 7px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .battle-target-fx {
+    top: 6%;
+    width: 38px;
+    height: 38px;
   }
 
   .battle-console {
