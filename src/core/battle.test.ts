@@ -32,6 +32,7 @@ describe('deterministic 3v3 battle', () => {
     expect(result.durationSeconds).toBeLessThanOrEqual(66);
     expect(result.frames.length).toBeGreaterThan(3);
     expect(() => JSON.stringify(result)).not.toThrow();
+    expect(result.frames.filter((frame) => frame.kind === 'action').every((frame) => frame.skillId)).toBe(true);
   });
 
   it('starts exponential environment-collapse damage at 45 seconds', () => {

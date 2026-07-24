@@ -306,6 +306,7 @@ export type BattleFrame = {
   atSeconds: number;
   kind: 'start' | 'action' | 'environment' | 'defeat' | 'finish';
   actorId?: string;
+  skillId?: string | 'normal-attack';
   targetIds: string[];
   text: string;
   fighters: FighterSnapshot[];

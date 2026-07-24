@@ -88,10 +88,12 @@ const makeFrame = (
   text: string,
   actorId?: string,
   targetIds: string[] = [],
+  skillId?: BattleFrame['skillId'],
 ): BattleFrame => ({
   atSeconds: round(atSeconds),
   kind,
   actorId,
+  skillId,
   targetIds,
   text,
   fighters: snapshots(data, fighters),
@@ -453,9 +455,16 @@ export function simulateBattle(data: GameData, input: BattleInput): BattleResult
       }
       const actionName = skill?.name ?? '通常攻撃';
       frames.push(
-        makeFrame(data, fighters, time, 'action', `${actor.name}の${actionName}｜${notes.join(' / ')}`, actor.id, [
-          ...targetIds,
-        ]),
+        makeFrame(
+          data,
+          fighters,
+          time,
+          'action',
+          `${actor.name}の${actionName}｜${notes.join(' / ')}`,
+          actor.id,
+          [...targetIds],
+          action.skillId,
+        ),
       );
       winner = winnerFor(fighters);
     }

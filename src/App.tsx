@@ -29,6 +29,7 @@ import {
   continueRun,
   createCasualRun,
   equipItem,
+  moveMonsterToPartySlot,
   rerollShop,
   sellMonster,
   toggleActiveMonster,
@@ -54,12 +55,14 @@ import { GAME_DATA } from './game/game-data';
 
 type WorkshopTab = 'shop' | 'breed';
 type InspectorTab = 'profile' | 'gambit';
+type ReplaySpeed = 1 | 2 | 4;
 type BattleViewState = {
   result: BattleResult;
   enemy: MonsterInstance[];
   beforeRoster: MonsterInstance[];
   frameIndex: number;
   playing: boolean;
+  speed: ReplaySpeed;
 };
 
 const query = new URLSearchParams(window.location.search);
@@ -262,22 +265,84 @@ function DefinitionCard({
           {lineageName(data, definition)} × {attributeName(data, definition)}
         </small>
       </div>
-      {footer && <div className="monster-card-footer">{footer}</div>}
     </>
   );
-  return onClick ? (
-    <button
-      className={`definition-card${selected ? ' is-selected' : ''}`}
+  return (
+    <article
+      className={`definition-card${selected ? ' is-selected' : ''}${onClick ? ' is-interactive' : ''}`}
       style={monsterStyle(data, definition)}
-      type="button"
-      onClick={onClick}
     >
-      {content}
-    </button>
-  ) : (
-    <article className={`definition-card${selected ? ' is-selected' : ''}`} style={monsterStyle(data, definition)}>
-      {content}
+      {onClick ? (
+        <button className="definition-card-main" type="button" onClick={onClick}>
+          {content}
+        </button>
+      ) : (
+        <div className="definition-card-main">{content}</div>
+      )}
+      {footer && <div className="monster-card-footer">{footer}</div>}
     </article>
+  );
+}
+
+function MonsterDetailCard({
+  monster,
+  showExperience = false,
+}: {
+  monster: MonsterInstance;
+  showExperience?: boolean;
+}) {
+  const definition = definitionFor(GAME_DATA, monster);
+  const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
+  const stats = permanentStatsFor(GAME_DATA, monster);
+  const progress = xpProgressFor(monster);
+  return (
+    <div className="monster-detail-card">
+      {showExperience && (
+        <>
+          <div className="xp-track">
+            <span style={{ width: `${progress.percent}%` }} />
+          </div>
+          <small className="xp-label">
+            EXP {monster.xp}
+            {progress.maximum ? ' · MAX LEVEL' : ` · 次のLvまで ${progress.remaining}`}
+          </small>
+        </>
+      )}
+      <div className="stat-grid">
+        {STAT_LABELS.map(([id, label]) => (
+          <span key={id}>
+            <small>{label}</small>
+            <b>
+              {stats[id]}
+              {id === 'crit' ? '%' : ''}
+            </b>
+          </span>
+        ))}
+      </div>
+      <section className="trait-block detail-card">
+        <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
+        <h3>{trait?.name}</h3>
+        <p>{trait?.stages[monster.colorStars].description}</p>
+      </section>
+      <section className="skill-list">
+        <span>SKILL CARDS</span>
+        <div className="skill-card-grid">
+          {skillIdsFor(GAME_DATA, monster).map((skillId, index) => {
+            const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
+            return (
+              <article className="skill-card" key={`${skillId}-${index}`}>
+                <b>{index === 2 && monster.inheritedSkillId ? '継' : index + 1}</b>
+                <span>
+                  <strong>{skill?.name}</strong>
+                  <small>MP {skill?.mpCost}</small>
+                </span>
+                <p>{skill?.description}</p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -293,6 +358,7 @@ function MonsterProspectDialog({
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const monsterId = monster?.id;
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || !monster) return;
@@ -300,11 +366,9 @@ function MonsterProspectDialog({
     return () => {
       if (dialog.open) dialog.close();
     };
-  }, [monster]);
+  }, [monsterId]);
   if (!monster) return null;
   const definition = definitionFor(GAME_DATA, monster);
-  const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
-  const stats = permanentStatsFor(GAME_DATA, monster);
   return (
     <dialog
       ref={dialogRef}
@@ -330,40 +394,7 @@ function MonsterProspectDialog({
           </div>
         </header>
         <p className="prospect-summary">{summary}</p>
-        <div className="stat-grid">
-          {STAT_LABELS.map(([id, label]) => (
-            <span key={id}>
-              <small>{label}</small>
-              <b>
-                {stats[id]}
-                {id === 'crit' ? '%' : ''}
-              </b>
-            </span>
-          ))}
-        </div>
-        <section className="trait-block detail-card">
-          <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
-          <h3>{trait?.name}</h3>
-          <p>{trait?.stages[monster.colorStars].description}</p>
-        </section>
-        <section className="skill-list">
-          <span>SKILL LOADOUT</span>
-          <div className="skill-card-grid">
-            {skillIdsFor(GAME_DATA, monster).map((skillId, index) => {
-              const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
-              return (
-                <article className="skill-card" key={`${skillId}-${index}`}>
-                  <b>{index === 2 && monster.inheritedSkillId ? '継' : index + 1}</b>
-                  <span>
-                    <strong>{skill?.name}</strong>
-                    <small>MP {skill?.mpCost}</small>
-                  </span>
-                  <p>{skill?.description}</p>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+        <MonsterDetailCard monster={monster} />
       </section>
     </dialog>
   );
@@ -413,6 +444,10 @@ function RunHeader({ run }: { run: CasualRunState }) {
 }
 
 function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (definitionId: string) => void }) {
+  const [previewDefinitionId, setPreviewDefinitionId] = useState<string>();
+  const previewMonster = previewDefinitionId
+    ? createMonster(GAME_DATA, previewDefinitionId, `draft-prospect-${run.draftRound}`)
+    : undefined;
   return (
     <main className="draft-screen">
       <div className="draft-mast">
@@ -429,30 +464,57 @@ function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (defini
       <section className="draft-copy">
         <span className="section-index">ENTRY {run.draftRound}/3</span>
         <h2>旅のはじまりを選ぶ</h2>
-        <p>光・闇・火は配合の血筋。戦闘相性ではありません。3回選ぶと最初のチームが完成します。</p>
+        <p>候補をタップして能力を確かめ、「迎える」で旅の仲間に。3回選ぶと最初のチームが完成します。</p>
+        <div className="draft-party-rail" aria-label={`選択済み ${run.roster.length}/3体`}>
+          {Array.from({ length: 3 }, (_, index) => {
+            const monster = run.roster[index];
+            return monster ? (
+              <span key={monster.id} style={monsterStyle(GAME_DATA, definitionFor(GAME_DATA, monster))}>
+                <MonsterSigil
+                  data={GAME_DATA}
+                  definition={definitionFor(GAME_DATA, monster)}
+                  colorStars={monster.colorStars}
+                  size="small"
+                />
+                <b>{definitionFor(GAME_DATA, monster).name}</b>
+              </span>
+            ) : (
+              <i key={`draft-slot-${index}`}>{index + 1}</i>
+            );
+          })}
+        </div>
       </section>
-      <div className="draft-grid">
-        {run.draftChoices.map((definitionId) => {
+      <div className="draft-grid" key={run.draftRound}>
+        {run.draftChoices.map((definitionId, index) => {
           const definition = definitionById(GAME_DATA, definitionId);
           const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
           return (
-            <DefinitionCard
-              key={definitionId}
-              data={GAME_DATA}
-              definition={definition}
-              eyebrow={`${lineageName(GAME_DATA, definition)} / ${attributeName(GAME_DATA, definition)}`}
-              onClick={() => onChoose(definitionId)}
-              footer={
-                <>
-                  <span>{trait?.name}</span>
-                  <b>この仲間を迎える →</b>
-                </>
-              }
-            />
+            <div className="draft-choice" key={definitionId} style={{ '--draft-index': index } as CSSProperties}>
+              <DefinitionCard
+                data={GAME_DATA}
+                definition={definition}
+                eyebrow={`${lineageName(GAME_DATA, definition)} / ${attributeName(GAME_DATA, definition)}`}
+                onClick={() => setPreviewDefinitionId(definitionId)}
+                footer={
+                  <>
+                    <span>{trait?.name} · タップで詳細</span>
+                    <button type="button" onClick={() => onChoose(definitionId)}>
+                      この仲間を迎える →
+                    </button>
+                  </>
+                }
+              />
+            </div>
           );
         })}
       </div>
       <p className="prototype-note">PROTOTYPE RULESET · 12 CYCLES · ASYNC GHOST</p>
+      <MonsterProspectDialog
+        monster={previewMonster}
+        eyebrow={`ENTRY ${run.draftRound} / LEVEL 1`}
+        summary="旅立ち時の能力です。属性は血統の分類で、戦闘上の有利不利はありません。"
+        onClose={() => setPreviewDefinitionId(undefined)}
+      />
     </main>
   );
 }
@@ -461,6 +523,9 @@ function RosterCard({
   monster,
   active,
   selected,
+  zone,
+  slotIndex,
+  dropTarget,
   onSelect,
   onDragStart,
   onDragMove,
@@ -469,6 +534,9 @@ function RosterCard({
   monster: MonsterInstance;
   active: boolean;
   selected: boolean;
+  zone: 'active' | 'bench';
+  slotIndex: number;
+  dropTarget: boolean;
   onSelect: () => void;
   onDragStart: (monster: MonsterInstance, x: number, y: number) => void;
   onDragMove: (x: number, y: number) => void;
@@ -477,6 +545,7 @@ function RosterCard({
   const definition = definitionFor(GAME_DATA, monster);
   const holdTimer = useRef<number | undefined>(undefined);
   const dragging = useRef(false);
+  const pointerIsDown = useRef(false);
   const suppressClick = useRef(false);
   const origin = useRef({ x: 0, y: 0 });
 
@@ -489,6 +558,7 @@ function RosterCard({
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
+    pointerIsDown.current = true;
     origin.current = { x: event.clientX, y: event.clientY };
     dragging.current = false;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -501,14 +571,24 @@ function RosterCard({
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!pointerIsDown.current) return;
     if (dragging.current) {
       onDragMove(event.clientX, event.clientY);
       return;
     }
-    if (Math.hypot(event.clientX - origin.current.x, event.clientY - origin.current.y) > 10) clearHold();
+    const distance = Math.hypot(event.clientX - origin.current.x, event.clientY - origin.current.y);
+    if (event.pointerType === 'mouse' && distance > 5) {
+      clearHold();
+      dragging.current = true;
+      suppressClick.current = true;
+      onDragStart(monster, event.clientX, event.clientY);
+      return;
+    }
+    if (distance > 10) clearHold();
   };
 
   const finishPointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    pointerIsDown.current = false;
     clearHold();
     if (dragging.current) {
       dragging.current = false;
@@ -519,8 +599,11 @@ function RosterCard({
   return (
     <button
       type="button"
-      className={`roster-card${selected ? ' is-selected' : ''}${active ? ' is-active' : ''}`}
+      className={`roster-card${selected ? ' is-selected' : ''}${active ? ' is-active' : ''}${dropTarget ? ' is-drop-target' : ''}`}
       style={monsterStyle(GAME_DATA, definition)}
+      data-party-slot
+      data-team-zone={zone}
+      data-slot-index={slotIndex}
       onClick={() => {
         if (suppressClick.current) {
           suppressClick.current = false;
@@ -556,36 +639,56 @@ function TeamPanel({
   run: CasualRunState;
   selectedId?: string;
   onSelect: (id: string) => void;
-  onMove: (monster: MonsterInstance, active: boolean) => void;
+  onMove: (monster: MonsterInstance, zone: 'active' | 'bench', index: number) => void;
 }) {
   const [dragState, setDragState] = useState<{ monster: MonsterInstance; x: number; y: number }>();
-  const [dropZone, setDropZone] = useState<'active' | 'bench'>();
+  const [dropSlot, setDropSlot] = useState<{ zone: 'active' | 'bench'; index: number }>();
   const active = run.activeIds
     .map((id) => run.roster.find((monster) => monster.id === id))
     .filter((monster): monster is MonsterInstance => Boolean(monster));
   const bench = run.roster.filter((monster) => !run.activeIds.includes(monster.id));
-  const updateDropZone = (x: number, y: number) => {
-    const zone = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-team-zone]')?.dataset.teamZone;
-    setDropZone(zone === 'active' || zone === 'bench' ? zone : undefined);
+  const dropSlotAt = (
+    x: number,
+    y: number,
+  ):
+    | {
+        zone: 'active' | 'bench';
+        index: number;
+      }
+    | undefined => {
+    const target = document.elementFromPoint(x, y);
+    const slot = target?.closest<HTMLElement>('[data-party-slot]');
+    const zoneElement = slot ?? target?.closest<HTMLElement>('[data-team-zone]');
+    const zone = zoneElement?.dataset.teamZone;
+    if (zone !== 'active' && zone !== 'bench') return undefined;
+    const fallbackIndex = zone === 'active' ? active.length : bench.length;
+    const parsedIndex = Number(slot?.dataset.slotIndex);
+    return { zone, index: Number.isInteger(parsedIndex) ? parsedIndex : fallbackIndex };
   };
-  const cardProps = (monster: MonsterInstance, isActive: boolean) => ({
+  const updateDropSlot = (x: number, y: number) => {
+    setDropSlot(dropSlotAt(x, y));
+  };
+  const cardProps = (monster: MonsterInstance, isActive: boolean, index: number) => ({
     monster,
     active: isActive,
     selected: selectedId === monster.id,
+    zone: isActive ? ('active' as const) : ('bench' as const),
+    slotIndex: index,
+    dropTarget: dropSlot?.zone === (isActive ? 'active' : 'bench') && dropSlot.index === index,
     onSelect: () => onSelect(monster.id),
     onDragStart: (dragged: MonsterInstance, x: number, y: number) => {
       setDragState({ monster: dragged, x, y });
-      updateDropZone(x, y);
+      updateDropSlot(x, y);
     },
     onDragMove: (x: number, y: number) => {
       setDragState((current) => (current ? { ...current, x, y } : current));
-      updateDropZone(x, y);
+      updateDropSlot(x, y);
     },
     onDragEnd: (x: number, y: number) => {
-      const zone = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-team-zone]')?.dataset.teamZone;
-      if (zone === 'active' || zone === 'bench') onMove(monster, zone === 'active');
+      const target = dropSlotAt(x, y);
+      if (target) onMove(monster, target.zone, target.index);
       setDragState(undefined);
-      setDropZone(undefined);
+      setDropSlot(undefined);
     },
   });
   return (
@@ -595,7 +698,7 @@ function TeamPanel({
         <strong>長押しで編成</strong>
       </div>
       <section
-        className={`team-zone is-active${dropZone === 'active' ? ' is-drop-target' : ''}`}
+        className={`team-zone is-active${dropSlot?.zone === 'active' ? ' is-drop-target' : ''}`}
         data-team-zone="active"
         aria-label="主力"
       >
@@ -604,18 +707,24 @@ function TeamPanel({
           <span>{run.activeIds.length}/3</span>
         </div>
         <div className="roster-list">
-          {active.map((monster) => (
-            <RosterCard key={monster.id} {...cardProps(monster, true)} />
+          {active.map((monster, index) => (
+            <RosterCard key={monster.id} {...cardProps(monster, true, index)} />
           ))}
           {Array.from({ length: Math.max(0, 3 - active.length) }, (_, index) => (
-            <div className="empty-roster-slot" key={`active-empty-${index}`}>
+            <div
+              className={`empty-roster-slot${dropSlot?.zone === 'active' && dropSlot.index === active.length + index ? ' is-drop-target' : ''}`}
+              key={`active-empty-${index}`}
+              data-party-slot
+              data-team-zone="active"
+              data-slot-index={active.length + index}
+            >
               ＋
             </div>
           ))}
         </div>
       </section>
       <section
-        className={`team-zone is-bench${dropZone === 'bench' ? ' is-drop-target' : ''}`}
+        className={`team-zone is-bench${dropSlot?.zone === 'bench' ? ' is-drop-target' : ''}`}
         data-team-zone="bench"
         aria-label="控え"
       >
@@ -624,11 +733,17 @@ function TeamPanel({
           <span>{bench.length}/4</span>
         </div>
         <div className="roster-list is-bench">
-          {bench.map((monster) => (
-            <RosterCard key={monster.id} {...cardProps(monster, false)} />
+          {bench.map((monster, index) => (
+            <RosterCard key={monster.id} {...cardProps(monster, false, index)} />
           ))}
-          {Array.from({ length: Math.max(1, 4 - bench.length) }, (_, index) => (
-            <div className="empty-roster-slot is-bench" key={`bench-empty-${index}`}>
+          {Array.from({ length: Math.max(0, 4 - bench.length) }, (_, index) => (
+            <div
+              className={`empty-roster-slot is-bench${dropSlot?.zone === 'bench' && dropSlot.index === bench.length + index ? ' is-drop-target' : ''}`}
+              key={`bench-empty-${index}`}
+              data-party-slot
+              data-team-zone="bench"
+              data-slot-index={bench.length + index}
+            >
               ·
             </div>
           ))}
@@ -653,7 +768,9 @@ function TeamPanel({
         </div>
       )}
       <span className="drag-announcement" aria-live="polite">
-        {dragState ? `${dropZone === 'active' ? '主力' : dropZone === 'bench' ? '控え' : '移動先'}へドロップ` : ''}
+        {dragState
+          ? `${dropSlot?.zone === 'active' ? '主力' : dropSlot?.zone === 'bench' ? '控え' : '移動先'} ${dropSlot ? dropSlot.index + 1 : ''}へドロップ`
+          : ''}
       </span>
     </aside>
   );
@@ -709,6 +826,7 @@ function ShopView({
               data={GAME_DATA}
               definition={definition}
               eyebrow={offer.lucky ? 'LUCKY RANK UP' : `${attributeName(GAME_DATA, definition)}の気配`}
+              onClick={() => setPreviewDefinitionId(definition.id)}
               footer={
                 <div className="shop-card-footer">
                   <span>{trait?.name}</span>
@@ -849,6 +967,60 @@ function BreedingConfirmationDialog({
   );
 }
 
+function BreedingRevealDialog({ child, onComplete }: { child?: MonsterInstance; onComplete: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [stage, setStage] = useState(0);
+  const childId = child?.id;
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !child) return;
+    setStage(0);
+    dialog.showModal();
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timers = reducedMotion
+      ? [window.setTimeout(() => setStage(2), 0)]
+      : [window.setTimeout(() => setStage(1), 180), window.setTimeout(() => setStage(2), 980)];
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      if (dialog.open) dialog.close();
+    };
+  }, [childId]);
+  if (!child) return null;
+  const definition = definitionFor(GAME_DATA, child);
+  return (
+    <dialog
+      ref={dialogRef}
+      className={`breeding-reveal-dialog reveal-stage-${stage}`}
+      onCancel={(event) => event.preventDefault()}
+      onClose={onComplete}
+      aria-label={`${definition.name}の誕生`}
+    >
+      <section className="breeding-reveal-stage" style={monsterStyle(GAME_DATA, definition)}>
+        <div className="gene-orbit" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </div>
+        <span className="section-index">LINEAGE REWRITTEN</span>
+        <div className="newborn-sigil">
+          <MonsterSigil data={GAME_DATA} definition={definition} colorStars={child.colorStars} size="large" />
+        </div>
+        <p>新しい血統が誕生しました</p>
+        <h2>{definition.name}</h2>
+        <strong>{starText(definition.whiteStars, child.colorStars)} · Lv.1</strong>
+        <button
+          type="button"
+          className="primary-button"
+          disabled={stage < 2}
+          onClick={() => dialogRef.current?.close()}
+        >
+          この仲間を見る →
+        </button>
+      </section>
+    </dialog>
+  );
+}
+
 function BreedingView({
   run,
   discoveredMonsterIds,
@@ -876,6 +1048,7 @@ function BreedingView({
   const [recipeArchiveOpen, setRecipeArchiveOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [revealedChild, setRevealedChild] = useState<MonsterInstance>();
   useEffect(() => {
     setCandidateId(candidates[0]?.id ?? '');
     setSkillId('');
@@ -895,6 +1068,11 @@ function BreedingView({
       ? createMonster(GAME_DATA, previewDefinition.id, 'breeding-base', { colorStars: previewChild.colorStars })
       : undefined;
   const baseStats = basePreview ? permanentStatsFor(GAME_DATA, basePreview) : undefined;
+  const parentWhiteStars =
+    first && second
+      ? Math.max(definitionFor(GAME_DATA, first).whiteStars, definitionFor(GAME_DATA, second).whiteStars)
+      : 0;
+  const rankUp = Boolean(previewDefinition && previewDefinition.whiteStars > parentWhiteStars);
 
   const toggleParent = (id: string) => {
     if (parentIds.includes(id)) {
@@ -926,7 +1104,9 @@ function BreedingView({
               <button
                 type="button"
                 key={monster.id}
-                className={`parent-choice${parentIds.includes(monster.id) ? ' is-selected' : ''}`}
+                className={`parent-choice${parentIds.includes(monster.id) ? ' is-selected' : ''}${
+                  rankUp && parentIds.includes(monster.id) ? ' is-rank-catalyst' : ''
+                }`}
                 disabled={!eligible}
                 onClick={() => toggleParent(monster.id)}
                 style={monsterStyle(GAME_DATA, definition)}
@@ -938,7 +1118,15 @@ function BreedingView({
                     Lv.{monster.level} · 実効★{effectiveStarsFor(GAME_DATA, monster)}
                   </small>
                 </span>
-                <b>{eligible ? (parentIds.includes(monster.id) ? '選択中' : '選ぶ') : 'Lv.3必要'}</b>
+                <b>
+                  {eligible
+                    ? rankUp && parentIds.includes(monster.id)
+                      ? '位階上昇の核'
+                      : parentIds.includes(monster.id)
+                        ? '選択中'
+                        : '選ぶ'
+                    : 'Lv.3必要'}
+                </b>
               </button>
             );
           })}
@@ -950,36 +1138,47 @@ function BreedingView({
         </div>
         <div className="candidate-pool">
           <h3>配合先候補</h3>
-          {candidates.length === 0 && (
-            <div className="loom-placeholder">
-              <span>?</span>
-              <p>レベル3以上の親を2体選ぶと、系統×属性×実効星から候補を算出します。</p>
-            </div>
-          )}
-          {candidates.map((entry) => {
-            const definition = definitionById(GAME_DATA, entry.definitionId);
-            return (
-              <div className="breeding-candidate" key={entry.id}>
-                <DefinitionCard
-                  data={GAME_DATA}
-                  definition={definition}
-                  colorStars={entry.colorStars}
-                  eyebrow={
-                    entry.kind === 'special'
-                      ? 'SPECIAL RECIPE'
-                      : entry.kind === 'same-name'
-                        ? 'COLOR STAR'
-                        : 'RANK BREED'
-                  }
-                  selected={candidateId === entry.id}
-                  onClick={() => setCandidateId(entry.id)}
-                  footer={<span>{entry.label}</span>}
-                />
+          <div className="candidate-scroll">
+            {candidates.length === 0 && (
+              <div className="loom-placeholder">
+                <span>?</span>
+                <p>レベル3以上の親を2体選ぶと、系統×属性×実効星から候補を算出します。</p>
               </div>
-            );
-          })}
+            )}
+            {candidates.map((entry) => {
+              const definition = definitionById(GAME_DATA, entry.definitionId);
+              return (
+                <div className="breeding-candidate" key={entry.id}>
+                  <DefinitionCard
+                    data={GAME_DATA}
+                    definition={definition}
+                    colorStars={entry.colorStars}
+                    eyebrow={
+                      entry.kind === 'special'
+                        ? 'SPECIAL RECIPE'
+                        : entry.kind === 'same-name'
+                          ? 'COLOR STAR'
+                          : 'RANK BREED'
+                    }
+                    selected={candidateId === entry.id}
+                    onClick={() => setCandidateId(entry.id)}
+                    footer={<span>{entry.label}</span>}
+                  />
+                </div>
+              );
+            })}
+          </div>
           {candidate && previewChild && previewDefinition && previewStats && baseStats && (
             <div className="inheritance-control">
+              {rankUp && (
+                <div className="rank-up-signal" aria-live="polite">
+                  <span>RANK UP ROUTE</span>
+                  <b>
+                    ★{parentWhiteStars} → ★{previewDefinition.whiteStars}
+                  </b>
+                  <small>選んだ2体の実効星が、次の位階へ届いています</small>
+                </div>
+              )}
               <div className="breeding-preview" style={monsterStyle(GAME_DATA, previewDefinition)}>
                 <header>
                   <span>配合プレビュー</span>
@@ -1049,8 +1248,16 @@ function BreedingView({
             const child = result.state.roster.find(
               (monster) => !run.roster.some((current) => current.id === monster.id),
             );
-            if (child) window.setTimeout(() => onInspect(child.id), 0);
+            if (child) setRevealedChild(child);
           }
+        }}
+      />
+      <BreedingRevealDialog
+        child={revealedChild}
+        onComplete={() => {
+          const childId = revealedChild?.id;
+          setRevealedChild(undefined);
+          if (childId) window.setTimeout(() => onInspect(childId), 0);
         }}
       />
     </section>
@@ -1155,6 +1362,10 @@ function TacticsView({
       <div className="gambit-stack">
         {monster.gambits.map((rule, index) => {
           const targets = targetRulesForSkill(GAME_DATA, rule.action.skillId);
+          const selectedSkill =
+            rule.action.skillId === 'normal-attack'
+              ? undefined
+              : GAME_DATA.skills.find((skill) => skill.id === rule.action.skillId);
           return (
             <article className="gambit-row" key={`${monster.id}-gambit-${index}`}>
               <b className="priority-number">{String(index + 1).padStart(2, '0')}</b>
@@ -1211,6 +1422,10 @@ function TacticsView({
                     ))}
                   </select>
                 </div>
+                <p className="gambit-skill-note">
+                  <b>{rule.action.skillId === 'normal-attack' ? 'MP 0' : `MP ${selectedSkill?.mpCost ?? 0}`}</b>
+                  {selectedSkill?.description ?? '攻撃力を使って敵1体へ物理ダメージ。MPがなくても実行します。'}
+                </p>
               </div>
             </article>
           );
@@ -1356,6 +1571,7 @@ function Inspector({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [tab, setTab] = useState<InspectorTab>('profile');
+  const monsterId = monster?.id;
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || !monster) return;
@@ -1363,15 +1579,12 @@ function Inspector({
     return () => {
       if (dialog.open) dialog.close();
     };
-  }, [monster]);
+  }, [monsterId]);
   useEffect(() => setTab('profile'), [monster?.id]);
   if (!monster) return null;
   const definition = definitionFor(GAME_DATA, monster);
-  const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
-  const stats = permanentStatsFor(GAME_DATA, monster);
   const equipped = GAME_DATA.equipment.find((entry) => entry.id === monster.equipmentId);
   const active = run.activeIds.includes(monster.id);
-  const xpProgress = xpProgressFor(monster);
   return (
     <dialog
       ref={dialogRef}
@@ -1409,47 +1622,7 @@ function Inspector({
         <div className="inspector-tab-panel">
           {tab === 'profile' && (
             <div className="profile-panel">
-              <div className="xp-track">
-                <span style={{ width: `${xpProgress.percent}%` }} />
-              </div>
-              <small className="xp-label">
-                EXP {monster.xp}
-                {xpProgress.maximum ? ' · MAX LEVEL' : ` · 次のLvまで ${xpProgress.remaining}`}
-              </small>
-              <div className="stat-grid">
-                {STAT_LABELS.map(([id, label]) => (
-                  <span key={id}>
-                    <small>{label}</small>
-                    <b>
-                      {stats[id]}
-                      {id === 'crit' ? '%' : ''}
-                    </b>
-                  </span>
-                ))}
-              </div>
-              <section className="trait-block detail-card">
-                <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
-                <h3>{trait?.name}</h3>
-                <p>{trait?.stages[monster.colorStars].description}</p>
-              </section>
-              <section className="skill-list">
-                <span>SKILL CARDS</span>
-                <div className="skill-card-grid">
-                  {skillIdsFor(GAME_DATA, monster).map((skillId, index) => {
-                    const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
-                    return (
-                      <article className="skill-card" key={`${skillId}-${index}`}>
-                        <b>{index === 2 && monster.inheritedSkillId ? '継' : index + 1}</b>
-                        <span>
-                          <strong>{skill?.name}</strong>
-                          <small>MP {skill?.mpCost}</small>
-                        </span>
-                        <p>{skill?.description}</p>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
+              <MonsterDetailCard monster={monster} showExperience />
               <section className="equipment-block">
                 <span>EQUIPMENT CARDS</span>
                 <article className={`equipped-row equipment-card${equipped ? '' : ' is-empty'}`}>
@@ -1574,12 +1747,10 @@ function WorkshopScreen({
             setSelectedId(id);
             setInspectedId(id);
           }}
-          onMove={(monster, shouldBeActive) => {
-            const isActive = run.activeIds.includes(monster.id);
-            if (isActive === shouldBeActive) return;
+          onMove={(monster, zone, index) => {
             onCommand(
-              toggleActiveMonster(GAME_DATA, run, monster.id),
-              shouldBeActive ? '主力へ配置しました' : '控えへ移しました',
+              moveMonsterToPartySlot(GAME_DATA, run, monster.id, zone, index),
+              `${zone === 'active' ? '主力' : '控え'}の${index + 1}番へ編成しました`,
             );
           }}
         />
@@ -1662,12 +1833,14 @@ function BattleMonster({
   acting,
   targeted,
   hpDelta,
+  actionLabel,
 }: {
   fighter: FighterSnapshot;
   side: 'player' | 'enemy';
   acting: boolean;
   targeted: boolean;
   hpDelta: number;
+  actionLabel?: string;
 }) {
   const definition = definitionById(GAME_DATA, fighter.definitionId);
   const hpPercent = Math.max(0, (fighter.hp / fighter.maxHp) * 100);
@@ -1677,6 +1850,7 @@ function BattleMonster({
       className={`battle-sprite is-${side}${fighter.alive ? '' : ' is-defeated'}${acting ? ' is-acting' : ''}${targeted ? ' is-targeted' : ''}${hpDelta < 0 ? ' is-healed' : ''}`}
       style={monsterStyle(GAME_DATA, definition)}
     >
+      {acting && actionLabel && <span className="skill-callout">{actionLabel}</span>}
       {hpDelta !== 0 && (
         <b className={`battle-number${hpDelta < 0 ? ' is-heal' : ''}`}>
           {hpDelta < 0 ? `+${Math.abs(hpDelta)}` : `-${hpDelta}`}
@@ -1721,7 +1895,7 @@ function BattleScreen({
     if (!battle.playing || battle.frameIndex >= lastIndex) return;
     const timer = window.setTimeout(
       () => onChange({ ...battle, frameIndex: Math.min(lastIndex, battle.frameIndex + 1) }),
-      460,
+      460 / battle.speed,
     );
     return () => window.clearTimeout(timer);
   }, [battle, lastIndex, onChange]);
@@ -1732,6 +1906,22 @@ function BattleScreen({
   const players = frame.fighters.filter((fighter) => fighter.team === 'player');
   const enemies = frame.fighters.filter((fighter) => fighter.team === 'enemy');
   const complete = battle.frameIndex >= lastIndex;
+  const activeSkill =
+    frame.skillId && frame.skillId !== 'normal-attack'
+      ? GAME_DATA.skills.find((skill) => skill.id === frame.skillId)
+      : undefined;
+  const actionLabel = frame.skillId === 'normal-attack' ? '通常攻撃' : activeSkill?.name;
+  const skillFx = activeSkill?.effects.some((effect) => effect.kind === 'heal')
+    ? 'heal'
+    : activeSkill?.effects.some((effect) => effect.kind === 'status' || effect.kind === 'atb' || effect.kind === 'mp')
+      ? 'status'
+      : activeSkill?.effects.some((effect) => effect.kind === 'shield')
+        ? 'shield'
+        : activeSkill?.effects.some((effect) => effect.kind === 'damage' && effect.scaling === 'magic')
+          ? 'magic'
+          : frame.kind === 'action'
+            ? 'physical'
+            : 'none';
   const impact = frame.targetIds.some((id) => {
     const current = frame.fighters.find((fighter) => fighter.id === id);
     return current ? hpDeltaFor(current) > 0 : false;
@@ -1746,12 +1936,13 @@ function BattleScreen({
             ? 'DEFEAT'
             : 'DRAW'
         : frame.kind === 'action'
-          ? frame.text.includes('会心')
-            ? 'CRITICAL!'
-            : 'SKILL!'
+          ? (actionLabel ?? 'SKILL!')
           : 'BATTLE START';
   return (
-    <main className={`battle-screen${impact ? ' is-impact' : ''} is-frame-${frame.kind}`}>
+    <main
+      className={`battle-screen${impact ? ' is-impact' : ''} is-frame-${frame.kind} is-skill-${skillFx}`}
+      data-skill-id={frame.skillId}
+    >
       <header className="battle-header">
         <div className="brand-lockup">
           <span>COMBAT REPLAY / SEED LOCKED</span>
@@ -1784,6 +1975,7 @@ function BattleScreen({
                 acting={frame.actorId === fighter.id}
                 targeted={frame.targetIds.includes(fighter.id)}
                 hpDelta={hpDeltaFor(fighter)}
+                actionLabel={frame.actorId === fighter.id ? actionLabel : undefined}
               />
             ))}
           </div>
@@ -1804,6 +1996,7 @@ function BattleScreen({
                 acting={frame.actorId === fighter.id}
                 targeted={frame.targetIds.includes(fighter.id)}
                 hpDelta={hpDeltaFor(fighter)}
+                actionLabel={frame.actorId === fighter.id ? actionLabel : undefined}
               />
             ))}
           </div>
@@ -1822,7 +2015,10 @@ function BattleScreen({
       </section>
       <section className="battle-console">
         <div>
-          <span>{frame.kind.toUpperCase()}</span>
+          <span>
+            {frame.kind.toUpperCase()}
+            {actionLabel ? ` / ${actionLabel}` : ''}
+          </span>
           <strong>{frame.text}</strong>
         </div>
         <div className="replay-controls">
@@ -1831,6 +2027,19 @@ function BattleScreen({
               <button type="button" onClick={() => onChange({ ...battle, playing: !battle.playing })}>
                 {battle.playing ? 'Ⅱ 一時停止' : '▶ 再生'}
               </button>
+              <div className="speed-controls" aria-label="再生速度">
+                {([1, 2, 4] as ReplaySpeed[]).map((speed) => (
+                  <button
+                    type="button"
+                    className={battle.speed === speed ? 'is-active' : ''}
+                    key={speed}
+                    onClick={() => onChange({ ...battle, speed })}
+                    aria-label={`再生速度 ${speed}倍`}
+                  >
+                    ×{speed}
+                  </button>
+                ))}
+              </div>
               <button type="button" onClick={() => onChange({ ...battle, frameIndex: lastIndex, playing: false })}>
                 最後まで送る
               </button>
@@ -2080,7 +2289,7 @@ export function App() {
     const enemy = createGhostTeam(GAME_DATA, run.cycle, battleSeed);
     const result = simulateBattle(GAME_DATA, { player, enemy, seed: battleSeed });
     setRun(applyBattleResult(GAME_DATA, run, result));
-    setBattle({ result, enemy, beforeRoster: run.roster, frameIndex: 0, playing: true });
+    setBattle({ result, enemy, beforeRoster: run.roster, frameIndex: 0, playing: true, speed: 1 });
   };
 
   if (battle) {

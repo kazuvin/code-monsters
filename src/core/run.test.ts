@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
-import { applyBattleResult, chooseDraftMonster, continueRun, createCasualRun, skipEvent } from './run';
+import { createMonster } from './monster';
+import {
+  applyBattleResult,
+  chooseDraftMonster,
+  continueRun,
+  createCasualRun,
+  moveMonsterToPartySlot,
+  skipEvent,
+} from './run';
 
 const finishDraft = () => {
   let run = createCasualRun(GAME_DATA, 42);
@@ -54,5 +62,45 @@ describe('casual run', () => {
     expect(run.phase).toBe('finished');
     expect(run.completedCycles).toBe(12);
     expect(run.wins).toBe(12);
+  });
+
+  it('reorders monsters inside the active formation', () => {
+    const run = finishDraft();
+    const [first, second, third] = run.activeIds;
+
+    const result = moveMonsterToPartySlot(GAME_DATA, run, first as string, 'active', 2);
+
+    expect(result.ok).toBe(true);
+    expect(result.state.activeIds).toEqual([second, third, first]);
+  });
+
+  it('swaps a bench monster with an occupied active slot', () => {
+    const run = finishDraft();
+    const benchMonster = createMonster(GAME_DATA, 'fire-dragon-1', 'bench-1');
+    const withBench = { ...run, roster: [...run.roster, benchMonster] };
+    const displacedId = run.activeIds[1];
+
+    const result = moveMonsterToPartySlot(GAME_DATA, withBench, benchMonster.id, 'active', 1);
+
+    expect(result.ok).toBe(true);
+    expect(result.state.activeIds[1]).toBe(benchMonster.id);
+    expect(
+      result.state.roster.filter((monster) => !result.state.activeIds.includes(monster.id)).map(({ id }) => id),
+    ).toEqual([displacedId]);
+  });
+
+  it('swaps an active monster with a full bench slot', () => {
+    const run = finishDraft();
+    const bench = ['light-dragon-1', 'dark-dragon-1', 'fire-dragon-1', 'light-demon-1'].map((definitionId, index) =>
+      createMonster(GAME_DATA, definitionId, `bench-${index}`),
+    );
+    const withFullBench = { ...run, roster: [...run.roster, ...bench] };
+    const activeId = run.activeIds[0] as string;
+
+    const result = moveMonsterToPartySlot(GAME_DATA, withFullBench, activeId, 'bench', 2);
+
+    expect(result.ok).toBe(true);
+    expect(result.state.activeIds[0]).toBe(bench[2]?.id);
+    expect(result.state.roster.filter((monster) => !result.state.activeIds.includes(monster.id))[2]?.id).toBe(activeId);
   });
 });

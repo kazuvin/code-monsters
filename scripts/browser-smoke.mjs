@@ -45,7 +45,15 @@ if ((await desktop.locator('body').innerText()).includes('⭐')) {
 for (let round = 0; round < 3; round += 1) {
   const choices = desktop.locator('.draft-grid .definition-card');
   if ((await choices.count()) !== 3) throw new Error(`Draft round ${round + 1} does not show three choices`);
-  await choices.first().click();
+  if (round === 0) {
+    await choices.first().locator('.definition-card-main').click();
+    await desktop.locator('.prospect-dialog[open]').waitFor();
+    if ((await desktop.locator('.prospect-dialog .monster-detail-card').count()) !== 1) {
+      throw new Error('Draft monster does not open the shared detail card');
+    }
+    await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
+  }
+  await desktop.locator('.draft-choice .monster-card-footer button').first().click();
 }
 
 await desktop.getByRole('heading', { name: '旅商人の棚' }).waitFor();
@@ -61,7 +69,7 @@ if ((await desktop.locator('.equipment-offers > *').count()) !== 2) {
 if ((await desktop.locator('.shop-monsters .card-detail-button').count()) !== 3) {
   throw new Error('Shop monsters do not expose a detail action');
 }
-await desktop.locator('.shop-monsters .card-detail-button').first().click();
+await desktop.locator('.shop-monsters .definition-card-main').first().click();
 await desktop.locator('.prospect-dialog[open]').waitFor();
 if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
   throw new Error('Shop prospect detail does not show all seven stats');
@@ -69,6 +77,7 @@ if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
 await desktop.screenshot({ path: '/tmp/code-monsters-prospect-desktop.png', fullPage: true });
 await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
 
+await desktop.locator('.equipment-offers article footer button').first().click();
 const coinsBefore = Number((await desktop.locator('.coin-metric b').textContent())?.trim());
 await desktop.locator('.shop-monsters .buy-button').first().click();
 const coinsAfter = Number((await desktop.locator('.coin-metric b').textContent())?.trim());
@@ -76,13 +85,38 @@ if (coinsAfter !== coinsBefore - 3) throw new Error('Buying a rank-one monster d
 if ((await desktop.locator('.team-panel .roster-card').count()) !== 4) {
   throw new Error('Bought monster did not enter the roster');
 }
+const activeNamesBeforeReorder = await desktop.locator('.team-zone.is-active .roster-card strong').allTextContents();
+const firstActiveBox = await desktop.locator('.team-zone.is-active .roster-card').first().boundingBox();
+const lastActiveBox = await desktop.locator('.team-zone.is-active .roster-card').last().boundingBox();
+if (!firstActiveBox || !lastActiveBox) throw new Error('Could not measure active formation slots');
+await desktop.mouse.move(firstActiveBox.x + firstActiveBox.width / 2, firstActiveBox.y + firstActiveBox.height / 2);
+await desktop.mouse.down();
+await desktop.mouse.move(lastActiveBox.x + lastActiveBox.width / 2, lastActiveBox.y + lastActiveBox.height / 2, {
+  steps: 8,
+});
+await desktop.mouse.up();
+const activeNamesAfterReorder = await desktop.locator('.team-zone.is-active .roster-card strong').allTextContents();
+if (activeNamesBeforeReorder.join('|') === activeNamesAfterReorder.join('|')) {
+  throw new Error('Drag and drop did not reorder the active formation');
+}
 
 if ((await desktop.locator('.workshop-tabs button').count()) !== 2) {
   throw new Error('Workshop navigation should contain only shop and breeding');
 }
 await desktop.locator('.team-zone.is-active .roster-card').first().click();
+await desktop.locator('.monster-dialog .inventory-list .equipment-card').first().click();
+if ((await desktop.locator('.monster-dialog[open]').count()) !== 1) {
+  throw new Error('Equipping an item closed the monster detail dialog');
+}
 await desktop.getByRole('button', { name: 'ガンビット' }).click();
 if ((await desktop.locator('.gambit-row').count()) !== 3) throw new Error('Monster detail does not show three gambits');
+if ((await desktop.locator('.gambit-skill-note').count()) !== 3) {
+  throw new Error('Gambit actions do not explain skill effects');
+}
+await desktop.locator('.gambit-row select[aria-label="スキル"]').first().selectOption({ index: 1 });
+if ((await desktop.locator('.monster-dialog[open]').count()) !== 1) {
+  throw new Error('Editing a gambit closed the monster detail dialog');
+}
 if ((await desktop.locator('.inspector-tabs button').count()) !== 2) {
   throw new Error('Monster detail still contains a breeding recipe tab');
 }
@@ -105,6 +139,23 @@ await desktop.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).
 await desktop.getByRole('heading', { name: '非同期ゴースト戦' }).waitFor();
 if ((await desktop.locator('.battle-sprite').count()) !== 6) throw new Error('Battle field is not 3v3');
 if ((await desktop.locator('.battle-fx').count()) !== 1) throw new Error('Battle effect layer is missing');
+const enemyFormationBox = await desktop.locator('.battle-team.is-enemy').boundingBox();
+const playerFormationBox = await desktop.locator('.battle-team.is-player').boundingBox();
+if (!enemyFormationBox || !playerFormationBox || enemyFormationBox.x >= playerFormationBox.x) {
+  throw new Error('Battle teams are not arranged left-to-right');
+}
+await desktop.getByRole('button', { name: '再生速度 4倍' }).click();
+await desktop.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 3000 });
+if (
+  (await desktop
+    .locator(
+      '.battle-screen.is-skill-physical, .battle-screen.is-skill-magic, .battle-screen.is-skill-heal, .battle-screen.is-skill-status, .battle-screen.is-skill-shield',
+    )
+    .count()) !== 1
+) {
+  throw new Error('Battle skill did not select an effect presentation');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-battle-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: '最後まで送る' }).click();
 await desktop.getByRole('button', { name: '結果を見る →' }).click();
 await desktop.getByRole('heading', { name: '戦闘報告' }).waitFor();
@@ -166,6 +217,10 @@ if ((await desktop.locator('.breeding-confirm-dialog li').count()) !== 4) {
   throw new Error('Breeding confirmation does not explain all irreversible effects');
 }
 await desktop.getByRole('button', { name: 'この内容で配合する' }).click();
+await desktop.locator('.breeding-reveal-dialog[open]').waitFor();
+await desktop.locator('.breeding-reveal-dialog.reveal-stage-2').waitFor();
+await desktop.screenshot({ path: '/tmp/code-monsters-breeding-reveal-desktop.png', fullPage: true });
+await desktop.getByRole('button', { name: 'この仲間を見る →' }).click();
 await desktop.locator('.monster-dialog[open]').waitFor();
 if ((await desktop.locator('.monster-dialog .stat-grid span').count()) !== 7) {
   throw new Error('Newborn monster detail did not open after breeding');
@@ -194,7 +249,7 @@ await mobile.screenshot({ path: '/tmp/code-monsters-draft-mobile.png' });
 for (let round = 0; round < 3; round += 1) {
   const choices = mobile.locator('.draft-grid .definition-card');
   if ((await choices.count()) !== 3) throw new Error(`Mobile draft round ${round + 1} does not show three choices`);
-  await choices.first().click();
+  await mobile.locator('.draft-choice .monster-card-footer button').first().click();
 }
 
 await mobile.getByRole('heading', { name: '旅商人の棚' }).waitFor();
@@ -263,8 +318,10 @@ console.log(
     screenshots: [
       '/tmp/code-monsters-casual-desktop.png',
       '/tmp/code-monsters-prospect-desktop.png',
+      '/tmp/code-monsters-battle-desktop.png',
       '/tmp/code-monsters-result-desktop.png',
       '/tmp/code-monsters-breeding-desktop.png',
+      '/tmp/code-monsters-breeding-reveal-desktop.png',
       '/tmp/code-monsters-draft-mobile.png',
       '/tmp/code-monsters-recipes-mobile.png',
       '/tmp/code-monsters-workshop-mobile.png',

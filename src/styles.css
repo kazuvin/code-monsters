@@ -3994,6 +3994,738 @@ button.definition-card:active,
   }
 }
 
+.definition-card-main {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-column: 1 / -1;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.definition-card.is-interactive {
+  cursor: pointer;
+}
+
+.definition-card.is-interactive:active,
+.definition-card.is-selected {
+  border-color: var(--monster-accent);
+  background: var(--panel-high);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--void-deep);
+}
+
+.definition-card-main:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+
+.draft-choice,
+.draft-choice > .definition-card {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.draft-choice {
+  opacity: 0;
+  animation: draft-choice-reveal 520ms steps(6) calc(var(--draft-index) * 120ms + 120ms) forwards;
+}
+
+.draft-party-rail {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.draft-party-rail > i,
+.draft-party-rail > span {
+  display: flex;
+  height: 30px;
+  min-width: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: var(--deck);
+  color: var(--muted);
+  font-size: 7px;
+  font-style: normal;
+}
+
+.draft-party-rail > span {
+  gap: 4px;
+  padding-right: 6px;
+  border-color: var(--monster-color);
+  color: var(--paper);
+}
+
+.draft-party-rail .monster-sigil {
+  width: 27px;
+  height: 27px;
+  border: 0;
+  box-shadow: none;
+}
+
+.draft-party-rail .monster-sigil > span {
+  font-size: 16px;
+}
+
+.draft-party-rail b {
+  display: none;
+}
+
+.draft-grid .monster-card-footer button {
+  min-height: 27px;
+  padding: 4px 7px;
+  border: 1px solid var(--paper);
+  background: var(--monster-color);
+  color: var(--void-deep);
+  cursor: pointer;
+  font-family: "Pixelify Sans", monospace;
+  font-size: 8px;
+}
+
+@keyframes draft-choice-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: brightness(1.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: brightness(1);
+  }
+}
+
+.monster-detail-card {
+  display: block;
+}
+
+.monster-detail-card > .stat-grid {
+  margin-top: 9px;
+}
+
+.roster-card.is-drop-target,
+.empty-roster-slot.is-drop-target {
+  outline: 2px solid var(--mint);
+  outline-offset: -2px;
+  background: rgba(124, 224, 189, 0.16);
+  transform: translateY(-2px);
+}
+
+.candidate-pool {
+  overflow: hidden;
+}
+
+.candidate-scroll {
+  display: flex;
+  min-height: 54px;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--pink) var(--void);
+  scrollbar-width: thin;
+}
+
+.candidate-scroll .loom-placeholder {
+  flex: 1;
+}
+
+.candidate-pool > .inheritance-control {
+  position: relative;
+  z-index: 2;
+  max-height: 58%;
+  flex: 0 1 auto;
+  margin-top: 0;
+  padding: 5px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 -4px 0 rgba(5, 6, 10, 0.45);
+  scrollbar-width: thin;
+}
+
+.rank-up-signal {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 6px;
+  padding: 5px 7px;
+  overflow: hidden;
+  border: 1px solid var(--gold);
+  background: linear-gradient(90deg, rgba(242, 196, 109, 0.18), transparent), var(--void);
+}
+
+.rank-up-signal::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+  content: "";
+  animation: rank-sheen 2.4s steps(9) infinite;
+}
+
+.rank-up-signal span {
+  color: var(--gold);
+  font-size: 6px;
+  letter-spacing: 0.08em;
+}
+
+.rank-up-signal b {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  align-self: center;
+  color: var(--gold);
+  font-size: 13px;
+}
+
+.rank-up-signal small {
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+}
+
+.parent-choice.is-rank-catalyst {
+  border-color: var(--gold);
+  box-shadow:
+    inset 3px 0 var(--monster-color),
+    0 0 8px rgba(242, 196, 109, 0.28);
+  animation: parent-rank-pulse 1.8s steps(4) infinite;
+}
+
+.parent-choice.is-rank-catalyst > b {
+  color: var(--gold);
+}
+
+@keyframes parent-rank-pulse {
+  50% {
+    background: color-mix(in srgb, var(--gold) 11%, var(--panel-high));
+  }
+}
+
+@keyframes rank-sheen {
+  from {
+    left: -35%;
+  }
+  to {
+    left: 115%;
+  }
+}
+
+.gambit-skill-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+  line-height: 1.35;
+}
+
+.gambit-skill-note b {
+  align-self: start;
+  padding: 2px 3px;
+  background: var(--void);
+  color: var(--mint);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 6px;
+  white-space: nowrap;
+}
+
+.breeding-reveal-dialog {
+  width: min(520px, calc(100vw - 20px));
+  max-width: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+}
+
+.breeding-reveal-dialog::backdrop {
+  background: radial-gradient(circle at 50% 45%, rgba(242, 196, 109, 0.16), transparent 38%), rgba(5, 6, 10, 0.92);
+  backdrop-filter: blur(4px);
+}
+
+.breeding-reveal-stage {
+  --monster-color: var(--gold);
+  position: relative;
+  display: grid;
+  min-height: min(560px, calc(100dvh - 24px));
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 26px;
+  overflow: hidden;
+  border: 2px solid var(--monster-color);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 14%, transparent), transparent 42%),
+    repeating-linear-gradient(90deg, transparent 0 31px, rgba(255, 255, 255, 0.025) 32px), var(--panel);
+  box-shadow:
+    8px 8px 0 var(--void-deep),
+    0 0 42px color-mix(in srgb, var(--monster-color) 30%, transparent);
+  text-align: center;
+}
+
+.breeding-reveal-stage::before,
+.breeding-reveal-stage::after {
+  position: absolute;
+  width: 64%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--monster-color), transparent);
+  content: "";
+}
+
+.breeding-reveal-stage::before {
+  top: 18%;
+}
+
+.breeding-reveal-stage::after {
+  bottom: 18%;
+}
+
+.newborn-sigil {
+  position: relative;
+  display: grid;
+  width: 150px;
+  height: 150px;
+  place-items: center;
+  opacity: 0;
+  transform: scale(0.28) rotate(-12deg);
+}
+
+.newborn-sigil::before {
+  position: absolute;
+  inset: 8px;
+  border: 2px solid var(--monster-color);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.breeding-reveal-dialog.reveal-stage-1 .newborn-sigil,
+.breeding-reveal-dialog.reveal-stage-2 .newborn-sigil {
+  opacity: 1;
+  transform: scale(1) rotate(0);
+  transition:
+    opacity 400ms steps(5),
+    transform 700ms steps(8);
+}
+
+.newborn-sigil .monster-sigil {
+  width: 104px;
+  height: 104px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 0 16px var(--monster-color));
+}
+
+.newborn-sigil .monster-sigil::before,
+.newborn-sigil .monster-sigil::after,
+.newborn-sigil .monster-sigil > b {
+  display: none;
+}
+
+.newborn-sigil .monster-sigil > span {
+  font-size: 84px;
+}
+
+.breeding-reveal-stage p,
+.breeding-reveal-stage h2,
+.breeding-reveal-stage > strong,
+.breeding-reveal-stage > button {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.breeding-reveal-dialog.reveal-stage-2 .breeding-reveal-stage p,
+.breeding-reveal-dialog.reveal-stage-2 .breeding-reveal-stage h2,
+.breeding-reveal-dialog.reveal-stage-2 .breeding-reveal-stage > strong,
+.breeding-reveal-dialog.reveal-stage-2 .breeding-reveal-stage > button {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 260ms steps(4),
+    transform 260ms steps(4);
+}
+
+.breeding-reveal-stage p {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+}
+
+.breeding-reveal-stage h2 {
+  margin: 0;
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: clamp(24px, 6vw, 38px);
+}
+
+.breeding-reveal-stage > strong {
+  color: var(--monster-color);
+}
+
+.breeding-reveal-stage > button {
+  min-width: 190px;
+  margin-top: 10px;
+}
+
+.gene-orbit {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.gene-orbit i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  background: var(--monster-color);
+  box-shadow: 0 0 8px var(--monster-color);
+  animation: gene-orbit 1.8s steps(14) infinite;
+}
+
+.gene-orbit i:nth-child(2) {
+  animation-delay: -600ms;
+}
+
+.gene-orbit i:nth-child(3) {
+  animation-delay: -1200ms;
+}
+
+@keyframes gene-orbit {
+  from {
+    transform: rotate(0) translateX(125px) rotate(0);
+  }
+  to {
+    transform: rotate(360deg) translateX(125px) rotate(-360deg);
+  }
+}
+
+.battlefield {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+  flex-direction: initial;
+  align-items: stretch;
+  gap: 4px;
+  padding: 14px 8px 12px;
+}
+
+.battlefield::before {
+  right: -8%;
+  bottom: 8%;
+  left: -8%;
+  height: 42%;
+}
+
+.battle-team {
+  height: 100%;
+}
+
+.battle-team.is-enemy,
+.battle-team.is-player {
+  justify-content: center;
+}
+
+.battle-team.is-enemy .team-label,
+.battle-team.is-player .team-label {
+  text-align: center;
+}
+
+.battle-formation,
+.battle-team.is-enemy .battle-formation,
+.battle-team.is-player .battle-formation {
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+}
+
+.arena-divider {
+  height: auto;
+  min-height: 0;
+  flex-basis: auto;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.arena-divider i {
+  width: 1px;
+  height: auto;
+  flex: 1;
+  background: linear-gradient(180deg, transparent, var(--line));
+}
+
+.arena-divider i:last-child {
+  background: linear-gradient(180deg, var(--line), transparent);
+}
+
+.arena-divider span {
+  writing-mode: vertical-rl;
+}
+
+.battle-sprite {
+  align-self: center;
+}
+
+.skill-callout {
+  position: absolute;
+  z-index: 14;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  width: max-content;
+  max-width: 112px;
+  padding: 3px 5px;
+  border: 1px solid var(--paper);
+  background: var(--void-deep);
+  color: var(--gold);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+  animation: skill-callout-pop 460ms steps(5) both;
+}
+
+@keyframes skill-callout-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.8);
+  }
+  35%,
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.battle-screen.is-skill-heal .fx-burst,
+.battle-screen.is-skill-shield .fx-burst {
+  border-color: var(--mint);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 6px rgba(124, 224, 189, 0.26),
+    0 0 24px 12px rgba(124, 224, 189, 0.38);
+}
+
+.battle-screen.is-skill-heal .battle-fx strong,
+.battle-screen.is-skill-shield .battle-fx strong {
+  color: var(--mint);
+}
+
+.battle-screen.is-skill-magic .fx-burst,
+.battle-screen.is-skill-status .fx-burst {
+  border-color: var(--iris);
+  box-shadow:
+    0 0 0 5px var(--pink),
+    0 0 24px 12px rgba(156, 165, 255, 0.45);
+  transform: rotate(22deg);
+}
+
+.battle-screen.is-skill-magic .battle-fx strong,
+.battle-screen.is-skill-status .battle-fx strong {
+  color: var(--iris);
+}
+
+.battle-screen.is-skill-physical .fx-burst {
+  width: 46px;
+  height: 7px;
+  border-width: 2px 0;
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 3px rgba(241, 123, 157, 0.42),
+    0 0 18px var(--gold);
+  transform: rotate(-28deg);
+}
+
+.battle-fx.is-action strong {
+  opacity: 1;
+}
+
+.speed-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--line);
+}
+
+.speed-controls button {
+  min-width: 29px;
+  min-height: 30px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: var(--void);
+  color: var(--muted);
+}
+
+.speed-controls button:last-child {
+  border-right: 0;
+}
+
+.speed-controls button.is-active {
+  background: var(--gold);
+  color: var(--void-deep);
+}
+
+@media (min-width: 801px) {
+  .draft-party-rail b {
+    display: block;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    font-size: 8px;
+  }
+
+  .battlefield {
+    padding: 28px 18px 22px;
+  }
+
+  .battle-sprite .monster-sigil {
+    width: 72px;
+    height: 72px;
+  }
+
+  .battle-sprite .monster-sigil > span {
+    font-size: 60px;
+  }
+}
+
+@media (max-width: 800px) {
+  .draft-copy {
+    padding-bottom: 4px;
+  }
+
+  .draft-copy p {
+    font-size: 8px;
+  }
+
+  .draft-grid {
+    gap: 5px;
+  }
+
+  .draft-grid .definition-card {
+    padding: 7px;
+  }
+
+  .draft-grid .monster-card-footer {
+    align-items: center;
+  }
+
+  .draft-grid .monster-card-footer > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .candidate-pool > .inheritance-control {
+    max-height: 63%;
+  }
+
+  .battlefield {
+    grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr);
+    gap: 1px;
+    padding: 18px 2px 10px;
+  }
+
+  .arena-core {
+    width: 34px;
+    height: 34px;
+  }
+
+  .arena-divider {
+    gap: 26px;
+  }
+
+  .battle-formation,
+  .battle-team.is-enemy .battle-formation,
+  .battle-team.is-player .battle-formation {
+    gap: 0;
+  }
+
+  .battle-sprite {
+    padding: 1px;
+  }
+
+  .battle-sprite .monster-sigil {
+    width: 43px;
+    height: 43px;
+  }
+
+  .battle-sprite .monster-sigil > span {
+    font-size: 36px;
+  }
+
+  .battle-sprite::after {
+    bottom: 25px;
+    width: 40px;
+  }
+
+  .battle-sprite .battle-monster-copy > strong {
+    font-size: 6px;
+  }
+
+  .battle-sprite .battle-monster-copy > small {
+    display: none;
+  }
+
+  .battle-sprite .battle-bars {
+    padding: 1px;
+  }
+
+  .skill-callout {
+    max-width: 80px;
+    font-size: 6px;
+  }
+
+  .battle-console {
+    min-height: 84px;
+    flex-basis: 84px;
+  }
+
+  .battle-console > div:first-child {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  .replay-controls {
+    max-width: 196px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .replay-controls > button:first-child {
+    flex: 1;
+  }
+
+  .replay-controls > button:last-child {
+    flex: 1 0 100%;
+  }
+
+  .speed-controls {
+    flex: 0 0 auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

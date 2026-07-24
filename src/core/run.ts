@@ -171,6 +171,54 @@ export function toggleActiveMonster(
   });
 }
 
+export type PartyZone = 'active' | 'bench';
+
+export function moveMonsterToPartySlot(
+  data: GameData,
+  run: CasualRunState,
+  monsterId: string,
+  targetZone: PartyZone,
+  targetIndex: number,
+): CommandResult<CasualRunState> {
+  if (!run.roster.some((monster) => monster.id === monsterId)) return failure(run, '仲間が見つかりません');
+  const activeIds = [...run.activeIds];
+  const benchIds = run.roster.filter((monster) => !activeIds.includes(monster.id)).map((monster) => monster.id);
+  const sourceZone: PartyZone = activeIds.includes(monsterId) ? 'active' : 'bench';
+  const source = sourceZone === 'active' ? activeIds : benchIds;
+  const target = targetZone === 'active' ? activeIds : benchIds;
+  const sourceIndex = source.indexOf(monsterId);
+  if (sourceIndex < 0) return failure(run, '移動元が見つかりません');
+
+  if (sourceZone === targetZone) {
+    source.splice(sourceIndex, 1);
+    source.splice(Math.max(0, Math.min(targetIndex, source.length)), 0, monsterId);
+  } else {
+    const targetLimit = targetZone === 'active' ? data.rules.activeLimit : data.rules.benchLimit;
+    const boundedTargetIndex = Math.max(0, Math.min(targetIndex, Math.max(0, target.length - 1)));
+    if (target.length >= targetLimit) {
+      const displacedId = target[boundedTargetIndex];
+      if (!displacedId) return failure(run, '交換先が見つかりません');
+      target[boundedTargetIndex] = monsterId;
+      source[sourceIndex] = displacedId;
+    } else {
+      source.splice(sourceIndex, 1);
+      target.splice(Math.max(0, Math.min(targetIndex, target.length)), 0, monsterId);
+    }
+  }
+
+  const monsterById = new Map(run.roster.map((monster) => [monster.id, monster]));
+  const orderedRoster = [...activeIds, ...benchIds].flatMap((id) => {
+    const monster = monsterById.get(id);
+    return monster ? [monster] : [];
+  });
+  return success({
+    ...run,
+    commandIndex: run.commandIndex + 1,
+    roster: orderedRoster,
+    activeIds,
+  });
+}
+
 export function equipItem(
   data: GameData,
   run: CasualRunState,
