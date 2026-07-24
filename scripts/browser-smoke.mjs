@@ -174,6 +174,36 @@ if (
 if ((await desktop.locator('.battle-screen').getAttribute('data-replay-delay-ms')) !== '920') {
   throw new Error('Normal replay speed is not using the readable 920ms step interval');
 }
+const pendingHpHit = desktop.locator('.battle-sprite.is-hit[data-hp-pending="true"]').first();
+await pendingHpHit.waitFor({ timeout: 4000 });
+const hpRevealSequence = await pendingHpHit.evaluate((sprite) => {
+  const screen = sprite.closest('.battle-screen');
+  return {
+    fighterId: sprite.getAttribute('data-fighter-id'),
+    currentHp: Number(sprite.getAttribute('data-hp-current')),
+    displayedHp: Number(sprite.getAttribute('data-hp-displayed')),
+    revealDelayMs: Number(sprite.getAttribute('data-hp-reveal-delay-ms')),
+    pulseDurationMs: Number.parseFloat(getComputedStyle(screen).getPropertyValue('--battle-pulse-duration')),
+  };
+});
+if (
+  !hpRevealSequence.fighterId ||
+  hpRevealSequence.displayedHp <= hpRevealSequence.currentHp ||
+  hpRevealSequence.revealDelayMs <= hpRevealSequence.pulseDurationMs * 0.5
+) {
+  throw new Error(`HP bar does not wait until after the hit effect: ${JSON.stringify(hpRevealSequence)}`);
+}
+await desktop.waitForFunction(
+  (fighterId) => {
+    const sprite = document.querySelector(`[data-fighter-id="${fighterId}"]`);
+    return (
+      sprite?.getAttribute('data-hp-pending') === 'false' &&
+      sprite.getAttribute('data-hp-displayed') === sprite.getAttribute('data-hp-current')
+    );
+  },
+  hpRevealSequence.fighterId,
+  { timeout: 1000 },
+);
 await desktop.getByRole('button', { name: '再生速度 4倍' }).click();
 await desktop.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 3000 });
 if (

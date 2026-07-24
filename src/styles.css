@@ -2489,6 +2489,10 @@ button.definition-card:active,
   height: 8px;
 }
 
+.battle-sprite .hp-bar > span {
+  transition: width var(--battle-hp-transition-duration, 140ms) steps(4);
+}
+
 .battle-sprite .hp-bar b,
 .battle-sprite .mp-bar b {
   font-size: 5px;

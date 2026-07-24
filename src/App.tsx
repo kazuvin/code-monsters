@@ -74,6 +74,9 @@ type BattleViewState = {
 };
 
 const REPLAY_STEP_MS = 920;
+const BATTLE_PULSE_MS = 760;
+const HP_REVEAL_PROGRESS = 0.58;
+const HP_TRANSITION_MS = 140;
 const query = new URLSearchParams(window.location.search);
 const requestedSeed = Number(query.get('seed'));
 const INITIAL_SEED = Number.isInteger(requestedSeed) && requestedSeed > 0 ? requestedSeed : 7261;
@@ -2091,6 +2094,8 @@ function BattleMonster({
   feedback,
   skillFx,
   pulseKey,
+  previousHp,
+  hpRevealDelayMs,
 }: {
   fighter: FighterSnapshot;
   side: 'player' | 'enemy';
@@ -2101,10 +2106,23 @@ function BattleMonster({
   feedback: BattleFeedback[];
   skillFx: string;
   pulseKey: number;
+  previousHp: number;
+  hpRevealDelayMs: number;
 }) {
   const definition = definitionById(GAME_DATA, fighter.definitionId);
-  const hpPercent = Math.max(0, (fighter.hp / fighter.maxHp) * 100);
+  const [displayedHp, setDisplayedHp] = useState(previousHp);
+  useEffect(() => {
+    if (previousHp === fighter.hp) {
+      setDisplayedHp(fighter.hp);
+      return;
+    }
+    setDisplayedHp(previousHp);
+    const timer = window.setTimeout(() => setDisplayedHp(fighter.hp), hpRevealDelayMs);
+    return () => window.clearTimeout(timer);
+  }, [fighter.hp, hpRevealDelayMs, previousHp, pulseKey]);
+  const hpPercent = Math.max(0, (displayedHp / fighter.maxHp) * 100);
   const mpPercent = Math.max(0, (fighter.mp / fighter.maxMp) * 100);
+  const hpPending = displayedHp !== fighter.hp;
   const hit =
     targeted &&
     !acting &&
@@ -2113,6 +2131,11 @@ function BattleMonster({
   return (
     <article
       className={`battle-sprite is-${side}${fighter.alive ? '' : ' is-defeated'}${acting ? ' is-acting' : ''}${targeted ? ' is-targeted' : ''}${hit ? ' is-hit' : ''}${hpDelta < 0 ? ' is-healed' : ''}`}
+      data-fighter-id={fighter.id}
+      data-hp-current={fighter.hp}
+      data-hp-displayed={displayedHp}
+      data-hp-pending={hpPending}
+      data-hp-reveal-delay-ms={hpRevealDelayMs}
       style={monsterStyle(GAME_DATA, definition)}
     >
       {(acting || hpDelta !== 0 || feedback.length > 0) && (
@@ -2149,7 +2172,7 @@ function BattleMonster({
       <div className="battle-bars">
         <div className="hp-bar">
           <span style={{ width: `${hpPercent}%` }} />
-          <b>{fighter.hp}</b>
+          <b>{displayedHp}</b>
         </div>
         <div className="mp-bar">
           <span style={{ width: `${mpPercent}%` }} />
@@ -2212,6 +2235,9 @@ function BattleScreen({
   const players = frame.fighters.filter((fighter) => fighter.team === 'player');
   const enemies = frame.fighters.filter((fighter) => fighter.team === 'enemy');
   const complete = battle.frameIndex >= lastIndex;
+  const battlePulseDuration = Math.max(200, Math.round(BATTLE_PULSE_MS / battle.speed));
+  const hpRevealDelayMs = Math.round(battlePulseDuration * HP_REVEAL_PROGRESS);
+  const hpTransitionDuration = Math.max(70, Math.round(HP_TRANSITION_MS / battle.speed));
   const activeSkill =
     frame.skillId && frame.skillId !== 'normal-attack'
       ? GAME_DATA.skills.find((skill) => skill.id === frame.skillId)
@@ -2254,7 +2280,8 @@ function BattleScreen({
       data-replay-delay-ms={Math.round(REPLAY_STEP_MS / battle.speed)}
       style={
         {
-          '--battle-pulse-duration': `${Math.max(200, Math.round(760 / battle.speed))}ms`,
+          '--battle-pulse-duration': `${battlePulseDuration}ms`,
+          '--battle-hp-transition-duration': `${hpTransitionDuration}ms`,
         } as CSSProperties
       }
     >
@@ -2294,6 +2321,8 @@ function BattleScreen({
                 feedback={feedbackFor(fighter)}
                 skillFx={skillFx}
                 pulseKey={battle.frameIndex}
+                previousHp={previousFighters.get(fighter.id)?.hp ?? fighter.hp}
+                hpRevealDelayMs={hpRevealDelayMs}
               />
             ))}
           </div>
@@ -2318,6 +2347,8 @@ function BattleScreen({
                 feedback={feedbackFor(fighter)}
                 skillFx={skillFx}
                 pulseKey={battle.frameIndex}
+                previousHp={previousFighters.get(fighter.id)?.hp ?? fighter.hp}
+                hpRevealDelayMs={hpRevealDelayMs}
               />
             ))}
           </div>
