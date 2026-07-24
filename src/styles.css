@@ -2573,12 +2573,12 @@ button.definition-card:active,
 }
 
 .battle-sprite.is-hit {
-  animation: sprite-hit 360ms steps(4);
+  animation: sprite-hit 360ms cubic-bezier(0.22, 0.82, 0.3, 1) both;
 }
 
 .battle-sprite.is-acting {
   z-index: 6;
-  animation: sprite-lunge 420ms steps(4);
+  animation: sprite-lunge 420ms cubic-bezier(0.2, 0.9, 0.28, 1) both;
 }
 
 .battle-sprite.is-healed:not(.is-acting) {
@@ -2703,7 +2703,7 @@ button.definition-card:active,
 }
 
 .battle-screen.is-impact .battlefield {
-  animation: arena-shake 260ms steps(4);
+  animation: arena-shake var(--battle-pulse-duration, 760ms) cubic-bezier(0.22, 0.82, 0.3, 1) both;
 }
 
 .battle-screen.is-frame-environment .battlefield {
@@ -2712,28 +2712,30 @@ button.definition-card:active,
 
 @keyframes sprite-lunge {
   0%,
+  34%,
   100% {
     transform: translate(0, var(--formation-y)) scale(1);
   }
-  48% {
+  16% {
     transform: translate(var(--action-slide-x), var(--formation-y)) scale(1.13);
   }
-  72% {
+  28% {
     transform: translate(var(--action-return-x), var(--formation-y)) scale(1.04);
   }
 }
 
 @keyframes sprite-hit {
   0%,
+  64%,
   100% {
     transform: translate(0, var(--formation-y));
     filter: brightness(1);
   }
-  38% {
+  76% {
     transform: translate(var(--hit-slide-x), var(--formation-y));
     filter: brightness(2.4) saturate(1.8);
   }
-  72% {
+  90% {
     transform: translate(var(--hit-return-x), var(--formation-y));
     filter: brightness(1.18);
   }
@@ -2822,14 +2824,18 @@ button.definition-card:active,
 
 @keyframes arena-shake {
   0%,
+  64%,
   100% {
     transform: translate(0);
   }
-  30% {
+  72% {
     transform: translate(-4px, 2px);
   }
-  60% {
+  82% {
     transform: translate(5px, -2px);
+  }
+  91% {
+    transform: translate(-2px, 1px);
   }
 }
 
@@ -4573,7 +4579,7 @@ button.definition-card:active,
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   text-align: left;
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
-  animation: battle-side-callout var(--battle-pulse-duration, 760ms) steps(6) both;
+  animation: battle-action-callout var(--battle-pulse-duration, 760ms) cubic-bezier(0.2, 0.9, 0.28, 1) both;
 }
 
 .battle-sprite.is-enemy .skill-callout {
@@ -4615,7 +4621,7 @@ button.definition-card:active,
   font-style: normal;
   line-height: 1;
   text-shadow: 1px 1px #000;
-  animation: battle-side-callout var(--battle-pulse-duration, 760ms) steps(6) both;
+  animation: battle-impact-callout var(--battle-pulse-duration, 760ms) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .battle-feedback .battle-number {
@@ -4649,7 +4655,7 @@ button.definition-card:active,
   pointer-events: none;
   opacity: 0;
   transform: translateX(-50%) rotate(22deg);
-  animation: battle-target-pulse var(--battle-pulse-duration, 760ms) steps(6) both;
+  animation: battle-target-pulse var(--battle-pulse-duration, 760ms) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .battle-target-fx.is-heal,
@@ -4677,31 +4683,51 @@ button.definition-card:active,
   animation-duration: var(--battle-pulse-duration, 760ms);
 }
 
-@keyframes battle-side-callout {
+@keyframes battle-action-callout {
   0% {
     opacity: 0;
     transform: translateX(var(--feedback-start)) scale(0.82);
   }
-  35%,
-  80% {
+  8%,
+  27% {
     opacity: 1;
     transform: translateX(0) scale(1);
   }
+  36%,
   100% {
     opacity: 0;
     transform: translateX(0) scale(1);
   }
 }
 
+@keyframes battle-impact-callout {
+  0%,
+  44% {
+    opacity: 0;
+    transform: translateX(var(--feedback-start)) translateY(4px) scale(0.82);
+  }
+  52%,
+  88% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(0) translateY(-8px) scale(0.96);
+  }
+}
+
 @keyframes battle-target-pulse {
-  0% {
+  0%,
+  38% {
     opacity: 0;
     scale: 0.45;
   }
-  38% {
+  50% {
     opacity: 1;
     scale: 1.12;
   }
+  62%,
   100% {
     opacity: 0;
     scale: 1.45;

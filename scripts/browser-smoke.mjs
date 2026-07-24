@@ -192,11 +192,13 @@ const actingMotion = await actingSkillCallout
     return {
       side: element.classList.contains('is-player') ? 'player' : 'enemy',
       animationName: style.animationName,
+      animationTimingFunction: style.animationTimingFunction,
       actionSlideX: Number.parseFloat(style.getPropertyValue('--action-slide-x')),
     };
   });
 if (
   !actingMotion.animationName.includes('sprite-lunge') ||
+  !actingMotion.animationTimingFunction.includes('cubic-bezier') ||
   (actingMotion.side === 'player' ? actingMotion.actionSlideX <= 0 : actingMotion.actionSlideX >= 0)
 ) {
   throw new Error(`Acting monster does not slide toward the enemy: ${JSON.stringify(actingMotion)}`);
@@ -214,14 +216,45 @@ const hitMotion = await hitSprite.evaluate((element) => {
   return {
     side: element.classList.contains('is-player') ? 'player' : 'enemy',
     animationName: style.animationName,
+    animationTimingFunction: style.animationTimingFunction,
     hitSlideX: Number.parseFloat(style.getPropertyValue('--hit-slide-x')),
   };
 });
 if (
   !hitMotion.animationName.includes('sprite-hit') ||
+  !hitMotion.animationTimingFunction.includes('cubic-bezier') ||
   (hitMotion.side === 'player' ? hitMotion.hitSlideX >= 0 : hitMotion.hitSlideX <= 0)
 ) {
   throw new Error(`Hit monster does not slide away from the enemy: ${JSON.stringify(hitMotion)}`);
+}
+const battleTimeline = await desktop.evaluate(() => {
+  const keyframes = new Map();
+  const collectRules = (rules) => {
+    for (const rule of rules) {
+      if (rule instanceof CSSKeyframesRule) keyframes.set(rule.name, rule);
+      if ('cssRules' in rule) collectRules(rule.cssRules);
+    }
+  };
+  for (const sheet of document.styleSheets) collectRules(sheet.cssRules);
+  const offsetFor = (name, predicate) => {
+    const animation = keyframes.get(name);
+    if (!animation) return undefined;
+    const frame = [...animation.cssRules].find((rule) => predicate(rule.style));
+    return frame ? Number.parseFloat(frame.keyText) / 100 : undefined;
+  };
+  return {
+    actionPeak: offsetFor('sprite-lunge', (style) => style.transform.includes('--action-slide-x')),
+    effectPeak: offsetFor('battle-target-pulse', (style) => style.opacity === '1'),
+    knockbackPeak: offsetFor('sprite-hit', (style) => style.transform.includes('--hit-slide-x')),
+  };
+});
+if (
+  battleTimeline.actionPeak === undefined ||
+  battleTimeline.effectPeak === undefined ||
+  battleTimeline.knockbackPeak === undefined ||
+  !(battleTimeline.actionPeak < battleTimeline.effectPeak && battleTimeline.effectPeak < battleTimeline.knockbackPeak)
+) {
+  throw new Error(`Battle motion is not sequenced action → effect → knockback: ${JSON.stringify(battleTimeline)}`);
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-battle-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: '最後まで送る' }).click();
