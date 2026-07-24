@@ -1,37 +1,47 @@
 :root {
-  color: #f2e9da;
-  background: #17131c;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+  color: #f7f3df;
+  background: #11131b;
+  font-family: "Pixelify Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --ink: #17131c;
-  --ink-raised: #211a28;
-  --panel: #292031;
-  --panel-soft: #33283c;
-  --line: #66536f;
-  --line-soft: #46384f;
-  --paper: #f2e9da;
-  --muted: #b5a7b9;
-  --coral: #ee6b58;
-  --mint: #77d6b1;
-  --gold: #e3b65c;
-  --iris: #9c8be8;
+  --void: #11131b;
+  --void-deep: #090a10;
+  --deck: #1b2030;
+  --panel: #242b40;
+  --panel-high: #303a56;
+  --line: #6d7898;
+  --line-soft: #3b4563;
+  --paper: #f7f3df;
+  --muted: #a7b1cf;
+  --pink: #f17b9d;
+  --pink-deep: #a94f6c;
+  --mint: #7ce0bd;
+  --gold: #f5ca6b;
+  --iris: #9ca5ff;
+  --danger: #ff6b73;
+  --pixel-shadow: 4px 4px 0 var(--void-deep);
 }
 
 * {
   box-sizing: border-box;
 }
 
-html {
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
   min-width: 320px;
-  background: var(--ink);
+  margin: 0;
+  overflow: hidden;
+  background: var(--void);
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: var(--ink);
+  background-image:
+    linear-gradient(rgba(122, 138, 182, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(122, 138, 182, 0.045) 1px, transparent 1px);
+  background-size: 8px 8px;
 }
 
 button,
@@ -51,11 +61,12 @@ select:focus-visible {
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.42;
+  filter: grayscale(0.7);
+  opacity: 0.38;
 }
 
-#root {
-  min-height: 100vh;
+button:not(:disabled) {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .draft-screen,
@@ -64,10 +75,35 @@ button:disabled {
 .battle-screen,
 .result-screen,
 .finished-screen {
-  width: min(1520px, 100%);
-  min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+  width: min(1440px, 100%);
+  height: 100dvh;
+  min-height: 0;
   margin: 0 auto;
-  padding: 28px clamp(18px, 3vw, 48px) 48px;
+  overflow: hidden;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+}
+
+.draft-screen::before,
+.run-screen::before,
+.event-screen::before,
+.result-screen::before {
+  position: absolute;
+  z-index: -1;
+  top: -430px;
+  left: 50%;
+  width: 620px;
+  height: 620px;
+  border: 34px solid #334362;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 7px rgba(241, 123, 157, 0.48),
+    0 0 0 45px rgba(55, 78, 119, 0.25);
+  content: "";
+  opacity: 0.45;
+  transform: translateX(-50%);
 }
 
 .brand-lockup > span,
@@ -79,34 +115,37 @@ button:disabled {
 .battle-clock small {
   color: var(--muted);
   font-family: "Pixelify Sans", monospace;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .brand-lockup h1 {
-  margin: 2px 0 0;
+  margin: 0;
+  color: var(--paper);
   font-family: "Pixelify Sans", "Hiragino Kaku Gothic ProN", sans-serif;
-  font-size: clamp(27px, 3vw, 42px);
+  font-size: 21px;
   font-weight: 600;
   letter-spacing: 0.03em;
+  line-height: 1;
 }
 
 .panel {
   position: relative;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  box-shadow: 7px 7px 0 #0e0b12;
+  min-height: 0;
+  border: 2px solid var(--line);
+  background: rgba(27, 32, 48, 0.98);
+  box-shadow: var(--pixel-shadow);
 }
 
 .panel::before {
   position: absolute;
-  top: -1px;
-  left: 22px;
-  width: 72px;
-  height: 4px;
-  background: var(--coral);
+  top: -2px;
+  left: 12px;
+  width: 42px;
+  height: 3px;
+  background: var(--pink);
   content: "";
 }
 
@@ -114,30 +153,38 @@ button:disabled {
 .battle-header,
 .draft-mast {
   display: flex;
-  align-items: flex-end;
+  min-height: 43px;
+  flex: 0 0 auto;
+  align-items: center;
   justify-content: space-between;
-  gap: 28px;
-  padding-bottom: 17px;
-  border-bottom: 1px solid var(--line);
+  gap: 8px;
+  border-bottom: 2px solid var(--line-soft);
+}
+
+.run-header .brand-lockup > span,
+.battle-header .brand-lockup > span {
+  display: none;
 }
 
 .run-metrics {
-  display: flex;
-  align-items: stretch;
-  border: 1px solid var(--line);
+  display: grid;
+  width: min(230px, 66vw);
+  grid-template-columns: repeat(4, 1fr);
+  border: 2px solid var(--line);
+  background: var(--deck);
+  box-shadow: 2px 2px 0 var(--void-deep);
 }
 
 .run-metrics span {
   display: flex;
-  min-width: 84px;
+  min-width: 0;
   flex-direction: column;
-  gap: 1px;
-  padding: 8px 13px;
+  padding: 3px 4px 2px;
   border-right: 1px solid var(--line);
   color: var(--muted);
   font-family: "Pixelify Sans", monospace;
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  font-size: 7px;
+  letter-spacing: 0.08em;
 }
 
 .run-metrics span:last-child {
@@ -145,9 +192,11 @@ button:disabled {
 }
 
 .run-metrics b {
+  overflow: hidden;
   color: var(--paper);
-  font-size: 20px;
+  font-size: 14px;
   line-height: 1;
+  text-overflow: ellipsis;
 }
 
 .run-metrics .coin-metric b {
@@ -157,116 +206,154 @@ button:disabled {
 .cycle-rail {
   position: relative;
   display: grid;
+  min-height: 18px;
+  flex: 0 0 18px;
   grid-template-columns: repeat(12, 1fr);
-  gap: 5px;
-  margin: 13px 0 22px;
+  gap: 2px;
+  margin: 4px 0 6px;
 }
 
 .cycle-rail::before {
   position: absolute;
-  z-index: 0;
+  z-index: -1;
   top: 50%;
   right: 0;
   left: 0;
-  height: 1px;
-  background: var(--line);
+  height: 2px;
+  background: var(--line-soft);
   content: "";
 }
 
 .cycle-rail span {
-  z-index: 1;
   display: grid;
-  min-width: 24px;
-  height: 25px;
+  min-width: 0;
   place-items: center;
-  border: 1px solid var(--line);
-  background: var(--ink);
-  color: #806f87;
+  border: 1px solid var(--line-soft);
+  background: var(--void);
+  color: #77819f;
   font-family: "Pixelify Sans", monospace;
-  font-size: 10px;
+  font-size: 6px;
 }
 
 .cycle-rail span.is-complete {
   border-color: var(--mint);
   background: var(--mint);
-  color: var(--ink);
+  color: var(--void-deep);
 }
 
 .cycle-rail span.is-current {
   border-color: var(--gold);
   background: var(--gold);
-  color: var(--ink);
-  box-shadow:
-    0 0 0 3px var(--ink),
-    0 0 0 4px var(--gold);
+  color: var(--void-deep);
+  box-shadow: 0 0 0 2px var(--void);
+}
+
+.white-stars,
+.color-stars,
+.stars {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.white-stars {
+  color: var(--gold);
+}
+
+.color-stars {
+  margin-left: 2px;
+  color: var(--pink);
+}
+
+.draft-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+.draft-mast {
+  min-height: 48px;
+}
+
+.draft-mast .brand-lockup > span {
+  display: none;
 }
 
 .bloodline-weave {
   display: grid;
-  width: min(440px, 44vw);
+  width: min(185px, 52vw);
   grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
+  gap: 3px;
 }
 
 .bloodline-weave span {
-  padding: 9px 12px;
+  padding: 5px 2px 4px;
   border: 1px solid var(--line);
-  font-size: 12px;
+  border-top-width: 3px;
+  background: var(--deck);
+  color: var(--muted);
+  font-size: 9px;
   text-align: center;
 }
 
 .bloodline-weave span:nth-child(1) {
-  border-top: 5px solid var(--gold);
+  border-top-color: var(--gold);
 }
 
 .bloodline-weave span:nth-child(2) {
-  border-top: 5px solid var(--iris);
+  border-top-color: var(--iris);
 }
 
 .bloodline-weave span:nth-child(3) {
-  border-top: 5px solid var(--coral);
+  border-top-color: var(--pink);
 }
 
 .draft-copy {
-  width: min(620px, 100%);
-  margin: clamp(55px, 9vh, 110px) 0 34px;
+  flex: 0 0 auto;
+  padding: 12px 2px 8px;
 }
 
 .draft-copy h2,
 .event-stage h2 {
-  margin: 5px 0 14px;
-  font-size: clamp(30px, 5vw, 58px);
+  margin: 2px 0 3px;
+  color: var(--paper);
+  font-size: clamp(22px, 7vw, 40px);
   letter-spacing: -0.04em;
-  line-height: 1.06;
+  line-height: 1.05;
 }
 
 .draft-copy p,
 .event-stage > p {
   margin: 0;
   color: var(--muted);
-  font-size: 15px;
-  line-height: 1.8;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  line-height: 1.45;
 }
 
 .draft-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(13px, 2vw, 26px);
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .definition-card {
   --monster-color: var(--gold);
+  --monster-accent: var(--paper);
   position: relative;
   display: grid;
   min-width: 0;
-  min-height: 170px;
-  grid-template-columns: auto 1fr;
-  gap: 15px;
-  padding: 21px;
+  min-height: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 7px 9px;
+  padding: 9px;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 2px solid var(--line);
+  border-left: 5px solid var(--monster-color);
   background: var(--panel);
-  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+  box-shadow: 3px 3px 0 var(--void-deep);
   color: var(--paper);
   text-align: left;
 }
@@ -275,102 +362,92 @@ button.definition-card {
   cursor: pointer;
 }
 
-.definition-card::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 5px;
-  background: var(--monster-color);
-  content: "";
-}
-
-button.definition-card:hover,
+button.definition-card:active,
 .definition-card.is-selected {
   border-color: var(--monster-accent);
-  background: var(--panel-soft);
-}
-
-.definition-card.is-selected {
-  box-shadow: inset 0 0 0 2px var(--monster-color);
+  background: var(--panel-high);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--void-deep);
 }
 
 .monster-sigil {
   --monster-color: var(--gold);
-  --monster-accent: #fff1ba;
+  --monster-accent: var(--paper);
   position: relative;
   display: grid;
-  width: 68px;
-  height: 76px;
+  width: 56px;
+  height: 56px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid var(--monster-color);
-  background: #1b1620;
-  clip-path: polygon(25% 0, 75% 0, 100% 22%, 88% 82%, 50% 100%, 12% 82%, 0 22%);
+  border: 2px solid var(--monster-color);
+  background: linear-gradient(135deg, transparent 47%, rgba(255, 255, 255, 0.08) 48% 52%, transparent 53%), var(--void);
+  box-shadow: inset 0 0 0 3px var(--deck);
 }
 
 .monster-sigil::before,
 .monster-sigil::after {
   position: absolute;
-  width: 1px;
-  height: 100%;
+  width: 5px;
+  height: 5px;
   background: var(--monster-color);
-  opacity: 0.35;
   content: "";
 }
 
 .monster-sigil::before {
-  transform: rotate(35deg);
+  top: -2px;
+  right: -2px;
 }
 
 .monster-sigil::after {
-  transform: rotate(-35deg);
+  bottom: -2px;
+  left: -2px;
 }
 
 .monster-sigil > span {
   z-index: 1;
-  color: var(--monster-accent);
-  font-family: "Pixelify Sans", sans-serif;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
   font-size: 31px;
+  filter: saturate(0.9) contrast(1.05);
+  image-rendering: pixelated;
 }
 
 .monster-sigil > b {
   position: absolute;
   z-index: 2;
-  right: 8px;
-  bottom: 9px;
+  right: 3px;
+  bottom: 2px;
   color: var(--monster-color);
-  font-size: 10px;
+  font-size: 7px;
+  text-shadow: 1px 1px var(--void);
 }
 
 .monster-sigil > i {
   position: absolute;
   z-index: 3;
-  top: 7px;
-  left: 7px;
+  top: -5px;
+  left: -5px;
   display: grid;
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
   place-items: center;
-  background: var(--coral);
+  background: var(--pink);
   color: #fff;
-  font-family: "Pixelify Sans", monospace;
-  font-size: 10px;
+  font-size: 8px;
   font-style: normal;
 }
 
 .monster-sigil.is-small {
-  width: 46px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
 }
 
 .monster-sigil.is-small > span {
-  font-size: 22px;
+  font-size: 23px;
 }
 
 .monster-sigil.is-large {
-  width: 84px;
-  height: 94px;
+  width: 68px;
+  height: 68px;
 }
 
 .monster-sigil.is-large > span {
@@ -382,55 +459,57 @@ button.definition-card:hover,
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
 }
 
 .monster-card-copy .eyebrow {
+  overflow: hidden;
+  max-width: 100%;
   color: var(--monster-color);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .monster-card-copy > strong {
-  margin-top: 5px;
-  font-size: clamp(17px, 2vw, 23px);
-  line-height: 1.25;
-}
-
-.monster-card-copy > small {
-  margin-top: 7px;
-  color: var(--muted);
-  font-size: 11px;
+  overflow: hidden;
+  width: 100%;
+  margin-top: 2px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 13px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .star-row,
 .inspector-identity p,
 .battle-monster-copy > small {
-  display: inline-flex;
-  gap: 2px;
-  margin-top: 5px;
-  font-size: 11px;
-  letter-spacing: 0.05em;
+  display: block;
+  margin-top: 2px;
+  font-size: 8px;
+  letter-spacing: -0.12em;
 }
 
-.white-stars {
-  color: #f5e8c5;
-}
-
-.color-stars {
-  color: var(--coral);
+.monster-card-copy > small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
 }
 
 .monster-card-footer {
   display: flex;
+  min-width: 0;
   grid-column: 1 / -1;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding-top: 13px;
+  gap: 4px;
+  padding-top: 5px;
   border-top: 1px solid var(--line-soft);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 8px;
 }
 
 .monster-card-footer > b {
@@ -438,153 +517,268 @@ button.definition-card:hover,
 }
 
 .prototype-note {
-  margin-top: 26px;
+  flex: 0 0 auto;
+  margin: 6px 0 0;
+  font-size: 7px;
   text-align: right;
+}
+
+.run-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+.notice-strip {
+  position: fixed;
+  z-index: 50;
+  top: max(58px, env(safe-area-inset-top));
+  left: 50%;
+  display: flex;
+  width: min(340px, calc(100vw - 24px));
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 2px solid var(--pink);
+  background: var(--void-deep);
+  color: var(--paper);
+  box-shadow: 4px 4px 0 #000;
+  font-size: 10px;
+  transform: translateX(-50%);
+}
+
+.notice-strip span {
+  color: var(--pink);
 }
 
 .workbench-layout {
   display: grid;
-  grid-template-columns: minmax(215px, 0.75fr) minmax(580px, 2.5fr) minmax(260px, 0.95fr);
-  gap: 16px;
-  align-items: stretch;
-}
-
-.team-panel,
-.inspector,
-.workbench {
-  min-height: 680px;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-rows: minmax(166px, 0.42fr) minmax(0, 1fr);
+  gap: 7px;
 }
 
 .team-panel {
-  padding: 18px 14px;
+  display: grid;
+  min-height: 0;
+  grid-template-rows: 20px minmax(0, 1fr) 54px;
+  gap: 4px;
+  padding: 6px;
 }
 
 .panel-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 12px;
+  padding-bottom: 3px;
   border-bottom: 1px solid var(--line-soft);
+  font-size: 8px;
 }
 
 .panel-heading strong {
   color: var(--mint);
+  font-size: 7px;
+  font-weight: 600;
 }
 
-.team-panel h2 {
-  margin: 18px 0 10px;
-  font-size: 14px;
+.team-zone {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 4px;
+  padding: 3px;
+  border: 1px dashed transparent;
+  transition:
+    background 100ms steps(2),
+    border-color 100ms steps(2);
+}
+
+.team-zone.is-drop-target {
+  border-color: var(--mint);
+  background: rgba(124, 224, 189, 0.12);
+}
+
+.team-zone.is-bench {
+  padding-top: 4px;
+  border-top-color: var(--line-soft);
+}
+
+.team-zone-label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.team-zone-label h2,
+.team-zone-label h3 {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 600;
+  writing-mode: vertical-rl;
+}
+
+.team-zone-label span {
+  margin-top: 2px;
+  color: var(--gold);
+  font-size: 7px;
 }
 
 .roster-list {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.roster-list.is-bench {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .roster-card {
   --monster-color: var(--gold);
   display: flex;
-  width: 100%;
+  min-width: 0;
+  min-height: 0;
   align-items: center;
-  gap: 9px;
-  padding: 8px;
+  gap: 5px;
+  padding: 4px;
+  overflow: hidden;
   border: 1px solid var(--line-soft);
-  background: #211a28;
+  border-bottom: 3px solid var(--monster-color);
+  background: var(--deck);
   color: var(--paper);
-  cursor: pointer;
-  text-align: left;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
-.roster-card:hover,
+.roster-card:active {
+  cursor: grabbing;
+}
+
 .roster-card.is-selected {
   border-color: var(--monster-color);
+  background: var(--panel-high);
 }
 
-.roster-card.is-selected {
-  background: #352a3e;
-  box-shadow: inset 3px 0 0 var(--monster-color);
+.roster-card .monster-sigil {
+  width: 38px;
+  height: 38px;
+}
+
+.roster-card .monster-sigil > span {
+  font-size: 21px;
 }
 
 .roster-card > span {
   display: flex;
   min-width: 0;
+  flex: 1;
   flex-direction: column;
 }
 
 .roster-card small {
   color: var(--monster-color);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 8px;
-  letter-spacing: 0.1em;
+  font-size: 6px;
+  letter-spacing: 0.06em;
 }
 
 .roster-card strong {
   overflow: hidden;
-  font-size: 12px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .roster-card i {
-  margin-top: 2px;
+  overflow: hidden;
+  margin-top: 1px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 6px;
   font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-card i .stars {
+  font-size: 6px;
+}
+
+.is-bench .roster-card {
+  justify-content: center;
+  padding: 2px;
+  border-bottom-width: 2px;
+}
+
+.is-bench .roster-card > span {
+  display: none;
+}
+
+.is-bench .roster-card .monster-sigil {
+  width: 34px;
+  height: 34px;
 }
 
 .empty-roster-slot {
   display: grid;
-  min-height: 54px;
+  min-width: 0;
+  min-height: 0;
   place-items: center;
-  border: 1px dashed var(--line);
-  color: #7e6e83;
-  font-size: 11px;
+  border: 1px dashed var(--line-soft);
+  color: #66718f;
+  font-size: 18px;
 }
 
-.bench-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 22px 0 9px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.bench-heading h3 {
-  margin: 0 0 8px;
+.empty-roster-slot.is-bench {
   font-size: 12px;
 }
 
-.bench-heading span {
-  color: var(--muted);
-  font-size: 10px;
+.drag-chip {
+  position: fixed;
+  z-index: 200;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.16);
+  filter: drop-shadow(5px 5px 0 var(--void-deep));
 }
 
-.muted-copy {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
+.drag-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .workbench {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) 43px;
   overflow: hidden;
 }
 
 .workshop-tabs {
   display: grid;
+  grid-row: 2;
   grid-template-columns: repeat(3, 1fr);
-  border-bottom: 1px solid var(--line);
-  background: #1e1824;
+  border-top: 2px solid var(--line);
+  background: var(--void-deep);
 }
 
 .workshop-tabs button {
-  padding: 14px 9px;
+  min-width: 0;
+  padding: 6px 2px;
   border: 0;
   border-right: 1px solid var(--line);
-  background: transparent;
+  background: var(--deck);
   color: var(--muted);
   cursor: pointer;
-  font-size: 12px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
 }
 
 .workshop-tabs button:last-child {
@@ -592,43 +786,46 @@ button.definition-card:hover,
 }
 
 .workshop-tabs button.is-active {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--pink);
+  color: var(--void-deep);
+  box-shadow: inset 0 3px var(--paper);
 }
 
 .workshop-tabs button.is-active span {
-  color: #7d5260;
+  color: #5a2234;
 }
 
 .workshop-view {
-  padding: 22px;
+  min-height: 0;
+  grid-row: 1;
+  overflow: hidden;
+  padding: 7px;
 }
 
 .workshop-title {
   display: flex;
+  min-height: 34px;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: 7px;
+  margin-bottom: 5px;
 }
 
 .workshop-title h2 {
-  margin: 3px 0 0;
-  font-size: clamp(19px, 2vw, 28px);
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 15px;
+  line-height: 1.15;
 }
 
 .workshop-title > p {
-  width: min(320px, 45%);
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
-  text-align: right;
+  display: none;
 }
 
 .shop-actions {
   display: flex;
-  gap: 6px;
+  flex: 0 0 auto;
+  gap: 3px;
 }
 
 .secondary-button,
@@ -637,111 +834,143 @@ button.definition-card:hover,
 .equipment-block button,
 .replay-controls button {
   border: 1px solid var(--line);
-  background: transparent;
+  border-radius: 0;
+  background: var(--deck);
   color: var(--paper);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 8px;
 }
 
 .secondary-button {
-  padding: 8px 10px;
-}
-
-.secondary-button:hover,
-.replay-controls button:hover {
-  border-color: var(--mint);
+  padding: 5px 6px;
 }
 
 .shop-monsters {
   display: grid;
+  height: min(48%, 152px);
+  min-height: 116px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 4px;
 }
 
 .shop-monsters .definition-card {
-  min-height: 195px;
   grid-template-columns: 1fr;
-  padding: 15px;
+  grid-template-rows: auto 1fr auto;
+  gap: 3px;
+  padding: 5px;
+  border-left-width: 3px;
+  box-shadow: 2px 2px 0 var(--void-deep);
+  text-align: center;
 }
 
 .shop-monsters .monster-sigil {
-  width: 54px;
-  height: 60px;
+  width: 43px;
+  height: 43px;
+  margin: 0 auto;
+}
+
+.shop-monsters .monster-sigil > span {
+  font-size: 24px;
+}
+
+.shop-monsters .monster-card-copy {
+  align-items: center;
+}
+
+.shop-monsters .monster-card-copy .eyebrow,
+.shop-monsters .monster-card-copy > small {
+  display: none;
+}
+
+.shop-monsters .monster-card-copy > strong {
+  font-size: 9px;
+  text-align: center;
+}
+
+.shop-monsters .star-row {
+  font-size: 6px;
 }
 
 .shop-monsters .monster-card-footer {
-  align-self: end;
+  padding-top: 3px;
+  border-top: 0;
 }
 
 .buy-button {
   display: flex;
   width: 100%;
   align-items: center;
-  justify-content: space-between;
-  padding: 7px 9px;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px;
   border: 1px solid var(--monster-color);
-  background: transparent;
+  background: var(--void);
   color: var(--paper);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 8px;
 }
 
 .buy-button b {
   color: var(--gold);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 16px;
+  font-size: 12px;
 }
 
 .sold-slot {
   display: grid;
-  min-height: 195px;
+  min-height: 0;
   place-items: center;
   border: 1px dashed var(--line-soft);
-  color: #76677c;
-  font-family: "Pixelify Sans", monospace;
-  letter-spacing: 0.16em;
+  color: #68728e;
+  font-size: 9px;
+  letter-spacing: 0.12em;
 }
 
 .equipment-shelf {
   display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 14px;
-  margin-top: 20px;
-  padding-top: 17px;
+  min-height: 0;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 5px;
+  margin-top: 7px;
+  padding-top: 6px;
   border-top: 1px solid var(--line-soft);
 }
 
 .equipment-shelf h3 {
-  margin: 4px 0 0;
-  font-size: 15px;
+  margin: 1px 0 0;
+  font-size: 10px;
+}
+
+.equipment-shelf .section-index {
+  font-size: 6px;
 }
 
 .equipment-offers {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 4px;
 }
 
 .equipment-offer {
   display: grid;
-  min-height: 72px;
+  min-width: 0;
+  min-height: 49px;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 9px;
-  padding: 9px;
+  gap: 4px;
+  padding: 4px;
   border: 1px solid var(--line-soft);
-  background: #211a28;
+  background: var(--deck);
 }
 
 .equipment-glyph,
 .equipped-row > b {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border: 1px solid var(--gold);
   color: var(--gold);
-  font-size: 13px;
+  font-size: 10px;
 }
 
 .equipment-offer > div {
@@ -751,42 +980,353 @@ button.definition-card:hover,
 }
 
 .equipment-offer strong {
-  font-size: 12px;
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .equipment-offer small {
-  color: var(--muted);
-  font-size: 9px;
+  display: none;
 }
 
 .equipment-offer button {
-  width: 32px;
-  height: 32px;
+  width: 25px;
+  height: 25px;
+  padding: 0;
   border: 1px solid var(--gold);
-  background: transparent;
+  background: var(--void);
   color: var(--gold);
   cursor: pointer;
-  font-family: "Pixelify Sans", monospace;
+  font-size: 9px;
 }
 
 .sold-slot.is-equipment {
-  min-height: 72px;
+  min-height: 49px;
+}
+
+.breeding-view,
+.tactics-view {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.breeding-loom {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+  gap: 4px;
+}
+
+.parent-pool,
+.candidate-pool {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.parent-pool h3,
+.candidate-pool h3 {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.parent-pool {
+  display: grid;
+  grid-template-rows: auto repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.parent-choice {
+  --monster-color: var(--gold);
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 31px minmax(0, 1fr);
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  background: var(--deck);
+  color: var(--paper);
+  cursor: pointer;
+  text-align: left;
+}
+
+.parent-choice.is-selected {
+  border-color: var(--monster-color);
+  background: var(--panel-high);
+}
+
+.parent-choice .monster-sigil {
+  width: 28px;
+  height: 28px;
+}
+
+.parent-choice .monster-sigil > span {
+  font-size: 16px;
+}
+
+.parent-choice > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.parent-choice strong {
+  overflow: hidden;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parent-choice small {
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.parent-choice > b {
+  display: none;
+}
+
+.gene-stitch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--pink);
+}
+
+.gene-stitch span,
+.gene-stitch b {
+  font-size: 12px;
+}
+
+.gene-stitch i {
+  width: 1px;
+  flex: 0 1 50px;
+  background: var(--line);
+}
+
+.candidate-pool {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.candidate-pool .definition-card {
+  min-height: 66px;
+  flex: 0 1 78px;
+  padding: 4px;
+  border-left-width: 3px;
+  box-shadow: none;
+}
+
+.candidate-pool .monster-sigil {
+  width: 34px;
+  height: 34px;
+}
+
+.candidate-pool .monster-sigil > span {
+  font-size: 18px;
+}
+
+.candidate-pool .monster-card-copy > strong {
+  font-size: 8px;
+}
+
+.candidate-pool .monster-card-copy .eyebrow,
+.candidate-pool .monster-card-copy > small {
+  display: none;
+}
+
+.candidate-pool .monster-card-footer {
+  font-size: 6px;
+}
+
+.loom-placeholder {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  padding: 8px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  text-align: center;
+}
+
+.loom-placeholder span {
+  color: var(--line);
+  font-size: 35px;
+}
+
+.loom-placeholder p {
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.inheritance-control {
+  display: grid;
+  gap: 3px;
+  margin-top: auto;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.inheritance-control label,
+.gambit-row label {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.inheritance-control select,
+.condition-editor select,
+.action-editor select {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 2px 3px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--void);
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+}
+
+.primary-button {
+  min-height: 28px;
+  padding: 5px 7px;
+  border: 2px solid var(--paper);
+  background: var(--pink);
+  color: var(--void-deep);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 600;
+  box-shadow: 2px 2px 0 var(--void-deep);
+}
+
+.primary-button span {
+  color: #5a2234;
+}
+
+.gambit-stack {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.gambit-row {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line-soft);
+  background: var(--deck);
+}
+
+.gambit-row > div {
+  min-width: 0;
+}
+
+.priority-number {
+  color: var(--pink);
+  font-size: 15px;
+}
+
+.gambit-arrow {
+  display: none;
+}
+
+.gambit-row > div:last-child {
+  grid-column: 2;
+}
+
+.condition-editor,
+.action-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.condition-editor select:only-child {
+  grid-column: 1 / -1;
+}
+
+.gambit-fallback {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 6px;
+  text-align: right;
+}
+
+.empty-view {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.monster-dialog {
+  width: min(430px, calc(100vw - 20px));
+  max-width: none;
+  max-height: min(720px, calc(100dvh - 20px));
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+}
+
+.monster-dialog::backdrop {
+  background: rgba(5, 6, 10, 0.8);
+  backdrop-filter: blur(2px);
 }
 
 .inspector {
   --monster-color: var(--gold);
-  padding: 19px 16px;
+  max-height: min(720px, calc(100dvh - 20px));
+  padding: 15px;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .inspector::before {
   background: var(--monster-color);
 }
 
+.dialog-close {
+  position: absolute;
+  z-index: 3;
+  top: 7px;
+  right: 7px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 2px solid var(--line);
+  background: var(--void);
+  color: var(--paper);
+  cursor: pointer;
+  font-size: 18px;
+}
+
 .inspector-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 14px;
+  gap: 10px;
+  padding: 3px 38px 10px 0;
   border-bottom: 1px solid var(--line-soft);
 }
 
@@ -796,13 +1336,14 @@ button.definition-card:hover,
 
 .inspector-identity span {
   color: var(--monster-color);
-  font-size: 9px;
+  font-size: 8px;
 }
 
 .inspector-identity h2 {
-  margin: 3px 0;
-  font-size: 17px;
-  line-height: 1.25;
+  margin: 2px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 18px;
+  line-height: 1.2;
 }
 
 .inspector-identity p {
@@ -810,9 +1351,9 @@ button.definition-card:hover,
 }
 
 .xp-track {
-  height: 4px;
-  margin-top: 13px;
-  background: #151119;
+  height: 5px;
+  margin-top: 9px;
+  background: var(--void);
 }
 
 .xp-track span {
@@ -823,10 +1364,9 @@ button.definition-card:hover,
 
 .xp-label {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 8px;
+  font-size: 7px;
   text-align: right;
 }
 
@@ -834,34 +1374,33 @@ button.definition-card:hover,
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
-  margin: 15px 0;
+  margin: 10px 0;
   background: var(--line-soft);
 }
 
 .stat-grid span {
   display: flex;
-  min-height: 45px;
+  min-height: 39px;
   flex-direction: column;
   justify-content: center;
-  padding: 6px;
-  background: #211a28;
+  padding: 4px;
+  background: var(--deck);
 }
 
 .stat-grid small {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 7px;
 }
 
 .stat-grid b {
-  font-family: "Pixelify Sans", monospace;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .trait-block,
 .skill-list,
 .equipment-block {
-  margin-top: 16px;
-  padding-top: 13px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid var(--line-soft);
 }
 
@@ -869,468 +1408,286 @@ button.definition-card:hover,
 .skill-list > span,
 .equipment-block > span {
   color: var(--monster-color);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  font-size: 8px;
+  letter-spacing: 0.08em;
 }
 
 .trait-block h3 {
-  margin: 5px 0 3px;
-  font-size: 13px;
+  margin: 3px 0;
+  font-size: 11px;
 }
 
 .trait-block p {
   margin: 0;
   color: var(--muted);
-  font-size: 10px;
-  line-height: 1.6;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  line-height: 1.5;
 }
 
 .skill-list > div {
   display: flex;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 6px;
+  padding: 5px 0;
   border-bottom: 1px solid var(--line-soft);
 }
 
 .skill-list > div > b {
   display: grid;
-  width: 21px;
-  height: 21px;
+  width: 20px;
+  height: 20px;
   flex: 0 0 auto;
   place-items: center;
-  background: var(--monster-color);
-  color: var(--ink);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 10px;
+  border: 1px solid var(--monster-color);
+  color: var(--monster-color);
+  font-size: 8px;
 }
 
-.skill-list div > span {
+.skill-list > div > span {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
 
 .skill-list strong {
-  font-size: 11px;
+  font-size: 9px;
 }
 
 .skill-list small {
   color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   font-size: 8px;
-  line-height: 1.5;
 }
 
 .equipped-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 9px;
+  gap: 6px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
 }
 
 .equipped-row button {
-  padding: 5px;
+  padding: 4px;
 }
 
 .inventory-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 6px;
 }
 
 .inventory-list button {
-  width: 32px;
-  height: 32px;
-  border-color: var(--gold);
-  color: var(--gold);
+  width: 30px;
+  height: 30px;
 }
 
 .inspector-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 6px;
-  margin-top: 18px;
+  margin-top: 12px;
+}
+
+.inspector-actions > * {
+  flex: 1;
 }
 
 .text-button {
-  padding: 6px 0;
-  border: 0;
+  padding: 5px 6px;
 }
 
 .text-button.is-danger {
-  color: #e98d86;
-}
-
-.notice-strip {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  margin: -8px 0 14px;
-  padding: 9px 13px;
-  border: 1px solid var(--mint);
-  background: #1f332e;
-  color: #b8f0d9;
-  cursor: pointer;
-  font-size: 11px;
-  text-align: left;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .battle-launcher {
   display: flex;
+  min-height: 58px;
+  flex: 0 0 58px;
   align-items: center;
-  justify-content: flex-end;
-  gap: 20px;
-  margin-top: 20px;
-  padding: 13px 0 0;
-  border-top: 1px solid var(--line);
+  justify-content: space-between;
+  gap: 7px;
+  margin-top: 7px;
+  padding: 6px 6px 6px 9px;
+  border: 2px solid var(--line);
+  background: var(--deck);
+  box-shadow: var(--pixel-shadow);
 }
 
 .battle-launcher > div {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  text-align: right;
 }
 
-.battle-launcher span,
-.launch-button span {
-  color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
+.battle-launcher > div span {
+  overflow: hidden;
+  color: var(--pink);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-launcher > div strong {
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   font-size: 9px;
-  letter-spacing: 0.1em;
-}
-
-.battle-launcher strong {
-  font-size: 12px;
-}
-
-.launch-button,
-.primary-button {
-  border: 1px solid var(--coral);
-  background: var(--coral);
-  color: #1a1113;
-  cursor: pointer;
-  font-weight: 800;
 }
 
 .launch-button {
   display: flex;
-  min-width: 240px;
+  min-width: 145px;
+  min-height: 42px;
   flex-direction: column;
   align-items: flex-start;
-  padding: 12px 18px;
-  clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%);
-  font-size: 15px;
+  justify-content: center;
+  padding: 5px 12px;
+  border: 2px solid var(--paper);
+  background: var(--pink);
+  color: var(--void-deep);
+  cursor: pointer;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--void-deep);
   text-align: left;
 }
 
 .launch-button span {
-  color: #512a2a;
-}
-
-.primary-button {
-  padding: 10px 14px;
-}
-
-.primary-button span {
-  display: block;
-  color: #5f3030;
+  color: #5a2234;
   font-family: "Pixelify Sans", monospace;
-  font-size: 8px;
+  font-size: 7px;
+  letter-spacing: 0.06em;
 }
 
-.breeding-loom {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.85fr) 42px minmax(280px, 1.2fr);
-  gap: 12px;
-}
-
-.parent-pool h3,
-.candidate-pool h3 {
-  margin: 0 0 10px;
-  font-size: 12px;
-}
-
-.parent-choice {
-  --monster-color: var(--gold);
-  display: grid;
-  width: 100%;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  padding: 7px;
-  border: 1px solid var(--line-soft);
-  background: #211a28;
-  color: var(--paper);
-  cursor: pointer;
-  text-align: left;
-}
-
-.parent-choice.is-selected {
-  border-color: var(--monster-color);
-  box-shadow: inset 3px 0 0 var(--monster-color);
-}
-
-.parent-choice > span {
+.event-screen,
+.result-screen {
   display: flex;
-  min-width: 0;
   flex-direction: column;
-}
-
-.parent-choice strong {
-  font-size: 10px;
-}
-
-.parent-choice small {
-  color: var(--muted);
-  font-size: 8px;
-}
-
-.parent-choice > b {
-  color: var(--monster-color);
-  font-size: 8px;
-}
-
-.gene-stitch {
-  display: flex;
-  min-height: 430px;
-  flex-direction: column;
-  align-items: center;
-  color: var(--coral);
-}
-
-.gene-stitch span,
-.gene-stitch b {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border: 1px solid var(--coral);
-}
-
-.gene-stitch i {
-  width: 1px;
-  flex: 1;
-  background: var(--coral);
-}
-
-.candidate-pool {
-  min-width: 0;
-}
-
-.candidate-pool .definition-card {
-  min-height: 105px;
-  margin-bottom: 7px;
-  grid-template-columns: auto 1fr;
-  padding: 11px;
-}
-
-.candidate-pool .monster-sigil {
-  width: 48px;
-  height: 54px;
-}
-
-.candidate-pool .monster-card-footer {
-  padding-top: 6px;
-  font-size: 9px;
-}
-
-.loom-placeholder {
-  display: grid;
-  min-height: 230px;
-  place-items: center;
-  padding: 30px;
-  border: 1px dashed var(--line);
-  color: var(--muted);
-  text-align: center;
-}
-
-.loom-placeholder span {
-  color: var(--line);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 65px;
-}
-
-.loom-placeholder p {
-  max-width: 260px;
-  font-size: 11px;
-  line-height: 1.7;
-}
-
-.inheritance-control {
-  display: grid;
-  gap: 7px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.inheritance-control label,
-.gambit-row label {
-  color: var(--muted);
-  font-size: 9px;
-}
-
-.inheritance-control select,
-.condition-editor select,
-.action-editor select {
-  width: 100%;
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: #18131d;
-  color: var(--paper);
-  font-size: 10px;
-}
-
-.gambit-stack {
-  display: grid;
-  gap: 8px;
-}
-
-.gambit-row {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 24px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--line-soft);
-  background: #211a28;
-}
-
-.gambit-row > div {
-  min-width: 0;
-}
-
-.priority-number {
-  color: var(--coral);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 19px;
-}
-
-.gambit-arrow {
-  color: var(--mint);
-  text-align: center;
-}
-
-.condition-editor,
-.action-editor {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  margin-top: 4px;
-}
-
-.condition-editor select:only-child {
-  grid-column: 1 / -1;
-}
-
-.gambit-fallback {
-  margin: 14px 0 0;
-  color: var(--muted);
-  font-size: 9px;
-  text-align: right;
 }
 
 .event-stage {
-  max-width: 1050px;
-  margin: clamp(60px, 10vh, 130px) auto 0;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  padding-top: 13px;
 }
 
 .event-grid {
   display: grid;
+  min-height: 0;
+  flex: 1;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 15px;
-  margin-top: 33px;
+  gap: 5px;
+  margin-top: 10px;
 }
 
 .event-grid button {
   display: flex;
-  min-height: 290px;
+  min-width: 0;
+  min-height: 0;
   flex-direction: column;
-  align-items: flex-start;
-  padding: 23px;
-  border: 1px solid var(--line);
+  align-items: center;
+  padding: 8px 5px;
+  border: 2px solid var(--line);
+  border-bottom: 5px solid var(--gold);
   background: var(--panel);
   color: var(--paper);
   cursor: pointer;
-  text-align: left;
+  box-shadow: 3px 3px 0 var(--void-deep);
+  text-align: center;
 }
 
-.event-grid button:hover {
-  border-color: var(--gold);
+.event-grid button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--void-deep);
 }
 
 .event-grid button > span {
   display: grid;
-  width: 70px;
-  height: 70px;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
   place-items: center;
-  border: 1px solid var(--gold);
+  border: 2px solid var(--gold);
+  background: var(--void);
   color: var(--gold);
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .event-grid small {
-  margin-top: 26px;
+  margin-top: 9px;
   color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 9px;
+  font-size: 6px;
 }
 
 .event-grid strong {
-  margin-top: 5px;
-  font-size: 18px;
+  margin-top: 3px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+  line-height: 1.3;
 }
 
 .event-grid p {
   flex: 1;
+  margin: 5px 0;
   color: var(--muted);
-  font-size: 11px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  line-height: 1.4;
 }
 
 .event-grid b {
   color: var(--gold);
-  font-size: 11px;
+  font-size: 7px;
+}
+
+.battle-screen {
+  display: flex;
+  flex-direction: column;
 }
 
 .battle-header {
-  align-items: center;
+  min-height: 45px;
+}
+
+.battle-header .brand-lockup h1 {
+  font-size: 19px;
 }
 
 .battle-clock {
-  min-width: 108px;
-  padding: 8px 13px;
-  border: 1px solid var(--line);
+  min-width: 82px;
+  padding: 3px 7px;
+  border: 2px solid var(--line);
+  background: var(--deck);
   text-align: right;
 }
 
 .battle-clock b {
   display: block;
   color: var(--gold);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 23px;
+  font-size: 15px;
+  line-height: 1;
 }
 
 .environment-warning {
   position: relative;
-  height: 27px;
-  margin: 13px 0 24px;
+  height: 21px;
+  flex: 0 0 21px;
+  margin: 5px 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  background: #211a28;
+  background: var(--deck);
 }
 
 .environment-warning > span {
   display: block;
   height: 100%;
-  background: #4d2931;
+  background: var(--pink-deep);
 }
 
 .environment-warning > b {
@@ -1338,23 +1695,25 @@ button.definition-card:hover,
   inset: 0;
   display: grid;
   place-items: center;
-  font-family: "Pixelify Sans", monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 7px;
+  letter-spacing: 0.04em;
 }
 
 .battlefield {
   display: grid;
-  min-height: 610px;
-  grid-template-columns: minmax(0, 1fr) 90px minmax(0, 1fr);
-  gap: 18px;
-  align-items: center;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) 26px minmax(0, 1fr);
+  gap: 4px;
+  align-items: stretch;
 }
 
 .battle-team {
-  position: relative;
   display: grid;
-  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: 13px repeat(3, minmax(0, 1fr));
+  gap: 4px;
 }
 
 .battle-team.is-enemy {
@@ -1362,37 +1721,49 @@ button.definition-card:hover,
 }
 
 .team-label {
-  margin-bottom: 3px;
   color: var(--mint);
+  font-size: 7px;
 }
 
 .battle-team.is-enemy .team-label {
-  color: var(--coral);
+  color: var(--pink);
 }
 
 .battle-monster {
   --monster-color: var(--gold);
   position: relative;
   display: grid;
-  min-height: 145px;
-  grid-template-columns: auto minmax(90px, 0.7fr) minmax(130px, 1fr);
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 15px;
-  padding: 18px;
+  gap: 3px;
+  padding: 4px;
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-left: 5px solid var(--monster-color);
+  border-left: 4px solid var(--monster-color);
   background: var(--panel);
   direction: ltr;
 }
 
 .battle-monster.is-enemy {
-  border-right: 5px solid var(--monster-color);
+  border-right: 4px solid var(--monster-color);
   border-left: 1px solid var(--line);
 }
 
 .battle-monster.is-defeated {
   filter: grayscale(1);
-  opacity: 0.42;
+  opacity: 0.38;
+}
+
+.battle-monster .monster-sigil {
+  width: 39px;
+  height: 39px;
+}
+
+.battle-monster .monster-sigil > span {
+  font-size: 22px;
 }
 
 .battle-monster-copy {
@@ -1402,28 +1773,34 @@ button.definition-card:hover,
 }
 
 .battle-monster-copy > span {
-  color: var(--monster-color);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 8px;
+  display: none;
 }
 
 .battle-monster-copy > strong {
-  margin-top: 4px;
-  font-size: 15px;
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-monster-copy > small {
+  font-size: 5px;
 }
 
 .battle-bars {
   display: grid;
-  gap: 6px;
+  grid-column: 1 / -1;
+  gap: 2px;
 }
 
 .hp-bar,
 .mp-bar,
 .atb-bar {
   position: relative;
-  height: 17px;
+  height: 11px;
   overflow: hidden;
-  background: #110e15;
+  background: var(--void-deep);
 }
 
 .hp-bar > span,
@@ -1442,7 +1819,7 @@ button.definition-card:hover,
 }
 
 .atb-bar {
-  height: 5px;
+  height: 3px;
 }
 
 .atb-bar > span {
@@ -1452,114 +1829,124 @@ button.definition-card:hover,
 .hp-bar b,
 .mp-bar b {
   position: absolute;
-  inset: 0 5px;
+  inset: 0 3px;
   color: #fff;
-  font-family: "Pixelify Sans", monospace;
-  font-size: 9px;
-  line-height: 17px;
+  font-size: 6px;
+  line-height: 11px;
   text-shadow: 1px 1px #000;
 }
 
 .shield-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 3px 5px;
+  top: 2px;
+  right: 2px;
+  padding: 1px 2px;
   border: 1px solid #8fc3df;
   color: #a9dcf6;
-  font-size: 8px;
+  font-size: 6px;
   font-style: normal;
 }
 
 .versus-mark {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .versus-mark span,
 .versus-mark small {
   color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 9px;
+  font-size: 6px;
 }
 
 .versus-mark b {
-  color: var(--coral);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 43px;
+  color: var(--pink);
+  font-size: 18px;
+  writing-mode: vertical-rl;
 }
 
 .battle-console {
   display: flex;
-  min-height: 76px;
+  min-height: 62px;
+  flex: 0 0 62px;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  background: #211a28;
+  gap: 6px;
+  margin-top: 5px;
+  padding: 6px;
+  border: 2px solid var(--line);
+  background: var(--deck);
+  box-shadow: var(--pixel-shadow);
 }
 
 .battle-console > div:first-child {
   display: flex;
   min-width: 0;
+  flex: 1;
   flex-direction: column;
 }
 
 .battle-console > div:first-child span {
-  color: var(--coral);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 9px;
+  color: var(--pink);
+  font-size: 7px;
 }
 
 .battle-console strong {
-  margin-top: 4px;
+  display: -webkit-box;
+  margin-top: 2px;
   overflow: hidden;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .replay-controls {
   display: flex;
   flex: 0 0 auto;
-  gap: 7px;
+  gap: 3px;
 }
 
 .replay-controls button {
-  padding: 8px 11px;
+  min-height: 32px;
+  padding: 5px;
 }
 
 .replay-pips {
   display: flex;
-  gap: 3px;
-  margin-top: 9px;
+  height: 3px;
+  flex: 0 0 3px;
+  gap: 1px;
+  margin-top: 5px;
 }
 
 .replay-pips span {
-  height: 3px;
   flex: 1;
   background: var(--line-soft);
 }
 
 .replay-pips span.is-active {
-  background: var(--coral);
+  background: var(--pink);
 }
 
 .result-card {
+  display: flex;
   width: min(760px, 100%);
-  margin: clamp(60px, 10vh, 110px) auto 0;
-  padding: clamp(24px, 4vw, 46px);
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  margin: 7px auto 4px;
+  padding: 12px;
 }
 
 .result-card h2 {
-  margin: 8px 0;
-  color: var(--coral);
-  font-family: "Pixelify Sans", sans-serif;
-  font-size: clamp(45px, 9vw, 88px);
+  margin: 1px 0;
+  color: var(--pink);
+  font-size: clamp(38px, 13vw, 70px);
   font-weight: 600;
-  line-height: 1;
+  line-height: 0.95;
 }
 
 .result-screen.is-win .result-card h2 {
@@ -1567,42 +1954,69 @@ button.definition-card:hover,
 }
 
 .result-card > p {
+  margin: 4px 0;
   color: var(--muted);
-  font-size: 12px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
 }
 
 .result-roster {
   display: grid;
-  gap: 5px;
-  margin: 25px 0;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(40px, 1fr);
+  gap: 3px;
+  margin: 6px 0;
 }
 
 .result-roster > div {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 8px;
+  gap: 4px;
+  padding: 3px;
   border: 1px solid var(--line-soft);
+  background: var(--deck);
+}
+
+.result-roster .monster-sigil {
+  width: 31px;
+  height: 31px;
+}
+
+.result-roster .monster-sigil > span {
+  font-size: 17px;
 }
 
 .result-roster > div > span {
   display: flex;
+  min-width: 0;
   flex-direction: column;
 }
 
 .result-roster strong {
-  font-size: 11px;
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .result-roster small,
 .result-roster > div > b {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 6px;
+}
+
+.result-roster > div > b {
+  display: none;
 }
 
 .result-card .launch-button {
-  margin-left: auto;
+  align-self: flex-end;
 }
 
 .finished-screen {
@@ -1615,17 +2029,18 @@ button.definition-card:hover,
 
 .finish-sigil {
   display: flex;
-  gap: 7px;
-  margin-bottom: 30px;
+  gap: 5px;
+  margin-bottom: 15px;
 }
 
 .finish-sigil span {
   display: grid;
-  width: 56px;
-  height: 62px;
+  width: 48px;
+  height: 48px;
   place-items: center;
-  border: 1px solid var(--line);
-  clip-path: polygon(25% 0, 75% 0, 100% 22%, 88% 82%, 50% 100%, 12% 82%, 0 22%);
+  border: 2px solid var(--line);
+  background: var(--deck);
+  box-shadow: 3px 3px var(--void-deep);
 }
 
 .finish-sigil span:nth-child(1) {
@@ -1639,27 +2054,29 @@ button.definition-card:hover,
 }
 
 .finish-sigil span:nth-child(3) {
-  border-color: var(--coral);
-  color: var(--coral);
+  border-color: var(--pink);
+  color: var(--pink);
 }
 
 .finished-screen h1 {
-  margin: 8px 0;
-  font-size: clamp(32px, 6vw, 65px);
+  margin: 4px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: clamp(25px, 8vw, 52px);
 }
 
 .finished-screen > p {
+  margin: 4px 0;
   color: var(--gold);
-  font-family: "Pixelify Sans", monospace;
-  font-size: 20px;
+  font-size: 17px;
 }
 
 .final-lineage {
   display: grid;
-  width: min(750px, 100%);
+  width: min(620px, 100%);
+  height: min(210px, 28vh);
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 30px 0;
+  gap: 5px;
+  margin: 13px 0;
 }
 
 .final-lineage > div {
@@ -1667,343 +2084,461 @@ button.definition-card:hover,
   min-width: 0;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
-  padding: 20px 10px;
-  border: 1px solid var(--line);
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 3px;
+  border: 2px solid var(--line);
   background: var(--panel);
 }
 
 .final-lineage strong {
-  font-size: 12px;
+  overflow: hidden;
+  max-width: 100%;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .final-lineage span {
-  font-size: 9px;
+  font-size: 7px;
 }
 
 .finished-screen > small {
-  margin-top: 20px;
+  margin-top: 10px;
   color: var(--muted);
+  font-size: 7px;
 }
 
-@media (max-width: 1180px) {
-  .workbench-layout {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-
-  .inspector {
-    min-height: 0;
-    grid-column: 1 / -1;
-  }
-
-  .inspector {
-    display: grid;
-    grid-template-columns: 1.1fr 1fr 1fr;
-    gap: 15px;
-  }
-
-  .inspector-identity,
-  .xp-track,
-  .xp-label,
-  .stat-grid {
-    grid-column: 1;
-  }
-
-  .trait-block,
-  .skill-list {
-    grid-column: 2;
-  }
-
-  .equipment-block,
-  .inspector-actions {
-    grid-column: 3;
-  }
-
-  .trait-block,
-  .skill-list,
-  .equipment-block {
-    margin-top: 0;
-  }
-
-  .battlefield {
-    min-height: 540px;
-    grid-template-columns: minmax(0, 1fr) 55px minmax(0, 1fr);
-    gap: 9px;
-  }
-
-  .battle-monster {
-    grid-template-columns: auto 1fr;
-  }
-
-  .battle-bars {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 800px) {
+@media (min-width: 801px) {
   .draft-screen,
   .run-screen,
   .event-screen,
   .battle-screen,
   .result-screen,
   .finished-screen {
-    padding: 18px 14px 32px;
+    padding: 18px 24px;
+  }
+
+  .brand-lockup h1 {
+    font-size: 28px;
   }
 
   .run-header,
-  .draft-mast,
-  .battle-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 14px;
+  .battle-header,
+  .draft-mast {
+    min-height: 58px;
   }
 
-  .bloodline-weave {
-    width: 100%;
+  .run-header .brand-lockup > span,
+  .battle-header .brand-lockup > span,
+  .draft-mast .brand-lockup > span {
+    display: block;
   }
 
   .run-metrics {
-    width: 100%;
+    width: 360px;
   }
 
   .run-metrics span {
-    min-width: 0;
-    flex: 1;
-    padding: 7px;
+    padding: 5px 8px;
+    font-size: 9px;
   }
 
   .run-metrics b {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .cycle-rail {
-    gap: 2px;
+    min-height: 24px;
+    flex-basis: 24px;
   }
 
   .cycle-rail span {
-    min-width: 0;
     font-size: 8px;
   }
 
   .draft-copy {
-    margin: 50px 0 25px;
+    padding: clamp(18px, 5vh, 45px) 0 16px;
   }
 
-  .draft-grid,
-  .event-grid {
-    grid-template-columns: 1fr;
+  .draft-copy p,
+  .event-stage > p {
+    font-size: 12px;
+  }
+
+  .draft-grid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .definition-card {
-    min-height: 140px;
+    padding: 16px;
   }
 
-  .workbench-layout {
-    display: flex;
-    flex-direction: column;
+  .monster-card-copy > strong {
+    font-size: 17px;
   }
 
-  .team-panel,
-  .workbench,
-  .inspector {
-    min-height: 0;
-  }
-
-  .roster-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .inspector {
-    display: block;
-  }
-
-  .trait-block,
-  .skill-list,
-  .equipment-block,
-  .inspector-actions {
-    margin-top: 16px;
-  }
-
-  .shop-monsters {
-    grid-template-columns: 1fr;
-  }
-
-  .shop-monsters .definition-card {
-    min-height: 135px;
-    grid-template-columns: auto 1fr;
-  }
-
-  .equipment-shelf {
-    grid-template-columns: 1fr;
-  }
-
-  .equipment-offers {
-    grid-template-columns: 1fr;
-  }
-
-  .workshop-title {
-    flex-direction: column;
-  }
-
-  .workshop-title > p {
-    width: 100%;
-    text-align: left;
-  }
-
-  .breeding-loom {
-    grid-template-columns: 1fr;
-  }
-
-  .gene-stitch {
-    min-height: 35px;
-    flex-direction: row;
-  }
-
-  .gene-stitch i {
-    width: auto;
-    height: 1px;
-  }
-
-  .gambit-row {
-    grid-template-columns: 28px 1fr;
-  }
-
-  .gambit-arrow {
-    display: none;
-  }
-
-  .gambit-row > div:last-child {
-    grid-column: 2;
-  }
-
-  .battle-launcher {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .battle-launcher > div {
-    text-align: left;
-  }
-
-  .launch-button {
-    width: 100%;
-  }
-
-  .battlefield {
-    display: flex;
-    min-height: 0;
-    flex-direction: column;
-  }
-
-  .battle-team {
-    width: 100%;
-  }
-
-  .battle-team.is-enemy {
-    direction: ltr;
-  }
-
-  .battle-monster,
-  .battle-monster.is-enemy {
-    min-height: 120px;
-    grid-template-columns: auto 1fr;
-    padding: 12px;
-    border: 1px solid var(--line);
-    border-left: 4px solid var(--monster-color);
-  }
-
-  .battle-monster.is-enemy {
-    border-right: 4px solid var(--monster-color);
-    border-left: 1px solid var(--line);
-  }
-
-  .versus-mark {
-    flex-direction: row;
-    gap: 8px;
-  }
-
-  .versus-mark b {
-    font-size: 26px;
-  }
-
-  .battle-console {
-    align-items: stretch;
-    flex-direction: column;
-    margin-top: 20px;
-  }
-
-  .battle-console strong {
-    white-space: normal;
-  }
-
-  .replay-controls button {
-    flex: 1;
-  }
-
-  .final-lineage {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 430px) {
-  .brand-lockup h1 {
-    font-size: 29px;
-  }
-
-  .run-metrics span {
-    font-size: 8px;
-  }
-
-  .run-metrics b {
-    font-size: 14px;
-  }
-
-  .cycle-rail span {
-    height: 21px;
-    font-size: 7px;
-  }
-
-  .roster-list {
-    grid-template-columns: 1fr;
-  }
-
-  .workshop-view {
-    padding: 14px 10px;
-  }
-
-  .workshop-tabs button {
-    padding: 11px 3px;
+  .monster-card-copy > small {
     font-size: 10px;
   }
 
-  .shop-actions {
+  .workbench-layout {
+    grid-template-columns: minmax(360px, 0.8fr) minmax(0, 1.7fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .team-panel {
+    grid-template-rows: 26px minmax(0, 1fr) minmax(95px, 0.34fr);
+    padding: 10px;
+  }
+
+  .team-zone {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .roster-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .roster-card {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .roster-card .monster-sigil {
+    width: 58px;
+    height: 58px;
+  }
+
+  .roster-card .monster-sigil > span {
+    font-size: 32px;
+  }
+
+  .roster-card > span {
     width: 100%;
+    flex: 0 0 auto;
   }
 
-  .shop-actions button {
-    flex: 1;
+  .roster-card strong {
+    font-size: 11px;
   }
 
-  .condition-editor,
-  .action-editor {
-    grid-template-columns: 1fr;
+  .is-bench .roster-card {
+    flex-direction: row;
   }
 
-  .condition-editor select:only-child {
+  .workbench {
+    grid-template-rows: minmax(0, 1fr) 54px;
+  }
+
+  .workshop-tabs button {
+    font-size: 12px;
+  }
+
+  .workshop-view {
+    padding: 15px;
+  }
+
+  .workshop-title {
+    min-height: 50px;
+  }
+
+  .workshop-title h2 {
+    font-size: 22px;
+  }
+
+  .workshop-title > p {
+    display: block;
+    width: min(300px, 42%);
+    margin: 0;
+    color: var(--muted);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    font-size: 9px;
+    line-height: 1.5;
+    text-align: right;
+  }
+
+  .shop-monsters {
+    height: min(56%, 310px);
+  }
+
+  .shop-monsters .monster-sigil {
+    width: 68px;
+    height: 68px;
+  }
+
+  .shop-monsters .monster-sigil > span {
+    font-size: 38px;
+  }
+
+  .shop-monsters .monster-card-copy .eyebrow,
+  .shop-monsters .monster-card-copy > small {
+    display: block;
+  }
+
+  .shop-monsters .monster-card-copy > strong {
+    font-size: 13px;
+  }
+
+  .shop-monsters .star-row {
+    font-size: 8px;
+  }
+
+  .equipment-shelf {
+    grid-template-columns: 90px 1fr;
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+
+  .equipment-offer {
+    min-height: 68px;
+    padding: 7px;
+  }
+
+  .equipment-offer strong {
+    font-size: 10px;
+  }
+
+  .equipment-offer small {
+    display: block;
+    color: var(--muted);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    font-size: 8px;
+  }
+
+  .breeding-loom {
+    grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .parent-choice {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    padding: 4px;
+  }
+
+  .parent-choice .monster-sigil {
+    width: 38px;
+    height: 38px;
+  }
+
+  .parent-choice strong {
+    font-size: 9px;
+  }
+
+  .parent-choice > b {
+    display: block;
+    color: var(--monster-color);
+    font-size: 7px;
+  }
+
+  .gambit-row {
+    grid-template-columns: 30px minmax(0, 1fr) 18px minmax(0, 1fr);
+    padding: 8px;
+  }
+
+  .gambit-arrow {
+    display: block;
+    color: var(--mint);
+    text-align: center;
+  }
+
+  .gambit-row > div:last-child {
     grid-column: auto;
   }
 
+  .battle-launcher {
+    min-height: 67px;
+    flex-basis: 67px;
+  }
+
+  .battle-launcher > div span {
+    font-size: 9px;
+  }
+
+  .battle-launcher > div strong {
+    font-size: 12px;
+  }
+
+  .launch-button {
+    min-width: 190px;
+    min-height: 48px;
+    font-size: 13px;
+  }
+
+  .event-stage {
+    padding: clamp(20px, 6vh, 60px) min(8vw, 100px) 10px;
+  }
+
+  .event-grid {
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .event-grid button {
+    padding: 18px;
+  }
+
+  .event-grid button > span {
+    width: 74px;
+    height: 74px;
+    font-size: 30px;
+  }
+
+  .event-grid strong {
+    font-size: 16px;
+  }
+
+  .event-grid p {
+    font-size: 10px;
+  }
+
+  .battlefield {
+    grid-template-columns: minmax(0, 1fr) 65px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .battle-team {
+    grid-template-rows: 18px repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .battle-monster {
+    grid-template-columns: 68px minmax(80px, 0.7fr) minmax(120px, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
   .battle-monster .monster-sigil {
-    width: 61px;
-    height: 68px;
+    width: 62px;
+    height: 62px;
+  }
+
+  .battle-monster .monster-sigil > span {
+    font-size: 36px;
+  }
+
+  .battle-monster-copy > span {
+    display: block;
+    color: var(--monster-color);
+    font-size: 7px;
   }
 
   .battle-monster-copy > strong {
     font-size: 12px;
   }
 
-  .event-grid button {
-    min-height: 240px;
+  .battle-monster-copy > small {
+    font-size: 7px;
+  }
+
+  .battle-bars {
+    grid-column: auto;
+  }
+
+  .hp-bar,
+  .mp-bar {
+    height: 15px;
+  }
+
+  .hp-bar b,
+  .mp-bar b {
+    font-size: 8px;
+    line-height: 15px;
+  }
+
+  .versus-mark b {
+    font-size: 34px;
+    writing-mode: initial;
+  }
+
+  .battle-console {
+    min-height: 72px;
+    flex-basis: 72px;
+    padding: 10px;
+  }
+
+  .battle-console strong {
+    font-size: 11px;
+  }
+
+  .result-card {
+    padding: 20px;
+  }
+
+  .result-roster {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 700px) {
+  .run-header,
+  .battle-header,
+  .draft-mast {
+    min-height: 38px;
+  }
+
+  .cycle-rail {
+    min-height: 14px;
+    flex-basis: 14px;
+  }
+
+  .draft-copy {
+    padding: 5px 2px;
+  }
+
+  .draft-copy p {
+    display: none;
+  }
+
+  .workbench-layout {
+    grid-template-rows: minmax(142px, 0.39fr) minmax(0, 1fr);
+  }
+
+  .team-panel {
+    grid-template-rows: 16px minmax(0, 1fr) 43px;
+  }
+
+  .team-panel .panel-heading {
+    border-bottom: 0;
+  }
+
+  .workbench {
+    grid-template-rows: minmax(0, 1fr) 37px;
+  }
+
+  .workshop-title {
+    min-height: 27px;
+    margin-bottom: 3px;
+  }
+
+  .workshop-title .section-index {
+    display: none;
+  }
+
+  .shop-monsters {
+    min-height: 96px;
+  }
+
+  .battle-launcher {
+    min-height: 50px;
+    flex-basis: 50px;
+  }
+
+  .launch-button {
+    min-height: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

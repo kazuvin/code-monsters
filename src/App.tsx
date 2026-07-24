@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { simulateBattle } from './core/battle';
 import { inheritanceSkillChoices } from './core/breeding';
 import { createGhostTeam } from './core/ghost';
@@ -97,6 +104,18 @@ const STAT_LABELS: Array<[keyof StatBlock, string]> = [
   ['crit', '会'],
 ];
 
+const MONSTER_EMOJI: Record<string, string> = {
+  'dragon-light': '🐲',
+  'dragon-dark': '🐉',
+  'dragon-fire': '🦎',
+  'demon-light': '🧞',
+  'demon-dark': '😈',
+  'demon-fire': '👹',
+  'spirit-light': '🧚',
+  'spirit-dark': '👻',
+  'spirit-fire': '🔥',
+};
+
 const emptyCondition = (kind: GambitCondition['kind']): GambitCondition => {
   if (kind === 'always') return { kind };
   if (kind === 'self-hp-below' || kind === 'ally-hp-below' || kind === 'enemy-hp-below') {
@@ -116,10 +135,16 @@ const definitionById = (data: GameData, id: string) => {
 };
 
 const starText = (whiteStars: number, colorStars: ColorStars = 0) => (
-  <>
-    <span className="white-stars">{'★'.repeat(whiteStars)}</span>
-    {colorStars > 0 && <span className="color-stars">{'★'.repeat(colorStars)}</span>}
-  </>
+  <span className="stars" aria-label={`白星${whiteStars}${colorStars > 0 ? `、色星${colorStars}` : ''}`}>
+    <span className="white-stars" aria-hidden="true">
+      {'⭐'.repeat(whiteStars)}
+    </span>
+    {colorStars > 0 && (
+      <span className="color-stars" aria-hidden="true">
+        {'★'.repeat(colorStars)}
+      </span>
+    )}
+  </span>
 );
 
 const monsterStyle = (data: GameData, definition: MonsterDefinition) => {
@@ -147,9 +172,10 @@ function MonsterSigil({
   colorStars?: ColorStars;
   size?: 'small' | 'regular' | 'large';
 }) {
+  const emoji = MONSTER_EMOJI[`${definition.lineageId}-${definition.attributeId}`] ?? '👾';
   return (
     <div className={`monster-sigil is-${size}`} style={monsterStyle(data, definition)} aria-hidden="true">
-      <span>{definition.glyph}</span>
+      <span>{emoji}</span>
       <b>{data.lineages.find((lineage) => lineage.id === definition.lineageId)?.mark}</b>
       {colorStars > 0 && <i>{colorStars}</i>}
     </div>
@@ -296,20 +322,78 @@ function RosterCard({
   active,
   selected,
   onSelect,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
 }: {
   monster: MonsterInstance;
   active: boolean;
   selected: boolean;
   onSelect: () => void;
+  onDragStart: (monster: MonsterInstance, x: number, y: number) => void;
+  onDragMove: (x: number, y: number) => void;
+  onDragEnd: (x: number, y: number) => void;
 }) {
   const definition = definitionFor(GAME_DATA, monster);
+  const holdTimer = useRef<number | undefined>(undefined);
+  const dragging = useRef(false);
+  const suppressClick = useRef(false);
+  const origin = useRef({ x: 0, y: 0 });
+
+  const clearHold = () => {
+    if (holdTimer.current !== undefined) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = undefined;
+    }
+  };
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    origin.current = { x: event.clientX, y: event.clientY };
+    dragging.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    holdTimer.current = window.setTimeout(() => {
+      dragging.current = true;
+      suppressClick.current = true;
+      onDragStart(monster, event.clientX, event.clientY);
+      if ('vibrate' in navigator) navigator.vibrate(20);
+    }, 420);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (dragging.current) {
+      onDragMove(event.clientX, event.clientY);
+      return;
+    }
+    if (Math.hypot(event.clientX - origin.current.x, event.clientY - origin.current.y) > 10) clearHold();
+  };
+
+  const finishPointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    clearHold();
+    if (dragging.current) {
+      dragging.current = false;
+      onDragEnd(event.clientX, event.clientY);
+    }
+  };
+
   return (
     <button
       type="button"
       className={`roster-card${selected ? ' is-selected' : ''}${active ? ' is-active' : ''}`}
       style={monsterStyle(GAME_DATA, definition)}
-      onClick={onSelect}
+      onClick={() => {
+        if (suppressClick.current) {
+          suppressClick.current = false;
+          return;
+        }
+        onSelect();
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishPointer}
+      onPointerCancel={finishPointer}
       aria-pressed={selected}
+      aria-label={`${definition.name}、${active ? '主力' : '控え'}。タップで詳細、長押しで移動`}
     >
       <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="small" />
       <span>
@@ -327,54 +411,110 @@ function TeamPanel({
   run,
   selectedId,
   onSelect,
+  onMove,
 }: {
   run: CasualRunState;
   selectedId?: string;
   onSelect: (id: string) => void;
+  onMove: (monster: MonsterInstance, active: boolean) => void;
 }) {
+  const [dragState, setDragState] = useState<{ monster: MonsterInstance; x: number; y: number }>();
+  const [dropZone, setDropZone] = useState<'active' | 'bench'>();
   const active = run.activeIds
     .map((id) => run.roster.find((monster) => monster.id === id))
     .filter((monster): monster is MonsterInstance => Boolean(monster));
   const bench = run.roster.filter((monster) => !run.activeIds.includes(monster.id));
+  const updateDropZone = (x: number, y: number) => {
+    const zone = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-team-zone]')?.dataset.teamZone;
+    setDropZone(zone === 'active' || zone === 'bench' ? zone : undefined);
+  };
+  const cardProps = (monster: MonsterInstance, isActive: boolean) => ({
+    monster,
+    active: isActive,
+    selected: selectedId === monster.id,
+    onSelect: () => onSelect(monster.id),
+    onDragStart: (dragged: MonsterInstance, x: number, y: number) => {
+      setDragState({ monster: dragged, x, y });
+      updateDropZone(x, y);
+    },
+    onDragMove: (x: number, y: number) => {
+      setDragState((current) => (current ? { ...current, x, y } : current));
+      updateDropZone(x, y);
+    },
+    onDragEnd: (x: number, y: number) => {
+      const zone = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-team-zone]')?.dataset.teamZone;
+      if (zone === 'active' || zone === 'bench') onMove(monster, zone === 'active');
+      setDragState(undefined);
+      setDropZone(undefined);
+    },
+  });
   return (
     <aside className="team-panel panel">
       <div className="panel-heading">
-        <span>01 / PARTY</span>
-        <strong>{run.activeIds.length}/3</strong>
+        <span>PARTY DECK</span>
+        <strong>長押しで編成</strong>
       </div>
-      <h2>主力</h2>
-      <div className="roster-list">
-        {active.map((monster) => (
-          <RosterCard
-            key={monster.id}
-            monster={monster}
-            active
-            selected={selectedId === monster.id}
-            onSelect={() => onSelect(monster.id)}
+      <section
+        className={`team-zone is-active${dropZone === 'active' ? ' is-drop-target' : ''}`}
+        data-team-zone="active"
+        aria-label="主力"
+      >
+        <div className="team-zone-label">
+          <h2>主力</h2>
+          <span>{run.activeIds.length}/3</span>
+        </div>
+        <div className="roster-list">
+          {active.map((monster) => (
+            <RosterCard key={monster.id} {...cardProps(monster, true)} />
+          ))}
+          {Array.from({ length: Math.max(0, 3 - active.length) }, (_, index) => (
+            <div className="empty-roster-slot" key={`active-empty-${index}`}>
+              ＋
+            </div>
+          ))}
+        </div>
+      </section>
+      <section
+        className={`team-zone is-bench${dropZone === 'bench' ? ' is-drop-target' : ''}`}
+        data-team-zone="bench"
+        aria-label="控え"
+      >
+        <div className="team-zone-label">
+          <h3>控え</h3>
+          <span>{bench.length}/4</span>
+        </div>
+        <div className="roster-list is-bench">
+          {bench.map((monster) => (
+            <RosterCard key={monster.id} {...cardProps(monster, false)} />
+          ))}
+          {Array.from({ length: Math.max(1, 4 - bench.length) }, (_, index) => (
+            <div className="empty-roster-slot is-bench" key={`bench-empty-${index}`}>
+              ·
+            </div>
+          ))}
+        </div>
+      </section>
+      {dragState && (
+        <div
+          className="drag-chip"
+          style={{
+            left: dragState.x,
+            top: dragState.y,
+            ...monsterStyle(GAME_DATA, definitionFor(GAME_DATA, dragState.monster)),
+          }}
+          aria-hidden="true"
+        >
+          <MonsterSigil
+            data={GAME_DATA}
+            definition={definitionFor(GAME_DATA, dragState.monster)}
+            colorStars={dragState.monster.colorStars}
+            size="small"
           />
-        ))}
-        {Array.from({ length: Math.max(0, 3 - active.length) }, (_, index) => (
-          <div className="empty-roster-slot" key={`active-empty-${index}`}>
-            主力を配置
-          </div>
-        ))}
-      </div>
-      <div className="bench-heading">
-        <h3>控え</h3>
-        <span>{bench.length}/4</span>
-      </div>
-      <div className="roster-list is-bench">
-        {bench.map((monster) => (
-          <RosterCard
-            key={monster.id}
-            monster={monster}
-            active={false}
-            selected={selectedId === monster.id}
-            onSelect={() => onSelect(monster.id)}
-          />
-        ))}
-        {bench.length === 0 && <p className="muted-copy">ショップで仲間を増やせます。</p>}
-      </div>
+        </div>
+      )}
+      <span className="drag-announcement" aria-live="polite">
+        {dragState ? `${dropZone === 'active' ? '主力' : dropZone === 'bench' ? '控え' : '移動先'}へドロップ` : ''}
+      </span>
     </aside>
   );
 }
@@ -782,125 +922,149 @@ function Inspector({
   run,
   monster,
   onCommand,
+  onClose,
 }: {
   run: CasualRunState;
   monster?: MonsterInstance;
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
+  onClose: () => void;
 }) {
-  if (!monster) {
-    return (
-      <aside className="inspector panel">
-        <p className="muted-copy">仲間を選ぶと詳細が表示されます。</p>
-      </aside>
-    );
-  }
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !monster) return;
+    dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [monster]);
+  if (!monster) return null;
   const definition = definitionFor(GAME_DATA, monster);
   const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
   const stats = permanentStatsFor(GAME_DATA, monster);
   const equipped = GAME_DATA.equipment.find((entry) => entry.id === monster.equipmentId);
   const active = run.activeIds.includes(monster.id);
   return (
-    <aside className="inspector panel" style={monsterStyle(GAME_DATA, definition)}>
-      <div className="inspector-identity">
-        <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="large" />
-        <div>
-          <span>
-            {lineageName(GAME_DATA, definition)} × {attributeName(GAME_DATA, definition)}
-          </span>
-          <h2>{definition.name}</h2>
-          <p>
-            {starText(definition.whiteStars, monster.colorStars)} · Lv.{monster.level}
-          </p>
-        </div>
-      </div>
-      <div className="xp-track">
-        <span style={{ width: `${Math.min(100, (monster.xp / 108) * 100)}%` }} />
-      </div>
-      <small className="xp-label">EXP {monster.xp} / 108</small>
-      <div className="stat-grid">
-        {STAT_LABELS.map(([id, label]) => (
-          <span key={id}>
-            <small>{label}</small>
-            <b>
-              {stats[id]}
-              {id === 'crit' ? '%' : ''}
-            </b>
-          </span>
-        ))}
-      </div>
-      <section className="trait-block">
-        <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
-        <h3>{trait?.name}</h3>
-        <p>{trait?.stages[monster.colorStars].description}</p>
-      </section>
-      <section className="skill-list">
-        <span>SKILLS</span>
-        {skillIdsFor(GAME_DATA, monster).map((skillId, index) => {
-          const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
-          return (
-            <div key={`${skillId}-${index}`}>
-              <b>{index === 2 && monster.inheritedSkillId ? '継' : index + 1}</b>
-              <span>
-                <strong>{skill?.name}</strong>
-                <small>
-                  MP {skill?.mpCost} · {skill?.description}
-                </small>
-              </span>
-            </div>
-          );
-        })}
-      </section>
-      <section className="equipment-block">
-        <span>EQUIPMENT</span>
-        <div className="equipped-row">
-          <b>{equipped?.glyph ?? '—'}</b>
-          <span>{equipped ? `${equipped.name} / ${equipped.description}` : '装備なし'}</span>
-          {equipped && (
-            <button type="button" onClick={() => onCommand(equipItem(GAME_DATA, run, monster.id), '装備を外しました')}>
-              外す
-            </button>
-          )}
-        </div>
-        {run.equipmentInventory.length > 0 && (
-          <div className="inventory-list">
-            {run.equipmentInventory.map((equipmentId, index) => {
-              const equipment = GAME_DATA.equipment.find((entry) => entry.id === equipmentId);
-              if (!equipment) return null;
-              return (
-                <button
-                  type="button"
-                  key={`${equipmentId}-${index}`}
-                  onClick={() =>
-                    onCommand(equipItem(GAME_DATA, run, monster.id, equipmentId), `${equipment.name}を装備しました`)
-                  }
-                  title={equipment.description}
-                >
-                  {equipment.glyph}
-                </button>
-              );
-            })}
+    <dialog
+      ref={dialogRef}
+      className="monster-dialog"
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}
+      aria-label={`${definition.name}の詳細`}
+    >
+      <aside className="inspector panel" style={monsterStyle(GAME_DATA, definition)}>
+        <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+          ×
+        </button>
+        <div className="inspector-identity">
+          <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="large" />
+          <div>
+            <span>
+              {lineageName(GAME_DATA, definition)} × {attributeName(GAME_DATA, definition)}
+            </span>
+            <h2>{definition.name}</h2>
+            <p>
+              {starText(definition.whiteStars, monster.colorStars)} · Lv.{monster.level}
+            </p>
           </div>
-        )}
-      </section>
-      <div className="inspector-actions">
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() =>
-            onCommand(toggleActiveMonster(GAME_DATA, run, monster.id), active ? '控えへ移しました' : '主力へ移しました')
-          }
-        >
-          {active ? '控えへ移す' : '主力へ出す'}
-        </button>
-        <button
-          type="button"
-          className="text-button is-danger"
-          onClick={() => onCommand(sellMonster(GAME_DATA, run, monster.id), `${definition.name}と別れました`)}
-        >
-          別れる
-        </button>
-      </div>
-    </aside>
+        </div>
+        <div className="xp-track">
+          <span style={{ width: `${Math.min(100, (monster.xp / 108) * 100)}%` }} />
+        </div>
+        <small className="xp-label">EXP {monster.xp} / 108</small>
+        <div className="stat-grid">
+          {STAT_LABELS.map(([id, label]) => (
+            <span key={id}>
+              <small>{label}</small>
+              <b>
+                {stats[id]}
+                {id === 'crit' ? '%' : ''}
+              </b>
+            </span>
+          ))}
+        </div>
+        <section className="trait-block">
+          <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
+          <h3>{trait?.name}</h3>
+          <p>{trait?.stages[monster.colorStars].description}</p>
+        </section>
+        <section className="skill-list">
+          <span>SKILLS</span>
+          {skillIdsFor(GAME_DATA, monster).map((skillId, index) => {
+            const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
+            return (
+              <div key={`${skillId}-${index}`}>
+                <b>{index === 2 && monster.inheritedSkillId ? '継' : index + 1}</b>
+                <span>
+                  <strong>{skill?.name}</strong>
+                  <small>
+                    MP {skill?.mpCost} · {skill?.description}
+                  </small>
+                </span>
+              </div>
+            );
+          })}
+        </section>
+        <section className="equipment-block">
+          <span>EQUIPMENT</span>
+          <div className="equipped-row">
+            <b>{equipped?.glyph ?? '—'}</b>
+            <span>{equipped ? `${equipped.name} / ${equipped.description}` : '装備なし'}</span>
+            {equipped && (
+              <button
+                type="button"
+                onClick={() => onCommand(equipItem(GAME_DATA, run, monster.id), '装備を外しました')}
+              >
+                外す
+              </button>
+            )}
+          </div>
+          {run.equipmentInventory.length > 0 && (
+            <div className="inventory-list">
+              {run.equipmentInventory.map((equipmentId, index) => {
+                const equipment = GAME_DATA.equipment.find((entry) => entry.id === equipmentId);
+                if (!equipment) return null;
+                return (
+                  <button
+                    type="button"
+                    key={`${equipmentId}-${index}`}
+                    onClick={() =>
+                      onCommand(equipItem(GAME_DATA, run, monster.id, equipmentId), `${equipment.name}を装備しました`)
+                    }
+                    title={equipment.description}
+                  >
+                    {equipment.glyph}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+        <div className="inspector-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() =>
+              onCommand(
+                toggleActiveMonster(GAME_DATA, run, monster.id),
+                active ? '控えへ移しました' : '主力へ移しました',
+              )
+            }
+          >
+            {active ? '控えへ移す' : '主力へ出す'}
+          </button>
+          <button
+            type="button"
+            className="text-button is-danger"
+            onClick={() => onCommand(sellMonster(GAME_DATA, run, monster.id), `${definition.name}と別れました`)}
+          >
+            別れる
+          </button>
+        </div>
+      </aside>
+    </dialog>
   );
 }
 
@@ -915,9 +1079,11 @@ function WorkshopScreen({
 }) {
   const [tab, setTab] = useState<WorkshopTab>('shop');
   const [selectedId, setSelectedId] = useState(run.activeIds[0]);
+  const [inspectedId, setInspectedId] = useState<string>();
   const [parentIds, setParentIds] = useState<string[]>([]);
   const [notice, setNotice] = useState('');
   const selected = run.roster.find((monster) => monster.id === selectedId);
+  const inspected = run.roster.find((monster) => monster.id === inspectedId);
 
   useEffect(() => {
     if (!selected && run.roster[0]) setSelectedId(run.roster[0].id);
@@ -937,7 +1103,22 @@ function WorkshopScreen({
         </button>
       )}
       <div className="workbench-layout">
-        <TeamPanel run={run} selectedId={selectedId} onSelect={setSelectedId} />
+        <TeamPanel
+          run={run}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            setSelectedId(id);
+            setInspectedId(id);
+          }}
+          onMove={(monster, shouldBeActive) => {
+            const isActive = run.activeIds.includes(monster.id);
+            if (isActive === shouldBeActive) return;
+            onCommand(
+              toggleActiveMonster(GAME_DATA, run, monster.id),
+              shouldBeActive ? '主力へ配置しました' : '控えへ移しました',
+            );
+          }}
+        />
         <section className="workbench panel">
           <nav className="workshop-tabs" aria-label="育成メニュー">
             <button type="button" className={tab === 'shop' ? 'is-active' : ''} onClick={() => setTab('shop')}>
@@ -958,8 +1139,8 @@ function WorkshopScreen({
           )}
           {tab === 'tactics' && <TacticsView run={run} monster={selected} onChange={setRun} />}
         </section>
-        <Inspector run={run} monster={selected} onCommand={onCommand} />
       </div>
+      <Inspector run={run} monster={inspected} onCommand={onCommand} onClose={() => setInspectedId(undefined)} />
       <footer className="battle-launcher">
         <div>
           <span>NEXT / ASYNC GHOST #{run.cycle.toString().padStart(2, '0')}</span>
