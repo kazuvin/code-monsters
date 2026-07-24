@@ -8,6 +8,12 @@ import {
 } from 'react';
 import { simulateBattle } from './core/battle';
 import { breedMonsters, inheritanceSkillChoices, listBreedingCandidates } from './core/breeding';
+import {
+  mergeDiscoveredMonsterIds,
+  monsterCatalogEntries,
+  normalizeDiscoveredMonsterIds,
+  type MonsterCatalogEntry,
+} from './core/catalog';
 import { createGhostTeam } from './core/ghost';
 import {
   createMonster,
@@ -47,6 +53,7 @@ import type {
   GameData,
   GambitCondition,
   GambitRule,
+  LineageId,
   MonsterDefinition,
   MonsterInstance,
   SkillDefinition,
@@ -84,11 +91,9 @@ const RECIPE_DISCOVERY_STORAGE_KEY = `code-monsters:recipe-discovery:v${GAME_DAT
 const loadDiscoveredMonsterIds = () => {
   try {
     const saved = JSON.parse(window.localStorage.getItem(RECIPE_DISCOVERY_STORAGE_KEY) ?? '[]');
-    if (!Array.isArray(saved)) return [];
-    const monsterIds = new Set(GAME_DATA.monsters.map((monster) => monster.id));
-    return saved.filter((id): id is string => typeof id === 'string' && monsterIds.has(id));
+    return normalizeDiscoveredMonsterIds(GAME_DATA, saved);
   } catch {
-    return [];
+    return new Set<string>();
   }
 };
 
@@ -599,7 +604,15 @@ function MonsterProspectDialog({
   );
 }
 
-function RunHeader({ run }: { run: CasualRunState }) {
+function RunHeader({
+  run,
+  discoveredCount,
+  onOpenCatalog,
+}: {
+  run: CasualRunState;
+  discoveredCount?: number;
+  onOpenCatalog?: () => void;
+}) {
   return (
     <>
       <header className="run-header">
@@ -607,19 +620,30 @@ function RunHeader({ run }: { run: CasualRunState }) {
           <span>CODE MONSTERS // FIELD LAB</span>
           <h1>血統航路</h1>
         </div>
-        <div className="run-metrics" aria-label="ラン状況">
-          <span>
-            CYCLE <b>{String(run.cycle).padStart(2, '0')}</b>
-          </span>
-          <span>
-            WIN <b>{run.wins}</b>
-          </span>
-          <span>
-            LOSS <b>{run.losses}/5</b>
-          </span>
-          <span className="coin-metric">
-            COIN <b>{run.coins}</b>
-          </span>
+        <div className="run-header-tools">
+          {onOpenCatalog && (
+            <button type="button" className="catalog-open-button" onClick={onOpenCatalog}>
+              <span>FIELD NOTES</span>
+              <i>モンスター図鑑</i>
+              <b>
+                {discoveredCount ?? 0}/{GAME_DATA.monsters.length}
+              </b>
+            </button>
+          )}
+          <div className="run-metrics" aria-label="ラン状況">
+            <span>
+              CYCLE <b>{String(run.cycle).padStart(2, '0')}</b>
+            </span>
+            <span>
+              WIN <b>{run.wins}</b>
+            </span>
+            <span>
+              LOSS <b>{run.losses}/5</b>
+            </span>
+            <span className="coin-metric">
+              COIN <b>{run.coins}</b>
+            </span>
+          </div>
         </div>
       </header>
       <div className="cycle-rail" aria-label={`全12サイクル中${run.cycle}サイクル`}>
@@ -1923,6 +1947,210 @@ function RecipeArchiveDialog({
   );
 }
 
+type CatalogFilter = 'all' | LineageId;
+
+function MonsterCatalogCard({
+  entry,
+  selected,
+  onSelect,
+}: {
+  entry: MonsterCatalogEntry;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const definition = definitionById(GAME_DATA, entry.id);
+  const unlocked = entry.state === 'unlocked' && entry.details;
+  const recordNumber = String(entry.index).padStart(2, '0');
+  return (
+    <button
+      type="button"
+      className={`catalog-card is-${entry.state}${selected ? ' is-selected' : ''}`}
+      style={monsterStyle(GAME_DATA, definition)}
+      data-catalog-id={entry.id}
+      data-catalog-state={entry.state}
+      onClick={onSelect}
+      aria-label={unlocked ? `図鑑 No.${recordNumber} ${unlocked.name}` : `図鑑 No.${recordNumber} 未確認標本`}
+      aria-pressed={selected}
+    >
+      <span className="catalog-card-number">NO.{recordNumber}</span>
+      <MonsterSigil data={GAME_DATA} definition={definition} size="small" />
+      <span className="catalog-card-copy">
+        <strong>{unlocked ? unlocked.name : '未確認標本'}</strong>
+        <small>{unlocked ? starText(unlocked.whiteStars) : '記録なし'}</small>
+      </span>
+      <i>{unlocked ? '記録済み' : '未解放'}</i>
+    </button>
+  );
+}
+
+function MonsterCatalogDetail({ entry }: { entry: MonsterCatalogEntry }) {
+  const definition = definitionById(GAME_DATA, entry.id);
+  const recordNumber = String(entry.index).padStart(2, '0');
+  if (!entry.details) {
+    return (
+      <section
+        className="catalog-detail is-locked"
+        style={monsterStyle(GAME_DATA, definition)}
+        data-catalog-detail-state="locked"
+      >
+        <div className="catalog-locked-sigil" aria-hidden="true">
+          <MonsterSigil data={GAME_DATA} definition={definition} size="large" />
+          <span>?</span>
+        </div>
+        <span className="section-index">FIELD RECORD NO.{recordNumber}</span>
+        <h3>未確認標本</h3>
+        <p>旅の仲間として迎えると、名前・能力・特性・スキルの記録が開きます。</p>
+        <small>シルエット以外の生態情報は未解放です。</small>
+      </section>
+    );
+  }
+
+  const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
+  const skills = [...definition.intrinsicSkillIds, definition.defaultSkillId]
+    .map((skillId) => GAME_DATA.skills.find((skill) => skill.id === skillId))
+    .filter((skill): skill is SkillDefinition => Boolean(skill));
+  return (
+    <section
+      className="catalog-detail is-unlocked"
+      style={monsterStyle(GAME_DATA, definition)}
+      data-catalog-detail-state="unlocked"
+    >
+      <header className="catalog-detail-identity">
+        <MonsterSigil data={GAME_DATA} definition={definition} size="large" />
+        <div>
+          <span className="section-index">FIELD RECORD NO.{recordNumber} / CONFIRMED</span>
+          <h3>{definition.name}</h3>
+          <p>
+            {lineageName(GAME_DATA, definition)} × {attributeName(GAME_DATA, definition)} ·{' '}
+            {starText(definition.whiteStars)}
+          </p>
+        </div>
+      </header>
+      <div className="catalog-stat-grid" aria-label={`${definition.name}のレベル1基礎能力`}>
+        {STAT_LABELS.map(([id, label]) => (
+          <span key={id}>
+            <small>{label}</small>
+            <b>{definition.baseStats[id]}</b>
+          </span>
+        ))}
+      </div>
+      <section className="catalog-trait">
+        <span>TRAIT / 色星0</span>
+        <strong>{trait?.name ?? '特性なし'}</strong>
+        <p>{trait?.stages[0].description ?? '記録なし'}</p>
+      </section>
+      <section className="catalog-skills">
+        <span>SKILLS / 固有2 + 基本継承1</span>
+        <div>
+          {skills.map((skill, index) => (
+            <SkillEffectCard key={skill.id} skill={skill} badge={index < 2 ? `固有 ${index + 1}` : '基本継承'} />
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function MonsterCatalogDialog({
+  open,
+  discoveredMonsterIds,
+  onClose,
+}: {
+  open: boolean;
+  discoveredMonsterIds: ReadonlySet<string>;
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [filter, setFilter] = useState<CatalogFilter>('all');
+  const [selectedId, setSelectedId] = useState<string>();
+  const entries = monsterCatalogEntries(GAME_DATA, discoveredMonsterIds);
+  const filteredEntries = filter === 'all' ? entries : entries.filter((entry) => entry.silhouette.lineageId === filter);
+  const selectedEntry =
+    filteredEntries.find((entry) => entry.id === selectedId) ??
+    filteredEntries.find((entry) => entry.state === 'unlocked') ??
+    filteredEntries[0];
+  const discoveredCount = entries.filter((entry) => entry.state === 'unlocked').length;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="catalog-dialog"
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}
+      aria-label="モンスター図鑑"
+    >
+      <section className="catalog-archive panel">
+        <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+          ×
+        </button>
+        <header className="catalog-archive-heading">
+          <div>
+            <span>CODE MONSTERS // FIELD ARCHIVE</span>
+            <h2>モンスター図鑑</h2>
+            <p>仲間にした種だけ、生態記録と戦闘能力を閲覧できます。</p>
+          </div>
+          <div className="catalog-progress" aria-label={`${GAME_DATA.monsters.length}種中${discoveredCount}種発見`}>
+            <small>RECORDED</small>
+            <strong>
+              {String(discoveredCount).padStart(2, '0')}
+              <i>/</i>
+              {GAME_DATA.monsters.length}
+            </strong>
+            <span
+              style={
+                { '--catalog-progress': `${(discoveredCount / GAME_DATA.monsters.length) * 100}%` } as CSSProperties
+              }
+            />
+          </div>
+        </header>
+        <nav className="catalog-filters" aria-label="図鑑の系統絞り込み">
+          <button
+            type="button"
+            className={filter === 'all' ? 'is-active' : ''}
+            aria-pressed={filter === 'all'}
+            onClick={() => setFilter('all')}
+          >
+            すべて <b>45</b>
+          </button>
+          {GAME_DATA.lineages.map((lineage) => (
+            <button
+              type="button"
+              key={lineage.id}
+              className={filter === lineage.id ? 'is-active' : ''}
+              aria-pressed={filter === lineage.id}
+              onClick={() => setFilter(lineage.id)}
+            >
+              {lineage.mark} {lineage.name} <b>15</b>
+            </button>
+          ))}
+        </nav>
+        <div className="catalog-body">
+          <div className="catalog-index" aria-label="モンスター標本一覧">
+            {filteredEntries.map((entry) => (
+              <MonsterCatalogCard
+                key={entry.id}
+                entry={entry}
+                selected={selectedEntry?.id === entry.id}
+                onSelect={() => setSelectedId(entry.id)}
+              />
+            ))}
+          </div>
+          {selectedEntry && <MonsterCatalogDetail entry={selectedEntry} />}
+        </div>
+      </section>
+    </dialog>
+  );
+}
+
 function Inspector({
   run,
   monster,
@@ -2077,6 +2305,7 @@ function WorkshopScreen({
   onStartBattle: () => void;
 }) {
   const [breedingOpen, setBreedingOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(run.activeIds[0]);
   const [inspectedId, setInspectedId] = useState<string>();
   const [parentIds, setParentIds] = useState<string[]>([]);
@@ -2100,7 +2329,7 @@ function WorkshopScreen({
 
   return (
     <main className="run-screen">
-      <RunHeader run={run} />
+      <RunHeader run={run} discoveredCount={discoveredMonsterIds.size} onOpenCatalog={() => setCatalogOpen(true)} />
       {notice && (
         <button type="button" className="notice-strip" onClick={() => setNotice('')}>
           {notice} <span>×</span>
@@ -2158,6 +2387,11 @@ function WorkshopScreen({
         onCommand={onCommand}
         onChange={setRun}
         onClose={() => setInspectedId(undefined)}
+      />
+      <MonsterCatalogDialog
+        open={catalogOpen}
+        discoveredMonsterIds={discoveredMonsterIds}
+        onClose={() => setCatalogOpen(false)}
       />
       <footer className="battle-launcher">
         <div>
@@ -2770,8 +3004,7 @@ export function App() {
 
   useEffect(() => {
     setDiscoveredMonsterIds((current) => {
-      const next = new Set(current);
-      for (const monster of run.roster) next.add(monster.definitionId);
+      const next = mergeDiscoveredMonsterIds(GAME_DATA, current, run.roster);
       if (next.size === current.size) return current;
       saveDiscoveredMonsterIds(next);
       return next;

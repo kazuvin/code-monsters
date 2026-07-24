@@ -69,6 +69,30 @@ if ((await desktop.locator('.equipment-offers > *').count()) !== 2) {
 if ((await desktop.locator('.shop-monsters .card-detail-button').count()) !== 3) {
   throw new Error('Shop monsters do not expose a detail action');
 }
+await desktop.getByRole('button', { name: /モンスター図鑑/ }).click();
+await desktop.locator('.catalog-dialog[open]').waitFor();
+if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 45) {
+  throw new Error('Monster catalog does not show all 45 records');
+}
+if ((await desktop.locator('.catalog-card.is-unlocked').count()) < 3) {
+  throw new Error('Monsters welcomed during the draft were not unlocked in the catalog');
+}
+await desktop.locator('.catalog-card.is-locked').first().click();
+if ((await desktop.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
+  throw new Error('Undiscovered monster does not open a locked silhouette record');
+}
+if ((await desktop.locator('.catalog-detail.is-locked .effect-skill-card').count()) !== 0) {
+  throw new Error('Undiscovered monster exposes skill effects');
+}
+await desktop.locator('.catalog-card.is-unlocked').first().click();
+if ((await desktop.locator('.catalog-detail.is-unlocked .catalog-stat-grid span').count()) !== 7) {
+  throw new Error('Discovered catalog record does not show all seven base stats');
+}
+if ((await desktop.locator('.catalog-detail.is-unlocked .effect-skill-card').count()) !== 3) {
+  throw new Error('Discovered catalog record does not show all three skill effects');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-catalog-desktop.png', fullPage: true });
+await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.shop-monsters .definition-card-main').first().click();
 await desktop.locator('.prospect-dialog[open]').waitFor();
 if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
@@ -624,6 +648,18 @@ for (let round = 0; round < 3; round += 1) {
 await mobile.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 await assertFitsViewport(mobile, 'Mobile workshop');
 
+await mobile.getByRole('button', { name: /モンスター図鑑/ }).click();
+await mobile.locator('.catalog-dialog[open]').waitFor();
+if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 45) {
+  throw new Error('Mobile monster catalog does not show all 45 records');
+}
+await mobile.locator('.catalog-card.is-locked').first().click();
+if ((await mobile.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
+  throw new Error('Mobile undiscovered monster does not remain locked');
+}
+await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png' });
+await mobile.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
+
 const mobileActiveCard = mobile.locator('.team-zone.is-active .roster-card').first();
 await mobileActiveCard.click();
 await mobile.locator('dialog[open]').waitFor();
@@ -717,6 +753,7 @@ console.log(
     screenshots: [
       '/tmp/code-monsters-casual-desktop.png',
       '/tmp/code-monsters-prospect-desktop.png',
+      '/tmp/code-monsters-catalog-desktop.png',
       '/tmp/code-monsters-stat-breakdown-desktop.png',
       '/tmp/code-monsters-battle-desktop.png',
       '/tmp/code-monsters-critical-desktop.png',
@@ -726,6 +763,7 @@ console.log(
       '/tmp/code-monsters-breeding-skills-mobile.png',
       '/tmp/code-monsters-breeding-reveal-desktop.png',
       '/tmp/code-monsters-draft-mobile.png',
+      '/tmp/code-monsters-catalog-mobile.png',
       '/tmp/code-monsters-stat-breakdown-mobile.png',
       '/tmp/code-monsters-recipes-mobile.png',
       '/tmp/code-monsters-workshop-mobile.png',

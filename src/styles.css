@@ -1413,6 +1413,7 @@ button.definition-card:active,
 
 .monster-dialog,
 .recipe-dialog,
+.catalog-dialog,
 .prospect-dialog,
 .breeding-confirm-dialog {
   width: min(430px, calc(100vw - 20px));
@@ -1427,6 +1428,7 @@ button.definition-card:active,
 
 .monster-dialog::backdrop,
 .recipe-dialog::backdrop,
+.catalog-dialog::backdrop,
 .prospect-dialog::backdrop,
 .breeding-confirm-dialog::backdrop {
   background: rgba(5, 6, 10, 0.8);
@@ -6269,6 +6271,670 @@ button.effect-skill-card {
   }
 
   .breeding-final-skills > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+.run-header-tools {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.run-header-tools .run-metrics {
+  width: min(205px, 52vw);
+}
+
+.catalog-open-button {
+  display: grid;
+  width: 68px;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 3px;
+  padding: 3px 4px;
+  border: 2px solid var(--gold);
+  background: linear-gradient(135deg, rgba(245, 202, 107, 0.12), transparent 58%), var(--deck);
+  color: var(--paper);
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 2px 2px 0 var(--void-deep);
+}
+
+.catalog-open-button span {
+  display: none;
+  grid-column: 1 / -1;
+  color: var(--gold);
+  font-size: 6px;
+  letter-spacing: 0.08em;
+}
+
+.catalog-open-button i {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-open-button b {
+  color: var(--gold);
+  font-size: 9px;
+}
+
+.catalog-dialog {
+  width: min(1120px, calc(100vw - 20px));
+  height: min(760px, calc(100dvh - 20px));
+  max-height: none;
+}
+
+.catalog-archive {
+  --monster-color: var(--gold);
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  padding: 14px;
+  overflow: hidden;
+}
+
+.catalog-archive::before {
+  background: var(--gold);
+}
+
+.catalog-archive-heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 42px 10px 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+.catalog-archive-heading > div:first-child {
+  min-width: 0;
+}
+
+.catalog-archive-heading > div:first-child > span {
+  color: var(--gold);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.catalog-archive-heading h2 {
+  margin: 2px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 24px;
+}
+
+.catalog-archive-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+}
+
+.catalog-progress {
+  display: grid;
+  width: 138px;
+  flex: 0 0 138px;
+  grid-template-columns: auto 1fr;
+  align-items: end;
+  gap: 2px 7px;
+}
+
+.catalog-progress small {
+  color: var(--muted);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.catalog-progress strong {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  color: var(--mint);
+  font-size: 25px;
+  line-height: 1;
+  text-align: right;
+}
+
+.catalog-progress strong i {
+  margin: 0 2px;
+  color: var(--line);
+  font-size: 13px;
+  font-style: normal;
+}
+
+.catalog-progress > span {
+  position: relative;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  background: var(--void);
+}
+
+.catalog-progress > span::after {
+  position: absolute;
+  inset: 0;
+  width: var(--catalog-progress);
+  background: var(--mint);
+  content: "";
+}
+
+.catalog-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 8px 0;
+  border: 1px solid var(--line);
+}
+
+.catalog-filters button {
+  min-width: 0;
+  padding: 6px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: var(--void);
+  color: var(--muted);
+  cursor: pointer;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+}
+
+.catalog-filters button:last-child {
+  border-right: 0;
+}
+
+.catalog-filters button b {
+  margin-left: 4px;
+  color: var(--line);
+  font-family: "Pixelify Sans", monospace;
+}
+
+.catalog-filters button.is-active {
+  background: var(--gold);
+  color: var(--void-deep);
+  box-shadow: inset 0 3px var(--paper);
+}
+
+.catalog-filters button.is-active b {
+  color: #6c4e0d;
+}
+
+.catalog-body {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.85fr);
+  gap: 10px;
+}
+
+.catalog-index {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-auto-rows: minmax(94px, auto);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-content: start;
+  gap: 5px;
+  padding: 2px 6px 6px 2px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--gold) var(--void);
+  scrollbar-width: thin;
+}
+
+.catalog-card {
+  --monster-color: var(--gold);
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 94px;
+  grid-template-rows: 10px 42px minmax(0, 1fr) 10px;
+  justify-items: center;
+  gap: 2px;
+  padding: 5px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-bottom: 3px solid var(--monster-color);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 10%, transparent), transparent 55%), var(--deck);
+  color: var(--paper);
+  cursor: pointer;
+  text-align: center;
+}
+
+.catalog-card:hover,
+.catalog-card.is-selected {
+  border-color: var(--monster-color);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 20%, transparent), transparent 58%),
+    var(--panel-high);
+}
+
+.catalog-card.is-selected {
+  box-shadow: inset 0 0 0 1px var(--monster-color);
+}
+
+.catalog-card-number {
+  width: 100%;
+  color: var(--muted);
+  font-size: 6px;
+  letter-spacing: 0.08em;
+  text-align: left;
+}
+
+.catalog-card .monster-sigil {
+  width: 42px;
+  height: 42px;
+}
+
+.catalog-card .monster-sigil > span {
+  font-size: 23px;
+}
+
+.catalog-card-copy {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+
+.catalog-card-copy strong {
+  overflow: hidden;
+  max-width: 100%;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-card-copy small {
+  min-height: 8px;
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.catalog-card > i {
+  color: var(--monster-color);
+  font-size: 6px;
+  font-style: normal;
+}
+
+.catalog-card.is-locked {
+  --monster-color: #596176 !important;
+  --monster-accent: #8b93a8 !important;
+  border-style: dashed;
+  background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(255, 255, 255, 0.025) 5px 6px), var(--void);
+}
+
+.catalog-card.is-locked .monster-sigil {
+  --monster-color: #596176 !important;
+  --monster-accent: #8b93a8 !important;
+  border-style: dashed;
+  background: var(--void-deep);
+}
+
+.catalog-card.is-locked .monster-sigil > span {
+  opacity: 0.88;
+  filter: grayscale(1) brightness(0.1) contrast(2.8);
+}
+
+.catalog-card.is-locked .monster-sigil > b {
+  visibility: hidden;
+}
+
+.catalog-card.is-locked .catalog-card-copy strong,
+.catalog-card.is-locked > i {
+  color: #737b91;
+}
+
+.catalog-detail {
+  min-width: 0;
+  min-height: 0;
+  padding: 13px;
+  overflow: auto;
+  border: 1px solid var(--monster-color);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 11%, transparent), transparent 40%), var(--void);
+  overscroll-behavior: contain;
+  scrollbar-color: var(--monster-color) var(--void);
+  scrollbar-width: thin;
+}
+
+.catalog-detail.is-locked {
+  --monster-color: #626a80 !important;
+  --monster-accent: #9098ad !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border-style: dashed;
+  text-align: center;
+}
+
+.catalog-locked-sigil {
+  position: relative;
+  display: grid;
+  width: 116px;
+  height: 116px;
+  margin-bottom: 16px;
+  place-items: center;
+  border: 1px dashed var(--line);
+  background:
+    repeating-linear-gradient(135deg, transparent 0 7px, rgba(255, 255, 255, 0.025) 7px 8px), var(--void-deep);
+}
+
+.catalog-locked-sigil .monster-sigil {
+  opacity: 0.38;
+  filter: grayscale(1) brightness(0.12) contrast(2.8);
+}
+
+.catalog-locked-sigil .monster-sigil > b {
+  visibility: hidden;
+}
+
+.catalog-locked-sigil > span {
+  position: absolute;
+  color: var(--line);
+  font-size: 42px;
+  text-shadow: 3px 3px var(--void-deep);
+}
+
+.catalog-detail.is-locked h3 {
+  margin: 5px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 24px;
+}
+
+.catalog-detail.is-locked p {
+  max-width: 310px;
+  margin: 6px 0;
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.catalog-detail.is-locked > small {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+}
+
+.catalog-detail-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.catalog-detail-identity > div {
+  min-width: 0;
+}
+
+.catalog-detail-identity h3 {
+  margin: 2px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 23px;
+}
+
+.catalog-detail-identity p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.catalog-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  margin: 10px 0;
+  background: var(--line-soft);
+}
+
+.catalog-stat-grid span {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: var(--deck);
+}
+
+.catalog-stat-grid small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.catalog-stat-grid b {
+  font-size: 15px;
+}
+
+.catalog-trait,
+.catalog-skills {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.catalog-trait > span,
+.catalog-skills > span {
+  color: var(--monster-color);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.catalog-trait strong {
+  display: block;
+  margin-top: 5px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 13px;
+}
+
+.catalog-trait p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.catalog-skills > div {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.catalog-skills .effect-skill-card {
+  min-height: 126px;
+}
+
+@media (min-width: 801px) {
+  .run-header-tools .run-metrics {
+    width: 360px;
+  }
+
+  .catalog-open-button {
+    width: 168px;
+    padding: 5px 7px;
+  }
+
+  .catalog-open-button span {
+    display: block;
+  }
+
+  .catalog-open-button i {
+    font-size: 10px;
+  }
+
+  .catalog-open-button b {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 800px) {
+  .catalog-dialog {
+    width: calc(100vw - 6px);
+    height: calc(100dvh - 6px);
+  }
+
+  .catalog-archive {
+    padding: 9px 7px;
+    border-width: 1px;
+    box-shadow: none;
+  }
+
+  .catalog-archive-heading {
+    min-height: 72px;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 36px 7px 0;
+  }
+
+  .catalog-archive-heading > div:first-child > span {
+    font-size: 6px;
+  }
+
+  .catalog-archive-heading h2 {
+    font-size: 19px;
+  }
+
+  .catalog-archive-heading p {
+    max-width: 205px;
+    font-size: 7px;
+    line-height: 1.35;
+  }
+
+  .catalog-progress {
+    width: 90px;
+    flex-basis: 90px;
+    gap: 2px 4px;
+  }
+
+  .catalog-progress small {
+    font-size: 6px;
+  }
+
+  .catalog-progress strong {
+    font-size: 18px;
+  }
+
+  .catalog-filters {
+    margin: 5px 0;
+  }
+
+  .catalog-filters button {
+    padding: 5px 2px;
+    font-size: 7px;
+  }
+
+  .catalog-filters button b {
+    display: none;
+  }
+
+  .catalog-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(190px, 0.43fr) minmax(0, 0.57fr);
+    gap: 6px;
+  }
+
+  .catalog-index {
+    grid-auto-rows: minmax(88px, auto);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding-right: 3px;
+  }
+
+  .catalog-card {
+    min-height: 88px;
+    grid-template-rows: 9px 38px minmax(0, 1fr) 9px;
+    padding: 4px;
+  }
+
+  .catalog-card .monster-sigil {
+    width: 38px;
+    height: 38px;
+  }
+
+  .catalog-card .monster-sigil > span {
+    font-size: 21px;
+  }
+
+  .catalog-card-copy strong {
+    font-size: 7px;
+  }
+
+  .catalog-detail {
+    padding: 9px;
+  }
+
+  .catalog-locked-sigil {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 7px;
+  }
+
+  .catalog-locked-sigil .monster-sigil {
+    width: 58px;
+    height: 58px;
+  }
+
+  .catalog-detail.is-locked h3 {
+    margin: 2px 0;
+    font-size: 17px;
+  }
+
+  .catalog-detail.is-locked p {
+    margin: 3px 0;
+    font-size: 8px;
+    line-height: 1.45;
+  }
+
+  .catalog-detail-identity {
+    gap: 8px;
+    padding-bottom: 7px;
+  }
+
+  .catalog-detail-identity .monster-sigil {
+    width: 56px;
+    height: 56px;
+  }
+
+  .catalog-detail-identity .monster-sigil > span {
+    font-size: 32px;
+  }
+
+  .catalog-detail-identity h3 {
+    font-size: 17px;
+  }
+
+  .catalog-stat-grid {
+    margin: 7px 0;
+  }
+
+  .catalog-stat-grid span {
+    min-height: 36px;
+  }
+
+  .catalog-stat-grid b {
+    font-size: 12px;
+  }
+
+  .catalog-trait,
+  .catalog-skills {
+    margin-top: 7px;
+    padding-top: 6px;
+  }
+
+  .catalog-skills > div {
     grid-template-columns: 1fr;
   }
 }
