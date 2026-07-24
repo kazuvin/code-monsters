@@ -257,12 +257,19 @@ button:not(:disabled) {
 }
 
 .white-stars {
-  color: var(--gold);
+  color: var(--paper);
 }
 
 .color-stars {
   margin-left: 2px;
   color: var(--pink);
+}
+
+.white-stars,
+.color-stars {
+  font-family: "Pixelify Sans", monospace;
+  letter-spacing: -0.08em;
+  text-shadow: 1px 1px var(--void-deep);
 }
 
 .draft-screen {
@@ -822,6 +829,47 @@ button.definition-card:active,
   display: none;
 }
 
+.recipe-archive-button {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 1px solid var(--gold);
+  background: rgba(245, 202, 107, 0.08);
+  color: var(--paper);
+  cursor: pointer;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+}
+
+.recipe-archive-button span {
+  color: var(--gold);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 7px;
+}
+
+.recipe-archive-button b {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  background: var(--gold);
+  color: var(--void-deep);
+  font-size: 8px;
+}
+
+.recipe-archive-button:focus-visible,
+.recipe-archive-button:hover {
+  background: var(--gold);
+  color: var(--void-deep);
+}
+
+.recipe-archive-button:focus-visible span,
+.recipe-archive-button:hover span {
+  color: var(--void-deep);
+}
+
 .shop-actions {
   display: flex;
   flex: 0 0 auto;
@@ -1329,7 +1377,8 @@ button.definition-card:active,
   font-size: 10px;
 }
 
-.monster-dialog {
+.monster-dialog,
+.recipe-dialog {
   width: min(430px, calc(100vw - 20px));
   max-width: none;
   max-height: min(720px, calc(100dvh - 20px));
@@ -1340,9 +1389,49 @@ button.definition-card:active,
   color: var(--paper);
 }
 
-.monster-dialog::backdrop {
+.monster-dialog::backdrop,
+.recipe-dialog::backdrop {
   background: rgba(5, 6, 10, 0.8);
   backdrop-filter: blur(2px);
+}
+
+.recipe-archive {
+  --monster-color: var(--gold);
+  max-height: min(620px, calc(100dvh - 20px));
+  padding: 15px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--gold) var(--void);
+  scrollbar-width: thin;
+}
+
+.recipe-archive::before {
+  background: var(--gold);
+}
+
+.recipe-archive-heading {
+  padding: 3px 38px 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.recipe-archive-heading span {
+  color: var(--gold);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+.recipe-archive-heading h2 {
+  margin: 1px 0 3px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 18px;
+}
+
+.recipe-archive-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  line-height: 1.4;
 }
 
 .inspector {
@@ -1387,7 +1476,7 @@ button.definition-card:active,
 .inspector-tabs {
   display: grid;
   flex: 0 0 39px;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   margin-top: 8px;
   border: 1px solid var(--line);
 }
@@ -1734,11 +1823,6 @@ button.definition-card:active,
   background: linear-gradient(135deg, rgba(245, 202, 107, 0.12), transparent 55%), var(--deck);
 }
 
-.recipe-card.is-special.is-related {
-  border-color: var(--pink);
-  box-shadow: inset 3px 0 var(--pink);
-}
-
 .recipe-kind {
   position: absolute;
   top: 3px;
@@ -1849,15 +1933,6 @@ button.definition-card:active,
 
 .recipe-token.is-locked i {
   color: var(--muted);
-}
-
-.recipe-related-note {
-  display: block;
-  margin-top: 4px;
-  color: var(--pink);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 6px;
-  text-align: right;
 }
 
 .battle-launcher {

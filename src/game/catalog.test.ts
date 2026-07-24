@@ -28,4 +28,11 @@ describe('DQM run game data', () => {
   it('passes referential and tuning validation', () => {
     expect(validateGameData(GAME_DATA)).toEqual([]);
   });
+
+  it('rejects an invalid minimum breeding rank', () => {
+    const invalid = structuredClone(GAME_DATA);
+    invalid.rules.breeding.minimumResultWhiteStars = 0 as typeof invalid.rules.breeding.minimumResultWhiteStars;
+
+    expect(validateGameData(invalid)).toContain('breeding.minimumResultWhiteStars must be between 1 and 5');
+  });
 });

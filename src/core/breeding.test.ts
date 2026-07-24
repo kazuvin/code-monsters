@@ -4,14 +4,28 @@ import { breedMonsters, listBreedingCandidates } from './breeding';
 import { createMonster, permanentStatsFor } from './monster';
 
 describe('breeding', () => {
-  it('creates both lineage x attribute generic candidates', () => {
+  it('promotes two base white-star-one parents into white-star-two generic candidates', () => {
     const dragon = createMonster(GAME_DATA, 'light-dragon-1', 'dragon', { xp: 10 });
     const demon = createMonster(GAME_DATA, 'fire-demon-1', 'demon', { xp: 10 });
 
     const candidates = listBreedingCandidates(GAME_DATA, dragon, demon);
 
     expect(candidates.map((candidate) => candidate.definitionId)).toEqual(
-      expect.arrayContaining(['fire-dragon-1', 'light-demon-1']),
+      expect.arrayContaining(['fire-dragon-2', 'light-demon-2']),
+    );
+  });
+
+  it('offers both rank promotion and color-star growth for matching white-star-one parents', () => {
+    const first = createMonster(GAME_DATA, 'light-dragon-1', 'first', { xp: 10 });
+    const second = createMonster(GAME_DATA, 'light-dragon-1', 'second', { xp: 10 });
+
+    const candidates = listBreedingCandidates(GAME_DATA, first, second);
+
+    expect(candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ definitionId: 'light-dragon-2', colorStars: 0, kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'light-dragon-1', colorStars: 1, kind: 'same-name' }),
+      ]),
     );
   });
 

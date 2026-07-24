@@ -23,6 +23,7 @@
     },
     "breeding": {
       "minimumLevel": 3,
+      "minimumResultWhiteStars": 2,
       "inheritanceRatesByTotalColorStars": [0.25, 0.3, 0.35, 0.4, 0.45],
       "colorGrowthBonus": [1, 1.1, 1.2]
     },

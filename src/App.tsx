@@ -46,7 +46,7 @@ import type {
 import { GAME_DATA } from './game/game-data';
 
 type WorkshopTab = 'shop' | 'breed';
-type InspectorTab = 'profile' | 'gambit' | 'recipes';
+type InspectorTab = 'profile' | 'gambit';
 type BattleViewState = {
   result: BattleResult;
   enemy: MonsterInstance[];
@@ -158,7 +158,7 @@ const definitionById = (data: GameData, id: string) => {
 const starText = (whiteStars: number, colorStars: ColorStars = 0) => (
   <span className="stars" aria-label={`白星${whiteStars}${colorStars > 0 ? `、色星${colorStars}` : ''}`}>
     <span className="white-stars" aria-hidden="true">
-      {'⭐'.repeat(whiteStars)}
+      {'★'.repeat(whiteStars)}
     </span>
     {colorStars > 0 && (
       <span className="color-stars" aria-hidden="true">
@@ -650,11 +650,13 @@ function ShopView({
 
 function BreedingView({
   run,
+  discoveredMonsterIds,
   parentIds,
   setParentIds,
   onCommand,
 }: {
   run: CasualRunState;
+  discoveredMonsterIds: ReadonlySet<string>;
   parentIds: string[];
   setParentIds: (ids: string[]) => void;
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
@@ -668,6 +670,7 @@ function BreedingView({
   );
   const [candidateId, setCandidateId] = useState('');
   const [skillId, setSkillId] = useState('');
+  const [recipeArchiveOpen, setRecipeArchiveOpen] = useState(false);
   useEffect(() => {
     setCandidateId(candidates[0]?.id ?? '');
     setSkillId('');
@@ -692,7 +695,10 @@ function BreedingView({
           <span className="section-index">LINEAGE LOOM</span>
           <h2>血統を編み直す</h2>
         </div>
-        <p>親2体は旅立ち、子はLv.1から。成立する配合先はすべて表示します。</p>
+        <button type="button" className="recipe-archive-button" onClick={() => setRecipeArchiveOpen(true)}>
+          <span>SPECIAL</span>
+          特殊配合図鑑 <b>{GAME_DATA.specialRecipes.length}</b>
+        </button>
       </div>
       <div className="breeding-loom">
         <div className="parent-pool">
@@ -778,6 +784,11 @@ function BreedingView({
           )}
         </div>
       </div>
+      <RecipeArchiveDialog
+        open={recipeArchiveOpen}
+        discoveredMonsterIds={discoveredMonsterIds}
+        onClose={() => setRecipeArchiveOpen(false)}
+      />
     </section>
   );
 }
@@ -976,17 +987,9 @@ function RecipeToken({
   );
 }
 
-function RecipeView({
-  monster,
-  discoveredMonsterIds,
-}: {
-  monster: MonsterInstance;
-  discoveredMonsterIds: ReadonlySet<string>;
-}) {
-  const definition = definitionFor(GAME_DATA, monster);
-
+function RecipeView({ discoveredMonsterIds }: { discoveredMonsterIds: ReadonlySet<string> }) {
   return (
-    <section className="recipe-view" aria-label={`${definition.name}の配合レシピ`}>
+    <section className="recipe-view" aria-label="特殊配合レシピ">
       <div className="recipe-guide">
         <span>SPECIAL BREEDING ARCHIVE</span>
         <p>
@@ -1001,13 +1004,8 @@ function RecipeView({
           ] as const;
           const result = definitionById(GAME_DATA, recipe.resultDefinitionId);
           const resultUnlocked = discoveredMonsterIds.has(result.id);
-          const related = recipe.parentDefinitionIds.includes(monster.definitionId);
           return (
-            <article
-              className={`recipe-card is-special${related ? ' is-related' : ''}`}
-              key={recipe.id}
-              data-recipe-id={recipe.id}
-            >
+            <article className="recipe-card is-special" key={recipe.id} data-recipe-id={recipe.id}>
               <span className="recipe-kind is-special">SPECIAL #{String(index + 1).padStart(2, '0')}</span>
               <span className={`recipe-state${resultUnlocked ? ' is-unlocked' : ''}`}>
                 {resultUnlocked ? '解放済み' : '未解放'}
@@ -1029,7 +1027,6 @@ function RecipeView({
                 <b>＝</b>
                 <RecipeToken definition={result} label="特殊種" locked={!resultUnlocked} slot="result" />
               </div>
-              {related && <small className="recipe-related-note">この種が親になるレシピ</small>}
             </article>
           );
         })}
@@ -1038,17 +1035,57 @@ function RecipeView({
   );
 }
 
+function RecipeArchiveDialog({
+  open,
+  discoveredMonsterIds,
+  onClose,
+}: {
+  open: boolean;
+  discoveredMonsterIds: ReadonlySet<string>;
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="recipe-dialog"
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}
+      aria-label="特殊配合図鑑"
+    >
+      <section className="recipe-archive panel">
+        <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+          ×
+        </button>
+        <header className="recipe-archive-heading">
+          <span>LINEAGE ARCHIVE</span>
+          <h2>特殊配合図鑑</h2>
+          <p>発見したモンスターに応じて、親と結果の輪郭が解放されます。</p>
+        </header>
+        <RecipeView discoveredMonsterIds={discoveredMonsterIds} />
+      </section>
+    </dialog>
+  );
+}
+
 function Inspector({
   run,
   monster,
-  discoveredMonsterIds,
   onCommand,
   onChange,
   onClose,
 }: {
   run: CasualRunState;
   monster?: MonsterInstance;
-  discoveredMonsterIds: ReadonlySet<string>;
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
   onChange: (run: CasualRunState) => void;
   onClose: () => void;
@@ -1102,9 +1139,6 @@ function Inspector({
           </button>
           <button type="button" className={tab === 'gambit' ? 'is-active' : ''} onClick={() => setTab('gambit')}>
             ガンビット
-          </button>
-          <button type="button" className={tab === 'recipes' ? 'is-active' : ''} onClick={() => setTab('recipes')}>
-            配合レシピ
           </button>
         </nav>
         <div className="inspector-tab-panel">
@@ -1217,7 +1251,6 @@ function Inspector({
             </div>
           )}
           {tab === 'gambit' && <TacticsView run={run} monster={monster} onChange={onChange} />}
-          {tab === 'recipes' && <RecipeView monster={monster} discoveredMonsterIds={discoveredMonsterIds} />}
         </div>
       </aside>
     </dialog>
@@ -1290,14 +1323,19 @@ function WorkshopScreen({
             <ShopView run={run} onCommand={onCommand} onFreeze={() => setRun(toggleShopFreeze(run))} />
           )}
           {tab === 'breed' && (
-            <BreedingView run={run} parentIds={parentIds} setParentIds={setParentIds} onCommand={onCommand} />
+            <BreedingView
+              run={run}
+              discoveredMonsterIds={discoveredMonsterIds}
+              parentIds={parentIds}
+              setParentIds={setParentIds}
+              onCommand={onCommand}
+            />
           )}
         </section>
       </div>
       <Inspector
         run={run}
         monster={inspected}
-        discoveredMonsterIds={discoveredMonsterIds}
         onCommand={onCommand}
         onChange={setRun}
         onClose={() => setInspectedId(undefined)}

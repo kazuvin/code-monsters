@@ -35,6 +35,12 @@ await desktop.addInitScript(() => {
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
+if ((await desktop.locator('.white-stars').first().textContent()) !== '★') {
+  throw new Error('White stars are not rendered with the shared text glyph');
+}
+if ((await desktop.locator('body').innerText()).includes('⭐')) {
+  throw new Error('Emoji stars are still visible in the UI');
+}
 
 for (let round = 0; round < 3; round += 1) {
   const choices = desktop.locator('.draft-grid .definition-card');
@@ -67,12 +73,17 @@ if ((await desktop.locator('.workshop-tabs button').count()) !== 2) {
 await desktop.locator('.team-zone.is-active .roster-card').first().click();
 await desktop.getByRole('button', { name: 'ガンビット' }).click();
 if ((await desktop.locator('.gambit-row').count()) !== 3) throw new Error('Monster detail does not show three gambits');
-await desktop.getByRole('button', { name: '配合レシピ' }).click();
+if ((await desktop.locator('.inspector-tabs button').count()) !== 2) {
+  throw new Error('Monster detail still contains a breeding recipe tab');
+}
+await desktop.getByRole('button', { name: '閉じる' }).click();
+await desktop.getByRole('button', { name: '02 配合' }).click();
+await desktop.getByRole('button', { name: /特殊配合図鑑/ }).click();
 if ((await desktop.locator('.recipe-card.is-special').count()) !== 3) {
-  throw new Error('Monster detail does not show all three special breeding recipes');
+  throw new Error('Breeding archive does not show all three special breeding recipes');
 }
 if ((await desktop.locator('.recipe-card:not(.is-special)').count()) !== 0) {
-  throw new Error('Monster detail still shows non-special breeding recipes');
+  throw new Error('Breeding archive still shows non-special breeding recipes');
 }
 if ((await desktop.locator('[data-recipe-slot="result"].is-locked').count()) !== 2) {
   throw new Error('Previously discovered special result was not restored from persistent discovery');
@@ -126,14 +137,21 @@ await mobile.getByRole('button', { name: 'ガンビット' }).click();
 if ((await mobile.locator('.monster-dialog .gambit-row').count()) !== 3) {
   throw new Error('Mobile monster dialog does not show all three gambits');
 }
-await mobile.getByRole('button', { name: '配合レシピ' }).click();
-if ((await mobile.locator('.monster-dialog .recipe-card.is-special').count()) !== 3) {
-  throw new Error('Mobile monster dialog does not show all three special breeding recipes');
-}
-if ((await mobile.locator('.monster-dialog [data-recipe-slot="result"].is-locked').count()) !== 3) {
-  throw new Error('Undiscovered special breeding results are not silhouetted on mobile');
+if ((await mobile.locator('.monster-dialog .inspector-tabs button').count()) !== 2) {
+  throw new Error('Mobile monster dialog still contains a breeding recipe tab');
 }
 await mobile.getByRole('button', { name: '閉じる' }).click();
+await mobile.getByRole('button', { name: '02 配合' }).click();
+await mobile.getByRole('button', { name: /特殊配合図鑑/ }).click();
+if ((await mobile.locator('.recipe-dialog .recipe-card.is-special').count()) !== 3) {
+  throw new Error('Mobile breeding archive does not show all three special breeding recipes');
+}
+if ((await mobile.locator('.recipe-dialog [data-recipe-slot="result"].is-locked').count()) !== 3) {
+  throw new Error('Undiscovered special breeding results are not silhouetted on mobile');
+}
+await mobile.screenshot({ path: '/tmp/code-monsters-recipes-mobile.png' });
+await mobile.getByRole('button', { name: '閉じる' }).click();
+await mobile.getByRole('button', { name: '01 ショップ' }).click();
 
 await mobile.locator('.shop-monsters .buy-button').first().click();
 const draggable = mobile.locator('.team-zone.is-active .roster-card').first();
@@ -160,6 +178,7 @@ console.log(
       '/tmp/code-monsters-casual-desktop.png',
       '/tmp/code-monsters-result-desktop.png',
       '/tmp/code-monsters-draft-mobile.png',
+      '/tmp/code-monsters-recipes-mobile.png',
       '/tmp/code-monsters-workshop-mobile.png',
     ],
   }),

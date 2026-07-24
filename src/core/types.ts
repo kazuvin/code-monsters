@@ -178,6 +178,7 @@ export type GameRules = {
   };
   breeding: {
     minimumLevel: number;
+    minimumResultWhiteStars: WhiteStars;
     inheritanceRatesByTotalColorStars: [number, number, number, number, number];
     colorGrowthBonus: [number, number, number];
   };

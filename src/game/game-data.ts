@@ -75,6 +75,9 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.rosterLimit !== data.rules.activeLimit + data.rules.benchLimit) {
     errors.push('rosterLimit must equal activeLimit plus benchLimit');
   }
+  if (data.rules.breeding.minimumResultWhiteStars < 1 || data.rules.breeding.minimumResultWhiteStars > 5) {
+    errors.push('breeding.minimumResultWhiteStars must be between 1 and 5');
+  }
 
   const skillIds = new Set(data.skills.map((entry) => entry.id));
   const traitIds = new Set(data.traits.map((entry) => entry.id));

@@ -18,10 +18,11 @@ export function listBreedingCandidates(
   const firstDefinition = definitionFor(data, first);
   const secondDefinition = definitionFor(data, second);
   const candidates: BreedingCandidate[] = [];
-  const resultWhiteStars = Math.min(
+  const averagedWhiteStars = Math.min(
     5,
     Math.ceil((effectiveStarsFor(data, first) + effectiveStarsFor(data, second)) / 2),
   ) as WhiteStars;
+  const resultWhiteStars = Math.max(data.rules.breeding.minimumResultWhiteStars, averagedWhiteStars) as WhiteStars;
 
   const genericPairs = [
     { lineageId: firstDefinition.lineageId, attributeId: secondDefinition.attributeId },
