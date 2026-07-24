@@ -184,12 +184,45 @@ await actingSkillCallout.waitFor();
 if (!(await actingSkillCallout.locator('small').textContent())?.trim()) {
   throw new Error('Skill callout does not identify the acting monster');
 }
+const actingMotion = await actingSkillCallout
+  .locator('..')
+  .locator('..')
+  .evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      side: element.classList.contains('is-player') ? 'player' : 'enemy',
+      animationName: style.animationName,
+      actionSlideX: Number.parseFloat(style.getPropertyValue('--action-slide-x')),
+    };
+  });
+if (
+  !actingMotion.animationName.includes('sprite-lunge') ||
+  (actingMotion.side === 'player' ? actingMotion.actionSlideX <= 0 : actingMotion.actionSlideX >= 0)
+) {
+  throw new Error(`Acting monster does not slide toward the enemy: ${JSON.stringify(actingMotion)}`);
+}
 if ((await desktop.locator('.battle-fx.is-action strong').count()) !== 0) {
   throw new Error('Action name is still shown in the middle of the battlefield');
 }
 await desktop.locator('.battle-feedback .battle-number, .battle-feedback .status-callout').first().waitFor({
   timeout: 3000,
 });
+const hitSprite = desktop.locator('.battle-sprite.is-hit').first();
+await hitSprite.waitFor({ timeout: 3000 });
+const hitMotion = await hitSprite.evaluate((element) => {
+  const style = getComputedStyle(element);
+  return {
+    side: element.classList.contains('is-player') ? 'player' : 'enemy',
+    animationName: style.animationName,
+    hitSlideX: Number.parseFloat(style.getPropertyValue('--hit-slide-x')),
+  };
+});
+if (
+  !hitMotion.animationName.includes('sprite-hit') ||
+  (hitMotion.side === 'player' ? hitMotion.hitSlideX >= 0 : hitMotion.hitSlideX <= 0)
+) {
+  throw new Error(`Hit monster does not slide away from the enemy: ${JSON.stringify(hitMotion)}`);
+}
 await desktop.screenshot({ path: '/tmp/code-monsters-battle-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: '最後まで送る' }).click();
 await desktop.getByRole('button', { name: '結果を見る →' }).click();

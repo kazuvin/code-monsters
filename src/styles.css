@@ -2572,16 +2572,16 @@ button.definition-card:active,
   font-size: 5px;
 }
 
+.battle-sprite.is-hit {
+  animation: sprite-hit 360ms steps(4);
+}
+
 .battle-sprite.is-acting {
   z-index: 6;
   animation: sprite-lunge 420ms steps(4);
 }
 
-.battle-sprite.is-targeted {
-  animation: sprite-hit 360ms steps(4);
-}
-
-.battle-sprite.is-healed {
+.battle-sprite.is-healed:not(.is-acting) {
   animation: sprite-heal 480ms steps(4);
 }
 
@@ -2713,25 +2713,29 @@ button.definition-card:active,
 @keyframes sprite-lunge {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: translate(0, var(--formation-y)) scale(1);
   }
-  45% {
-    transform: translateY(-15px) scale(1.18);
+  48% {
+    transform: translate(var(--action-slide-x), var(--formation-y)) scale(1.13);
+  }
+  72% {
+    transform: translate(var(--action-return-x), var(--formation-y)) scale(1.04);
   }
 }
 
 @keyframes sprite-hit {
   0%,
   100% {
-    transform: translateX(0);
+    transform: translate(0, var(--formation-y));
     filter: brightness(1);
   }
-  35% {
-    transform: translateX(-8px);
+  38% {
+    transform: translate(var(--hit-slide-x), var(--formation-y));
     filter: brightness(2.4) saturate(1.8);
   }
-  70% {
-    transform: translateX(7px);
+  72% {
+    transform: translate(var(--hit-return-x), var(--formation-y));
+    filter: brightness(1.18);
   }
 }
 
@@ -4485,23 +4489,43 @@ button.definition-card:active,
 }
 
 .battle-sprite {
+  --formation-y: 0px;
+  --action-slide-x: 24px;
+  --action-return-x: 6px;
+  --hit-slide-x: -16px;
+  --hit-return-x: -4px;
   align-self: center;
+  transform: translateY(var(--formation-y));
+}
+
+.battle-sprite.is-player {
+  --action-slide-x: 24px;
+  --action-return-x: 6px;
+  --hit-slide-x: -16px;
+  --hit-return-x: -4px;
+}
+
+.battle-sprite.is-enemy {
+  --action-slide-x: -24px;
+  --action-return-x: -6px;
+  --hit-slide-x: 16px;
+  --hit-return-x: 4px;
 }
 
 .battle-team.is-player .battle-sprite:nth-child(1) {
-  transform: translateY(20px);
+  --formation-y: 20px;
 }
 
 .battle-team.is-player .battle-sprite:nth-child(3) {
-  transform: translateY(-20px);
+  --formation-y: -20px;
 }
 
 .battle-team.is-enemy .battle-sprite:nth-child(1) {
-  transform: translateY(-20px);
+  --formation-y: -20px;
 }
 
 .battle-team.is-enemy .battle-sprite:nth-child(3) {
-  transform: translateY(20px);
+  --formation-y: 20px;
 }
 
 .battle-sprite.is-player .monster-sigil {
@@ -4648,7 +4672,7 @@ button.definition-card:active,
 }
 
 .battle-sprite.is-acting,
-.battle-sprite.is-targeted,
+.battle-sprite.is-hit,
 .battle-sprite.is-healed {
   animation-duration: var(--battle-pulse-duration, 760ms);
 }
@@ -4904,19 +4928,19 @@ button.definition-card:active,
   }
 
   .battle-team.is-player .battle-sprite:nth-child(1) {
-    transform: translateY(13px);
+    --formation-y: 13px;
   }
 
   .battle-team.is-player .battle-sprite:nth-child(3) {
-    transform: translateY(-13px);
+    --formation-y: -13px;
   }
 
   .battle-team.is-enemy .battle-sprite:nth-child(1) {
-    transform: translateY(-13px);
+    --formation-y: -13px;
   }
 
   .battle-team.is-enemy .battle-sprite:nth-child(3) {
-    transform: translateY(13px);
+    --formation-y: 13px;
   }
 
   .battle-sprite {

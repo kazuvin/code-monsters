@@ -1868,9 +1868,14 @@ function BattleMonster({
   const definition = definitionById(GAME_DATA, fighter.definitionId);
   const hpPercent = Math.max(0, (fighter.hp / fighter.maxHp) * 100);
   const mpPercent = Math.max(0, (fighter.mp / fighter.maxMp) * 100);
+  const hit =
+    targeted &&
+    !acting &&
+    (hpDelta > 0 ||
+      feedback.some((entry) => entry.tone === 'debuff' || (entry.tone === 'shield' && entry.label.includes('-'))));
   return (
     <article
-      className={`battle-sprite is-${side}${fighter.alive ? '' : ' is-defeated'}${acting ? ' is-acting' : ''}${targeted ? ' is-targeted' : ''}${hpDelta < 0 ? ' is-healed' : ''}`}
+      className={`battle-sprite is-${side}${fighter.alive ? '' : ' is-defeated'}${acting ? ' is-acting' : ''}${targeted ? ' is-targeted' : ''}${hit ? ' is-hit' : ''}${hpDelta < 0 ? ' is-healed' : ''}`}
       style={monsterStyle(GAME_DATA, definition)}
     >
       {(acting || hpDelta !== 0 || feedback.length > 0) && (
