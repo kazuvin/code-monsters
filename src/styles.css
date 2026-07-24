@@ -6949,3 +6949,159 @@ button.effect-skill-card {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Monster records use names and star ranks as primary data, never as micro-copy. */
+.stars {
+  min-height: 14px;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -0.08em;
+}
+
+.monster-card-copy > strong,
+.roster-card strong,
+.parent-choice strong,
+.breeding-equation strong,
+.recipe-token strong,
+.battle-sprite .battle-monster-copy > strong,
+.result-monster-identity strong,
+.final-lineage strong,
+.catalog-card-copy strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.roster-card strong,
+.parent-choice strong,
+.battle-sprite .battle-monster-copy > strong {
+  font-size: 10px;
+}
+
+.roster-card i .stars {
+  font-size: 12px;
+}
+
+.shop-monsters .monster-card-copy > strong,
+.candidate-pool .monster-card-copy > strong,
+.result-monster-identity strong,
+.final-lineage strong {
+  font-size: 11px;
+}
+
+.shop-monsters .star-row {
+  font-size: inherit;
+}
+
+.parent-choice {
+  min-height: 54px;
+}
+
+.parent-choice small {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 8px;
+}
+
+.rank-up-signal b {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.breeding-equation strong {
+  font-size: 10px;
+}
+
+.recipe-token strong {
+  font-size: 9px;
+}
+
+.battle-sprite .battle-monster-copy > small {
+  display: block;
+  min-height: 14px;
+  margin-top: 1px;
+}
+
+.result-monster-identity i {
+  min-height: 14px;
+}
+
+.catalog-index {
+  grid-auto-rows: minmax(118px, auto);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.catalog-card {
+  min-height: 118px;
+  grid-template-rows: 10px 48px minmax(34px, auto) 10px;
+  gap: 3px;
+  padding: 6px;
+}
+
+.catalog-card .monster-sigil {
+  width: 48px;
+  height: 48px;
+}
+
+.catalog-card .monster-sigil > span {
+  font-size: 27px;
+}
+
+.catalog-card-copy {
+  justify-content: center;
+  gap: 2px;
+}
+
+.catalog-card-copy strong {
+  font-size: 12px;
+}
+
+.catalog-card-copy small {
+  min-height: 14px;
+}
+
+@media (min-width: 801px) {
+  .roster-card strong,
+  .battle-sprite .battle-monster-copy > strong {
+    font-size: 12px;
+  }
+
+  .shop-monsters .monster-card-copy > strong,
+  .result-monster-identity strong {
+    font-size: 13px;
+  }
+
+  .breeding-lab-panel .parent-choice strong {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 800px) {
+  .catalog-index {
+    grid-auto-rows: minmax(112px, auto);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-card {
+    min-height: 112px;
+    grid-template-rows: 9px 44px minmax(34px, auto) 10px;
+    padding: 5px;
+  }
+
+  .catalog-card .monster-sigil {
+    width: 44px;
+    height: 44px;
+  }
+
+  .catalog-card .monster-sigil > span {
+    font-size: 25px;
+  }
+
+  .catalog-card-copy strong {
+    font-size: 11px;
+  }
+}

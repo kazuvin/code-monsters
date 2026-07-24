@@ -18,7 +18,6 @@ import { createGhostTeam } from './core/ghost';
 import {
   createMonster,
   definitionFor,
-  effectiveStarsFor,
   permanentStatsFor,
   skillIdsFor,
   statBreakdownFor,
@@ -1538,7 +1537,7 @@ function BreedingView({
                     <span>
                       <strong>{definition.name}</strong>
                       <small>
-                        Lv.{monster.level} · 実効★{effectiveStarsFor(GAME_DATA, monster)}
+                        Lv.{monster.level} · {starText(definition.whiteStars, monster.colorStars)}
                       </small>
                     </span>
                     <b>
@@ -1597,7 +1596,7 @@ function BreedingView({
                     <div className="rank-up-signal" aria-live="polite">
                       <span>RANK UP ROUTE</span>
                       <b>
-                        ★{parentWhiteStars} → ★{previewDefinition.whiteStars}
+                        {starText(parentWhiteStars)} → {starText(previewDefinition.whiteStars)}
                       </b>
                       <small>選んだ2体の実効星が、次の位階へ届いています</small>
                     </div>

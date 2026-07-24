@@ -28,6 +28,75 @@ const assertFitsViewport = async (page, label) => {
   }
 };
 
+const assertReadableMonsterCards = async (page, label, cardSelector, nameSelector, minimumStarSize = 12) => {
+  const cards = page.locator(`${cardSelector}:visible`);
+  if ((await cards.count()) === 0) {
+    throw new Error(`${label} does not expose any visible monster cards`);
+  }
+
+  const clippedNames = await cards.locator(nameSelector).evaluateAll((names) =>
+    names
+      .map((name) => {
+        const style = getComputedStyle(name);
+        return {
+          name: name.textContent?.trim(),
+          whiteSpace: style.whiteSpace,
+          textOverflow: style.textOverflow,
+          fontSize: Number.parseFloat(style.fontSize),
+          clientWidth: name.clientWidth,
+          scrollWidth: name.scrollWidth,
+        };
+      })
+      .filter(
+        ({ whiteSpace, textOverflow, fontSize, clientWidth, scrollWidth }) =>
+          whiteSpace === 'nowrap' || textOverflow === 'ellipsis' || fontSize < 10 || scrollWidth > clientWidth + 1,
+      ),
+  );
+  if (clippedNames.length > 0) {
+    throw new Error(`${label} clips or miniaturizes monster names: ${JSON.stringify(clippedNames)}`);
+  }
+
+  const longestNameLayout = await cards
+    .locator(nameSelector)
+    .first()
+    .evaluate((name) => {
+      const originalName = name.textContent;
+      name.textContent = '白翼アークデーモン';
+      const layout = {
+        clientWidth: name.clientWidth,
+        scrollWidth: name.scrollWidth,
+        clientHeight: name.clientHeight,
+        scrollHeight: name.scrollHeight,
+      };
+      name.textContent = originalName;
+      return layout;
+    });
+  if (
+    longestNameLayout.scrollWidth > longestNameLayout.clientWidth + 1 ||
+    longestNameLayout.scrollHeight > longestNameLayout.clientHeight + 1
+  ) {
+    throw new Error(`${label} cannot fit the longest monster name: ${JSON.stringify(longestNameLayout)}`);
+  }
+
+  const cardStars = cards.locator('.stars');
+  if ((await cardStars.count()) < (await cards.count())) {
+    throw new Error(`${label} does not show a star rank on every monster card`);
+  }
+  const undersizedStars = await cardStars.evaluateAll(
+    (stars, threshold) =>
+      stars
+        .map((star) => ({
+          text: star.textContent?.trim(),
+          fontSize: Number.parseFloat(getComputedStyle(star).fontSize),
+        }))
+        .filter(({ fontSize }) => fontSize < threshold),
+    minimumStarSize,
+  );
+  if (undersizedStars.length > 0) {
+    throw new Error(`${label} has undersized stars: ${JSON.stringify(undersizedStars)}`);
+  }
+};
+
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
 await desktop.addInitScript(() => {
@@ -46,6 +115,12 @@ for (let round = 0; round < 3; round += 1) {
   const choices = desktop.locator('.draft-grid .definition-card');
   if ((await choices.count()) !== 3) throw new Error(`Draft round ${round + 1} does not show three choices`);
   if (round === 0) {
+    await assertReadableMonsterCards(
+      desktop,
+      'Desktop draft',
+      '.draft-grid .definition-card',
+      '.monster-card-copy > strong',
+    );
     await choices.first().locator('.definition-card-main').click();
     await desktop.locator('.prospect-dialog[open]').waitFor();
     if ((await desktop.locator('.prospect-dialog .monster-detail-card').count()) !== 1) {
@@ -69,6 +144,13 @@ if ((await desktop.locator('.equipment-offers > *').count()) !== 2) {
 if ((await desktop.locator('.shop-monsters .card-detail-button').count()) !== 3) {
   throw new Error('Shop monsters do not expose a detail action');
 }
+await assertReadableMonsterCards(desktop, 'Desktop active formation', '.team-zone.is-active .roster-card', 'strong');
+await assertReadableMonsterCards(
+  desktop,
+  'Desktop monster shop',
+  '.shop-monsters .definition-card',
+  '.monster-card-copy > strong',
+);
 await desktop.getByRole('button', { name: /モンスター図鑑/ }).click();
 await desktop.locator('.catalog-dialog[open]').waitFor();
 if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 45) {
@@ -77,6 +159,12 @@ if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 45) {
 if ((await desktop.locator('.catalog-card.is-unlocked').count()) < 3) {
   throw new Error('Monsters welcomed during the draft were not unlocked in the catalog');
 }
+await assertReadableMonsterCards(
+  desktop,
+  'Desktop monster catalog',
+  '.catalog-card.is-unlocked',
+  '.catalog-card-copy strong',
+);
 await desktop.locator('.catalog-card.is-locked').first().click();
 if ((await desktop.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
   throw new Error('Undiscovered monster does not open a locked silhouette record');
@@ -177,6 +265,7 @@ await desktop.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).
 await desktop.getByRole('heading', { name: '非同期ゴースト戦' }).waitFor();
 if ((await desktop.locator('.battle-sprite').count()) !== 6) throw new Error('Battle field is not 3v3');
 if ((await desktop.locator('.battle-fx').count()) !== 1) throw new Error('Battle effect layer is missing');
+await assertReadableMonsterCards(desktop, 'Desktop battle', '.battle-sprite', '.battle-monster-copy > strong');
 const criticalFrameCount = Number(await desktop.locator('.battle-screen').getAttribute('data-critical-frame-count'));
 if (criticalFrameCount < 1) {
   throw new Error(`Browser smoke seed does not produce a critical hit: ${target.toString()}`);
@@ -389,6 +478,12 @@ if ((await desktop.locator('.result-monster-card').count()) !== 4) {
 if ((await desktop.locator('.result-monster-card [data-xp-gain]').count()) !== 4) {
   throw new Error('Battle result does not expose each monster XP gain');
 }
+await assertReadableMonsterCards(
+  desktop,
+  'Desktop battle result',
+  '.result-monster-card',
+  '.result-monster-identity strong',
+);
 const desktopResultType = await desktop.evaluate(() => ({
   metricValue: Number.parseFloat(getComputedStyle(document.querySelector('.battle-report-metric b')).fontSize),
   xpGain: Number.parseFloat(getComputedStyle(document.querySelector('.xp-gain')).fontSize),
@@ -451,6 +546,7 @@ const eligibleParents = desktop.locator('.parent-choice:not(:disabled)');
 if ((await eligibleParents.count()) < 2) {
   throw new Error('Three battles did not produce two eligible breeding parents');
 }
+await assertReadableMonsterCards(desktop, 'Desktop breeding parent cards', '.parent-choice:not(:disabled)', 'strong');
 await eligibleParents.first().click();
 await eligibleParents.nth(1).click();
 await desktop.locator('.breeding-outcome').waitFor();
@@ -636,6 +732,7 @@ await mobile.getByRole('heading', { name: '旅のはじまりを選ぶ' }).waitF
 if ((await mobile.locator('.draft-grid .definition-card').count()) !== 3) {
   throw new Error('Mobile draft does not show three choices');
 }
+await assertReadableMonsterCards(mobile, 'Mobile draft', '.draft-grid .definition-card', '.monster-card-copy > strong');
 await assertFitsViewport(mobile, 'Mobile draft');
 await mobile.screenshot({ path: '/tmp/code-monsters-draft-mobile.png' });
 
@@ -646,6 +743,13 @@ for (let round = 0; round < 3; round += 1) {
 }
 
 await mobile.getByRole('heading', { name: '旅商人の棚' }).waitFor();
+await assertReadableMonsterCards(mobile, 'Mobile active formation', '.team-zone.is-active .roster-card', 'strong');
+await assertReadableMonsterCards(
+  mobile,
+  'Mobile monster shop',
+  '.shop-monsters .definition-card',
+  '.monster-card-copy > strong',
+);
 await assertFitsViewport(mobile, 'Mobile workshop');
 
 await mobile.getByRole('button', { name: /モンスター図鑑/ }).click();
@@ -653,6 +757,12 @@ await mobile.locator('.catalog-dialog[open]').waitFor();
 if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 45) {
   throw new Error('Mobile monster catalog does not show all 45 records');
 }
+await assertReadableMonsterCards(
+  mobile,
+  'Mobile monster catalog',
+  '.catalog-card.is-unlocked',
+  '.catalog-card-copy strong',
+);
 await mobile.locator('.catalog-card.is-locked').first().click();
 if ((await mobile.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
   throw new Error('Mobile undiscovered monster does not remain locked');
@@ -712,6 +822,7 @@ await mobile.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 4000 })
 if ((await mobile.locator('.battle-sprite.is-acting .skill-callout').count()) !== 1) {
   throw new Error('Mobile battle does not show the acting monster beside its skill');
 }
+await assertReadableMonsterCards(mobile, 'Mobile battle', '.battle-sprite', '.battle-monster-copy > strong');
 await mobile.screenshot({ path: '/tmp/code-monsters-battle-mobile.png' });
 await mobile.getByRole('button', { name: '最後まで送る' }).click();
 await mobile.getByRole('button', { name: '結果を見る →' }).click();
@@ -719,6 +830,12 @@ const revealMobileRewards = mobile.getByRole('button', { name: '報酬をすべ�
 if ((await revealMobileRewards.count()) === 1) await revealMobileRewards.click();
 await mobile.locator('.result-screen[data-reveal-complete="true"]').waitFor();
 await mobile.waitForTimeout(450);
+await assertReadableMonsterCards(
+  mobile,
+  'Mobile battle result',
+  '.result-monster-card',
+  '.result-monster-identity strong',
+);
 const mobileResultType = await mobile.evaluate(() => ({
   metricValue: Number.parseFloat(getComputedStyle(document.querySelector('.battle-report-metric b')).fontSize),
   xpGain: Number.parseFloat(getComputedStyle(document.querySelector('.xp-gain')).fontSize),
