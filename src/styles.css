@@ -1717,13 +1717,6 @@ button.definition-card:active,
   padding: 0 1px 6px;
 }
 
-.recipe-view h3 {
-  margin: 9px 0 4px;
-  color: var(--muted);
-  font-size: 8px;
-  letter-spacing: 0.04em;
-}
-
 .recipe-list {
   display: grid;
   gap: 5px;
@@ -1736,13 +1729,14 @@ button.definition-card:active,
   background: var(--deck);
 }
 
-.recipe-card.is-same-name {
-  border-color: var(--pink);
-}
-
 .recipe-card.is-special {
   border-color: var(--gold);
   background: linear-gradient(135deg, rgba(245, 202, 107, 0.12), transparent 55%), var(--deck);
+}
+
+.recipe-card.is-special.is-related {
+  border-color: var(--pink);
+  box-shadow: inset 3px 0 var(--pink);
 }
 
 .recipe-kind {
@@ -1758,8 +1752,21 @@ button.definition-card:active,
   color: var(--gold);
 }
 
-.recipe-kind.is-same-name {
-  color: var(--pink);
+.recipe-state {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.recipe-state::before {
+  margin-right: 3px;
+  content: "■";
+}
+
+.recipe-state.is-unlocked {
+  color: var(--mint);
 }
 
 .recipe-equation {
@@ -1793,6 +1800,27 @@ button.definition-card:active,
   font-size: 16px;
 }
 
+.recipe-token.is-locked {
+  --monster-color: #606679 !important;
+  --monster-accent: #8a91a5 !important;
+}
+
+.recipe-token.is-locked .monster-sigil {
+  --monster-color: #606679 !important;
+  --monster-accent: #8a91a5 !important;
+  border-style: dashed;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, rgba(255, 255, 255, 0.04) 3px 4px), var(--void);
+}
+
+.recipe-token.is-locked .monster-sigil > span {
+  opacity: 0.8;
+  filter: grayscale(1) brightness(0.16) contrast(2.4);
+}
+
+.recipe-token.is-locked .monster-sigil > b {
+  visibility: hidden;
+}
+
 .recipe-token > span {
   display: flex;
   min-width: 0;
@@ -1817,6 +1845,19 @@ button.definition-card:active,
   font-size: 5px;
   font-style: normal;
   white-space: nowrap;
+}
+
+.recipe-token.is-locked i {
+  color: var(--muted);
+}
+
+.recipe-related-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--pink);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+  text-align: right;
 }
 
 .battle-launcher {

@@ -57,6 +57,26 @@ type BattleViewState = {
 const query = new URLSearchParams(window.location.search);
 const requestedSeed = Number(query.get('seed'));
 const INITIAL_SEED = Number.isInteger(requestedSeed) && requestedSeed > 0 ? requestedSeed : 7261;
+const RECIPE_DISCOVERY_STORAGE_KEY = `code-monsters:recipe-discovery:v${GAME_DATA.schemaVersion}`;
+
+const loadDiscoveredMonsterIds = () => {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(RECIPE_DISCOVERY_STORAGE_KEY) ?? '[]');
+    if (!Array.isArray(saved)) return [];
+    const monsterIds = new Set(GAME_DATA.monsters.map((monster) => monster.id));
+    return saved.filter((id): id is string => typeof id === 'string' && monsterIds.has(id));
+  } catch {
+    return [];
+  }
+};
+
+const saveDiscoveredMonsterIds = (ids: ReadonlySet<string>) => {
+  try {
+    window.localStorage.setItem(RECIPE_DISCOVERY_STORAGE_KEY, JSON.stringify([...ids].sort()));
+  } catch {
+    // Discovery still works for the current run when storage is unavailable.
+  }
+};
 
 const STATUS_LABELS: Record<StatusId, string> = {
   'attack-up': '攻撃上昇',
@@ -930,107 +950,89 @@ function RecipeToken({
   definition,
   colorStars = 0,
   label,
+  locked = false,
+  slot,
 }: {
   definition: MonsterDefinition;
   colorStars?: ColorStars;
   label: string;
+  locked?: boolean;
+  slot: 'parent' | 'result';
 }) {
   return (
-    <div className="recipe-token" style={monsterStyle(GAME_DATA, definition)}>
+    <div
+      className={`recipe-token${locked ? ' is-locked' : ''}`}
+      style={monsterStyle(GAME_DATA, definition)}
+      data-recipe-slot={slot}
+      aria-label={locked ? `${label}は未解放` : `${label}: ${definition.name}`}
+    >
       <MonsterSigil data={GAME_DATA} definition={definition} colorStars={colorStars} size="small" />
       <span>
         <small>{label}</small>
-        <strong>{definition.name}</strong>
-        <i>{starText(definition.whiteStars, colorStars)}</i>
+        <strong>{locked ? '???' : definition.name}</strong>
+        <i>{locked ? '未解放' : starText(definition.whiteStars, colorStars)}</i>
       </span>
     </div>
   );
 }
 
-function RecipeView({ run, monster }: { run: CasualRunState; monster: MonsterInstance }) {
+function RecipeView({
+  monster,
+  discoveredMonsterIds,
+}: {
+  monster: MonsterInstance;
+  discoveredMonsterIds: ReadonlySet<string>;
+}) {
   const definition = definitionFor(GAME_DATA, monster);
-  const partnerRecipes = run.roster
-    .filter((partner) => partner.id !== monster.id)
-    .flatMap((partner) =>
-      listBreedingCandidates(GAME_DATA, monster, partner).map((candidate) => ({
-        partner,
-        candidate,
-      })),
-    );
-  const specialRecipes = GAME_DATA.specialRecipes.flatMap((recipe) => {
-    const parentIndex = recipe.parentDefinitionIds.indexOf(monster.definitionId);
-    if (parentIndex < 0) return [];
-    const partner = definitionById(GAME_DATA, recipe.parentDefinitionIds[parentIndex === 0 ? 1 : 0] as string);
-    const result = definitionById(GAME_DATA, recipe.resultDefinitionId);
-    return [{ id: recipe.id, partner, result }];
-  });
 
   return (
     <section className="recipe-view" aria-label={`${definition.name}の配合レシピ`}>
       <div className="recipe-guide">
-        <span>BREEDING RECIPES</span>
-        <p>この個体を親にした結果です。実行には両親Lv.{GAME_DATA.rules.breeding.minimumLevel}が必要です。</p>
+        <span>SPECIAL BREEDING ARCHIVE</span>
+        <p>
+          特殊配合は全{GAME_DATA.specialRecipes.length}種。仲間にした種から輪郭が解け、結果種を仲間にすると完全解放。
+        </p>
       </div>
-      <article className="recipe-card is-same-name">
-        <span className="recipe-kind">COLOR STAR</span>
-        <div className="recipe-equation">
-          <RecipeToken definition={definition} colorStars={monster.colorStars} label="この個体" />
-          <b>＋</b>
-          <RecipeToken definition={definition} colorStars={monster.colorStars} label="同名個体" />
-          <b>＝</b>
-          <RecipeToken
-            definition={definition}
-            colorStars={Math.min(2, monster.colorStars + 1) as ColorStars}
-            label="色星アップ"
-          />
-        </div>
-      </article>
-      {partnerRecipes.length > 0 && <h3>今の仲間で作れる</h3>}
       <div className="recipe-list">
-        {partnerRecipes.map(({ partner, candidate }) => {
-          const partnerDefinition = definitionFor(GAME_DATA, partner);
-          const resultDefinition = definitionById(GAME_DATA, candidate.definitionId);
-          const ready =
-            monster.level >= GAME_DATA.rules.breeding.minimumLevel &&
-            partner.level >= GAME_DATA.rules.breeding.minimumLevel;
+        {GAME_DATA.specialRecipes.map((recipe, index) => {
+          const parents = [
+            definitionById(GAME_DATA, recipe.parentDefinitionIds[0]),
+            definitionById(GAME_DATA, recipe.parentDefinitionIds[1]),
+          ] as const;
+          const result = definitionById(GAME_DATA, recipe.resultDefinitionId);
+          const resultUnlocked = discoveredMonsterIds.has(result.id);
+          const related = recipe.parentDefinitionIds.includes(monster.definitionId);
           return (
-            <article className="recipe-card" key={`${partner.id}-${candidate.id}`}>
-              <span className={`recipe-kind is-${candidate.kind}`}>
-                {candidate.kind === 'special' ? 'SPECIAL' : candidate.kind === 'same-name' ? 'COLOR STAR' : 'LINEAGE'}
+            <article
+              className={`recipe-card is-special${related ? ' is-related' : ''}`}
+              key={recipe.id}
+              data-recipe-id={recipe.id}
+            >
+              <span className="recipe-kind is-special">SPECIAL #{String(index + 1).padStart(2, '0')}</span>
+              <span className={`recipe-state${resultUnlocked ? ' is-unlocked' : ''}`}>
+                {resultUnlocked ? '解放済み' : '未解放'}
               </span>
               <div className="recipe-equation">
-                <RecipeToken definition={definition} colorStars={monster.colorStars} label={`Lv.${monster.level}`} />
+                <RecipeToken
+                  definition={parents[0]}
+                  label="親 A"
+                  locked={!resultUnlocked && !discoveredMonsterIds.has(parents[0].id)}
+                  slot="parent"
+                />
                 <b>＋</b>
                 <RecipeToken
-                  definition={partnerDefinition}
-                  colorStars={partner.colorStars}
-                  label={`Lv.${partner.level}`}
+                  definition={parents[1]}
+                  label="親 B"
+                  locked={!resultUnlocked && !discoveredMonsterIds.has(parents[1].id)}
+                  slot="parent"
                 />
                 <b>＝</b>
-                <RecipeToken
-                  definition={resultDefinition}
-                  colorStars={candidate.colorStars}
-                  label={ready ? '配合可能' : 'Lv.不足'}
-                />
+                <RecipeToken definition={result} label="特殊種" locked={!resultUnlocked} slot="result" />
               </div>
+              {related && <small className="recipe-related-note">この種が親になるレシピ</small>}
             </article>
           );
         })}
-      </div>
-      {specialRecipes.length > 0 && <h3>特殊配合図鑑</h3>}
-      <div className="recipe-list">
-        {specialRecipes.map((recipe) => (
-          <article className="recipe-card is-special" key={recipe.id}>
-            <span className="recipe-kind is-special">SPECIAL</span>
-            <div className="recipe-equation">
-              <RecipeToken definition={definition} label="親" />
-              <b>＋</b>
-              <RecipeToken definition={recipe.partner} label="指定親" />
-              <b>＝</b>
-              <RecipeToken definition={recipe.result} label="特殊種" />
-            </div>
-          </article>
-        ))}
       </div>
     </section>
   );
@@ -1039,12 +1041,14 @@ function RecipeView({ run, monster }: { run: CasualRunState; monster: MonsterIns
 function Inspector({
   run,
   monster,
+  discoveredMonsterIds,
   onCommand,
   onChange,
   onClose,
 }: {
   run: CasualRunState;
   monster?: MonsterInstance;
+  discoveredMonsterIds: ReadonlySet<string>;
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
   onChange: (run: CasualRunState) => void;
   onClose: () => void;
@@ -1213,7 +1217,7 @@ function Inspector({
             </div>
           )}
           {tab === 'gambit' && <TacticsView run={run} monster={monster} onChange={onChange} />}
-          {tab === 'recipes' && <RecipeView run={run} monster={monster} />}
+          {tab === 'recipes' && <RecipeView monster={monster} discoveredMonsterIds={discoveredMonsterIds} />}
         </div>
       </aside>
     </dialog>
@@ -1222,10 +1226,12 @@ function Inspector({
 
 function WorkshopScreen({
   run,
+  discoveredMonsterIds,
   setRun,
   onStartBattle,
 }: {
   run: CasualRunState;
+  discoveredMonsterIds: ReadonlySet<string>;
   setRun: (run: CasualRunState) => void;
   onStartBattle: () => void;
 }) {
@@ -1291,6 +1297,7 @@ function WorkshopScreen({
       <Inspector
         run={run}
         monster={inspected}
+        discoveredMonsterIds={discoveredMonsterIds}
         onCommand={onCommand}
         onChange={setRun}
         onClose={() => setInspectedId(undefined)}
@@ -1614,6 +1621,17 @@ function FinishedScreen({ run, onRestart }: { run: CasualRunState; onRestart: ()
 export function App() {
   const [run, setRun] = useState(() => createCasualRun(GAME_DATA, INITIAL_SEED));
   const [battle, setBattle] = useState<BattleViewState>();
+  const [discoveredMonsterIds, setDiscoveredMonsterIds] = useState(() => new Set<string>(loadDiscoveredMonsterIds()));
+
+  useEffect(() => {
+    setDiscoveredMonsterIds((current) => {
+      const next = new Set(current);
+      for (const monster of run.roster) next.add(monster.definitionId);
+      if (next.size === current.size) return current;
+      saveDiscoveredMonsterIds(next);
+      return next;
+    });
+  }, [run.roster]);
 
   const startBattle = () => {
     const player = run.activeIds
@@ -1637,7 +1655,14 @@ export function App() {
     return <EventScreen run={run} onChoose={(id) => setRun(chooseEvent(GAME_DATA, run, id))} />;
   }
   if (run.phase === 'prepare') {
-    return <WorkshopScreen run={run} setRun={setRun} onStartBattle={startBattle} />;
+    return (
+      <WorkshopScreen
+        run={run}
+        discoveredMonsterIds={discoveredMonsterIds}
+        setRun={setRun}
+        onStartBattle={startBattle}
+      />
+    );
   }
   if (run.phase === 'result') {
     return <ResultScreen run={run} onContinue={() => setRun(continueRun(GAME_DATA, run))} />;

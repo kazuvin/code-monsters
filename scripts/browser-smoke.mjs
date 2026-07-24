@@ -30,6 +30,9 @@ const assertFitsViewport = async (page, label) => {
 
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
+await desktop.addInitScript(() => {
+  window.localStorage.setItem('code-monsters:recipe-discovery:v1', JSON.stringify(['fire-spirit-3']));
+});
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
 
@@ -65,8 +68,14 @@ await desktop.locator('.team-zone.is-active .roster-card').first().click();
 await desktop.getByRole('button', { name: 'ガンビット' }).click();
 if ((await desktop.locator('.gambit-row').count()) !== 3) throw new Error('Monster detail does not show three gambits');
 await desktop.getByRole('button', { name: '配合レシピ' }).click();
-if ((await desktop.locator('.recipe-card').count()) < 1) {
-  throw new Error('Monster detail does not show breeding recipes');
+if ((await desktop.locator('.recipe-card.is-special').count()) !== 3) {
+  throw new Error('Monster detail does not show all three special breeding recipes');
+}
+if ((await desktop.locator('.recipe-card:not(.is-special)').count()) !== 0) {
+  throw new Error('Monster detail still shows non-special breeding recipes');
+}
+if ((await desktop.locator('[data-recipe-slot="result"].is-locked').count()) !== 2) {
+  throw new Error('Previously discovered special result was not restored from persistent discovery');
 }
 await desktop.getByRole('button', { name: '閉じる' }).click();
 
@@ -118,8 +127,11 @@ if ((await mobile.locator('.monster-dialog .gambit-row').count()) !== 3) {
   throw new Error('Mobile monster dialog does not show all three gambits');
 }
 await mobile.getByRole('button', { name: '配合レシピ' }).click();
-if ((await mobile.locator('.monster-dialog .recipe-card').count()) < 1) {
-  throw new Error('Mobile monster dialog does not show breeding recipes');
+if ((await mobile.locator('.monster-dialog .recipe-card.is-special').count()) !== 3) {
+  throw new Error('Mobile monster dialog does not show all three special breeding recipes');
+}
+if ((await mobile.locator('.monster-dialog [data-recipe-slot="result"].is-locked').count()) !== 3) {
+  throw new Error('Undiscovered special breeding results are not silhouetted on mobile');
 }
 await mobile.getByRole('button', { name: '閉じる' }).click();
 
