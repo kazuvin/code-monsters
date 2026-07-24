@@ -4726,6 +4726,159 @@ button.definition-card:active,
   }
 }
 
+.stat-grid-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.stat-grid-heading span {
+  color: var(--monster-color);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.stat-grid-heading small {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+}
+
+.stat-grid.is-breakdown {
+  margin-top: 4px;
+}
+
+.stat-grid.is-breakdown > .stat-cell {
+  min-height: 70px;
+  justify-content: flex-start;
+  padding: 5px;
+}
+
+.stat-grid.is-breakdown .stat-label {
+  color: var(--muted);
+  font-size: 6px;
+  letter-spacing: 0.04em;
+}
+
+.stat-grid.is-breakdown > .stat-cell > b {
+  margin: 1px 0 4px;
+  color: var(--paper);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.stat-bonus-list {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.stat-bonus {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 3px;
+  border-left: 2px solid currentColor;
+  background: var(--void);
+  color: var(--muted);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 6px;
+  font-style: normal;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.stat-bonus em {
+  color: currentColor;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 5px;
+  font-style: normal;
+}
+
+.stat-bonus.is-growth {
+  color: var(--mint);
+}
+
+.stat-bonus.is-individual {
+  color: var(--gold);
+}
+
+.stat-bonus.is-equipment {
+  color: var(--iris);
+}
+
+.stat-bonus.is-cap {
+  color: var(--pink);
+}
+
+.stat-bonus.is-base {
+  border-left-color: var(--line);
+  background: transparent;
+  color: var(--muted);
+}
+
+.breeding-preview-stats.is-breakdown .preview-stat {
+  min-height: 42px;
+  justify-content: flex-start;
+  padding: 3px 1px;
+}
+
+.breeding-preview-stats.is-breakdown .preview-stat > b {
+  margin: 1px 0 2px;
+  color: var(--paper);
+  font-size: 8px;
+  line-height: 1;
+}
+
+.breeding-preview-stats.is-breakdown .stat-label {
+  font-size: 5px;
+}
+
+.breeding-preview-stats.is-breakdown .stat-bonus-list {
+  justify-content: center;
+  gap: 1px;
+}
+
+.breeding-preview-stats.is-breakdown .stat-bonus {
+  position: static;
+  padding: 1px 2px;
+  border-left-width: 1px;
+  font-size: 4px;
+  line-height: 1;
+}
+
+.breeding-preview-stats.is-breakdown .stat-bonus em {
+  font-size: 4px;
+}
+
+@media (max-width: 800px) {
+  .stat-grid.is-breakdown > .stat-cell {
+    min-height: 64px;
+  }
+
+  .stat-grid.is-breakdown > .stat-cell > b {
+    font-size: 13px;
+  }
+
+  .stat-bonus {
+    font-size: 5px;
+  }
+
+  .stat-bonus em {
+    font-size: 5px;
+  }
+
+  .breeding-preview-stats.is-breakdown .stat-bonus em {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

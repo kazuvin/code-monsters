@@ -74,6 +74,9 @@ await desktop.locator('.prospect-dialog[open]').waitFor();
 if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
   throw new Error('Shop prospect detail does not show all seven stats');
 }
+if ((await desktop.locator('.prospect-dialog .stat-bonus.is-base').count()) !== 7) {
+  throw new Error('Base shop prospect stats do not expose their baseline breakdown');
+}
 await desktop.screenshot({ path: '/tmp/code-monsters-prospect-desktop.png', fullPage: true });
 await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
 
@@ -108,6 +111,10 @@ await desktop.locator('.monster-dialog .inventory-list .equipment-card').first()
 if ((await desktop.locator('.monster-dialog[open]').count()) !== 1) {
   throw new Error('Equipping an item closed the monster detail dialog');
 }
+if ((await desktop.locator('.monster-dialog .stat-bonus.is-equipment').count()) < 1) {
+  throw new Error('Equipped monster stats do not show an equipment bonus');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-stat-breakdown-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: 'ガンビット' }).click();
 if ((await desktop.locator('.gambit-row').count()) !== 3) throw new Error('Monster detail does not show three gambits');
 if ((await desktop.locator('.gambit-skill-note').count()) !== 3) {
@@ -201,6 +208,9 @@ await desktop.locator('.breeding-preview').waitFor();
 if ((await desktop.locator('.breeding-preview .preview-stat').count()) !== 7) {
   throw new Error('Selected breeding result does not preview all seven stats');
 }
+if ((await desktop.locator('.breeding-preview .stat-bonus.is-individual').count()) < 1) {
+  throw new Error('Breeding result does not show its inherited individual-value bonus');
+}
 await desktop.getByRole('button', { name: '能力を詳しく見る' }).click();
 await desktop.locator('.prospect-dialog[open]').waitFor();
 if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
@@ -224,6 +234,9 @@ await desktop.getByRole('button', { name: 'この仲間を見る →' }).click()
 await desktop.locator('.monster-dialog[open]').waitFor();
 if ((await desktop.locator('.monster-dialog .stat-grid span').count()) !== 7) {
   throw new Error('Newborn monster detail did not open after breeding');
+}
+if ((await desktop.locator('.monster-dialog .stat-bonus.is-individual').count()) < 1) {
+  throw new Error('Newborn monster detail does not retain the individual-value breakdown');
 }
 await desktop.getByRole('button', { name: 'ガンビット' }).click();
 if ((await desktop.locator('.monster-dialog .gambit-row').count()) !== 3) {
@@ -261,6 +274,7 @@ await mobile.locator('dialog[open]').waitFor();
 if ((await mobile.locator('.monster-dialog .stat-grid span').count()) !== 7) {
   throw new Error('Monster detail dialog does not show all seven stats');
 }
+await mobile.screenshot({ path: '/tmp/code-monsters-stat-breakdown-mobile.png' });
 await mobile.getByRole('button', { name: 'ガンビット' }).click();
 if ((await mobile.locator('.monster-dialog .gambit-row').count()) !== 3) {
   throw new Error('Mobile monster dialog does not show all three gambits');
@@ -318,11 +332,13 @@ console.log(
     screenshots: [
       '/tmp/code-monsters-casual-desktop.png',
       '/tmp/code-monsters-prospect-desktop.png',
+      '/tmp/code-monsters-stat-breakdown-desktop.png',
       '/tmp/code-monsters-battle-desktop.png',
       '/tmp/code-monsters-result-desktop.png',
       '/tmp/code-monsters-breeding-desktop.png',
       '/tmp/code-monsters-breeding-reveal-desktop.png',
       '/tmp/code-monsters-draft-mobile.png',
+      '/tmp/code-monsters-stat-breakdown-mobile.png',
       '/tmp/code-monsters-recipes-mobile.png',
       '/tmp/code-monsters-workshop-mobile.png',
       '/tmp/code-monsters-result-mobile.png',

@@ -12,6 +12,17 @@ import { EMPTY_STATS } from './types';
 
 const STAT_IDS: StatId[] = ['maxHp', 'maxMp', 'attack', 'defense', 'speed', 'wisdom', 'crit'];
 
+export type StatValueBreakdown = {
+  base: number;
+  growth: number;
+  individual: number;
+  equipment: number;
+  total: number;
+  capped: boolean;
+};
+
+export type MonsterStatBreakdown = Record<StatId, StatValueBreakdown>;
+
 export const definitionFor = (data: GameData, monster: MonsterInstance) => {
   const definition = data.monsters.find((entry) => entry.id === monster.definitionId);
   if (!definition) throw new Error(`Unknown monster definition: ${monster.definitionId}`);
@@ -92,16 +103,36 @@ export function permanentStatsFor(data: GameData, monster: MonsterInstance): Sta
   ) as StatBlock;
 }
 
-export function battleStatsFor(data: GameData, monster: MonsterInstance): StatBlock {
-  const stats = permanentStatsFor(data, monster);
+export function statBreakdownFor(data: GameData, monster: MonsterInstance): MonsterStatBreakdown {
+  const definition = definitionFor(data, monster);
   const equipment = data.equipment.find((entry) => entry.id === monster.equipmentId);
-  if (!equipment) return stats;
+  const growthMultiplier = data.rules.breeding.colorGrowthBonus[monster.colorStars];
   return Object.fromEntries(
     STAT_IDS.map((statId) => {
-      const value = stats[statId] + (equipment.statBonus[statId] ?? 0);
-      return [statId, statId === 'crit' ? Math.min(data.rules.battle.criticalCap, value) : value];
+      const base = definition.baseStats[statId];
+      const growth = Math.floor(definition.growthPerLevel[statId] * (monster.level - 1) * growthMultiplier);
+      const individual = monster.inheritedStats[statId];
+      const equipmentBonus = equipment?.statBonus[statId] ?? 0;
+      const rawTotal = base + growth + individual + equipmentBonus;
+      const total = statId === 'crit' ? Math.min(data.rules.battle.criticalCap, rawTotal) : rawTotal;
+      return [
+        statId,
+        {
+          base,
+          growth,
+          individual,
+          equipment: equipmentBonus,
+          total,
+          capped: total < rawTotal,
+        },
+      ];
     }),
-  ) as StatBlock;
+  ) as MonsterStatBreakdown;
+}
+
+export function battleStatsFor(data: GameData, monster: MonsterInstance): StatBlock {
+  const breakdown = statBreakdownFor(data, monster);
+  return Object.fromEntries(STAT_IDS.map((statId) => [statId, breakdown[statId].total])) as StatBlock;
 }
 
 export const skillIdsFor = (data: GameData, monster: MonsterInstance) => {

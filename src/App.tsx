@@ -15,6 +15,7 @@ import {
   effectiveStarsFor,
   permanentStatsFor,
   skillIdsFor,
+  statBreakdownFor,
   targetRulesForSkill,
 } from './core/monster';
 import { deriveSeed } from './core/rng';
@@ -293,7 +294,6 @@ function MonsterDetailCard({
 }) {
   const definition = definitionFor(GAME_DATA, monster);
   const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
-  const stats = permanentStatsFor(GAME_DATA, monster);
   const progress = xpProgressFor(monster);
   return (
     <div className="monster-detail-card">
@@ -308,17 +308,11 @@ function MonsterDetailCard({
           </small>
         </>
       )}
-      <div className="stat-grid">
-        {STAT_LABELS.map(([id, label]) => (
-          <span key={id}>
-            <small>{label}</small>
-            <b>
-              {stats[id]}
-              {id === 'crit' ? '%' : ''}
-            </b>
-          </span>
-        ))}
+      <div className="stat-grid-heading">
+        <span>STATUS TOTAL</span>
+        <small>最終値 / 成長・個体値・装備</small>
       </div>
+      <StatBreakdownGrid monster={monster} />
       <section className="trait-block detail-card">
         <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
         <h3>{trait?.name}</h3>
@@ -342,6 +336,44 @@ function MonsterDetailCard({
           })}
         </div>
       </section>
+    </div>
+  );
+}
+
+function StatBreakdownGrid({ monster, compact = false }: { monster: MonsterInstance; compact?: boolean }) {
+  const breakdown = statBreakdownFor(GAME_DATA, monster);
+  return (
+    <div
+      className={compact ? 'breeding-preview-stats is-breakdown' : 'stat-grid is-breakdown'}
+      aria-label={compact ? '配合後の能力と個体値' : '能力の最終値と上昇内訳'}
+    >
+      {STAT_LABELS.map(([id, label]) => {
+        const stat = breakdown[id];
+        const bonuses = [
+          ['growth', compact ? '成' : '成長', stat.growth],
+          ['individual', compact ? '個' : '個体値', stat.individual],
+          ['equipment', compact ? '装' : '装備', stat.equipment],
+        ] as const;
+        const visibleBonuses = bonuses.filter(([, , value]) => value > 0);
+        return (
+          <span className={compact ? 'preview-stat' : 'stat-cell'} data-stat-id={id} key={id}>
+            <small className="stat-label">{label}</small>
+            <b data-stat-total={stat.total}>
+              {stat.total}
+              {id === 'crit' ? '%' : ''}
+            </b>
+            <div className="stat-bonus-list">
+              {visibleBonuses.length === 0 && <i className="stat-bonus is-base">基礎値</i>}
+              {visibleBonuses.map(([source, sourceLabel, value]) => (
+                <i className={`stat-bonus is-${source}`} data-bonus-source={source} key={source}>
+                  <em>{sourceLabel}</em> +{value}
+                </i>
+              ))}
+              {stat.capped && <i className="stat-bonus is-cap">上限 {GAME_DATA.rules.battle.criticalCap}%</i>}
+            </div>
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -1062,12 +1094,6 @@ function BreedingView({
       ? breedMonsters(GAME_DATA, first, second, candidate, skillId || undefined, 'breeding-prospect')
       : undefined;
   const previewDefinition = previewChild ? definitionFor(GAME_DATA, previewChild) : undefined;
-  const previewStats = previewChild ? permanentStatsFor(GAME_DATA, previewChild) : undefined;
-  const basePreview =
-    previewDefinition && previewChild
-      ? createMonster(GAME_DATA, previewDefinition.id, 'breeding-base', { colorStars: previewChild.colorStars })
-      : undefined;
-  const baseStats = basePreview ? permanentStatsFor(GAME_DATA, basePreview) : undefined;
   const parentWhiteStars =
     first && second
       ? Math.max(definitionFor(GAME_DATA, first).whiteStars, definitionFor(GAME_DATA, second).whiteStars)
@@ -1168,7 +1194,7 @@ function BreedingView({
               );
             })}
           </div>
-          {candidate && previewChild && previewDefinition && previewStats && baseStats && (
+          {candidate && previewChild && previewDefinition && (
             <div className="inheritance-control">
               {rankUp && (
                 <div className="rank-up-signal" aria-live="polite">
@@ -1185,21 +1211,7 @@ function BreedingView({
                   <strong>{previewDefinition.name}</strong>
                   <b>Lv.1</b>
                 </header>
-                <div className="breeding-preview-stats" aria-label="配合後の能力">
-                  {STAT_LABELS.map(([id, label]) => {
-                    const inherited = previewStats[id] - baseStats[id];
-                    return (
-                      <span className="preview-stat" key={id}>
-                        <small>{label}</small>
-                        <b>
-                          {previewStats[id]}
-                          {id === 'crit' ? '%' : ''}
-                        </b>
-                        {inherited > 0 && <i>+{inherited}</i>}
-                      </span>
-                    );
-                  })}
-                </div>
+                <StatBreakdownGrid monster={previewChild} compact />
                 <button type="button" className="card-detail-button" onClick={() => setPreviewOpen(true)}>
                   能力を詳しく見る
                 </button>
