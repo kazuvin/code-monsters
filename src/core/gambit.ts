@@ -60,12 +60,26 @@ const actionIsUsable = (data: GameData, fighter: GambitFighterView, action: Gamb
   return Boolean(skill && fighter.mp >= skill.mpCost && validTargetRule(skill.targetScope, action.target));
 };
 
-export function chooseGambitAction(data: GameData, fighter: GambitFighterView, all: GambitFighterView[]): GambitAction {
+export type GambitDecision = {
+  action: GambitAction;
+  ruleIndex?: number;
+  fallback: boolean;
+};
+
+export function chooseGambitDecision(
+  data: GameData,
+  fighter: GambitFighterView,
+  all: GambitFighterView[],
+): GambitDecision {
   const silenced = fighter.statuses.includes('silence');
-  for (const rule of fighter.monster.gambits) {
+  for (const [ruleIndex, rule] of fighter.monster.gambits.entries()) {
     if (silenced && rule.action.skillId !== 'normal-attack') continue;
     if (!conditionMatches(rule.condition, fighter, all)) continue;
-    if (actionIsUsable(data, fighter, rule.action)) return rule.action;
+    if (actionIsUsable(data, fighter, rule.action)) return { action: rule.action, ruleIndex, fallback: false };
   }
-  return { skillId: 'normal-attack', target: 'random-enemy' };
+  return { action: { skillId: 'normal-attack', target: 'random-enemy' }, fallback: true };
+}
+
+export function chooseGambitAction(data: GameData, fighter: GambitFighterView, all: GambitFighterView[]): GambitAction {
+  return chooseGambitDecision(data, fighter, all).action;
 }

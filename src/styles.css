@@ -7241,3 +7241,568 @@ button.effect-skill-card {
     font-size: 11px;
   }
 }
+
+/* Route choices: stamped field records with explicit targets and risk. */
+.shop-luck-readout {
+  display: block;
+  margin-top: 3px;
+  color: var(--gold);
+  font-size: 7px;
+}
+
+.event-grid .event-choice-card {
+  --route-accent: var(--gold);
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px;
+  border: 2px solid var(--line);
+  border-bottom: 5px solid var(--route-accent);
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--route-accent) 10%, transparent), transparent 42%), var(--panel);
+  box-shadow: 3px 3px 0 var(--void-deep);
+}
+
+.event-grid .event-choice-card.is-risk {
+  --route-accent: var(--pink);
+}
+
+.event-choice-card > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-choice-card > header > span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  border: 2px solid var(--route-accent);
+  background: var(--void);
+  color: var(--route-accent);
+  font-size: 21px;
+  transform: rotate(-2deg);
+}
+
+.event-choice-card > header small {
+  margin: 0;
+  color: var(--route-accent);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.event-grid .event-choice-card > strong {
+  margin-top: 9px;
+  color: var(--paper);
+  font-size: 13px;
+  text-align: left;
+}
+
+.event-grid .event-choice-card > p {
+  min-height: 34px;
+  flex: 0;
+  margin: 5px 0 8px;
+  font-size: 8px;
+  text-align: left;
+}
+
+.event-targets {
+  min-height: 0;
+  flex: 1;
+  padding: 7px;
+  border: 1px solid var(--line-soft);
+  background: var(--void);
+}
+
+.event-targets > small {
+  display: block;
+  margin: 0 0 5px;
+  color: var(--muted);
+  font-size: 6px;
+  text-align: left;
+}
+
+.event-targets > div {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.event-grid .event-targets button {
+  display: flex;
+  min-width: 78px;
+  min-height: 38px;
+  flex: 0 0 78px;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line-soft);
+  background: var(--deck);
+  box-shadow: none;
+  color: var(--muted);
+  text-align: left;
+}
+
+.event-grid .event-targets button.is-selected {
+  border-color: var(--mint);
+  color: var(--paper);
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+
+.event-targets .monster-sigil {
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+}
+
+.event-targets .monster-sigil > span {
+  font-size: 17px;
+}
+
+.event-grid .event-targets button > span {
+  display: block;
+  width: auto;
+  height: auto;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  text-overflow: ellipsis;
+}
+
+.event-grid .event-choice-card .event-commit {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  margin-top: auto;
+  padding: 7px;
+  border: 1px solid var(--route-accent);
+  border-bottom: 3px solid var(--route-accent);
+  background: color-mix(in srgb, var(--route-accent) 12%, var(--void));
+  box-shadow: none;
+  color: var(--route-accent);
+  font-size: 8px;
+  text-align: center;
+}
+
+.event-grid .event-choice-card .event-commit:disabled {
+  border-color: var(--line-soft);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.event-result-stage {
+  display: flex;
+  width: min(640px, 100%);
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  padding: 24px;
+  border: 2px solid var(--line);
+  border-bottom: 6px solid var(--mint);
+  background: var(--panel);
+  box-shadow: 5px 5px 0 var(--void-deep);
+  text-align: center;
+}
+
+.event-result-screen.is-loss .event-result-stage {
+  border-bottom-color: var(--pink);
+}
+
+.event-result-glyph {
+  display: grid;
+  width: 90px;
+  height: 90px;
+  margin: 14px 0;
+  place-items: center;
+  border: 3px double var(--gold);
+  background: var(--void);
+  color: var(--gold);
+  font-size: 38px;
+  transform: rotate(-3deg);
+}
+
+.event-result-stage > small {
+  color: var(--gold);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}
+
+.event-result-stage h2 {
+  margin: 5px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: clamp(22px, 7vw, 38px);
+}
+
+.event-result-stage > p {
+  margin: 2px 0 14px;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+}
+
+.event-result-target {
+  display: flex;
+  min-width: min(300px, 100%);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 7px;
+  border: 1px solid var(--line-soft);
+  background: var(--deck);
+  text-align: left;
+}
+
+.event-result-target > span {
+  display: grid;
+  gap: 2px;
+}
+
+.event-result-target small,
+.event-result-target i {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.event-result-target strong {
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 12px;
+}
+
+/* Battle report: a mirrored ledger, not a second replay. */
+.result-screen {
+  overflow: auto;
+}
+
+.result-stage {
+  display: flex;
+  min-height: auto;
+  flex: 0 0 auto;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.combat-ledger {
+  position: relative;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(7px);
+}
+
+.reveal-stage-3 .combat-ledger {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 220ms steps(4),
+    transform 220ms steps(4);
+}
+
+.battle-insight-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  margin-bottom: 6px;
+}
+
+.battle-insight-strip > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 7px;
+  border: 1px solid var(--line-soft);
+  background: var(--void);
+}
+
+.battle-insight-strip small {
+  color: var(--gold);
+  font-size: 6px;
+}
+
+.battle-insight-strip strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-insight-strip b {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.combat-ledger-teams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.combat-ledger-team {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line-soft);
+  background: var(--void);
+}
+
+.combat-ledger-team > header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 2px 5px;
+  padding: 4px;
+  border-left: 3px solid var(--mint);
+}
+
+.combat-ledger-team.is-enemy > header {
+  border-left-color: var(--pink);
+}
+
+.combat-ledger-team > header span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.combat-ledger-team > header strong {
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 11px;
+}
+
+.combat-ledger-team > header b {
+  color: var(--mint);
+  font-size: 12px;
+}
+
+.combat-ledger-team.is-enemy > header b {
+  color: var(--pink);
+}
+
+.combat-ledger-card {
+  --monster-color: var(--gold);
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--monster-color);
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--monster-color) 8%, transparent), transparent 42%), var(--deck);
+}
+
+.combat-ledger-card > header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.combat-ledger-card > header .monster-sigil {
+  width: 40px;
+  height: 40px;
+}
+
+.combat-ledger-card > header .monster-sigil > span {
+  font-size: 23px;
+}
+
+.combat-ledger-card > header > span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.combat-ledger-card > header small,
+.combat-ledger-card > header i {
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.combat-ledger-card > header strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-ledger-card > header > b {
+  color: var(--gold);
+  font-size: 8px;
+}
+
+.combat-ledger-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  margin-top: 5px;
+}
+
+.combat-ledger-metrics > span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  padding: 4px 3px;
+  border-top: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--void) 72%, transparent);
+}
+
+.combat-ledger-metrics small {
+  color: var(--muted);
+  font-size: 5px;
+}
+
+.combat-ledger-metrics b {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+.combat-ledger-metrics i {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 5px;
+}
+
+.combat-status-ledger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.combat-status-ledger span {
+  padding: 2px 4px;
+  border: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+}
+
+.skill-ledger {
+  margin-top: 5px;
+  border-top: 1px dashed var(--line-soft);
+}
+
+.skill-ledger summary {
+  padding: 5px 0 1px;
+  color: var(--gold);
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.skill-ledger > div {
+  display: grid;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.skill-ledger > div > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1px 4px;
+  padding: 3px;
+  background: var(--void);
+}
+
+.skill-ledger strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-ledger i,
+.skill-ledger small {
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.skill-ledger small {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 801px) {
+  .event-grid {
+    min-height: 390px;
+    flex: 0 0 390px;
+    grid-auto-rows: minmax(390px, auto);
+  }
+
+  .event-grid .event-choice-card {
+    min-height: 390px;
+    padding: 18px;
+  }
+
+  .event-choice-card > header > span {
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+    font-size: 28px;
+  }
+
+  .event-grid .event-choice-card > strong {
+    font-size: 16px;
+  }
+
+  .event-grid .event-choice-card > p {
+    font-size: 10px;
+  }
+
+  .combat-ledger-card {
+    padding: 8px;
+  }
+
+  .combat-ledger-card > header strong {
+    font-size: 12px;
+  }
+
+  .combat-ledger-metrics b {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 800px) {
+  .event-stage {
+    overflow: auto;
+  }
+
+  .event-grid {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .event-grid .event-choice-card {
+    min-height: 220px;
+    flex: 0 0 auto;
+  }
+
+  .battle-insight-strip,
+  .combat-ledger-teams {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-ledger-metrics {
+    grid-template-columns: repeat(5, minmax(48px, 1fr));
+    overflow-x: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-result-glyph,
+  .combat-ledger,
+  .event-choice-card > header > span {
+    transform: none;
+  }
+}

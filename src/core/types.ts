@@ -172,7 +172,24 @@ export type EventDefinition = {
   name: string;
   description: string;
   glyph: string;
-  effect: { kind: 'coins'; amount: number } | { kind: 'roster-xp'; amount: number };
+  effect:
+    | { kind: 'coins'; amount: number }
+    | { kind: 'roster-xp'; amount: number }
+    | { kind: 'active-xp'; amount: number }
+    | { kind: 'monster-xp'; amount: number }
+    | { kind: 'shop-luck'; amount: number }
+    | { kind: 'free-rerolls'; amount: number }
+    | { kind: 'equipment-gift' }
+    | { kind: 'gamble-coins'; stake: number; reward: number; winChance: number }
+    | { kind: 'gamble-monster-xp'; successAmount: number; consolationAmount: number; winChance: number };
+};
+
+export type EventResolution = {
+  eventId: string;
+  title: string;
+  text: string;
+  tone: 'gain' | 'risk' | 'loss';
+  targetMonsterId?: string;
 };
 
 export type GameRules = {
@@ -276,10 +293,10 @@ export type ShopState = {
   equipment: Array<ShopEquipmentOffer | null>;
 };
 
-export type RunPhase = 'draft' | 'event' | 'prepare' | 'result' | 'finished';
+export type RunPhase = 'draft' | 'event' | 'event-result' | 'prepare' | 'result' | 'finished';
 
 export type CasualRunState = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   mode: 'casual';
   seed: number;
   commandIndex: number;
@@ -296,6 +313,9 @@ export type CasualRunState = {
   draftRound: number;
   draftChoices: string[];
   eventChoices: string[];
+  shopLuckBonus: number;
+  freeRerolls: number;
+  eventResolution?: EventResolution;
   lastBattle?: BattleResult;
 };
 
@@ -303,6 +323,8 @@ export type TimedStatus = {
   id: StatusId;
   amount: number;
   remainingSeconds: number;
+  sourceId?: string;
+  sourceSkillId?: string;
 };
 
 export type FighterSnapshot = {
@@ -338,6 +360,45 @@ export type BattleResult = {
   durationSeconds: number;
   frames: BattleFrame[];
   damageByTeam: Record<Team, number>;
+  monsterReports: MonsterBattleReport[];
+};
+
+export type MonsterBattleReport = {
+  id: string;
+  definitionId: string;
+  name: string;
+  team: Team;
+  actions: number;
+  normalAttacks: number;
+  fallbackActions: number;
+  criticalHits: number;
+  damageDealt: number;
+  hpDamageDealt: number;
+  damageTaken: number;
+  shieldAbsorbed: number;
+  healingDone: number;
+  healingReceived: number;
+  shieldingDone: number;
+  shieldingReceived: number;
+  buffApplications: number;
+  debuffApplications: number;
+  atbGranted: number;
+  mpGranted: number;
+  skillUses: Record<string, number>;
+  statusApplications: Partial<Record<StatusId, number>>;
+  skillBreakdown: Record<string, BattleContribution>;
+};
+
+export type BattleContribution = {
+  uses: number;
+  damage: number;
+  healing: number;
+  shielding: number;
+  buffs: number;
+  debuffs: number;
+  criticalHits: number;
+  atb: number;
+  mp: number;
 };
 
 export type BattleInput = {

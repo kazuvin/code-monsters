@@ -44,6 +44,12 @@ describe('DQM run game data', () => {
     expect(validateGameData(GAME_DATA)).toEqual([]);
   });
 
+  it('has enough route-changing support content for repeated casual runs', () => {
+    expect(GAME_DATA.events.length).toBeGreaterThanOrEqual(9);
+    expect(GAME_DATA.equipment.length).toBeGreaterThanOrEqual(12);
+    expect(GAME_DATA.specialRecipes.length).toBeGreaterThanOrEqual(9);
+  });
+
   it('rejects an invalid minimum breeding rank', () => {
     const invalid = structuredClone(GAME_DATA);
     invalid.rules.breeding.minimumResultWhiteStars = 0 as typeof invalid.rules.breeding.minimumResultWhiteStars;

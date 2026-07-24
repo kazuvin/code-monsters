@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "rules": {
-    "contentVersion": "casual-prototype-2",
+    "contentVersion": "casual-prototype-3",
     "maxCycles": 12,
     "maxLosses": 5,
     "rosterLimit": 7,
@@ -1635,6 +1635,84 @@
       "price": 6,
       "statBonus": {},
       "battleStartEffects": [{ "kind": "atb", "amount": 18, "target": "self" }]
+    },
+    {
+      "id": "opening-ward",
+      "name": "初陣の護符",
+      "description": "開戦時、自分に最大HP18%の盾",
+      "glyph": "護",
+      "price": 4,
+      "statBonus": {},
+      "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 18, "target": "self" }]
+    },
+    {
+      "id": "mana-crystal",
+      "name": "魔泉晶",
+      "description": "MP +8 / 知恵 +3",
+      "glyph": "晶",
+      "price": 4,
+      "statBonus": { "maxMp": 8, "wisdom": 3 },
+      "battleStartEffects": []
+    },
+    {
+      "id": "rally-banner",
+      "name": "進軍旗",
+      "description": "開戦時、味方全体の攻撃力 +10%",
+      "glyph": "旗",
+      "price": 6,
+      "statBonus": {},
+      "battleStartEffects": [
+        {
+          "kind": "status",
+          "statusId": "attack-up",
+          "amount": 10,
+          "durationSeconds": 60,
+          "target": "all-allies"
+        }
+      ]
+    },
+    {
+      "id": "hush-bell",
+      "name": "静寂鐘",
+      "description": "開戦時、敵全体の知恵 -8%",
+      "glyph": "鐘",
+      "price": 6,
+      "statBonus": {},
+      "battleStartEffects": [
+        {
+          "kind": "status",
+          "statusId": "wisdom-down",
+          "amount": 8,
+          "durationSeconds": 60,
+          "target": "all-enemies"
+        }
+      ]
+    },
+    {
+      "id": "regen-seed",
+      "name": "生命種",
+      "description": "開戦時、自分に再生3%を10秒",
+      "glyph": "種",
+      "price": 4,
+      "statBonus": {},
+      "battleStartEffects": [
+        {
+          "kind": "status",
+          "statusId": "regeneration",
+          "amount": 3,
+          "durationSeconds": 10,
+          "target": "self"
+        }
+      ]
+    },
+    {
+      "id": "quicksilver-sandals",
+      "name": "水銀靴",
+      "description": "素早さ +4 / 開戦時ATB +12",
+      "glyph": "靴",
+      "price": 6,
+      "statBonus": { "speed": 4 },
+      "battleStartEffects": [{ "kind": "atb", "amount": 12, "target": "self" }]
     }
   ],
   "specialRecipes": [
@@ -1652,15 +1730,45 @@
       "id": "flare-guardian",
       "parentDefinitionIds": ["fire-dragon-2", "light-spirit-2"],
       "resultDefinitionId": "light-dragon-3"
+    },
+    {
+      "id": "void-hatch",
+      "parentDefinitionIds": ["light-demon-2", "fire-spirit-2"],
+      "resultDefinitionId": "dark-dragon-3"
+    },
+    {
+      "id": "ash-crown",
+      "parentDefinitionIds": ["light-demon-2", "dark-spirit-2"],
+      "resultDefinitionId": "fire-dragon-3"
+    },
+    {
+      "id": "lantern-pact",
+      "parentDefinitionIds": ["dark-dragon-2", "fire-spirit-2"],
+      "resultDefinitionId": "light-demon-3"
+    },
+    {
+      "id": "cinder-contract",
+      "parentDefinitionIds": ["light-dragon-2", "dark-spirit-2"],
+      "resultDefinitionId": "fire-demon-3"
+    },
+    {
+      "id": "prism-grove",
+      "parentDefinitionIds": ["dark-dragon-2", "fire-demon-2"],
+      "resultDefinitionId": "light-spirit-3"
+    },
+    {
+      "id": "umbral-grove",
+      "parentDefinitionIds": ["light-dragon-2", "fire-demon-2"],
+      "resultDefinitionId": "dark-spirit-3"
     }
   ],
   "events": [
     {
       "id": "merchant-gift",
       "name": "旅商人の餞別",
-      "description": "コインを4枚受け取る。",
+      "description": "コインを5枚受け取る。",
       "glyph": "貨",
-      "effect": { "kind": "coins", "amount": 4 }
+      "effect": { "kind": "coins", "amount": 5 }
     },
     {
       "id": "moon-camp",
@@ -1670,11 +1778,58 @@
       "effect": { "kind": "roster-xp", "amount": 3 }
     },
     {
-      "id": "training-ring",
-      "name": "放浪の訓練場",
-      "description": "仲間全員が経験値を2得る。",
+      "id": "vanguard-drill",
+      "name": "先陣演習",
+      "description": "主力3体が経験値を5得る。",
       "glyph": "鍛",
-      "effect": { "kind": "roster-xp", "amount": 2 }
+      "effect": { "kind": "active-xp", "amount": 5 }
+    },
+    {
+      "id": "focused-training",
+      "name": "一子相伝の稽古",
+      "description": "選んだ仲間1体が経験値を10得る。",
+      "glyph": "伝",
+      "effect": { "kind": "monster-xp", "amount": 10 }
+    },
+    {
+      "id": "star-observatory",
+      "name": "星見の観測所",
+      "description": "このラン中、ショップの⭐2出現率が8ポイント上がる。",
+      "glyph": "星",
+      "effect": { "kind": "shop-luck", "amount": 0.08 }
+    },
+    {
+      "id": "merchant-pass",
+      "name": "行商組合の通行証",
+      "description": "ショップの無料更新を3回得る。",
+      "glyph": "券",
+      "effect": { "kind": "free-rerolls", "amount": 3 }
+    },
+    {
+      "id": "relic-cache",
+      "name": "遺物の隠し棚",
+      "description": "ランダムな装備を1つ受け取る。",
+      "glyph": "遺",
+      "effect": { "kind": "equipment-gift" }
+    },
+    {
+      "id": "coin-wager",
+      "name": "双月の賭場",
+      "description": "3コインを賭ける。50%で10コインを受け取る。",
+      "glyph": "賭",
+      "effect": { "kind": "gamble-coins", "stake": 3, "reward": 10, "winChance": 0.5 }
+    },
+    {
+      "id": "wild-awakening",
+      "name": "荒ぶる覚醒壇",
+      "description": "選んだ1体が55%で経験値14、失敗しても経験値1を得る。",
+      "glyph": "醒",
+      "effect": {
+        "kind": "gamble-monster-xp",
+        "successAmount": 14,
+        "consolationAmount": 1,
+        "winChance": 0.55
+      }
     }
   ]
 }

@@ -3,7 +3,9 @@ import { GAME_DATA } from '../game/game-data';
 import { createMonster } from './monster';
 import {
   applyBattleResult,
+  chooseEvent,
   chooseDraftMonster,
+  continueEvent,
   continueRun,
   createCasualRun,
   moveMonsterToPartySlot,
@@ -37,6 +39,7 @@ describe('casual run', () => {
         durationSeconds: 12,
         frames: [],
         damageByTeam: { player: 0, enemy: 1 },
+        monsterReports: [],
       });
       run = continueRun(GAME_DATA, run);
       if (run.phase === 'event') run = skipEvent(GAME_DATA, run);
@@ -54,6 +57,7 @@ describe('casual run', () => {
         durationSeconds: 12,
         frames: [],
         damageByTeam: { player: 1, enemy: 0 },
+        monsterReports: [],
       });
       run = continueRun(GAME_DATA, run);
       if (run.phase === 'event') run = skipEvent(GAME_DATA, run);
@@ -102,5 +106,36 @@ describe('casual run', () => {
     expect(result.ok).toBe(true);
     expect(result.state.activeIds[0]).toBe(bench[2]?.id);
     expect(result.state.roster.filter((monster) => !result.state.activeIds.includes(monster.id))[2]?.id).toBe(activeId);
+  });
+
+  it('offers three different route events and resolves targeted growth before preparation', () => {
+    let run = finishDraft();
+    run = { ...run, phase: 'event', eventChoices: ['focused-training'] };
+    const target = run.roster[0]!;
+
+    run = chooseEvent(GAME_DATA, run, 'focused-training', target.id);
+
+    expect(run.phase).toBe('event-result');
+    expect(run.roster[0]?.xp).toBe(target.xp + 10);
+    expect(run.eventResolution?.targetMonsterId).toBe(target.id);
+    expect(continueEvent(run).phase).toBe('prepare');
+  });
+
+  it('applies persistent shop luck and resolves gambling deterministically', () => {
+    const base = finishDraft();
+    const shopRun = chooseEvent(
+      GAME_DATA,
+      { ...base, phase: 'event', eventChoices: ['star-observatory'] },
+      'star-observatory',
+    );
+    const wager = { ...base, coins: 10, phase: 'event' as const, eventChoices: ['coin-wager'] };
+    const first = chooseEvent(GAME_DATA, wager, 'coin-wager');
+    const second = chooseEvent(GAME_DATA, wager, 'coin-wager');
+
+    expect(shopRun.shopLuckBonus).toBeCloseTo(0.08);
+    expect(first).toEqual(second);
+    expect(first.phase).toBe('event-result');
+    expect(first.coins === 7 || first.coins === 17).toBe(true);
+    expect(first.eventResolution?.tone === 'gain' || first.eventResolution?.tone === 'loss').toBe(true);
   });
 });

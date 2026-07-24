@@ -32,9 +32,12 @@ import {
   buyMonster,
   chooseDraftMonster,
   chooseEvent,
+  continueEvent,
   continueRun,
   createCasualRun,
   equipItem,
+  eventIsAvailable,
+  eventRequiresTarget,
   moveMonsterToPartySlot,
   rerollShop,
   sellMonster,
@@ -54,6 +57,7 @@ import type {
   GambitRule,
   LineageId,
   MonsterDefinition,
+  MonsterBattleReport,
   MonsterInstance,
   SkillDefinition,
   StatBlock,
@@ -1021,6 +1025,9 @@ function ShopView({
         <div>
           <span className="section-index">MONSTER EXCHANGE</span>
           <h2>旅商人の棚</h2>
+          <small className="shop-luck-readout">
+            ⭐2 出現率 {Math.round((GAME_DATA.rules.shop.luckyUpgradeChance + run.shopLuckBonus) * 100)}%
+          </small>
         </div>
         <div className="shop-actions">
           <button type="button" className="secondary-button" onClick={onFreeze}>
@@ -1031,7 +1038,7 @@ function ShopView({
             className="secondary-button"
             onClick={() => onCommand(rerollShop(GAME_DATA, run), '棚を更新しました')}
           >
-            ↻ 更新 1
+            ↻ 更新 {run.freeRerolls > 0 ? `FREE ×${run.freeRerolls}` : '1'}
           </button>
         </div>
       </div>
@@ -2409,7 +2416,14 @@ function WorkshopScreen({
   );
 }
 
-function EventScreen({ run, onChoose }: { run: CasualRunState; onChoose: (eventId: string) => void }) {
+function EventScreen({
+  run,
+  onChoose,
+}: {
+  run: CasualRunState;
+  onChoose: (eventId: string, targetMonsterId?: string) => void;
+}) {
+  const [targets, setTargets] = useState<Record<string, string>>({});
   return (
     <main className="event-screen">
       <RunHeader run={run} />
@@ -2421,17 +2435,97 @@ function EventScreen({ run, onChoose }: { run: CasualRunState; onChoose: (eventI
           {run.eventChoices.map((eventId) => {
             const event = GAME_DATA.events.find((entry) => entry.id === eventId);
             if (!event) return null;
+            const needsTarget = eventRequiresTarget(event);
+            const targetId = targets[event.id] ?? run.activeIds[0] ?? run.roster[0]?.id;
+            const available = eventIsAvailable(event, run);
+            const risky = event.effect.kind.startsWith('gamble');
             return (
-              <button type="button" key={event.id} onClick={() => onChoose(event.id)}>
-                <span>{event.glyph}</span>
-                <small>ROUTE {event.id.toUpperCase()}</small>
+              <article className={`event-choice-card${risky ? ' is-risk' : ''}`} key={event.id}>
+                <header>
+                  <span>{event.glyph}</span>
+                  <small>{risky ? 'RISK ROUTE' : `ROUTE ${event.id.toUpperCase()}`}</small>
+                </header>
                 <strong>{event.name}</strong>
                 <p>{event.description}</p>
-                <b>この道を選ぶ →</b>
-              </button>
+                {needsTarget && (
+                  <div className="event-targets" aria-label={`${event.name}の対象`}>
+                    <small>対象を選ぶ</small>
+                    <div>
+                      {run.roster.map((monster) => {
+                        const definition = definitionFor(GAME_DATA, monster);
+                        return (
+                          <button
+                            type="button"
+                            className={targetId === monster.id ? 'is-selected' : ''}
+                            key={monster.id}
+                            onClick={() => setTargets((current) => ({ ...current, [event.id]: monster.id }))}
+                          >
+                            <MonsterSigil
+                              data={GAME_DATA}
+                              definition={definition}
+                              colorStars={monster.colorStars}
+                              size="small"
+                            />
+                            <span>{definition.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="event-commit"
+                  disabled={!available || (needsTarget && !targetId)}
+                  onClick={() => onChoose(event.id, needsTarget ? targetId : undefined)}
+                >
+                  {available ? 'この道を選ぶ →' : 'コインが足りない'}
+                </button>
+              </article>
             );
           })}
         </div>
+      </section>
+    </main>
+  );
+}
+
+function EventResultScreen({ run, onContinue }: { run: CasualRunState; onContinue: () => void }) {
+  const resolution = run.eventResolution;
+  const event = resolution ? GAME_DATA.events.find((entry) => entry.id === resolution.eventId) : undefined;
+  const target = resolution?.targetMonsterId
+    ? run.roster.find((monster) => monster.id === resolution.targetMonsterId)
+    : undefined;
+  return (
+    <main className={`event-screen event-result-screen is-${resolution?.tone ?? 'gain'}`}>
+      <RunHeader run={run} />
+      <section className="event-result-stage">
+        <span className="section-index">ROUTE RESOLVED / CYCLE {run.cycle}</span>
+        <div className="event-result-glyph" aria-hidden="true">
+          {event?.glyph ?? '路'}
+        </div>
+        <small>{resolution?.tone === 'loss' ? 'THE WAGER WAS LOST' : 'THE ROUTE IS RECORDED'}</small>
+        <h2>{resolution?.title ?? '旅路を記録した'}</h2>
+        <p>{resolution?.text ?? '次の準備へ進みます。'}</p>
+        {target && (
+          <div className="event-result-target">
+            <MonsterSigil
+              data={GAME_DATA}
+              definition={definitionFor(GAME_DATA, target)}
+              colorStars={target.colorStars}
+              size="small"
+            />
+            <span>
+              <small>TARGET</small>
+              <strong>{definitionFor(GAME_DATA, target).name}</strong>
+              <i>Lv.{target.level}</i>
+            </span>
+          </div>
+        )}
+        <button type="button" className="launch-button" onClick={onContinue}>
+          <span>PREPARE CYCLE {run.cycle}</span>
+          育成と編成へ進む
+        </button>
       </section>
     </main>
   );
@@ -2710,7 +2804,7 @@ function BattleScreen({
           <i />
         </div>
         <div className="battle-team is-enemy">
-          <span className="team-label">GHOST #{battle.enemy[0]?.id.split('-')[1] ?? '00'}</span>
+          <span className="team-label">RIVAL RUN / SAME RULES</span>
           <div className="battle-formation">
             {enemies.map((fighter) => (
               <BattleMonster
@@ -2795,13 +2889,180 @@ function BattleScreen({
   );
 }
 
+const reportSkillName = (skillId: string) =>
+  skillId === 'normal-attack'
+    ? '通常攻撃'
+    : skillId === 'passive'
+      ? '特性・装備'
+      : (GAME_DATA.skills.find((skill) => skill.id === skillId)?.name ?? skillId);
+
+function MonsterCombatLedger({
+  report,
+  monster,
+  finalSnapshot,
+}: {
+  report: MonsterBattleReport;
+  monster?: MonsterInstance;
+  finalSnapshot?: FighterSnapshot;
+}) {
+  const definition = definitionById(GAME_DATA, report.definitionId);
+  const metrics = [
+    ['DMG', report.damageDealt, '与ダメージ'],
+    ['TAKEN', report.damageTaken, '被ダメージ'],
+    ['HEAL', report.healingDone, '回復'],
+    ['SHIELD', report.shieldingDone, '盾付与'],
+    ['BUFF', report.buffApplications, '強化'],
+    ['DEBUFF', report.debuffApplications, '弱体'],
+    ['ACTION', report.actions, '行動'],
+    ['FALLBACK', report.fallbackActions, '代替攻撃'],
+    ['ATB', report.atbGranted, 'ATB支援'],
+    ['MP', report.mpGranted, 'MP支援'],
+  ] as const;
+  const breakdown = Object.entries(report.skillBreakdown).filter(
+    ([, contribution]) =>
+      contribution.uses +
+        contribution.damage +
+        contribution.healing +
+        contribution.shielding +
+        contribution.buffs +
+        contribution.debuffs >
+      0,
+  );
+  const statuses = Object.entries(report.statusApplications).filter((entry) => (entry[1] ?? 0) > 0);
+  return (
+    <article className="combat-ledger-card" style={monsterStyle(GAME_DATA, definition)}>
+      <header>
+        <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster?.colorStars ?? 0} size="small" />
+        <span>
+          <small>
+            {starText(definition.whiteStars, monster?.colorStars ?? 0)} · {finalSnapshot?.alive ? 'SURVIVED' : 'DOWN'}
+          </small>
+          <strong>{report.name}</strong>
+          <i>
+            HP {Math.round(finalSnapshot?.hp ?? 0)}/{finalSnapshot?.maxHp ?? 0}
+          </i>
+        </span>
+        <b>{report.criticalHits > 0 ? `CRIT ×${report.criticalHits}` : `${report.actions} ACT`}</b>
+      </header>
+      <div className="combat-ledger-metrics">
+        {metrics.map(([id, value, label]) => (
+          <span key={id}>
+            <small>{id}</small>
+            <b>{Math.round(value)}</b>
+            <i>{label}</i>
+          </span>
+        ))}
+      </div>
+      {statuses.length > 0 && (
+        <div className="combat-status-ledger">
+          {statuses.map(([statusId, count]) => (
+            <span key={statusId}>
+              {STATUS_LABELS[statusId as StatusId]} ×{count}
+            </span>
+          ))}
+        </div>
+      )}
+      <details className="skill-ledger">
+        <summary>スキル別の内訳</summary>
+        <div>
+          {breakdown.map(([skillId, contribution]) => (
+            <span key={skillId}>
+              <strong>{reportSkillName(skillId)}</strong>
+              <i>{contribution.uses > 0 ? `${contribution.uses}回` : '自動'}</i>
+              <small>
+                DMG {Math.round(contribution.damage)} · HEAL {Math.round(contribution.healing)} · SHIELD{' '}
+                {Math.round(contribution.shielding)} · B/D {contribution.buffs}/{contribution.debuffs}
+              </small>
+            </span>
+          ))}
+        </div>
+      </details>
+    </article>
+  );
+}
+
+function CombatLedger({
+  result,
+  player,
+  enemy,
+}: {
+  result: BattleResult;
+  player: MonsterInstance[];
+  enemy: MonsterInstance[];
+}) {
+  const reportsFor = (team: 'player' | 'enemy') => result.monsterReports.filter((report) => report.team === team);
+  const finalById = new Map(result.frames.at(-1)?.fighters.map((fighter) => [fighter.id, fighter]) ?? []);
+  const monstersById = new Map([...player, ...enemy].map((monster) => [monster.id, monster]));
+  const topDamage = [...result.monsterReports].sort((left, right) => right.damageDealt - left.damageDealt)[0];
+  const topSupport = [...result.monsterReports].sort(
+    (left, right) =>
+      right.healingDone +
+      right.shieldingDone +
+      right.buffApplications * 10 -
+      (left.healingDone + left.shieldingDone + left.buffApplications * 10),
+  )[0];
+  const playerFallbacks = reportsFor('player').reduce((total, report) => total + report.fallbackActions, 0);
+  const enemyFallbacks = reportsFor('enemy').reduce((total, report) => total + report.fallbackActions, 0);
+  return (
+    <section className="combat-ledger">
+      <div className="result-section-heading">
+        <div>
+          <span>02 / TACTICAL LEDGER</span>
+          <h3>勝因と敗因</h3>
+        </div>
+        <small>両陣営を同じ基準で集計</small>
+      </div>
+      <div className="battle-insight-strip">
+        <span>
+          <small>最大火力</small>
+          <strong>{topDamage?.name ?? '—'}</strong>
+          <b>{Math.round(topDamage?.damageDealt ?? 0)} DMG</b>
+        </span>
+        <span>
+          <small>最大支援</small>
+          <strong>{topSupport?.name ?? '—'}</strong>
+          <b>{Math.round((topSupport?.healingDone ?? 0) + (topSupport?.shieldingDone ?? 0))} RECOVER</b>
+        </span>
+        <span>
+          <small>代替攻撃</small>
+          <strong>
+            自軍 {playerFallbacks} / 相手 {enemyFallbacks}
+          </strong>
+          <b>{playerFallbacks > enemyFallbacks ? '自軍のMP・条件を再確認' : 'ガンビットは機能'}</b>
+        </span>
+      </div>
+      <div className="combat-ledger-teams">
+        {(['player', 'enemy'] as const).map((team) => (
+          <section className={`combat-ledger-team is-${team}`} key={team}>
+            <header>
+              <span>{team === 'player' ? 'PLAYER PARTY' : 'RIVAL PARTY'}</span>
+              <strong>{team === 'player' ? '自軍の戦績' : '相手の戦績'}</strong>
+              <b>{result.winner === team ? 'WIN' : result.winner === 'draw' ? 'DRAW' : 'LOSS'}</b>
+            </header>
+            {reportsFor(team).map((report) => (
+              <MonsterCombatLedger
+                key={report.id}
+                report={report}
+                monster={monstersById.get(report.id)}
+                finalSnapshot={finalById.get(report.id)}
+              />
+            ))}
+          </section>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ResultScreen({
   run,
   beforeRoster,
+  enemy,
   onContinue,
 }: {
   run: CasualRunState;
   beforeRoster: MonsterInstance[];
+  enemy: MonsterInstance[];
   onContinue: () => void;
 }) {
   const result = run.lastBattle;
@@ -2882,10 +3143,11 @@ function ResultScreen({
             ))}
           </div>
         </section>
+        {result && <CombatLedger result={result} player={beforeRoster} enemy={enemy} />}
         <section className="reward-report">
           <div className="result-section-heading">
             <div>
-              <span>02 / EXPERIENCE PULSE</span>
+              <span>03 / EXPERIENCE PULSE</span>
               <h3>成長レポート</h3>
             </div>
             {revealStage < 3 && (
@@ -3002,6 +3264,7 @@ export function App() {
   const [run, setRun] = useState(() => createCasualRun(GAME_DATA, INITIAL_SEED));
   const [battle, setBattle] = useState<BattleViewState>();
   const [lastBattleRoster, setLastBattleRoster] = useState<MonsterInstance[]>([]);
+  const [lastBattleEnemy, setLastBattleEnemy] = useState<MonsterInstance[]>([]);
   const [discoveredMonsterIds, setDiscoveredMonsterIds] = useState(() => new Set<string>(loadDiscoveredMonsterIds()));
 
   useEffect(() => {
@@ -3032,6 +3295,7 @@ export function App() {
         onChange={setBattle}
         onFinish={() => {
           setLastBattleRoster(battle.beforeRoster);
+          setLastBattleEnemy(battle.enemy);
           setBattle(undefined);
         }}
       />
@@ -3041,7 +3305,10 @@ export function App() {
     return <DraftScreen run={run} onChoose={(id) => setRun(chooseDraftMonster(GAME_DATA, run, id))} />;
   }
   if (run.phase === 'event') {
-    return <EventScreen run={run} onChoose={(id) => setRun(chooseEvent(GAME_DATA, run, id))} />;
+    return <EventScreen run={run} onChoose={(id, targetId) => setRun(chooseEvent(GAME_DATA, run, id, targetId))} />;
+  }
+  if (run.phase === 'event-result') {
+    return <EventResultScreen run={run} onContinue={() => setRun(continueEvent(run))} />;
   }
   if (run.phase === 'prepare') {
     return (
@@ -3055,7 +3322,12 @@ export function App() {
   }
   if (run.phase === 'result') {
     return (
-      <ResultScreen run={run} beforeRoster={lastBattleRoster} onContinue={() => setRun(continueRun(GAME_DATA, run))} />
+      <ResultScreen
+        run={run}
+        beforeRoster={lastBattleRoster}
+        enemy={lastBattleEnemy}
+        onContinue={() => setRun(continueRun(GAME_DATA, run))}
+      />
     );
   }
   return (

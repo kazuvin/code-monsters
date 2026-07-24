@@ -1,5 +1,5 @@
 import { breedMonsters, listBreedingCandidates } from './breeding';
-import { gainMonsterXp, setMonsterGambit } from './monster';
+import { definitionFor, gainMonsterXp, setMonsterGambit } from './monster';
 import { deriveSeed, createSeededRandom } from './rng';
 import { createShop } from './shop';
 import type { BattleResult, BreedingCandidate, CasualRunState, CommandResult, GameData, GambitRule } from './types';
@@ -14,10 +14,11 @@ const draftChoicesFor = (data: GameData, seed: number, round: number) => {
 };
 
 const nextShopSeed = (run: CasualRunState) => deriveSeed(run.seed, 1000 + run.commandIndex + run.cycle * 31);
+const shopChanceFor = (data: GameData, run: CasualRunState) => data.rules.shop.luckyUpgradeChance + run.shopLuckBonus;
 
 export function createCasualRun(data: GameData, seed: number): CasualRunState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     mode: 'casual',
     seed,
     commandIndex: 0,
@@ -34,6 +35,8 @@ export function createCasualRun(data: GameData, seed: number): CasualRunState {
     draftRound: 1,
     draftChoices: draftChoicesFor(data, seed, 1),
     eventChoices: [],
+    shopLuckBonus: 0,
+    freeRerolls: 0,
   };
 }
 
@@ -64,7 +67,7 @@ export function chooseDraftMonster(data: GameData, run: CasualRunState, definiti
     phase: 'prepare' as const,
     coins: data.rules.initialCoins,
   };
-  return { ...prepared, shop: createShop(data, nextShopSeed(prepared)) };
+  return { ...prepared, shop: createShop(data, nextShopSeed(prepared), shopChanceFor(data, prepared)) };
 }
 
 const failure = <T>(state: T, error: string): CommandResult<T> => ({ ok: false, state, error });
@@ -72,13 +75,18 @@ const success = <T>(state: T): CommandResult<T> => ({ ok: true, state });
 
 export function rerollShop(data: GameData, run: CasualRunState): CommandResult<CasualRunState> {
   if (run.phase !== 'prepare' || !run.shop) return failure(run, '今はショップを更新できません');
-  if (run.coins < data.rules.shop.rerollCost) return failure(run, 'コインが足りません');
+  const usesFreeReroll = run.freeRerolls > 0;
+  if (!usesFreeReroll && run.coins < data.rules.shop.rerollCost) return failure(run, 'コインが足りません');
   const updated = {
     ...run,
     commandIndex: run.commandIndex + 1,
-    coins: run.coins - data.rules.shop.rerollCost,
+    coins: run.coins - (usesFreeReroll ? 0 : data.rules.shop.rerollCost),
+    freeRerolls: Math.max(0, run.freeRerolls - (usesFreeReroll ? 1 : 0)),
   };
-  return success({ ...updated, shop: createShop(data, nextShopSeed(updated)) });
+  return success({
+    ...updated,
+    shop: createShop(data, nextShopSeed(updated), shopChanceFor(data, updated)),
+  });
 }
 
 export function toggleShopFreeze(run: CasualRunState): CasualRunState {
@@ -327,12 +335,13 @@ const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
   const commandIndex = run.commandIndex + 1;
   const retainedShop = run.shop?.frozen
     ? { ...run.shop, frozen: false }
-    : createShop(data, deriveSeed(run.seed, 1000 + commandIndex + (run.cycle + 1) * 31));
+    : createShop(data, deriveSeed(run.seed, 1000 + commandIndex + (run.cycle + 1) * 31), shopChanceFor(data, run));
   const nextCycle = run.cycle + 1;
   const eventCycle = data.rules.eventCycles.includes(nextCycle);
   const eventChoices = eventCycle
     ? createSeededRandom(deriveSeed(run.seed, nextCycle))
         .shuffle(data.events)
+        .slice(0, 3)
         .map((event) => event.id)
     : [];
   return {
@@ -343,6 +352,7 @@ const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
     coins: run.coins + data.rules.cycleIncome,
     shop: retainedShop,
     eventChoices,
+    eventResolution: undefined,
   };
 };
 
@@ -354,31 +364,154 @@ export function continueRun(data: GameData, run: CasualRunState): CasualRunState
   return newCycleState(data, run);
 }
 
-export function chooseEvent(data: GameData, run: CasualRunState, eventId: string): CasualRunState {
+export const eventRequiresTarget = (event: GameData['events'][number]) =>
+  event.effect.kind === 'monster-xp' || event.effect.kind === 'gamble-monster-xp';
+
+export const eventIsAvailable = (event: GameData['events'][number], run: CasualRunState) =>
+  event.effect.kind !== 'gamble-coins' || run.coins >= event.effect.stake;
+
+export function chooseEvent(
+  data: GameData,
+  run: CasualRunState,
+  eventId: string,
+  targetMonsterId?: string,
+): CasualRunState {
   if (run.phase !== 'event' || !run.eventChoices.includes(eventId)) return run;
   const event = data.events.find((entry) => entry.id === eventId);
   if (!event) return run;
-  if (event.effect.kind === 'coins') {
-    return {
-      ...run,
-      commandIndex: run.commandIndex + 1,
-      phase: 'prepare',
-      coins: run.coins + event.effect.amount,
-      eventChoices: [],
-    };
-  }
-  return {
-    ...run,
+  if (!eventIsAvailable(event, run)) return run;
+  const target =
+    eventRequiresTarget(event) && targetMonsterId
+      ? run.roster.find((monster) => monster.id === targetMonsterId)
+      : undefined;
+  if (eventRequiresTarget(event) && !target) return run;
+  const finish = (
+    next: CasualRunState,
+    text: string,
+    tone: NonNullable<CasualRunState['eventResolution']>['tone'] = 'gain',
+  ): CasualRunState => ({
+    ...next,
     commandIndex: run.commandIndex + 1,
-    phase: 'prepare',
-    roster: run.roster.map((monster) => gainMonsterXp(data, monster, event.effect.amount)),
+    phase: 'event-result',
     eventChoices: [],
-  };
+    eventResolution: {
+      eventId,
+      title: event.name,
+      text,
+      tone,
+      targetMonsterId: target?.id,
+    },
+  });
+
+  switch (event.effect.kind) {
+    case 'coins':
+      return finish({ ...run, coins: run.coins + event.effect.amount }, `${event.effect.amount}コインを獲得した。`);
+    case 'roster-xp': {
+      const amount = event.effect.amount;
+      return finish(
+        { ...run, roster: run.roster.map((monster) => gainMonsterXp(data, monster, amount)) },
+        `仲間全員が経験値を${amount}獲得した。`,
+      );
+    }
+    case 'active-xp': {
+      const amount = event.effect.amount;
+      return finish(
+        {
+          ...run,
+          roster: run.roster.map((monster) =>
+            run.activeIds.includes(monster.id) ? gainMonsterXp(data, monster, amount) : monster,
+          ),
+        },
+        `主力3体が経験値を${amount}獲得した。`,
+      );
+    }
+    case 'monster-xp': {
+      const amount = event.effect.amount;
+      return finish(
+        {
+          ...run,
+          roster: run.roster.map((monster) =>
+            monster.id === target?.id ? gainMonsterXp(data, monster, amount) : monster,
+          ),
+        },
+        `${target ? definitionFor(data, target).name : '選んだ仲間'}が経験値を${amount}獲得した。`,
+      );
+    }
+    case 'shop-luck': {
+      const shopLuckBonus = Math.min(0.48, run.shopLuckBonus + event.effect.amount);
+      const next = {
+        ...run,
+        shopLuckBonus,
+        shop: run.shop ? createShop(data, run.shop.seed, data.rules.shop.luckyUpgradeChance + shopLuckBonus) : run.shop,
+      };
+      return finish(next, `このランの⭐2出現率が${Math.round(event.effect.amount * 100)}ポイント上昇した。`);
+    }
+    case 'free-rerolls':
+      return finish(
+        { ...run, freeRerolls: run.freeRerolls + event.effect.amount },
+        `ショップの無料更新を${event.effect.amount}回獲得した。`,
+      );
+    case 'equipment-gift': {
+      const random = createSeededRandom(
+        deriveSeed(run.seed, run.commandIndex * 109 + run.cycle * 1019 + data.events.indexOf(event)),
+      );
+      const available = data.equipment.filter((equipment) => !run.equipmentInventory.includes(equipment.id));
+      const equipment = available.length > 0 ? random.pick(available) : random.pick(data.equipment);
+      if (run.equipmentInventory.length >= 6) {
+        return finish({ ...run, coins: run.coins + 3 }, '装備庫が満杯だったため、代わりに3コインを受け取った。');
+      }
+      return finish(
+        { ...run, equipmentInventory: [...run.equipmentInventory, equipment.id] },
+        `${equipment.name}を装備庫へ加えた。`,
+      );
+    }
+    case 'gamble-coins': {
+      const random = createSeededRandom(
+        deriveSeed(run.seed, run.commandIndex * 101 + run.cycle * 1009 + data.events.indexOf(event)),
+      );
+      const won = random.next() < event.effect.winChance;
+      const coins = run.coins - event.effect.stake + (won ? event.effect.reward : 0);
+      return finish(
+        { ...run, coins },
+        won
+          ? `${event.effect.stake}コインを賭け、${event.effect.reward}コインを獲得した。`
+          : `${event.effect.stake}コインを賭けたが、今回は戻らなかった。`,
+        won ? 'gain' : 'loss',
+      );
+    }
+    case 'gamble-monster-xp': {
+      const random = createSeededRandom(
+        deriveSeed(run.seed, run.commandIndex * 107 + run.cycle * 1013 + data.events.indexOf(event)),
+      );
+      const won = random.next() < event.effect.winChance;
+      const amount = won ? event.effect.successAmount : event.effect.consolationAmount;
+      return finish(
+        {
+          ...run,
+          roster: run.roster.map((monster) =>
+            monster.id === target?.id ? gainMonsterXp(data, monster, amount) : monster,
+          ),
+        },
+        `${target ? definitionFor(data, target).name : '選んだ仲間'}は経験値を${amount}獲得した。`,
+        won ? 'gain' : 'risk',
+      );
+    }
+  }
 }
 
 export function skipEvent(_data: GameData, run: CasualRunState): CasualRunState {
   if (run.phase !== 'event') return run;
   return { ...run, commandIndex: run.commandIndex + 1, phase: 'prepare', eventChoices: [] };
+}
+
+export function continueEvent(run: CasualRunState): CasualRunState {
+  if (run.phase !== 'event-result') return run;
+  return {
+    ...run,
+    commandIndex: run.commandIndex + 1,
+    phase: 'prepare',
+    eventResolution: undefined,
+  };
 }
 
 export const breedingCandidatesForRun = (

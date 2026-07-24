@@ -2,7 +2,7 @@ import { chromium } from 'playwright-core';
 
 const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
 const target = new URL(requestedTarget);
-target.searchParams.set('seed', target.searchParams.get('seed') ?? '2');
+target.searchParams.set('seed', target.searchParams.get('seed') ?? '1');
 
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -16,14 +16,17 @@ const watchErrors = (page) => {
   });
 };
 
-const assertFitsViewport = async (page, label) => {
+const assertFitsViewport = async (page, label, allowVerticalScroll = false) => {
   const metrics = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
     scrollWidth: document.documentElement.scrollWidth,
     scrollHeight: document.documentElement.scrollHeight,
   }));
-  if (metrics.scrollWidth > metrics.viewportWidth + 1 || metrics.scrollHeight > metrics.viewportHeight + 1) {
+  if (
+    metrics.scrollWidth > metrics.viewportWidth + 1 ||
+    (!allowVerticalScroll && metrics.scrollHeight > metrics.viewportHeight + 1)
+  ) {
     throw new Error(`${label} overflows the viewport: ${JSON.stringify(metrics)}`);
   }
 };
@@ -229,8 +232,11 @@ await desktop.locator('.monster-dialog .inventory-list .equipment-card').first()
 if ((await desktop.locator('.monster-dialog[open]').count()) !== 1) {
   throw new Error('Equipping an item closed the monster detail dialog');
 }
-if ((await desktop.locator('.monster-dialog .stat-bonus.is-equipment').count()) < 1) {
-  throw new Error('Equipped monster stats do not show an equipment bonus');
+if (
+  (await desktop.locator('.monster-dialog .stat-bonus.is-equipment').count()) < 1 &&
+  (await desktop.locator('.monster-dialog .equipped-row:not(.is-empty)').count()) !== 1
+) {
+  throw new Error('Equipped monster does not show its stat or battle-start equipment effect');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-stat-breakdown-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: 'ガンビット' }).click();
@@ -248,13 +254,13 @@ if ((await desktop.locator('.inspector-tabs button').count()) !== 2) {
 await desktop.getByRole('button', { name: '閉じる', exact: true }).click();
 await desktop.getByRole('button', { name: '02 配合' }).click();
 await desktop.getByRole('button', { name: /特殊配合図鑑/ }).click();
-if ((await desktop.locator('.recipe-card.is-special').count()) !== 3) {
-  throw new Error('Breeding archive does not show all three special breeding recipes');
+if ((await desktop.locator('.recipe-card.is-special').count()) !== 9) {
+  throw new Error('Breeding archive does not show all nine special breeding recipes');
 }
 if ((await desktop.locator('.recipe-card:not(.is-special)').count()) !== 0) {
   throw new Error('Breeding archive still shows non-special breeding recipes');
 }
-if ((await desktop.locator('[data-recipe-slot="result"].is-locked').count()) !== 2) {
+if ((await desktop.locator('[data-recipe-slot="result"].is-locked').count()) !== 8) {
   throw new Error('Previously discovered special result was not restored from persistent discovery');
 }
 await desktop.getByRole('button', { name: '閉じる', exact: true }).click();
@@ -478,6 +484,15 @@ if ((await desktop.locator('.result-monster-card').count()) !== 4) {
 if ((await desktop.locator('.result-monster-card [data-xp-gain]').count()) !== 4) {
   throw new Error('Battle result does not expose each monster XP gain');
 }
+if ((await desktop.locator('.combat-ledger-card').count()) !== 6) {
+  throw new Error('Battle result does not show a detailed ledger for all six combatants');
+}
+if ((await desktop.locator('.combat-ledger-metrics > span').count()) !== 60) {
+  throw new Error('Battle result does not expose every per-monster combat metric');
+}
+if ((await desktop.locator('.combat-ledger-team').count()) !== 2) {
+  throw new Error('Battle result does not compare player and rival ledgers');
+}
 await assertReadableMonsterCards(
   desktop,
   'Desktop battle result',
@@ -513,7 +528,14 @@ await desktop.getByRole('button', { name: 'NEXT CYCLE 2 旅を続ける' }).clic
 for (const cycle of [2, 3]) {
   if (cycle === 3) {
     await desktop.getByRole('heading', { name: '旅路が枝分かれした' }).waitFor();
-    await desktop.locator('.event-grid button').first().click();
+    if ((await desktop.locator('.event-choice-card').count()) !== 3) {
+      throw new Error('Route event does not offer exactly three distinct choices');
+    }
+    await desktop.screenshot({ path: '/tmp/code-monsters-event-desktop.png', fullPage: true });
+    await desktop.locator('.event-commit:not(:disabled)').first().click();
+    await desktop.locator('.event-result-stage').waitFor();
+    await desktop.screenshot({ path: '/tmp/code-monsters-event-result-desktop.png', fullPage: true });
+    await desktop.getByRole('button', { name: '育成と編成へ進む' }).click();
   }
   await desktop.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
   await desktop.getByRole('button', { name: '最後まで送る' }).click();
@@ -788,10 +810,10 @@ await mobile.getByRole('button', { name: '閉じる', exact: true }).click();
 await mobile.getByRole('button', { name: '02 配合' }).click();
 await mobile.locator('.breeding-lab-dialog[open]').waitFor();
 await mobile.getByRole('button', { name: /特殊配合図鑑/ }).click();
-if ((await mobile.locator('.recipe-dialog .recipe-card.is-special').count()) !== 3) {
-  throw new Error('Mobile breeding archive does not show all three special breeding recipes');
+if ((await mobile.locator('.recipe-dialog .recipe-card.is-special').count()) !== 9) {
+  throw new Error('Mobile breeding archive does not show all nine special breeding recipes');
 }
-if ((await mobile.locator('.recipe-dialog [data-recipe-slot="result"].is-locked').count()) !== 3) {
+if ((await mobile.locator('.recipe-dialog [data-recipe-slot="result"].is-locked').count()) !== 9) {
   throw new Error('Undiscovered special breeding results are not silhouetted on mobile');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-recipes-mobile.png' });
@@ -858,8 +880,11 @@ const clippedMobileReportValues = await mobile
 if (clippedMobileReportValues.length > 0) {
   throw new Error(`Mobile battle report values are clipped: ${JSON.stringify(clippedMobileReportValues)}`);
 }
-await assertFitsViewport(mobile, 'Mobile result');
-await mobile.screenshot({ path: '/tmp/code-monsters-result-mobile.png' });
+if ((await mobile.locator('.combat-ledger-card').count()) !== 6) {
+  throw new Error('Mobile battle result does not show all six combatant ledgers');
+}
+await assertFitsViewport(mobile, 'Mobile result', true);
+await mobile.screenshot({ path: '/tmp/code-monsters-result-mobile.png', fullPage: true });
 
 await browser.close();
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
@@ -875,6 +900,8 @@ console.log(
       '/tmp/code-monsters-battle-desktop.png',
       '/tmp/code-monsters-critical-desktop.png',
       '/tmp/code-monsters-result-desktop.png',
+      '/tmp/code-monsters-event-desktop.png',
+      '/tmp/code-monsters-event-result-desktop.png',
       '/tmp/code-monsters-breeding-desktop.png',
       '/tmp/code-monsters-breeding-mobile.png',
       '/tmp/code-monsters-breeding-skills-mobile.png',

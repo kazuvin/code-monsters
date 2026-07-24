@@ -1,13 +1,15 @@
-import { chooseGambitAction, type GambitFighterView } from './gambit';
+import { chooseGambitDecision, type GambitFighterView } from './gambit';
 import { battleStatsFor, definitionFor } from './monster';
 import { createSeededRandom } from './rng';
 import type {
   BattleFrame,
+  BattleContribution,
   BattleInput,
   BattleResult,
   EffectDefinition,
   FighterSnapshot,
   GameData,
+  MonsterBattleReport,
   MonsterInstance,
   StatBlock,
   StatId,
@@ -28,7 +30,7 @@ type BattleFighter = {
   shield: number;
   statuses: TimedStatus[];
   tieOrder: number;
-  damageDealt: number;
+  report: MonsterBattleReport;
 };
 
 const ROUND_PRECISION = 1000;
@@ -36,6 +38,21 @@ const round = (value: number) => Math.round(value * ROUND_PRECISION) / ROUND_PRE
 const alive = (fighter: BattleFighter) => fighter.hp > 0;
 const relation = (fighter: BattleFighter, candidate: BattleFighter) =>
   fighter.team === candidate.team ? 'ally' : 'enemy';
+const positiveStatus = (statusId: StatusId) => statusId.endsWith('-up') || statusId === 'regeneration';
+const contributionFor = (fighter: BattleFighter, sourceId: string): BattleContribution => {
+  fighter.report.skillBreakdown[sourceId] ??= {
+    uses: 0,
+    damage: 0,
+    healing: 0,
+    shielding: 0,
+    buffs: 0,
+    debuffs: 0,
+    criticalHits: 0,
+    atb: 0,
+    mp: 0,
+  };
+  return fighter.report.skillBreakdown[sourceId];
+};
 
 const statusModifier = (fighter: BattleFighter, statId: StatId) => {
   const pairs: Partial<Record<StatId, [StatusId, StatusId]>> = {
@@ -115,9 +132,9 @@ const applyDamage = (fighter: BattleFighter, damage: number) => {
   const wholeDamage = Math.max(0, Math.floor(damage));
   const absorbed = Math.min(fighter.shield, wholeDamage);
   fighter.shield -= absorbed;
-  const hpDamage = wholeDamage - absorbed;
-  fighter.hp = Math.max(0, fighter.hp - hpDamage);
-  return { total: wholeDamage, hp: hpDamage, absorbed };
+  const hpDamage = Math.min(fighter.hp, wholeDamage - absorbed);
+  fighter.hp -= hpDamage;
+  return { total: absorbed + hpDamage, hp: hpDamage, absorbed };
 };
 
 const targetsForEffect = (
@@ -145,6 +162,7 @@ const applyEffect = (
   actionTargets: BattleFighter[],
   fighters: BattleFighter[],
   random: ReturnType<typeof createSeededRandom>,
+  sourceSkillId = 'passive',
 ) => {
   const targets = targetsForEffect(effect, actor, actionTargets, fighters);
   const notes: string[] = [];
@@ -168,8 +186,16 @@ const applyEffect = (
           effect.canCrit && random.next() * 100 < effectiveStat(actor, 'crit', data.rules.battle.criticalCap);
         if (critical) damage *= data.rules.battle.criticalMultiplier;
         const applied = applyDamage(target, damage);
-        actor.damageDealt += applied.hp;
-        if (critical) criticalTargetIds.push(target.id);
+        actor.report.damageDealt += applied.total;
+        actor.report.hpDamageDealt += applied.hp;
+        contributionFor(actor, sourceSkillId).damage += applied.total;
+        target.report.damageTaken += applied.total;
+        target.report.shieldAbsorbed += applied.absorbed;
+        if (critical) {
+          actor.report.criticalHits += 1;
+          contributionFor(actor, sourceSkillId).criticalHits += 1;
+          criticalTargetIds.push(target.id);
+        }
         notes.push(`${target.name}に${applied.total}${critical ? ' 会心' : ''}`);
         break;
       }
@@ -180,6 +206,9 @@ const applyEffect = (
         );
         const restored = Math.min(amount, target.stats.maxHp - target.hp);
         target.hp += restored;
+        actor.report.healingDone += restored;
+        contributionFor(actor, sourceSkillId).healing += restored;
+        target.report.healingReceived += restored;
         notes.push(`${target.name}を${restored}回復`);
         break;
       }
@@ -188,6 +217,9 @@ const applyEffect = (
         const cap = Math.floor(target.stats.maxHp * data.rules.battle.shieldCapPercent);
         const gained = Math.max(0, Math.min(amount, cap - target.shield));
         target.shield += gained;
+        actor.report.shieldingDone += gained;
+        contributionFor(actor, sourceSkillId).shielding += gained;
+        target.report.shieldingReceived += gained;
         notes.push(`${target.name}に盾${gained}`);
         break;
       }
@@ -196,16 +228,34 @@ const applyEffect = (
           id: effect.statusId,
           amount: effect.amount,
           remainingSeconds: effect.durationSeconds,
+          sourceId: actor.id,
+          sourceSkillId,
         });
+        actor.report.statusApplications[effect.statusId] = (actor.report.statusApplications[effect.statusId] ?? 0) + 1;
+        if (positiveStatus(effect.statusId)) {
+          actor.report.buffApplications += 1;
+          contributionFor(actor, sourceSkillId).buffs += 1;
+        } else {
+          actor.report.debuffApplications += 1;
+          contributionFor(actor, sourceSkillId).debuffs += 1;
+        }
         notes.push(`${target.name}に${effect.statusId}`);
         break;
-      case 'atb':
+      case 'atb': {
+        const before = target.gauge;
         target.gauge = Math.max(0, Math.min(data.rules.battle.gaugeMaximum - 0.001, target.gauge + effect.amount));
+        const granted = Math.max(0, target.gauge - before);
+        actor.report.atbGranted += granted;
+        contributionFor(actor, sourceSkillId).atb += granted;
         notes.push(`${target.name}のATB${effect.amount >= 0 ? '+' : ''}${effect.amount}`);
         break;
+      }
       case 'mp': {
         const before = target.mp;
         target.mp = Math.max(0, Math.min(target.stats.maxMp, target.mp + effect.amount));
+        const granted = Math.max(0, target.mp - before);
+        actor.report.mpGranted += granted;
+        contributionFor(actor, sourceSkillId).mp += granted;
         notes.push(`${target.name}のMP${target.mp - before >= 0 ? '+' : ''}${target.mp - before}`);
         break;
       }
@@ -280,10 +330,10 @@ const determineTimeoutWinner = (fighters: BattleFighter[]) => {
   if (Math.abs(playerRatio - enemyRatio) > 0.0001) return playerRatio > enemyRatio ? 'player' : 'enemy';
   const playerDamage = fighters
     .filter((fighter) => fighter.team === 'player')
-    .reduce((total, fighter) => total + fighter.damageDealt, 0);
+    .reduce((total, fighter) => total + fighter.report.hpDamageDealt, 0);
   const enemyDamage = fighters
     .filter((fighter) => fighter.team === 'enemy')
-    .reduce((total, fighter) => total + fighter.damageDealt, 0);
+    .reduce((total, fighter) => total + fighter.report.hpDamageDealt, 0);
   if (playerDamage !== enemyDamage) return playerDamage > enemyDamage ? 'player' : 'enemy';
   return 'draw';
 };
@@ -319,14 +369,25 @@ const applyBattleStart = (data: GameData, fighters: BattleFighter[], random: Ret
 const processPeriodicStatuses = (fighters: BattleFighter[]) => {
   for (const fighter of fighters.filter(alive)) {
     for (const status of fighter.statuses) {
+      const source = fighters.find((candidate) => candidate.id === status.sourceId);
+      const sourceContribution = source ? contributionFor(source, status.sourceSkillId ?? 'passive') : undefined;
       if (status.id === 'regeneration') {
-        fighter.hp = Math.min(
-          fighter.stats.maxHp,
-          fighter.hp + Math.max(1, Math.floor(fighter.stats.maxHp * (status.amount / 100))),
-        );
+        const amount = Math.max(1, Math.floor(fighter.stats.maxHp * (status.amount / 100)));
+        const restored = Math.min(amount, fighter.stats.maxHp - fighter.hp);
+        fighter.hp += restored;
+        fighter.report.healingReceived += restored;
+        if (source) source.report.healingDone += restored;
+        if (sourceContribution) sourceContribution.healing += restored;
       }
       if (status.id === 'damage-over-time') {
-        applyDamage(fighter, Math.max(1, Math.floor(fighter.stats.maxHp * (status.amount / 100))));
+        const applied = applyDamage(fighter, Math.max(1, Math.floor(fighter.stats.maxHp * (status.amount / 100))));
+        fighter.report.damageTaken += applied.total;
+        fighter.report.shieldAbsorbed += applied.absorbed;
+        if (source) {
+          source.report.damageDealt += applied.total;
+          source.report.hpDamageDealt += applied.hp;
+        }
+        if (sourceContribution) sourceContribution.damage += applied.total;
       }
     }
   }
@@ -341,11 +402,12 @@ const decayStatuses = (fighters: BattleFighter[], seconds: number) => {
 
 const createFighter = (data: GameData, monster: MonsterInstance, team: Team, tieOrder: number): BattleFighter => {
   const stats = battleStatsFor(data, monster);
+  const definition = definitionFor(data, monster);
   return {
     id: monster.id,
     team,
     monster,
-    name: definitionFor(data, monster).name,
+    name: definition.name,
     stats,
     hp: stats.maxHp,
     mp: stats.maxMp,
@@ -353,7 +415,31 @@ const createFighter = (data: GameData, monster: MonsterInstance, team: Team, tie
     shield: 0,
     statuses: [],
     tieOrder,
-    damageDealt: 0,
+    report: {
+      id: monster.id,
+      definitionId: definition.id,
+      name: definition.name,
+      team,
+      actions: 0,
+      normalAttacks: 0,
+      fallbackActions: 0,
+      criticalHits: 0,
+      damageDealt: 0,
+      hpDamageDealt: 0,
+      damageTaken: 0,
+      shieldAbsorbed: 0,
+      healingDone: 0,
+      healingReceived: 0,
+      shieldingDone: 0,
+      shieldingReceived: 0,
+      buffApplications: 0,
+      debuffApplications: 0,
+      atbGranted: 0,
+      mpGranted: 0,
+      skillUses: {},
+      statusApplications: {},
+      skillBreakdown: {},
+    },
   };
 };
 
@@ -393,7 +479,11 @@ export function simulateBattle(data: GameData, input: BattleInput): BattleResult
       const percent =
         data.rules.battle.environmentInitialPercent * data.rules.battle.environmentGrowth ** environmentCount;
       const affected = fighters.filter(alive);
-      for (const fighter of affected) applyDamage(fighter, fighter.stats.maxHp * percent);
+      for (const fighter of affected) {
+        const applied = applyDamage(fighter, fighter.stats.maxHp * percent);
+        fighter.report.damageTaken += applied.total;
+        fighter.report.shieldAbsorbed += applied.absorbed;
+      }
       frames.push(
         makeFrame(
           data,
@@ -433,7 +523,8 @@ export function simulateBattle(data: GameData, input: BattleInput): BattleResult
       if (!actor) break;
       actor.gauge = 0;
       const views = fighters.map(toGambitView);
-      const action = chooseGambitAction(data, toGambitView(actor), views);
+      const decision = chooseGambitDecision(data, toGambitView(actor), views);
+      const action = decision.action;
       const chosenTarget = chooseTarget(data, actor, action.target, fighters, random);
       if (!chosenTarget) break;
       const skill =
@@ -450,11 +541,16 @@ export function simulateBattle(data: GameData, input: BattleInput): BattleResult
             },
           ];
       if (skill) actor.mp -= skill.mpCost;
+      actor.report.actions += 1;
+      actor.report.skillUses[action.skillId] = (actor.report.skillUses[action.skillId] ?? 0) + 1;
+      contributionFor(actor, action.skillId).uses += 1;
+      if (action.skillId === 'normal-attack') actor.report.normalAttacks += 1;
+      if (decision.fallback) actor.report.fallbackActions += 1;
       const notes: string[] = [];
       const targetIds = new Set<string>();
       const criticalTargetIds = new Set<string>();
       for (const effect of effects) {
-        const applied = applyEffect(data, effect, actor, [chosenTarget], fighters, random);
+        const applied = applyEffect(data, effect, actor, [chosenTarget], fighters, random, action.skillId);
         applied.notes.forEach((note) => notes.push(note));
         applied.targets.forEach((target) => targetIds.add(target.id));
         applied.criticalTargetIds.forEach((targetId) => criticalTargetIds.add(targetId));
@@ -494,10 +590,38 @@ export function simulateBattle(data: GameData, input: BattleInput): BattleResult
     damageByTeam: {
       player: fighters
         .filter((fighter) => fighter.team === 'player')
-        .reduce((total, fighter) => total + fighter.damageDealt, 0),
+        .reduce((total, fighter) => total + fighter.report.hpDamageDealt, 0),
       enemy: fighters
         .filter((fighter) => fighter.team === 'enemy')
-        .reduce((total, fighter) => total + fighter.damageDealt, 0),
+        .reduce((total, fighter) => total + fighter.report.hpDamageDealt, 0),
     },
+    monsterReports: fighters.map((fighter) => ({
+      ...fighter.report,
+      damageDealt: Math.floor(fighter.report.damageDealt),
+      hpDamageDealt: Math.floor(fighter.report.hpDamageDealt),
+      damageTaken: Math.floor(fighter.report.damageTaken),
+      shieldAbsorbed: Math.floor(fighter.report.shieldAbsorbed),
+      healingDone: Math.floor(fighter.report.healingDone),
+      healingReceived: Math.floor(fighter.report.healingReceived),
+      shieldingDone: Math.floor(fighter.report.shieldingDone),
+      shieldingReceived: Math.floor(fighter.report.shieldingReceived),
+      atbGranted: Math.floor(fighter.report.atbGranted),
+      mpGranted: Math.floor(fighter.report.mpGranted),
+      skillUses: { ...fighter.report.skillUses },
+      statusApplications: { ...fighter.report.statusApplications },
+      skillBreakdown: Object.fromEntries(
+        Object.entries(fighter.report.skillBreakdown).map(([skillId, contribution]) => [
+          skillId,
+          {
+            ...contribution,
+            damage: Math.floor(contribution.damage),
+            healing: Math.floor(contribution.healing),
+            shielding: Math.floor(contribution.shielding),
+            atb: Math.floor(contribution.atb),
+            mp: Math.floor(contribution.mp),
+          },
+        ]),
+      ),
+    })),
   };
 }
