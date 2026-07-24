@@ -764,7 +764,7 @@ button.definition-card:active,
 .workshop-tabs {
   display: grid;
   grid-row: 2;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   border-top: 2px solid var(--line);
   background: var(--void-deep);
 }
@@ -847,15 +847,15 @@ button.definition-card:active,
 
 .shop-monsters {
   display: grid;
-  height: min(48%, 152px);
-  min-height: 116px;
+  height: min(58%, 184px);
+  min-height: 148px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
 }
 
 .shop-monsters .definition-card {
   grid-template-columns: 1fr;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr;
   gap: 3px;
   padding: 5px;
   border-left-width: 3px;
@@ -864,22 +864,32 @@ button.definition-card:active,
 }
 
 .shop-monsters .monster-sigil {
-  width: 43px;
-  height: 43px;
+  width: 40px;
+  height: 40px;
   margin: 0 auto;
 }
 
 .shop-monsters .monster-sigil > span {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .shop-monsters .monster-card-copy {
   align-items: center;
 }
 
-.shop-monsters .monster-card-copy .eyebrow,
+.shop-monsters .monster-card-copy .eyebrow {
+  display: block;
+  max-width: 100%;
+  font-size: 5px;
+}
+
 .shop-monsters .monster-card-copy > small {
-  display: none;
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shop-monsters .monster-card-copy > strong {
@@ -892,8 +902,23 @@ button.definition-card:active,
 }
 
 .shop-monsters .monster-card-footer {
-  padding-top: 3px;
-  border-top: 0;
+  align-self: end;
+  padding-top: 4px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.shop-card-footer {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+}
+
+.shop-card-footer > span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .buy-button {
@@ -953,13 +978,27 @@ button.definition-card:active,
 .equipment-offer {
   display: grid;
   min-width: 0;
-  min-height: 49px;
-  grid-template-columns: auto 1fr auto;
+  min-height: 76px;
+  grid-template-rows: auto 1fr auto;
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid var(--gold);
+  background: linear-gradient(135deg, rgba(245, 202, 107, 0.08), transparent 55%), var(--deck);
+  box-shadow: 2px 2px 0 var(--void-deep);
+}
+
+.equipment-offer header,
+.equipment-offer footer {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--line-soft);
-  background: var(--deck);
+}
+
+.equipment-offer header > small {
+  color: var(--gold);
+  font-size: 5px;
+  letter-spacing: 0.08em;
 }
 
 .equipment-glyph,
@@ -973,7 +1012,7 @@ button.definition-card:active,
   font-size: 10px;
 }
 
-.equipment-offer > div {
+.equipment-copy {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -987,13 +1026,25 @@ button.definition-card:active,
 }
 
 .equipment-offer small {
-  display: none;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.equipment-offer footer > span {
+  color: var(--gold);
+  font-size: 7px;
 }
 
 .equipment-offer button {
-  width: 25px;
-  height: 25px;
-  padding: 0;
+  min-width: 39px;
+  height: 20px;
+  padding: 0 4px;
   border: 1px solid var(--gold);
   background: var(--void);
   color: var(--gold);
@@ -1002,7 +1053,7 @@ button.definition-card:active,
 }
 
 .sold-slot.is-equipment {
-  min-height: 49px;
+  min-height: 76px;
 }
 
 .breeding-view,
@@ -1296,9 +1347,12 @@ button.definition-card:active,
 
 .inspector {
   --monster-color: var(--gold);
+  display: flex;
+  height: min(720px, calc(100dvh - 20px));
   max-height: min(720px, calc(100dvh - 20px));
+  flex-direction: column;
   padding: 15px;
-  overflow: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
 }
 
@@ -1328,6 +1382,49 @@ button.definition-card:active,
   gap: 10px;
   padding: 3px 38px 10px 0;
   border-bottom: 1px solid var(--line-soft);
+}
+
+.inspector-tabs {
+  display: grid;
+  flex: 0 0 39px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 8px;
+  border: 1px solid var(--line);
+}
+
+.inspector-tabs button {
+  min-width: 0;
+  padding: 5px 2px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: var(--void);
+  color: var(--muted);
+  cursor: pointer;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+}
+
+.inspector-tabs button:last-child {
+  border-right: 0;
+}
+
+.inspector-tabs button.is-active {
+  background: var(--monster-color);
+  color: var(--void-deep);
+  box-shadow: inset 0 3px var(--paper);
+}
+
+.inspector-tab-panel {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--monster-color) var(--void);
+  scrollbar-width: thin;
+}
+
+.profile-panel {
+  padding-bottom: 2px;
 }
 
 .inspector-identity > div:last-child {
@@ -1404,6 +1501,13 @@ button.definition-card:active,
   border-top: 1px solid var(--line-soft);
 }
 
+.detail-card {
+  padding: 8px;
+  border: 1px solid var(--line-soft);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 12%, transparent), transparent 52%), var(--deck);
+}
+
 .trait-block > span,
 .skill-list > span,
 .equipment-block > span {
@@ -1425,48 +1529,117 @@ button.definition-card:active,
   line-height: 1.5;
 }
 
-.skill-list > div {
-  display: flex;
-  gap: 6px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--line-soft);
+.skill-list > .skill-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 5px;
+  padding: 0;
+  border: 0;
 }
 
-.skill-list > div > b {
+.skill-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 92px;
+  flex-direction: column;
+  padding: 7px 5px 5px;
+  overflow: hidden;
+  border: 1px solid var(--monster-color);
+  background: var(--deck);
+}
+
+.skill-card > b {
+  position: absolute;
+  top: 4px;
+  right: 4px;
   display: grid;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
   place-items: center;
   border: 1px solid var(--monster-color);
   color: var(--monster-color);
+  font-size: 7px;
+}
+
+.skill-card > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding-right: 18px;
+}
+
+.skill-card strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-card small {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+}
+
+.skill-card p {
+  display: -webkit-box;
+  margin: auto 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.equipment-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--gold);
+  background: linear-gradient(135deg, rgba(245, 202, 107, 0.1), transparent 60%), var(--deck);
+  color: var(--paper);
+  text-align: left;
+}
+
+.equipped-row {
+  margin-top: 5px;
+  color: var(--muted);
   font-size: 8px;
 }
 
-.skill-list > div > span {
+.equipment-card > span {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
 
-.skill-list strong {
-  font-size: 9px;
+.equipment-card strong {
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.skill-list small {
+.equipment-card small {
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--muted);
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 8px;
+  font-size: 7px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.equipped-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 6px;
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 8px;
+.equipment-card.is-empty {
+  border-color: var(--line-soft);
 }
 
 .equipped-row button {
@@ -1474,15 +1647,15 @@ button.definition-card:active,
 }
 
 .inventory-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   margin-top: 6px;
 }
 
 .inventory-list button {
-  width: 30px;
-  height: 30px;
+  min-height: 55px;
+  cursor: pointer;
 }
 
 .inspector-actions {
@@ -1502,6 +1675,148 @@ button.definition-card:active,
 .text-button.is-danger {
   border-color: var(--danger);
   color: var(--danger);
+}
+
+.gambit-guide,
+.recipe-guide {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0 6px;
+}
+
+.gambit-guide > span,
+.recipe-guide > span {
+  color: var(--monster-color);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.gambit-guide p,
+.recipe-guide p {
+  max-width: 250px;
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.inspector-tab-panel .tactics-view {
+  min-height: 100%;
+  padding-bottom: 4px;
+}
+
+.inspector-tab-panel .gambit-stack {
+  grid-template-rows: repeat(3, minmax(105px, 1fr));
+}
+
+.recipe-view {
+  padding: 0 1px 6px;
+}
+
+.recipe-view h3 {
+  margin: 9px 0 4px;
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.recipe-list {
+  display: grid;
+  gap: 5px;
+}
+
+.recipe-card {
+  position: relative;
+  padding: 17px 5px 5px;
+  border: 1px solid var(--line-soft);
+  background: var(--deck);
+}
+
+.recipe-card.is-same-name {
+  border-color: var(--pink);
+}
+
+.recipe-card.is-special {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, rgba(245, 202, 107, 0.12), transparent 55%), var(--deck);
+}
+
+.recipe-kind {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  color: var(--muted);
+  font-size: 6px;
+  letter-spacing: 0.08em;
+}
+
+.recipe-kind.is-special {
+  color: var(--gold);
+}
+
+.recipe-kind.is-same-name {
+  color: var(--pink);
+}
+
+.recipe-equation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr) 10px minmax(0, 1fr);
+  align-items: center;
+  gap: 2px;
+}
+
+.recipe-equation > b {
+  color: var(--pink);
+  font-size: 10px;
+  text-align: center;
+}
+
+.recipe-token {
+  --monster-color: var(--gold);
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 3px;
+}
+
+.recipe-token .monster-sigil {
+  width: 29px;
+  height: 29px;
+}
+
+.recipe-token .monster-sigil > span {
+  font-size: 16px;
+}
+
+.recipe-token > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.recipe-token small {
+  color: var(--monster-color);
+  font-size: 5px;
+}
+
+.recipe-token strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipe-token i {
+  overflow: hidden;
+  font-size: 5px;
+  font-style: normal;
+  white-space: nowrap;
 }
 
 .battle-launcher {
@@ -1700,70 +2015,493 @@ button.definition-card:active,
 }
 
 .battlefield {
-  display: grid;
+  position: relative;
+  display: flex;
   min-height: 0;
   flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr) 26px minmax(0, 1fr);
-  gap: 4px;
-  align-items: stretch;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px 10px 12px;
+  overflow: hidden;
+  border: 2px solid var(--line);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(156, 165, 255, 0.2), transparent 32%),
+    linear-gradient(180deg, rgba(241, 123, 157, 0.12), transparent 40%),
+    repeating-linear-gradient(90deg, transparent 0 39px, rgba(124, 224, 189, 0.05) 40px),
+    linear-gradient(180deg, #191f32 0 48%, #111521 48% 52%, #20273a 52% 100%);
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.75),
+    var(--pixel-shadow);
+}
+
+.battlefield::before {
+  position: absolute;
+  right: -15%;
+  bottom: 48%;
+  left: -15%;
+  height: 70px;
+  border: 2px solid rgba(124, 224, 189, 0.32);
+  border-radius: 50%;
+  content: "";
+  transform: perspective(140px) rotateX(62deg);
+}
+
+.arena-scanlines {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255, 255, 255, 0.025) 6px);
+}
+
+.arena-core {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 2px solid var(--pink);
+  background: var(--void-deep);
+  box-shadow:
+    0 0 0 4px rgba(241, 123, 157, 0.18),
+    0 0 20px rgba(241, 123, 157, 0.5);
+  color: var(--pink);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.arena-core > * {
+  grid-area: 1 / 1;
+  transform: rotate(-45deg);
+}
+
+.arena-core span,
+.arena-core small {
+  display: none;
+}
+
+.arena-core b {
+  font-size: 12px;
+}
+
+.arena-divider {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  height: 20px;
+  flex: 0 0 20px;
+  align-items: center;
+  gap: 52px;
+  color: var(--muted);
+  font-size: 5px;
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+
+.arena-divider i {
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, var(--line));
+}
+
+.arena-divider i:last-child {
+  background: linear-gradient(90deg, var(--line), transparent);
 }
 
 .battle-team {
-  display: grid;
+  position: relative;
+  z-index: 3;
+  display: flex;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: 13px repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  flex: 1;
+  flex-direction: column;
 }
 
 .battle-team.is-enemy {
-  direction: rtl;
+  justify-content: flex-start;
+}
+
+.battle-team.is-player {
+  justify-content: flex-end;
 }
 
 .team-label {
+  flex: 0 0 auto;
   color: var(--mint);
   font-size: 7px;
 }
 
 .battle-team.is-enemy .team-label {
   color: var(--pink);
+  text-align: right;
 }
 
-.battle-monster {
+.battle-formation {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 8px;
+}
+
+.battle-team.is-enemy .battle-formation {
+  align-items: flex-start;
+}
+
+.battle-team.is-player .battle-formation {
+  align-items: flex-end;
+}
+
+.battle-sprite {
   --monster-color: var(--gold);
   position: relative;
-  display: grid;
+  display: flex;
   min-width: 0;
   min-height: 0;
-  grid-template-columns: 42px minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 4px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--monster-color);
-  background: var(--panel);
-  direction: ltr;
+  justify-content: center;
+  gap: 1px;
+  padding: 3px;
+  transform-origin: 50% 80%;
 }
 
-.battle-monster.is-enemy {
-  border-right: 4px solid var(--monster-color);
-  border-left: 1px solid var(--line);
+.battle-sprite::after {
+  position: absolute;
+  z-index: -1;
+  bottom: 28px;
+  left: 50%;
+  width: 62px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(4, 5, 9, 0.68);
+  box-shadow: 0 0 10px var(--monster-color);
+  content: "";
+  transform: translateX(-50%);
 }
 
-.battle-monster.is-defeated {
+.battle-sprite.is-defeated {
   filter: grayscale(1);
   opacity: 0.38;
+  transform: rotate(8deg) translateY(8px);
 }
 
-.battle-monster .monster-sigil {
-  width: 39px;
-  height: 39px;
+.battle-sprite .monster-sigil {
+  width: 58px;
+  height: 58px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.55)) drop-shadow(0 0 8px var(--monster-color));
 }
 
-.battle-monster .monster-sigil > span {
-  font-size: 22px;
+.battle-sprite .monster-sigil::before,
+.battle-sprite .monster-sigil::after,
+.battle-sprite .monster-sigil > b {
+  display: none;
+}
+
+.battle-sprite .monster-sigil > span {
+  font-size: 48px;
+}
+
+.battle-monster-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  width: 100%;
+  align-items: center;
+  text-align: center;
+}
+
+.battle-sprite .battle-monster-copy > span {
+  display: none;
+}
+
+.battle-sprite .battle-monster-copy > strong {
+  overflow: hidden;
+  width: 100%;
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px #000;
+  white-space: nowrap;
+}
+
+.battle-sprite .battle-monster-copy > small {
+  font-size: 5px;
+}
+
+.battle-sprite.is-acting {
+  z-index: 6;
+  animation: sprite-lunge 420ms steps(4);
+}
+
+.battle-sprite.is-targeted {
+  animation: sprite-hit 360ms steps(4);
+}
+
+.battle-sprite.is-healed {
+  animation: sprite-heal 480ms steps(4);
+}
+
+.battle-number {
+  position: absolute;
+  z-index: 12;
+  top: 4px;
+  left: 50%;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  text-shadow:
+    2px 2px 0 #8b1838,
+    -1px -1px 0 #8b1838;
+  animation: damage-pop 440ms steps(5) both;
+}
+
+.battle-number.is-heal {
+  color: var(--mint);
+  text-shadow:
+    2px 2px 0 #075d45,
+    -1px -1px 0 #075d45;
+}
+
+.battle-sprite .battle-bars {
+  display: grid;
+  width: 100%;
+  max-width: 96px;
+  grid-column: auto;
+  gap: 1px;
+  margin-top: 2px;
+  padding: 2px;
+  border: 1px solid var(--line-soft);
+  background: var(--void-deep);
+}
+
+.battle-sprite .hp-bar,
+.battle-sprite .mp-bar {
+  height: 8px;
+}
+
+.battle-sprite .hp-bar b,
+.battle-sprite .mp-bar b {
+  font-size: 5px;
+  line-height: 8px;
+}
+
+.battle-sprite .atb-bar {
+  height: 2px;
+}
+
+.battle-fx {
+  position: absolute;
+  z-index: 10;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 140px;
+  height: 100px;
+  pointer-events: none;
+  place-items: center;
+  transform: translate(-50%, -50%);
+}
+
+.battle-fx strong {
+  z-index: 2;
+  padding: 3px 7px;
+  border: 2px solid currentColor;
+  background: var(--void-deep);
+  color: var(--gold);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  text-shadow: 2px 2px #000;
+  animation: fx-label 460ms steps(4) both;
+}
+
+.battle-fx.is-start strong,
+.battle-fx.is-finish strong {
+  opacity: 1;
+}
+
+.battle-fx.is-finish strong {
+  color: var(--mint);
+  font-size: 19px;
+  animation: victory-pop 700ms steps(6) both;
+}
+
+.battle-fx.is-environment strong {
+  color: var(--danger);
+}
+
+.fx-burst {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 4px solid var(--pink);
+  box-shadow:
+    0 0 0 5px var(--gold),
+    0 0 20px 10px rgba(241, 123, 157, 0.45);
+  opacity: 0;
+  transform: rotate(45deg);
+  animation: fx-burst 460ms steps(5);
+}
+
+.battle-fx > i {
+  --angle: calc(var(--particle-index) * 36deg);
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: var(--gold);
+  opacity: 0;
+  transform: rotate(var(--angle)) translateX(10px);
+  animation: fx-particle 460ms steps(5);
+}
+
+.battle-fx > i:nth-of-type(even) {
+  background: var(--pink);
+}
+
+.battle-screen.is-impact .battlefield {
+  animation: arena-shake 260ms steps(4);
+}
+
+.battle-screen.is-frame-environment .battlefield {
+  animation: collapse-flash 460ms steps(4);
+}
+
+@keyframes sprite-lunge {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-15px) scale(1.18);
+  }
+}
+
+@keyframes sprite-hit {
+  0%,
+  100% {
+    transform: translateX(0);
+    filter: brightness(1);
+  }
+  35% {
+    transform: translateX(-8px);
+    filter: brightness(2.4) saturate(1.8);
+  }
+  70% {
+    transform: translateX(7px);
+  }
+}
+
+@keyframes sprite-heal {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 13px var(--mint)) brightness(1.4);
+  }
+}
+
+@keyframes damage-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.5);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(-50%, -6px) scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -26px) scale(1);
+  }
+}
+
+@keyframes fx-label {
+  0%,
+  25% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes victory-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  55%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fx-burst {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.2);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(225deg) scale(3);
+  }
+}
+
+@keyframes fx-particle {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(5px) scale(0.5);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(62px) scale(1.4);
+  }
+}
+
+@keyframes arena-shake {
+  0%,
+  100% {
+    transform: translate(0);
+  }
+  30% {
+    transform: translate(-4px, 2px);
+  }
+  60% {
+    transform: translate(5px, -2px);
+  }
+}
+
+@keyframes collapse-flash {
+  0%,
+  100% {
+    filter: none;
+  }
+  45% {
+    filter: hue-rotate(-25deg) brightness(1.8);
+  }
 }
 
 .battle-monster-copy {
@@ -1845,26 +2583,6 @@ button.definition-card:active,
   color: #a9dcf6;
   font-size: 6px;
   font-style: normal;
-}
-
-.versus-mark {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.versus-mark span,
-.versus-mark small {
-  color: var(--muted);
-  font-size: 6px;
-}
-
-.versus-mark b {
-  color: var(--pink);
-  font-size: 18px;
-  writing-mode: vertical-rl;
 }
 
 .battle-console {
@@ -2397,63 +3115,54 @@ button.definition-card:active,
   }
 
   .battlefield {
-    grid-template-columns: minmax(0, 1fr) 65px minmax(0, 1fr);
-    gap: 10px;
+    padding: 24px 70px 20px;
   }
 
   .battle-team {
-    grid-template-rows: 18px repeat(3, minmax(0, 1fr));
     gap: 7px;
   }
 
-  .battle-monster {
-    grid-template-columns: 68px minmax(80px, 0.7fr) minmax(120px, 1fr);
-    grid-template-rows: minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px;
+  .battle-formation {
+    width: min(760px, 78%);
+    margin-inline: auto;
+    gap: 34px;
   }
 
-  .battle-monster .monster-sigil {
-    width: 62px;
-    height: 62px;
+  .battle-sprite .monster-sigil {
+    width: 88px;
+    height: 88px;
   }
 
-  .battle-monster .monster-sigil > span {
-    font-size: 36px;
+  .battle-sprite .monster-sigil > span {
+    font-size: 74px;
   }
 
-  .battle-monster-copy > span {
-    display: block;
-    color: var(--monster-color);
-    font-size: 7px;
-  }
-
-  .battle-monster-copy > strong {
+  .battle-sprite .battle-monster-copy > strong {
     font-size: 12px;
   }
 
-  .battle-monster-copy > small {
+  .battle-sprite .battle-bars {
+    max-width: 130px;
+  }
+
+  .battle-sprite .hp-bar,
+  .battle-sprite .mp-bar {
+    height: 12px;
+  }
+
+  .battle-sprite .hp-bar b,
+  .battle-sprite .mp-bar b {
     font-size: 7px;
+    line-height: 12px;
   }
 
-  .battle-bars {
-    grid-column: auto;
+  .arena-core {
+    width: 58px;
+    height: 58px;
   }
 
-  .hp-bar,
-  .mp-bar {
-    height: 15px;
-  }
-
-  .hp-bar b,
-  .mp-bar b {
-    font-size: 8px;
-    line-height: 15px;
-  }
-
-  .versus-mark b {
-    font-size: 34px;
-    writing-mode: initial;
+  .battle-fx strong {
+    font-size: 22px;
   }
 
   .battle-console {
@@ -2538,6 +3247,8 @@ button.definition-card:active,
   *,
   *::before,
   *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }

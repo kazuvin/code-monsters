@@ -58,14 +58,23 @@ if ((await desktop.locator('.team-panel .roster-card').count()) !== 4) {
   throw new Error('Bought monster did not enter the roster');
 }
 
-await desktop.getByRole('button', { name: '03 ガンビット' }).click();
-if ((await desktop.locator('.gambit-row').count()) !== 3)
-  throw new Error('Selected monster does not have three gambits');
+if ((await desktop.locator('.workshop-tabs button').count()) !== 2) {
+  throw new Error('Workshop navigation should contain only shop and breeding');
+}
+await desktop.locator('.team-zone.is-active .roster-card').first().click();
+await desktop.getByRole('button', { name: 'ガンビット' }).click();
+if ((await desktop.locator('.gambit-row').count()) !== 3) throw new Error('Monster detail does not show three gambits');
+await desktop.getByRole('button', { name: '配合レシピ' }).click();
+if ((await desktop.locator('.recipe-card').count()) < 1) {
+  throw new Error('Monster detail does not show breeding recipes');
+}
+await desktop.getByRole('button', { name: '閉じる' }).click();
 
 await desktop.screenshot({ path: '/tmp/code-monsters-casual-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
 await desktop.getByRole('heading', { name: '非同期ゴースト戦' }).waitFor();
-if ((await desktop.locator('.battle-monster').count()) !== 6) throw new Error('Battle is not 3v3');
+if ((await desktop.locator('.battle-sprite').count()) !== 6) throw new Error('Battle field is not 3v3');
+if ((await desktop.locator('.battle-fx').count()) !== 1) throw new Error('Battle effect layer is missing');
 await desktop.getByRole('button', { name: '最後まで送る' }).click();
 await desktop.getByRole('button', { name: '結果を見る →' }).click();
 await desktop.getByRole('button', { name: 'NEXT CYCLE 2 旅を続ける' }).waitFor();
@@ -103,6 +112,14 @@ await mobileActiveCard.click();
 await mobile.locator('dialog[open]').waitFor();
 if ((await mobile.locator('.monster-dialog .stat-grid span').count()) !== 7) {
   throw new Error('Monster detail dialog does not show all seven stats');
+}
+await mobile.getByRole('button', { name: 'ガンビット' }).click();
+if ((await mobile.locator('.monster-dialog .gambit-row').count()) !== 3) {
+  throw new Error('Mobile monster dialog does not show all three gambits');
+}
+await mobile.getByRole('button', { name: '配合レシピ' }).click();
+if ((await mobile.locator('.monster-dialog .recipe-card').count()) < 1) {
+  throw new Error('Mobile monster dialog does not show breeding recipes');
 }
 await mobile.getByRole('button', { name: '閉じる' }).click();
 
