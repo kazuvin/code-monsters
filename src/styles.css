@@ -969,6 +969,28 @@ button.definition-card:active,
   white-space: nowrap;
 }
 
+.shop-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 3px;
+}
+
+.card-detail-button {
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  background: var(--deck);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 7px;
+}
+
+.card-detail-button:hover,
+.card-detail-button:focus-visible {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
 .buy-button {
   display: flex;
   width: 100%;
@@ -1215,11 +1237,23 @@ button.definition-card:active,
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--pink) var(--void);
+  scrollbar-width: thin;
+}
+
+.breeding-candidate {
+  display: flex;
+  min-width: 0;
+  min-height: 66px;
+  flex: 0 0 66px;
 }
 
 .candidate-pool .definition-card {
+  width: 100%;
   min-height: 66px;
-  flex: 0 1 78px;
+  flex: 1;
   padding: 4px;
   border-left-width: 3px;
   box-shadow: none;
@@ -1273,9 +1307,86 @@ button.definition-card:active,
 .inheritance-control {
   display: grid;
   gap: 3px;
-  margin-top: auto;
+  margin-top: 2px;
   padding-top: 4px;
   border-top: 1px solid var(--line);
+}
+
+.breeding-preview {
+  --monster-color: var(--gold);
+  padding: 6px;
+  border: 1px solid var(--monster-color);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 14%, transparent), transparent 54%), var(--deck);
+}
+
+.breeding-preview header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 2px 6px;
+}
+
+.breeding-preview header > span {
+  grid-column: 1 / -1;
+  color: var(--monster-color);
+  font-size: 6px;
+  letter-spacing: 0.07em;
+}
+
+.breeding-preview header strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breeding-preview header b {
+  color: var(--gold);
+  font-size: 7px;
+}
+
+.breeding-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  margin: 5px 0;
+  background: var(--line-soft);
+}
+
+.preview-stat {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 30px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--void);
+}
+
+.preview-stat small {
+  color: var(--muted);
+  font-size: 5px;
+}
+
+.preview-stat b {
+  font-size: 8px;
+}
+
+.preview-stat i {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  color: var(--mint);
+  font-size: 4px;
+  font-style: normal;
+}
+
+.breeding-preview .card-detail-button {
+  width: 100%;
+  min-height: 24px;
 }
 
 .inheritance-control label,
@@ -1378,7 +1489,9 @@ button.definition-card:active,
 }
 
 .monster-dialog,
-.recipe-dialog {
+.recipe-dialog,
+.prospect-dialog,
+.breeding-confirm-dialog {
   width: min(430px, calc(100vw - 20px));
   max-width: none;
   max-height: min(720px, calc(100dvh - 20px));
@@ -1390,9 +1503,115 @@ button.definition-card:active,
 }
 
 .monster-dialog::backdrop,
-.recipe-dialog::backdrop {
+.recipe-dialog::backdrop,
+.prospect-dialog::backdrop,
+.breeding-confirm-dialog::backdrop {
   background: rgba(5, 6, 10, 0.8);
   backdrop-filter: blur(2px);
+}
+
+.prospect-panel,
+.breeding-confirm-panel {
+  --monster-color: var(--gold);
+  max-height: min(680px, calc(100dvh - 20px));
+  padding: 15px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--monster-color) var(--void);
+  scrollbar-width: thin;
+}
+
+.prospect-panel::before,
+.breeding-confirm-panel::before {
+  background: var(--monster-color);
+}
+
+.prospect-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 38px 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.prospect-identity > div {
+  min-width: 0;
+}
+
+.prospect-identity span {
+  color: var(--monster-color);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.prospect-identity h2 {
+  margin: 2px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 20px;
+}
+
+.prospect-identity p,
+.prospect-summary {
+  margin: 0;
+}
+
+.prospect-summary {
+  padding: 8px 0 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.breeding-confirm-panel h2 {
+  margin: 5px 38px 12px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 18px;
+}
+
+.breeding-equation {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1.2fr;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 1px solid var(--monster-color);
+  background: var(--deck);
+  text-align: center;
+}
+
+.breeding-equation span,
+.breeding-equation strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breeding-equation b {
+  color: var(--pink);
+}
+
+.breeding-equation strong {
+  color: var(--monster-color);
+}
+
+.breeding-confirm-panel ul {
+  display: grid;
+  gap: 5px;
+  margin: 12px 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.breeding-confirm-actions {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 6px;
 }
 
 .recipe-archive {
@@ -2765,33 +2984,224 @@ button.definition-card:active,
   background: var(--pink);
 }
 
-.result-card {
-  display: flex;
-  width: min(760px, 100%);
+.result-stage {
+  position: relative;
+  display: grid;
+  width: min(1040px, 100%);
   min-height: 0;
   flex: 1;
-  flex-direction: column;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 8px;
   margin: 7px auto 4px;
-  padding: 12px;
+  padding: 10px;
+  overflow: hidden;
 }
 
-.result-card h2 {
+.result-stage::before {
+  background: var(--pink);
+}
+
+.result-screen.is-win .result-stage::before {
+  background: var(--mint);
+}
+
+.result-hero {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 2px 7px;
+  border-bottom: 1px solid var(--line-soft);
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.reveal-stage-1 .result-hero,
+.reveal-stage-2 .result-hero,
+.reveal-stage-3 .result-hero {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 220ms steps(4),
+    transform 220ms steps(4);
+}
+
+.result-hero > div:first-child {
+  min-width: 0;
+}
+
+.result-hero h2 {
   margin: 1px 0;
   color: var(--pink);
-  font-size: clamp(38px, 13vw, 70px);
+  font-size: clamp(35px, 10vw, 66px);
   font-weight: 600;
-  line-height: 0.95;
+  line-height: 0.9;
+  text-shadow: 3px 3px 0 var(--void-deep);
 }
 
-.result-screen.is-win .result-card h2 {
+.result-screen.is-win .result-hero h2 {
   color: var(--mint);
 }
 
-.result-card > p {
-  margin: 4px 0;
+.result-hero p {
+  max-width: 600px;
+  margin: 5px 0 0;
   color: var(--muted);
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 8px;
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+.result-seal {
+  position: relative;
+  display: grid;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  place-items: center;
+  border: 2px solid var(--pink);
+  background: var(--void);
+  box-shadow:
+    inset 0 0 0 4px var(--deck),
+    3px 3px 0 var(--void-deep);
+  color: var(--pink);
+  transform: rotate(3deg);
+}
+
+.result-screen.is-win .result-seal {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+.result-seal span {
+  position: absolute;
+  top: 6px;
+  font-size: 6px;
+  letter-spacing: 0.08em;
+}
+
+.result-seal b {
+  margin-top: 8px;
+  font-size: 24px;
+}
+
+.battle-report,
+.reward-report {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+
+.battle-report {
+  opacity: 0;
+  transform: translateY(7px);
+}
+
+.reveal-stage-2 .battle-report,
+.reveal-stage-3 .battle-report {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 220ms steps(4),
+    transform 220ms steps(4);
+}
+
+.reward-report {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateY(7px);
+}
+
+.reveal-stage-3 .reward-report {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 220ms steps(4),
+    transform 220ms steps(4);
+}
+
+.result-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.result-section-heading > div {
+  min-width: 0;
+}
+
+.result-section-heading span {
+  color: var(--pink);
+  font-size: 6px;
+  letter-spacing: 0.08em;
+}
+
+.result-screen.is-win .result-section-heading span {
+  color: var(--mint);
+}
+
+.result-section-heading h3 {
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 12px;
+}
+
+.result-section-heading > small,
+.result-section-heading > button {
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.reveal-all-button {
+  min-height: 26px;
+  padding: 4px 6px;
+  border-color: var(--gold);
+  color: var(--gold) !important;
+}
+
+.battle-report-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  background: var(--line-soft);
+}
+
+.battle-report-metric {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 1px 4px;
+  padding: 5px;
+  background: var(--deck);
+}
+
+.battle-report-metric span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 5px;
+  letter-spacing: 0.08em;
+}
+
+.battle-report-metric b {
+  overflow: hidden;
+  color: var(--paper);
+  font-size: 15px;
+  line-height: 1;
+  text-overflow: ellipsis;
+}
+
+.battle-report-metric small {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 5px;
 }
 
 .result-roster {
@@ -2799,58 +3209,243 @@ button.definition-card:active,
   min-height: 0;
   flex: 1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: minmax(40px, 1fr);
-  gap: 3px;
-  margin: 6px 0;
+  grid-auto-rows: minmax(76px, 1fr);
+  gap: 4px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--mint) var(--void);
+  scrollbar-width: thin;
 }
 
-.result-roster > div {
+.result-monster-card {
+  --monster-color: var(--gold);
+  position: relative;
   display: grid;
   min-width: 0;
-  min-height: 0;
-  grid-template-columns: 34px minmax(0, 1fr);
+  align-content: center;
+  gap: 3px;
+  padding: 5px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--monster-color);
+  background:
+    linear-gradient(110deg, color-mix(in srgb, var(--monster-color) 9%, transparent), transparent 48%), var(--deck);
+  opacity: 0;
+  transform: translateX(-7px);
+}
+
+.reveal-stage-3 .result-monster-card {
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity 220ms steps(4) calc(var(--reveal-index) * 70ms),
+    transform 220ms steps(4) calc(var(--reveal-index) * 70ms);
+}
+
+.result-monster-card.is-level-up {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 18px rgba(245, 202, 107, 0.12);
+  animation: level-card-pulse 760ms steps(5) calc(var(--reveal-index) * 70ms) both;
+}
+
+.result-monster-identity {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
-  padding: 3px;
-  border: 1px solid var(--line-soft);
-  background: var(--deck);
 }
 
-.result-roster .monster-sigil {
-  width: 31px;
-  height: 31px;
+.result-monster-identity .monster-sigil {
+  width: 40px;
+  height: 40px;
 }
 
-.result-roster .monster-sigil > span {
-  font-size: 17px;
+.result-monster-identity .monster-sigil > span {
+  font-size: 23px;
 }
 
-.result-roster > div > span {
+.result-monster-identity > span {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
 
-.result-roster strong {
+.result-monster-identity small {
+  color: var(--monster-color);
+  font-size: 5px;
+  letter-spacing: 0.06em;
+}
+
+.result-monster-identity strong {
   overflow: hidden;
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 7px;
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.result-roster small,
-.result-roster > div > b {
-  color: var(--muted);
+.result-monster-identity i {
+  font-size: 5px;
+  font-style: normal;
+}
+
+.xp-gain {
+  color: var(--mint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.result-level-line,
+.result-growth {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.result-level-line span {
+  font-size: 7px;
+}
+
+.result-level-line b {
+  color: var(--gold);
   font-size: 6px;
 }
 
-.result-roster > div > b {
-  display: none;
+.result-progress {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  background: var(--void);
 }
 
-.result-card .launch-button {
-  align-self: flex-end;
+.result-progress::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0 45%, rgba(255, 255, 255, 0.65) 50%, transparent 55%);
+  content: "";
+  transform: translateX(-110%);
+}
+
+.reveal-stage-3 .result-progress::after {
+  animation: xp-scan 760ms steps(8) calc(var(--reveal-index) * 70ms) both;
+}
+
+.result-progress > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--mint), var(--gold));
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.reveal-stage-3 .result-progress > span {
+  animation: xp-fill 620ms steps(8) calc(var(--reveal-index) * 70ms) both;
+}
+
+.result-growth small,
+.result-growth span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-growth span {
+  color: var(--mint);
+}
+
+.result-actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.result-actions p {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+}
+
+.reward-particles {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.reward-particles i {
+  --particle-x: calc(var(--reward-particle) * 5.55%);
+  position: absolute;
+  top: -8px;
+  left: var(--particle-x);
+  width: 4px;
+  height: 9px;
+  background: var(--gold);
+  opacity: 0;
+  transform: rotate(20deg);
+}
+
+.reward-particles i:nth-child(3n + 1) {
+  background: var(--mint);
+}
+
+.reward-particles i:nth-child(3n + 2) {
+  background: var(--pink);
+}
+
+.reveal-stage-1 .reward-particles i,
+.reveal-stage-2 .reward-particles i,
+.reveal-stage-3 .reward-particles i {
+  animation: reward-fall 1100ms steps(10) calc(var(--reward-particle) * 28ms) both;
+}
+
+@keyframes xp-fill {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes xp-scan {
+  to {
+    transform: translateX(110%);
+  }
+}
+
+@keyframes level-card-pulse {
+  0% {
+    filter: brightness(1);
+  }
+  45% {
+    filter: brightness(1.75);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+@keyframes reward-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(0);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(280px) rotate(240deg);
+  }
 }
 
 .finished-screen {
@@ -3291,12 +3886,52 @@ button.definition-card:active,
     font-size: 11px;
   }
 
-  .result-card {
-    padding: 20px;
+  .result-stage {
+    gap: 10px;
+    padding: 14px;
   }
 
   .result-roster {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .result-monster-card {
+    min-height: 84px;
+    padding: 7px;
+  }
+
+  .result-monster-identity {
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .result-monster-identity .monster-sigil {
+    width: 52px;
+    height: 52px;
+  }
+
+  .result-monster-identity .monster-sigil > span {
+    font-size: 30px;
+  }
+
+  .result-monster-identity strong {
+    font-size: 12px;
+  }
+
+  .xp-gain {
+    font-size: 15px;
+  }
+
+  .result-hero p {
+    font-size: 9px;
+  }
+
+  .battle-report-metric {
+    padding: 7px;
+  }
+
+  .battle-report-metric b {
+    font-size: 20px;
   }
 }
 

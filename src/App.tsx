@@ -7,9 +7,16 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { simulateBattle } from './core/battle';
-import { inheritanceSkillChoices, listBreedingCandidates } from './core/breeding';
+import { breedMonsters, inheritanceSkillChoices, listBreedingCandidates } from './core/breeding';
 import { createGhostTeam } from './core/ghost';
-import { definitionFor, effectiveStarsFor, permanentStatsFor, skillIdsFor, targetRulesForSkill } from './core/monster';
+import {
+  createMonster,
+  definitionFor,
+  effectiveStarsFor,
+  permanentStatsFor,
+  skillIdsFor,
+  targetRulesForSkill,
+} from './core/monster';
 import { deriveSeed } from './core/rng';
 import {
   applyBattleResult,
@@ -50,6 +57,7 @@ type InspectorTab = 'profile' | 'gambit';
 type BattleViewState = {
   result: BattleResult;
   enemy: MonsterInstance[];
+  beforeRoster: MonsterInstance[];
   frameIndex: number;
   playing: boolean;
 };
@@ -182,6 +190,29 @@ const lineageName = (data: GameData, definition: MonsterDefinition) =>
 const attributeName = (data: GameData, definition: MonsterDefinition) =>
   data.attributes.find((attribute) => attribute.id === definition.attributeId)?.name ?? definition.attributeId;
 
+const xpProgressFor = (monster: MonsterInstance) => {
+  const currentThreshold = GAME_DATA.rules.levelThresholds[monster.level - 1] ?? 0;
+  const nextThreshold = GAME_DATA.rules.levelThresholds[monster.level];
+  if (nextThreshold === undefined) {
+    return {
+      currentThreshold,
+      nextThreshold: currentThreshold,
+      remaining: 0,
+      percent: 100,
+      maximum: true,
+    };
+  }
+  const earnedInLevel = monster.xp - currentThreshold;
+  const levelSpan = Math.max(1, nextThreshold - currentThreshold);
+  return {
+    currentThreshold,
+    nextThreshold,
+    remaining: Math.max(0, nextThreshold - monster.xp),
+    percent: Math.max(0, Math.min(100, (earnedInLevel / levelSpan) * 100)),
+    maximum: false,
+  };
+};
+
 function MonsterSigil({
   data,
   definition,
@@ -247,6 +278,94 @@ function DefinitionCard({
     <article className={`definition-card${selected ? ' is-selected' : ''}`} style={monsterStyle(data, definition)}>
       {content}
     </article>
+  );
+}
+
+function MonsterProspectDialog({
+  monster,
+  eyebrow,
+  summary,
+  onClose,
+}: {
+  monster?: MonsterInstance;
+  eyebrow: string;
+  summary: string;
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !monster) return;
+    dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [monster]);
+  if (!monster) return null;
+  const definition = definitionFor(GAME_DATA, monster);
+  const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
+  const stats = permanentStatsFor(GAME_DATA, monster);
+  return (
+    <dialog
+      ref={dialogRef}
+      className="prospect-dialog"
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}
+      aria-label={`${definition.name}の能力詳細`}
+    >
+      <section className="prospect-panel panel" style={monsterStyle(GAME_DATA, definition)}>
+        <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+          ×
+        </button>
+        <header className="prospect-identity">
+          <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="large" />
+          <div>
+            <span>{eyebrow}</span>
+            <h2>{definition.name}</h2>
+            <p>
+              {starText(definition.whiteStars, monster.colorStars)} · Lv.{monster.level}
+            </p>
+          </div>
+        </header>
+        <p className="prospect-summary">{summary}</p>
+        <div className="stat-grid">
+          {STAT_LABELS.map(([id, label]) => (
+            <span key={id}>
+              <small>{label}</small>
+              <b>
+                {stats[id]}
+                {id === 'crit' ? '%' : ''}
+              </b>
+            </span>
+          ))}
+        </div>
+        <section className="trait-block detail-card">
+          <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
+          <h3>{trait?.name}</h3>
+          <p>{trait?.stages[monster.colorStars].description}</p>
+        </section>
+        <section className="skill-list">
+          <span>SKILL LOADOUT</span>
+          <div className="skill-card-grid">
+            {skillIdsFor(GAME_DATA, monster).map((skillId, index) => {
+              const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
+              return (
+                <article className="skill-card" key={`${skillId}-${index}`}>
+                  <b>{index === 2 && monster.inheritedSkillId ? '継' : index + 1}</b>
+                  <span>
+                    <strong>{skill?.name}</strong>
+                    <small>MP {skill?.mpCost}</small>
+                  </span>
+                  <p>{skill?.description}</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </section>
+    </dialog>
   );
 }
 
@@ -549,6 +668,10 @@ function ShopView({
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
   onFreeze: () => void;
 }) {
+  const [previewDefinitionId, setPreviewDefinitionId] = useState<string>();
+  const previewMonster = previewDefinitionId
+    ? createMonster(GAME_DATA, previewDefinitionId, 'shop-prospect')
+    : undefined;
   if (!run.shop) return null;
   return (
     <section className="workshop-view shop-view" aria-label="ショップ">
@@ -589,16 +712,24 @@ function ShopView({
               footer={
                 <div className="shop-card-footer">
                   <span>{trait?.name}</span>
-                  <button
-                    type="button"
-                    className="buy-button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onCommand(buyMonster(GAME_DATA, run, offer.id), `${definition.name}が仲間になりました`);
-                    }}
-                  >
-                    迎える <b>{definition.price}</b>
-                  </button>
+                  <div className="shop-card-actions">
+                    <button
+                      type="button"
+                      className="card-detail-button"
+                      onClick={() => setPreviewDefinitionId(definition.id)}
+                    >
+                      能力を見る
+                    </button>
+                    <button
+                      type="button"
+                      className="buy-button"
+                      onClick={() =>
+                        onCommand(buyMonster(GAME_DATA, run, offer.id), `${definition.name}が仲間になりました`)
+                      }
+                    >
+                      迎える <b>{definition.price}</b>
+                    </button>
+                  </div>
                 </div>
               }
             />
@@ -644,7 +775,77 @@ function ShopView({
           })}
         </div>
       </div>
+      <MonsterProspectDialog
+        monster={previewMonster}
+        eyebrow="SHOP PROSPECT / LEVEL 1"
+        summary="購入時の初期能力です。属性は血統の分類で、戦闘上の有利不利はありません。"
+        onClose={() => setPreviewDefinitionId(undefined)}
+      />
     </section>
+  );
+}
+
+function BreedingConfirmationDialog({
+  child,
+  parents,
+  open,
+  onConfirm,
+  onClose,
+}: {
+  child?: MonsterInstance;
+  parents: [MonsterInstance, MonsterInstance] | [];
+  open: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !child) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [child, open]);
+  if (!child || parents.length !== 2) return null;
+  const childDefinition = definitionFor(GAME_DATA, child);
+  const parentNames = parents.map((parent) => definitionFor(GAME_DATA, parent).name);
+  return (
+    <dialog ref={dialogRef} className="breeding-confirm-dialog" onClose={onClose} aria-label="配合内容の最終確認">
+      <section className="breeding-confirm-panel panel" style={monsterStyle(GAME_DATA, childDefinition)}>
+        <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+          ×
+        </button>
+        <span className="section-index">FINAL CHECK / LINEAGE LOOM</span>
+        <h2>この血統で誕生させますか？</h2>
+        <div className="breeding-equation">
+          <span>{parentNames[0]}</span>
+          <b>×</b>
+          <span>{parentNames[1]}</span>
+          <b>→</b>
+          <strong>{childDefinition.name}</strong>
+        </div>
+        <ul>
+          <li>両親は配合後にいなくなります</li>
+          <li>親の装備は保管枠へ戻ります</li>
+          <li>子はLv.1で誕生し、ガンビットは初期設定になります</li>
+          <li>配合ボーナスとして{GAME_DATA.rules.breedingCoinBonus}コイン獲得します</li>
+        </ul>
+        <div className="breeding-confirm-actions">
+          <button type="button" className="secondary-button" onClick={() => dialogRef.current?.close()}>
+            戻って調整
+          </button>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => {
+              dialogRef.current?.close();
+              onConfirm();
+            }}
+          >
+            この内容で配合する
+          </button>
+        </div>
+      </section>
+    </dialog>
   );
 }
 
@@ -654,12 +855,14 @@ function BreedingView({
   parentIds,
   setParentIds,
   onCommand,
+  onInspect,
 }: {
   run: CasualRunState;
   discoveredMonsterIds: ReadonlySet<string>;
   parentIds: string[];
   setParentIds: (ids: string[]) => void;
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
+  onInspect: (monsterId: string) => void;
 }) {
   const candidates = useMemo(
     () =>
@@ -671,6 +874,8 @@ function BreedingView({
   const [candidateId, setCandidateId] = useState('');
   const [skillId, setSkillId] = useState('');
   const [recipeArchiveOpen, setRecipeArchiveOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
   useEffect(() => {
     setCandidateId(candidates[0]?.id ?? '');
     setSkillId('');
@@ -679,6 +884,17 @@ function BreedingView({
   const second = run.roster.find((monster) => monster.id === parentIds[1]);
   const candidate = candidates.find((entry) => entry.id === candidateId);
   const skillChoices = first && second && candidate ? inheritanceSkillChoices(GAME_DATA, first, second, candidate) : [];
+  const previewChild =
+    first && second && candidate
+      ? breedMonsters(GAME_DATA, first, second, candidate, skillId || undefined, 'breeding-prospect')
+      : undefined;
+  const previewDefinition = previewChild ? definitionFor(GAME_DATA, previewChild) : undefined;
+  const previewStats = previewChild ? permanentStatsFor(GAME_DATA, previewChild) : undefined;
+  const basePreview =
+    previewDefinition && previewChild
+      ? createMonster(GAME_DATA, previewDefinition.id, 'breeding-base', { colorStars: previewChild.colorStars })
+      : undefined;
+  const baseStats = basePreview ? permanentStatsFor(GAME_DATA, basePreview) : undefined;
 
   const toggleParent = (id: string) => {
     if (parentIds.includes(id)) {
@@ -743,22 +959,52 @@ function BreedingView({
           {candidates.map((entry) => {
             const definition = definitionById(GAME_DATA, entry.definitionId);
             return (
-              <DefinitionCard
-                key={entry.id}
-                data={GAME_DATA}
-                definition={definition}
-                colorStars={entry.colorStars}
-                eyebrow={
-                  entry.kind === 'special' ? 'SPECIAL RECIPE' : entry.kind === 'same-name' ? 'COLOR STAR' : 'RANK BREED'
-                }
-                selected={candidateId === entry.id}
-                onClick={() => setCandidateId(entry.id)}
-                footer={<span>{entry.label}</span>}
-              />
+              <div className="breeding-candidate" key={entry.id}>
+                <DefinitionCard
+                  data={GAME_DATA}
+                  definition={definition}
+                  colorStars={entry.colorStars}
+                  eyebrow={
+                    entry.kind === 'special'
+                      ? 'SPECIAL RECIPE'
+                      : entry.kind === 'same-name'
+                        ? 'COLOR STAR'
+                        : 'RANK BREED'
+                  }
+                  selected={candidateId === entry.id}
+                  onClick={() => setCandidateId(entry.id)}
+                  footer={<span>{entry.label}</span>}
+                />
+              </div>
             );
           })}
-          {candidate && (
+          {candidate && previewChild && previewDefinition && previewStats && baseStats && (
             <div className="inheritance-control">
+              <div className="breeding-preview" style={monsterStyle(GAME_DATA, previewDefinition)}>
+                <header>
+                  <span>配合プレビュー</span>
+                  <strong>{previewDefinition.name}</strong>
+                  <b>Lv.1</b>
+                </header>
+                <div className="breeding-preview-stats" aria-label="配合後の能力">
+                  {STAT_LABELS.map(([id, label]) => {
+                    const inherited = previewStats[id] - baseStats[id];
+                    return (
+                      <span className="preview-stat" key={id}>
+                        <small>{label}</small>
+                        <b>
+                          {previewStats[id]}
+                          {id === 'crit' ? '%' : ''}
+                        </b>
+                        {inherited > 0 && <i>+{inherited}</i>}
+                      </span>
+                    );
+                  })}
+                </div>
+                <button type="button" className="card-detail-button" onClick={() => setPreviewOpen(true)}>
+                  能力を詳しく見る
+                </button>
+              </div>
               <label htmlFor="inherit-skill">継承スキル（1つ）</label>
               <select id="inherit-skill" value={skillId} onChange={(event) => setSkillId(event.target.value)}>
                 <option value="">継承しない</option>
@@ -768,17 +1014,8 @@ function BreedingView({
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => {
-                  if (!first || !second) return;
-                  const result = breedInRun(GAME_DATA, run, first.id, second.id, candidate.id, skillId || undefined);
-                  onCommand(result, `配合成功。ボーナスコイン +${GAME_DATA.rules.breedingCoinBonus}`);
-                  if (result.ok) setParentIds([]);
-                }}
-              >
-                この血統で配合する <span>+1 COIN</span>
+              <button type="button" className="primary-button" onClick={() => setConfirmationOpen(true)}>
+                配合内容を確認 <span>両親を消費</span>
               </button>
             </div>
           )}
@@ -788,6 +1025,33 @@ function BreedingView({
         open={recipeArchiveOpen}
         discoveredMonsterIds={discoveredMonsterIds}
         onClose={() => setRecipeArchiveOpen(false)}
+      />
+      <MonsterProspectDialog
+        monster={previewOpen ? previewChild : undefined}
+        eyebrow="BREEDING RESULT / LEVEL 1"
+        summary="現在選んでいる親・配合先・継承スキルを反映した、誕生直後の能力です。"
+        onClose={() => setPreviewOpen(false)}
+      />
+      <BreedingConfirmationDialog
+        child={previewChild}
+        parents={first && second ? [first, second] : []}
+        open={confirmationOpen}
+        onClose={() => setConfirmationOpen(false)}
+        onConfirm={() => {
+          if (!first || !second || !candidate || !previewChild) return;
+          const result = breedInRun(GAME_DATA, run, first.id, second.id, candidate.id, skillId || undefined);
+          onCommand(
+            result,
+            `配合成功。${definitionFor(GAME_DATA, previewChild).name}が誕生し、${GAME_DATA.rules.breedingCoinBonus}コイン獲得しました`,
+          );
+          if (result.ok) {
+            setParentIds([]);
+            const child = result.state.roster.find(
+              (monster) => !run.roster.some((current) => current.id === monster.id),
+            );
+            if (child) window.setTimeout(() => onInspect(child.id), 0);
+          }
+        }}
       />
     </section>
   );
@@ -1107,6 +1371,7 @@ function Inspector({
   const stats = permanentStatsFor(GAME_DATA, monster);
   const equipped = GAME_DATA.equipment.find((entry) => entry.id === monster.equipmentId);
   const active = run.activeIds.includes(monster.id);
+  const xpProgress = xpProgressFor(monster);
   return (
     <dialog
       ref={dialogRef}
@@ -1145,9 +1410,12 @@ function Inspector({
           {tab === 'profile' && (
             <div className="profile-panel">
               <div className="xp-track">
-                <span style={{ width: `${Math.min(100, (monster.xp / 108) * 100)}%` }} />
+                <span style={{ width: `${xpProgress.percent}%` }} />
               </div>
-              <small className="xp-label">EXP {monster.xp} / 108</small>
+              <small className="xp-label">
+                EXP {monster.xp}
+                {xpProgress.maximum ? ' · MAX LEVEL' : ` · 次のLvまで ${xpProgress.remaining}`}
+              </small>
               <div className="stat-grid">
                 {STAT_LABELS.map(([id, label]) => (
                   <span key={id}>
@@ -1279,6 +1547,11 @@ function WorkshopScreen({
   useEffect(() => {
     if (!selected && run.roster[0]) setSelectedId(run.roster[0].id);
   }, [run.roster, selected]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(''), 3200);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const onCommand = (result: CommandResult<CasualRunState>, successMessage: string) => {
     setRun(result.state);
@@ -1329,6 +1602,7 @@ function WorkshopScreen({
               parentIds={parentIds}
               setParentIds={setParentIds}
               onCommand={onCommand}
+              onInspect={setInspectedId}
             />
           )}
         </section>
@@ -1578,41 +1852,166 @@ function BattleScreen({
   );
 }
 
-function ResultScreen({ run, onContinue }: { run: CasualRunState; onContinue: () => void }) {
+function ResultScreen({
+  run,
+  beforeRoster,
+  onContinue,
+}: {
+  run: CasualRunState;
+  beforeRoster: MonsterInstance[];
+  onContinue: () => void;
+}) {
   const result = run.lastBattle;
   const won = result?.winner === 'player';
+  const [revealStage, setRevealStage] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setRevealStage(3);
+      return;
+    }
+    const timers = [
+      window.setTimeout(() => setRevealStage((current) => Math.max(current, 1)), 180),
+      window.setTimeout(() => setRevealStage((current) => Math.max(current, 2)), 850),
+      window.setTimeout(() => setRevealStage(3), 1650),
+    ];
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, []);
+  const beforeById = new Map(beforeRoster.map((monster) => [monster.id, monster]));
+  const finalFrame = result?.frames[result.frames.length - 1];
+  const survivors =
+    finalFrame?.fighters.filter((fighter) => fighter.team === 'player' && fighter.alive).length ?? run.activeIds.length;
+  const levelUps = run.roster.filter((monster) => {
+    const before = beforeById.get(monster.id);
+    return before ? monster.level > before.level : false;
+  }).length;
+  const reportMetrics = [
+    ['TIME', `${result?.durationSeconds.toFixed(1) ?? '0.0'}s`, '戦闘時間'],
+    ['DAMAGE', String(result?.damageByTeam.player ?? 0), '与ダメージ'],
+    ['RECEIVED', String(result?.damageByTeam.enemy ?? 0), '被ダメージ'],
+    ['SURVIVORS', `${survivors}/3`, '生存'],
+  ] as const;
   return (
-    <main className={`result-screen${won ? ' is-win' : ''}`}>
+    <main
+      className={`result-screen${won ? ' is-win' : ''} reveal-stage-${revealStage}`}
+      data-reveal-complete={revealStage >= 3}
+    >
       <RunHeader run={run} />
-      <section className="result-card panel">
-        <span className="section-index">CYCLE {run.cycle} / RESULT</span>
-        <h2>{result?.winner === 'draw' ? '引き分け' : won ? '勝利' : '敗北'}</h2>
-        <p>
-          {won
-            ? '血統は次の戦いへ進みます。勝利ボーナス経験値を獲得しました。'
-            : '敗北しても育成は続きます。5敗するまでは立て直せます。'}
-        </p>
-        <div className="result-roster">
-          {run.roster.map((monster) => {
-            const definition = definitionFor(GAME_DATA, monster);
-            return (
-              <div key={monster.id}>
-                <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="small" />
-                <span>
-                  <strong>{definition.name}</strong>
-                  <small>
-                    Lv.{monster.level} · EXP {monster.xp}
-                  </small>
-                </span>
-                <b>{run.activeIds.includes(monster.id) ? '主力EXP' : '控えEXP 50%'}</b>
+      <section className="result-stage panel" aria-live="polite">
+        {won && (
+          <div className="reward-particles" aria-hidden="true">
+            {Array.from({ length: 18 }, (_, index) => (
+              <i key={index} style={{ '--reward-particle': index } as CSSProperties} />
+            ))}
+          </div>
+        )}
+        <header className="result-hero">
+          <div>
+            <span className="section-index">CYCLE {run.cycle} / BATTLE REPORT</span>
+            <h2>{result?.winner === 'draw' ? '引き分け' : won ? '勝利' : '敗北'}</h2>
+            <p>
+              {result?.winner === 'draw'
+                ? '互いの血統が拮抗しました。経験値を記録し、次の配合と編成へつなげます。'
+                : won
+                  ? '戦果を解析。勝利ボーナスを含む経験値が血統へ流れ込みます。'
+                  : '戦果を解析。敗北しても経験値は残り、次の配合と編成へつながります。'}
+            </p>
+          </div>
+          <div className="result-seal" aria-hidden="true">
+            <span>{won ? 'CLEAR' : result?.winner === 'draw' ? 'DRAW' : 'RETRY'}</span>
+            <b>{String(run.cycle).padStart(2, '0')}</b>
+          </div>
+        </header>
+        <section className="battle-report">
+          <div className="result-section-heading">
+            <div>
+              <span>01 / COMBAT DATA</span>
+              <h3>戦闘報告</h3>
+            </div>
+            <small>{levelUps > 0 ? `${levelUps}体がレベルアップ` : '全員の経験値を更新'}</small>
+          </div>
+          <div className="battle-report-grid">
+            {reportMetrics.map(([id, value, label]) => (
+              <div className="battle-report-metric" key={id}>
+                <span>{id}</span>
+                <b>{value}</b>
+                <small>{label}</small>
               </div>
-            );
-          })}
-        </div>
-        <button type="button" className="launch-button" onClick={onContinue}>
-          <span>{run.completedCycles >= 12 || run.losses >= 5 ? 'RUN COMPLETE' : `NEXT CYCLE ${run.cycle + 1}`}</span>
-          {run.completedCycles >= 12 || run.losses >= 5 ? '最終結果へ' : '旅を続ける'}
-        </button>
+            ))}
+          </div>
+        </section>
+        <section className="reward-report">
+          <div className="result-section-heading">
+            <div>
+              <span>02 / EXPERIENCE PULSE</span>
+              <h3>成長レポート</h3>
+            </div>
+            {revealStage < 3 && (
+              <button type="button" className="text-button reveal-all-button" onClick={() => setRevealStage(3)}>
+                報酬をすべて表示
+              </button>
+            )}
+          </div>
+          <div className="result-roster">
+            {run.roster.map((monster, index) => {
+              const definition = definitionFor(GAME_DATA, monster);
+              const before = beforeById.get(monster.id) ?? monster;
+              const xpGain = Math.max(0, monster.xp - before.xp);
+              const leveledUp = monster.level > before.level;
+              const progress = xpProgressFor(monster);
+              const beforeStats = permanentStatsFor(GAME_DATA, before);
+              const afterStats = permanentStatsFor(GAME_DATA, monster);
+              const statGains = STAT_LABELS.flatMap(([id, label]) => {
+                const gain = afterStats[id] - beforeStats[id];
+                return gain > 0 ? [`${label}+${gain}`] : [];
+              });
+              return (
+                <article
+                  className={`result-monster-card${leveledUp ? ' is-level-up' : ''}`}
+                  key={monster.id}
+                  style={{ ...monsterStyle(GAME_DATA, definition), '--reveal-index': index } as CSSProperties}
+                >
+                  <div className="result-monster-identity">
+                    <MonsterSigil
+                      data={GAME_DATA}
+                      definition={definition}
+                      colorStars={monster.colorStars}
+                      size="small"
+                    />
+                    <span>
+                      <small>{run.activeIds.includes(monster.id) ? 'ACTIVE / 100%' : 'BENCH / 50%'}</small>
+                      <strong>{definition.name}</strong>
+                      <i>{starText(definition.whiteStars, monster.colorStars)}</i>
+                    </span>
+                    <b className="xp-gain" data-xp-gain={xpGain}>
+                      +{xpGain} EXP
+                    </b>
+                  </div>
+                  <div className="result-level-line">
+                    <span>
+                      LV. {before.level}
+                      {leveledUp ? ` → ${monster.level}` : ''}
+                    </span>
+                    <b>{leveledUp ? 'LEVEL UP!' : progress.maximum ? 'MAX LEVEL' : `次まで ${progress.remaining}`}</b>
+                  </div>
+                  <div className="result-progress" aria-label={`EXP ${monster.xp}`}>
+                    <span style={{ width: `${progress.percent}%` }} />
+                  </div>
+                  <div className="result-growth">
+                    <small>累計EXP {monster.xp}</small>
+                    <span>{statGains.length > 0 ? statGains.join(' / ') : '能力値を維持'}</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+        <footer className="result-actions">
+          <p>{revealStage >= 3 ? '戦果の記録が完了しました。' : '戦果を記録しています…'}</p>
+          <button type="button" className="launch-button" disabled={revealStage < 3} onClick={onContinue}>
+            <span>{run.completedCycles >= 12 || run.losses >= 5 ? 'RUN COMPLETE' : `NEXT CYCLE ${run.cycle + 1}`}</span>
+            {run.completedCycles >= 12 || run.losses >= 5 ? '最終結果へ' : '旅を続ける'}
+          </button>
+        </footer>
       </section>
     </main>
   );
@@ -1659,6 +2058,7 @@ function FinishedScreen({ run, onRestart }: { run: CasualRunState; onRestart: ()
 export function App() {
   const [run, setRun] = useState(() => createCasualRun(GAME_DATA, INITIAL_SEED));
   const [battle, setBattle] = useState<BattleViewState>();
+  const [lastBattleRoster, setLastBattleRoster] = useState<MonsterInstance[]>([]);
   const [discoveredMonsterIds, setDiscoveredMonsterIds] = useState(() => new Set<string>(loadDiscoveredMonsterIds()));
 
   useEffect(() => {
@@ -1680,11 +2080,20 @@ export function App() {
     const enemy = createGhostTeam(GAME_DATA, run.cycle, battleSeed);
     const result = simulateBattle(GAME_DATA, { player, enemy, seed: battleSeed });
     setRun(applyBattleResult(GAME_DATA, run, result));
-    setBattle({ result, enemy, frameIndex: 0, playing: true });
+    setBattle({ result, enemy, beforeRoster: run.roster, frameIndex: 0, playing: true });
   };
 
   if (battle) {
-    return <BattleScreen battle={battle} onChange={setBattle} onFinish={() => setBattle(undefined)} />;
+    return (
+      <BattleScreen
+        battle={battle}
+        onChange={setBattle}
+        onFinish={() => {
+          setLastBattleRoster(battle.beforeRoster);
+          setBattle(undefined);
+        }}
+      />
+    );
   }
   if (run.phase === 'draft') {
     return <DraftScreen run={run} onChoose={(id) => setRun(chooseDraftMonster(GAME_DATA, run, id))} />;
@@ -1703,7 +2112,9 @@ export function App() {
     );
   }
   if (run.phase === 'result') {
-    return <ResultScreen run={run} onContinue={() => setRun(continueRun(GAME_DATA, run))} />;
+    return (
+      <ResultScreen run={run} beforeRoster={lastBattleRoster} onContinue={() => setRun(continueRun(GAME_DATA, run))} />
+    );
   }
   return (
     <FinishedScreen

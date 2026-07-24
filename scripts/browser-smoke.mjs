@@ -58,6 +58,16 @@ if ((await desktop.locator('.shop-monsters .definition-card, .shop-monsters .sol
 if ((await desktop.locator('.equipment-offers > *').count()) !== 2) {
   throw new Error('Equipment shop does not have two slots');
 }
+if ((await desktop.locator('.shop-monsters .card-detail-button').count()) !== 3) {
+  throw new Error('Shop monsters do not expose a detail action');
+}
+await desktop.locator('.shop-monsters .card-detail-button').first().click();
+await desktop.locator('.prospect-dialog[open]').waitFor();
+if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
+  throw new Error('Shop prospect detail does not show all seven stats');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-prospect-desktop.png', fullPage: true });
+await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
 
 const coinsBefore = Number((await desktop.locator('.coin-metric b').textContent())?.trim());
 await desktop.locator('.shop-monsters .buy-button').first().click();
@@ -97,11 +107,74 @@ if ((await desktop.locator('.battle-sprite').count()) !== 6) throw new Error('Ba
 if ((await desktop.locator('.battle-fx').count()) !== 1) throw new Error('Battle effect layer is missing');
 await desktop.getByRole('button', { name: '最後まで送る' }).click();
 await desktop.getByRole('button', { name: '結果を見る →' }).click();
-await desktop.getByRole('button', { name: 'NEXT CYCLE 2 旅を続ける' }).waitFor();
-if ((await desktop.locator('.result-roster > div').count()) !== 4) {
+await desktop.getByRole('heading', { name: '戦闘報告' }).waitFor();
+const revealRewards = desktop.getByRole('button', { name: '報酬をすべて表示' });
+if ((await revealRewards.count()) === 1) await revealRewards.click();
+await desktop.locator('.result-screen[data-reveal-complete="true"]').waitFor();
+if ((await desktop.locator('.battle-report-metric').count()) !== 4) {
+  throw new Error('Battle result does not show the four report metrics');
+}
+if ((await desktop.locator('.result-monster-card').count()) !== 4) {
   throw new Error('Battle result does not show active and bench XP');
 }
+if ((await desktop.locator('.result-monster-card [data-xp-gain]').count()) !== 4) {
+  throw new Error('Battle result does not expose each monster XP gain');
+}
+await desktop.waitForTimeout(450);
 await desktop.screenshot({ path: '/tmp/code-monsters-result-desktop.png', fullPage: true });
+
+await desktop.getByRole('button', { name: 'NEXT CYCLE 2 旅を続ける' }).click();
+for (const cycle of [2, 3]) {
+  if (cycle === 3) {
+    await desktop.getByRole('heading', { name: '旅路が枝分かれした' }).waitFor();
+    await desktop.locator('.event-grid button').first().click();
+  }
+  await desktop.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
+  await desktop.getByRole('button', { name: '最後まで送る' }).click();
+  await desktop.getByRole('button', { name: '結果を見る →' }).click();
+  await desktop.getByRole('heading', { name: '戦闘報告' }).waitFor();
+  const reveal = desktop.getByRole('button', { name: '報酬をすべて表示' });
+  if ((await reveal.count()) === 1) await reveal.click();
+  await desktop.locator('.result-screen[data-reveal-complete="true"]').waitFor();
+  await desktop.getByRole('button', { name: `NEXT CYCLE ${cycle + 1} 旅を続ける` }).click();
+}
+
+await desktop.getByRole('button', { name: '02 配合' }).click();
+const eligibleParents = desktop.locator('.parent-choice:not(:disabled)');
+if ((await eligibleParents.count()) < 2) {
+  throw new Error('Three battles did not produce two eligible breeding parents');
+}
+await eligibleParents.first().click();
+await eligibleParents.nth(1).click();
+await desktop.locator('.breeding-preview').waitFor();
+if ((await desktop.locator('.breeding-preview .preview-stat').count()) !== 7) {
+  throw new Error('Selected breeding result does not preview all seven stats');
+}
+await desktop.getByRole('button', { name: '能力を詳しく見る' }).click();
+await desktop.locator('.prospect-dialog[open]').waitFor();
+if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
+  throw new Error('Breeding result detail does not show all seven stats');
+}
+await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
+if ((await desktop.getByRole('button', { name: '配合内容を確認' }).count()) !== 1) {
+  throw new Error('Breeding flow does not include a confirmation step');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-breeding-desktop.png', fullPage: true });
+await desktop.getByRole('button', { name: '配合内容を確認' }).click();
+await desktop.locator('.breeding-confirm-dialog[open]').waitFor();
+if ((await desktop.locator('.breeding-confirm-dialog li').count()) !== 4) {
+  throw new Error('Breeding confirmation does not explain all irreversible effects');
+}
+await desktop.getByRole('button', { name: 'この内容で配合する' }).click();
+await desktop.locator('.monster-dialog[open]').waitFor();
+if ((await desktop.locator('.monster-dialog .stat-grid span').count()) !== 7) {
+  throw new Error('Newborn monster detail did not open after breeding');
+}
+await desktop.getByRole('button', { name: 'ガンビット' }).click();
+if ((await desktop.locator('.monster-dialog .gambit-row').count()) !== 3) {
+  throw new Error('Newborn monster gambits are not reachable after breeding');
+}
+await desktop.getByRole('button', { name: '閉じる' }).click();
 
 const mobile = await browser.newPage({
   viewport: { width: 390, height: 844 },
@@ -168,6 +241,19 @@ if ((await mobile.locator('.team-zone.is-active .roster-card').count()) !== 2) {
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-workshop-mobile.png' });
 
+await mobile.locator('.team-zone.is-bench .roster-card').first().click();
+await mobile.getByRole('button', { name: '主力へ出す' }).click();
+await mobile.getByRole('button', { name: '閉じる' }).click();
+await mobile.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
+await mobile.getByRole('button', { name: '最後まで送る' }).click();
+await mobile.getByRole('button', { name: '結果を見る →' }).click();
+const revealMobileRewards = mobile.getByRole('button', { name: '報酬をすべて表示' });
+if ((await revealMobileRewards.count()) === 1) await revealMobileRewards.click();
+await mobile.locator('.result-screen[data-reveal-complete="true"]').waitFor();
+await mobile.waitForTimeout(450);
+await assertFitsViewport(mobile, 'Mobile result');
+await mobile.screenshot({ path: '/tmp/code-monsters-result-mobile.png' });
+
 await browser.close();
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
@@ -176,10 +262,13 @@ console.log(
     target: target.toString(),
     screenshots: [
       '/tmp/code-monsters-casual-desktop.png',
+      '/tmp/code-monsters-prospect-desktop.png',
       '/tmp/code-monsters-result-desktop.png',
+      '/tmp/code-monsters-breeding-desktop.png',
       '/tmp/code-monsters-draft-mobile.png',
       '/tmp/code-monsters-recipes-mobile.png',
       '/tmp/code-monsters-workshop-mobile.png',
+      '/tmp/code-monsters-result-mobile.png',
     ],
   }),
 );
