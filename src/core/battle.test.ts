@@ -35,6 +35,23 @@ describe('deterministic 3v3 battle', () => {
     expect(result.frames.filter((frame) => frame.kind === 'action').every((frame) => frame.skillId)).toBe(true);
   });
 
+  it('emits critical target ids independently from localized battle text', () => {
+    const criticalData = structuredClone(GAME_DATA);
+    criticalData.rules.battle.criticalCap = 100;
+    for (const monster of criticalData.monsters) monster.baseStats.crit = 100;
+    const result = simulateBattle(criticalData, {
+      player: team('p', ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1']),
+      enemy: team('e', ['dark-dragon-1', 'fire-demon-1', 'light-spirit-1']),
+      seed: 7261,
+    });
+    const criticalFrames = result.frames.filter((frame) => frame.criticalTargetIds.length > 0);
+
+    expect(criticalFrames.length).toBeGreaterThan(0);
+    expect(
+      criticalFrames.every((frame) => frame.criticalTargetIds.every((targetId) => frame.targetIds.includes(targetId))),
+    ).toBe(true);
+  });
+
   it('starts exponential environment-collapse damage at 45 seconds', () => {
     const slowData = structuredClone(GAME_DATA);
     slowData.rules.battle.baseActionSeconds = 1000;

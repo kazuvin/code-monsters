@@ -2,7 +2,7 @@ import { chromium } from 'playwright-core';
 
 const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
 const target = new URL(requestedTarget);
-target.searchParams.set('seed', target.searchParams.get('seed') ?? '7261');
+target.searchParams.set('seed', target.searchParams.get('seed') ?? '2');
 
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -133,7 +133,7 @@ if ((await desktop.locator('.monster-dialog[open]').count()) !== 1) {
 if ((await desktop.locator('.inspector-tabs button').count()) !== 2) {
   throw new Error('Monster detail still contains a breeding recipe tab');
 }
-await desktop.getByRole('button', { name: '閉じる' }).click();
+await desktop.getByRole('button', { name: '閉じる', exact: true }).click();
 await desktop.getByRole('button', { name: '02 配合' }).click();
 await desktop.getByRole('button', { name: /特殊配合図鑑/ }).click();
 if ((await desktop.locator('.recipe-card.is-special').count()) !== 3) {
@@ -145,13 +145,42 @@ if ((await desktop.locator('.recipe-card:not(.is-special)').count()) !== 0) {
 if ((await desktop.locator('[data-recipe-slot="result"].is-locked').count()) !== 2) {
   throw new Error('Previously discovered special result was not restored from persistent discovery');
 }
-await desktop.getByRole('button', { name: '閉じる' }).click();
+await desktop.getByRole('button', { name: '閉じる', exact: true }).click();
+await desktop.getByRole('button', { name: '配合ラボを閉じる' }).click();
 
 await desktop.screenshot({ path: '/tmp/code-monsters-casual-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
 await desktop.getByRole('heading', { name: '非同期ゴースト戦' }).waitFor();
 if ((await desktop.locator('.battle-sprite').count()) !== 6) throw new Error('Battle field is not 3v3');
 if ((await desktop.locator('.battle-fx').count()) !== 1) throw new Error('Battle effect layer is missing');
+const criticalFrameCount = Number(await desktop.locator('.battle-screen').getAttribute('data-critical-frame-count'));
+if (criticalFrameCount < 1) {
+  throw new Error(`Browser smoke seed does not produce a critical hit: ${target.toString()}`);
+}
+await desktop.evaluate(() => {
+  let captureScheduled = false;
+  const observer = new MutationObserver(() => {
+    const screen = document.querySelector('.battle-screen.is-critical');
+    if (!screen || captureScheduled || screen.getAttribute('data-critical-captured') === 'true') return;
+    captureScheduled = true;
+    const pulseDuration = Number.parseFloat(getComputedStyle(screen).getPropertyValue('--battle-pulse-duration'));
+    window.setTimeout(() => {
+      const currentScreen = document.querySelector('.battle-screen.is-critical');
+      if (!currentScreen) {
+        captureScheduled = false;
+        return;
+      }
+      currentScreen.getAnimations({ subtree: true }).forEach((animation) => animation.pause());
+      currentScreen.setAttribute('data-critical-captured', 'true');
+      const pauseButton = [...currentScreen.querySelectorAll('button')].find((button) =>
+        button.textContent?.includes('一時停止'),
+      );
+      pauseButton?.click();
+      observer.disconnect();
+    }, pulseDuration * 0.52);
+  });
+  observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+});
 const enemyFormationBox = await desktop.locator('.battle-team.is-enemy').boundingBox();
 const playerFormationBox = await desktop.locator('.battle-team.is-player').boundingBox();
 if (!enemyFormationBox || !playerFormationBox || playerFormationBox.x >= enemyFormationBox.x) {
@@ -298,6 +327,28 @@ if (
 ) {
   throw new Error(`Battle motion is not sequenced action → effect → knockback: ${JSON.stringify(battleTimeline)}`);
 }
+const criticalImpact = desktop.locator('.battle-screen[data-critical-captured="true"] .critical-impact').first();
+await criticalImpact.waitFor({ timeout: 8000 });
+const criticalPresentation = await criticalImpact.evaluate((impact) => {
+  const labelStyle = getComputedStyle(impact.querySelector('strong'));
+  const battlefieldStyle = getComputedStyle(impact.closest('.battlefield'));
+  const screenStyle = getComputedStyle(impact.closest('.battle-screen'), '::after');
+  return {
+    particleCount: impact.querySelectorAll('i').length,
+    labelAnimation: labelStyle.animationName,
+    battlefieldAnimation: battlefieldStyle.animationName,
+    screenAnimation: screenStyle.animationName,
+  };
+});
+if (
+  criticalPresentation.particleCount !== 12 ||
+  !criticalPresentation.labelAnimation.includes('critical-label') ||
+  !criticalPresentation.battlefieldAnimation.includes('critical-arena-kick') ||
+  !criticalPresentation.screenAnimation.includes('critical-screen-flash')
+) {
+  throw new Error(`Critical hit presentation is incomplete: ${JSON.stringify(criticalPresentation)}`);
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-critical-desktop.png', fullPage: true });
 await desktop.screenshot({ path: '/tmp/code-monsters-battle-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: '最後まで送る' }).click();
 await desktop.getByRole('button', { name: '結果を見る →' }).click();
@@ -356,6 +407,22 @@ for (const cycle of [2, 3]) {
 }
 
 await desktop.getByRole('button', { name: '02 配合' }).click();
+await desktop.locator('.breeding-lab-dialog[open]').waitFor();
+const desktopBreedingDialogLayout = await desktop.locator('.breeding-lab-dialog').evaluate((dialog) => {
+  const box = dialog.getBoundingClientRect();
+  return {
+    width: box.width,
+    height: box.height,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+  };
+});
+if (
+  desktopBreedingDialogLayout.width < desktopBreedingDialogLayout.viewportWidth * 0.9 ||
+  desktopBreedingDialogLayout.height < desktopBreedingDialogLayout.viewportHeight * 0.9
+) {
+  throw new Error(`Breeding lab is not using the full decision space: ${JSON.stringify(desktopBreedingDialogLayout)}`);
+}
 const eligibleParents = desktop.locator('.parent-choice:not(:disabled)');
 if ((await eligibleParents.count()) < 2) {
   throw new Error('Three battles did not produce two eligible breeding parents');
@@ -372,11 +439,20 @@ if ((await desktop.locator('.breeding-outcome [data-inherited-bonus]').count()) 
 if ((await desktop.locator('.breeding-intrinsic-skills .effect-skill-card').count()) !== 2) {
   throw new Error('Breeding result does not prominently show both intrinsic skills');
 }
-if ((await desktop.locator('.breeding-outcome .skill-effect-fact').count()) < 3) {
+if (
+  (await desktop.locator('.breeding-outcome .skill-effect-fact').count()) < 2 ||
+  (await desktop.locator('.inheritance-skill-token i').count()) < 2
+) {
   throw new Error('Breeding skill cards do not expose concrete effect values');
 }
-if ((await desktop.locator('.inheritance-options .effect-skill-choice').count()) < 2) {
-  throw new Error('Breeding skill inheritance is not presented as visible skill cards');
+if ((await desktop.locator('.parent-skill-bank').count()) !== 2) {
+  throw new Error('Breeding inheritance does not separate the skills held by both parents');
+}
+if ((await desktop.locator('.inheritance-skill-token:not(:disabled)').count()) < 2) {
+  throw new Error('Breeding inheritance does not expose draggable parent skills');
+}
+if ((await desktop.locator('.inheritance-drop-slot').count()) !== 1) {
+  throw new Error('Breeding inheritance does not expose a drop slot');
 }
 const desktopBreedingType = await desktop.evaluate(() => ({
   total: Number.parseFloat(getComputedStyle(document.querySelector('.breeding-stat-row > strong')).fontSize),
@@ -405,11 +481,11 @@ if (
 ) {
   throw new Error(`Desktop breeding parameters are hidden: ${JSON.stringify(desktopBreedingStatVisibility)}`);
 }
-const selectedInheritanceChoice = desktop.locator('.inheritance-options .effect-skill-choice').nth(1);
-const selectedInheritanceSkillName = (await selectedInheritanceChoice.locator(':scope > strong').textContent())?.trim();
-await selectedInheritanceChoice.click();
-if ((await selectedInheritanceChoice.getAttribute('aria-pressed')) !== 'true') {
-  throw new Error('Breeding inheritance skill cards do not expose their selected state');
+const selectedInheritanceChoice = desktop.locator('.inheritance-skill-token:not(:disabled)').nth(1);
+const selectedInheritanceSkillName = (await selectedInheritanceChoice.locator('strong').textContent())?.trim();
+await selectedInheritanceChoice.dragTo(desktop.locator('.inheritance-drop-slot'));
+if ((await desktop.locator('.inheritance-drop-slot').getAttribute('data-selected-skill-id')) === '') {
+  throw new Error('Dragging a parent skill did not assign the inheritance slot');
 }
 if ((await desktop.getByRole('button', { name: '配合内容を確認' }).count()) !== 1) {
   throw new Error('Breeding flow does not include a confirmation step');
@@ -515,19 +591,14 @@ if (
   throw new Error('Breeding reveal does not retain the selected inherited skill');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-breeding-reveal-desktop.png', fullPage: true });
-await desktop.getByRole('button', { name: 'この仲間を見る →' }).click();
-await desktop.locator('.monster-dialog[open]').waitFor();
-if ((await desktop.locator('.monster-dialog .stat-grid span').count()) !== 7) {
-  throw new Error('Newborn monster detail did not open after breeding');
+await desktop.getByRole('button', { name: 'ホームへ戻る' }).click();
+await desktop.locator('.breeding-lab-dialog').waitFor({ state: 'hidden' });
+if ((await desktop.locator('.monster-dialog[open]').count()) !== 0) {
+  throw new Error('Breeding completion unexpectedly opened the newborn detail dialog');
 }
-if ((await desktop.locator('.monster-dialog .stat-bonus.is-individual').count()) < 1) {
-  throw new Error('Newborn monster detail does not retain the individual-value breakdown');
+if ((await desktop.getByRole('heading', { name: '旅商人の棚' }).count()) !== 1) {
+  throw new Error('Breeding completion did not return directly to the workshop home');
 }
-await desktop.getByRole('button', { name: 'ガンビット' }).click();
-if ((await desktop.locator('.monster-dialog .gambit-row').count()) !== 3) {
-  throw new Error('Newborn monster gambits are not reachable after breeding');
-}
-await desktop.getByRole('button', { name: '閉じる' }).click();
 
 const mobile = await browser.newPage({
   viewport: { width: 390, height: 844 },
@@ -567,8 +638,9 @@ if ((await mobile.locator('.monster-dialog .gambit-row').count()) !== 3) {
 if ((await mobile.locator('.monster-dialog .inspector-tabs button').count()) !== 2) {
   throw new Error('Mobile monster dialog still contains a breeding recipe tab');
 }
-await mobile.getByRole('button', { name: '閉じる' }).click();
+await mobile.getByRole('button', { name: '閉じる', exact: true }).click();
 await mobile.getByRole('button', { name: '02 配合' }).click();
+await mobile.locator('.breeding-lab-dialog[open]').waitFor();
 await mobile.getByRole('button', { name: /特殊配合図鑑/ }).click();
 if ((await mobile.locator('.recipe-dialog .recipe-card.is-special').count()) !== 3) {
   throw new Error('Mobile breeding archive does not show all three special breeding recipes');
@@ -577,8 +649,9 @@ if ((await mobile.locator('.recipe-dialog [data-recipe-slot="result"].is-locked'
   throw new Error('Undiscovered special breeding results are not silhouetted on mobile');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-recipes-mobile.png' });
-await mobile.getByRole('button', { name: '閉じる' }).click();
-await mobile.getByRole('button', { name: '01 ショップ' }).click();
+await mobile.getByRole('button', { name: '閉じる', exact: true }).click();
+await mobile.getByRole('button', { name: '配合ラボを閉じる' }).click();
+await mobile.locator('.breeding-lab-dialog').waitFor({ state: 'hidden' });
 
 await mobile.locator('.shop-monsters .buy-button').first().click();
 const draggable = mobile.locator('.team-zone.is-active .roster-card').first();
@@ -597,7 +670,7 @@ await mobile.screenshot({ path: '/tmp/code-monsters-workshop-mobile.png' });
 
 await mobile.locator('.team-zone.is-bench .roster-card').first().click();
 await mobile.getByRole('button', { name: '主力へ出す' }).click();
-await mobile.getByRole('button', { name: '閉じる' }).click();
+await mobile.getByRole('button', { name: '閉じる', exact: true }).click();
 await mobile.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
 await mobile.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 4000 });
 if ((await mobile.locator('.battle-sprite.is-acting .skill-callout').count()) !== 1) {
@@ -646,6 +719,7 @@ console.log(
       '/tmp/code-monsters-prospect-desktop.png',
       '/tmp/code-monsters-stat-breakdown-desktop.png',
       '/tmp/code-monsters-battle-desktop.png',
+      '/tmp/code-monsters-critical-desktop.png',
       '/tmp/code-monsters-result-desktop.png',
       '/tmp/code-monsters-breeding-desktop.png',
       '/tmp/code-monsters-breeding-mobile.png',

@@ -89,12 +89,14 @@ const makeFrame = (
   actorId?: string,
   targetIds: string[] = [],
   skillId?: BattleFrame['skillId'],
+  criticalTargetIds: string[] = [],
 ): BattleFrame => ({
   atSeconds: round(atSeconds),
   kind,
   actorId,
   skillId,
   targetIds,
+  criticalTargetIds,
   text,
   fighters: snapshots(data, fighters),
 });
@@ -146,6 +148,7 @@ const applyEffect = (
 ) => {
   const targets = targetsForEffect(effect, actor, actionTargets, fighters);
   const notes: string[] = [];
+  const criticalTargetIds: string[] = [];
   for (const target of targets) {
     switch (effect.kind) {
       case 'damage': {
@@ -166,6 +169,7 @@ const applyEffect = (
         if (critical) damage *= data.rules.battle.criticalMultiplier;
         const applied = applyDamage(target, damage);
         actor.damageDealt += applied.hp;
+        if (critical) criticalTargetIds.push(target.id);
         notes.push(`${target.name}に${applied.total}${critical ? ' 会心' : ''}`);
         break;
       }
@@ -207,7 +211,7 @@ const applyEffect = (
       }
     }
   }
-  return { targets, notes };
+  return { targets, notes, criticalTargetIds };
 };
 
 const chooseTarget = (
@@ -448,10 +452,12 @@ export function simulateBattle(data: GameData, input: BattleInput): BattleResult
       if (skill) actor.mp -= skill.mpCost;
       const notes: string[] = [];
       const targetIds = new Set<string>();
+      const criticalTargetIds = new Set<string>();
       for (const effect of effects) {
         const applied = applyEffect(data, effect, actor, [chosenTarget], fighters, random);
         applied.notes.forEach((note) => notes.push(note));
         applied.targets.forEach((target) => targetIds.add(target.id));
+        applied.criticalTargetIds.forEach((targetId) => criticalTargetIds.add(targetId));
       }
       const actionName = skill?.name ?? '通常攻撃';
       frames.push(
@@ -464,6 +470,7 @@ export function simulateBattle(data: GameData, input: BattleInput): BattleResult
           actor.id,
           [...targetIds],
           action.skillId,
+          [...criticalTargetIds],
         ),
       );
       winner = winnerFor(fighters);

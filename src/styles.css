@@ -2576,6 +2576,126 @@ button.definition-card:active,
   animation: arena-shake var(--battle-pulse-duration, 760ms) cubic-bezier(0.22, 0.82, 0.3, 1) both;
 }
 
+.battle-screen.is-critical .battlefield {
+  animation: critical-arena-kick var(--battle-pulse-duration, 760ms) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.battle-screen.is-critical::after {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  border: 0 solid var(--gold);
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.17), transparent 38%);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  animation: critical-screen-flash var(--battle-pulse-duration, 760ms) steps(7) both;
+}
+
+.battle-sprite.is-critical-hit {
+  z-index: 14;
+}
+
+.battle-sprite.is-critical-hit .monster-sigil {
+  animation: critical-sigil-flash var(--battle-pulse-duration, 760ms) steps(5) both;
+}
+
+.battle-feedback .battle-number.is-critical {
+  min-height: 22px;
+  padding: 4px 7px;
+  border: 2px solid var(--paper);
+  background: var(--gold);
+  color: var(--void-deep);
+  font-size: 14px;
+  box-shadow:
+    3px 3px 0 var(--pink),
+    -2px -2px 0 var(--mint);
+  text-shadow: none;
+}
+
+.critical-impact {
+  position: absolute;
+  z-index: 18;
+  top: 2%;
+  left: 50%;
+  display: grid;
+  width: 118px;
+  height: 118px;
+  pointer-events: none;
+  place-items: center;
+  color: var(--gold);
+  transform: translateX(-50%);
+}
+
+.critical-impact::before,
+.critical-impact::after {
+  position: absolute;
+  inset: 18px;
+  border: 4px solid currentColor;
+  content: "";
+  opacity: 0;
+  transform: rotate(45deg) scale(0.2);
+  animation: critical-ring var(--battle-pulse-duration, 760ms) steps(7) both;
+}
+
+.critical-impact::after {
+  inset: 27px;
+  border-color: var(--mint);
+  animation-delay: calc(var(--battle-pulse-duration, 760ms) * 0.06);
+}
+
+.critical-impact strong,
+.critical-impact small {
+  position: absolute;
+  z-index: 2;
+  padding: 3px 6px;
+  border: 2px solid var(--paper);
+  background: var(--void-deep);
+  box-shadow: 3px 3px 0 var(--pink);
+  opacity: 0;
+  white-space: nowrap;
+  animation: critical-label var(--battle-pulse-duration, 760ms) steps(7) both;
+}
+
+.critical-impact strong {
+  color: var(--gold);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+
+.critical-impact small {
+  margin-top: 34px;
+  border-width: 1px;
+  color: var(--mint);
+  font-size: 8px;
+  animation-delay: calc(var(--battle-pulse-duration, 760ms) * 0.04);
+}
+
+.critical-impact > i {
+  --critical-angle: 0deg;
+  --critical-angle-reverse: 0deg;
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: var(--gold);
+  box-shadow: 0 0 8px currentColor;
+  opacity: 0;
+  transform: rotate(var(--critical-angle)) translateX(12px) rotate(var(--critical-angle-reverse));
+  animation: critical-particle var(--battle-pulse-duration, 760ms) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.critical-impact > i:nth-of-type(3n + 2) {
+  background: var(--pink);
+  color: var(--pink);
+}
+
+.critical-impact > i:nth-of-type(3n) {
+  width: 4px;
+  height: 12px;
+  background: var(--mint);
+  color: var(--mint);
+}
+
 .battle-screen.is-frame-environment .battlefield {
   animation: collapse-flash 460ms steps(4);
 }
@@ -2706,6 +2826,118 @@ button.definition-card:active,
   }
   91% {
     transform: translate(-2px, 1px);
+  }
+}
+
+@keyframes critical-arena-kick {
+  0%,
+  43%,
+  100% {
+    transform: translate(0);
+    filter: none;
+  }
+  48% {
+    transform: translate(-7px, 3px);
+    filter: brightness(1.55) saturate(1.35);
+  }
+  55% {
+    transform: translate(8px, -4px);
+  }
+  63% {
+    transform: translate(-5px, 2px);
+    filter: brightness(1.12);
+  }
+  72% {
+    transform: translate(3px, -1px);
+  }
+}
+
+@keyframes critical-screen-flash {
+  0%,
+  42%,
+  100% {
+    border-width: 0;
+    opacity: 0;
+  }
+  48% {
+    border-width: 8px;
+    border-color: var(--paper);
+    opacity: 0.88;
+  }
+  57% {
+    border-width: 5px;
+    border-color: var(--gold);
+    opacity: 0.48;
+  }
+  76% {
+    border-width: 2px;
+    border-color: var(--pink);
+    opacity: 0.12;
+  }
+}
+
+@keyframes critical-sigil-flash {
+  0%,
+  42%,
+  100% {
+    filter: none;
+  }
+  48%,
+  58% {
+    filter: brightness(2.5) saturate(1.8) drop-shadow(0 0 12px var(--gold));
+  }
+}
+
+@keyframes critical-ring {
+  0%,
+  42% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.2);
+  }
+  48% {
+    opacity: 1;
+  }
+  76%,
+  100% {
+    opacity: 0;
+    transform: rotate(225deg) scale(1.5);
+  }
+}
+
+@keyframes critical-label {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translateY(7px) scale(0.35);
+  }
+  48% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.45);
+  }
+  57%,
+  78% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.94);
+  }
+}
+
+@keyframes critical-particle {
+  0%,
+  44% {
+    opacity: 0;
+    transform: rotate(var(--critical-angle)) translateX(12px) rotate(var(--critical-angle-reverse)) scale(0.4);
+  }
+  50% {
+    opacity: 1;
+  }
+  82%,
+  100% {
+    opacity: 0;
+    transform: rotate(var(--critical-angle)) translateX(66px) rotate(var(--critical-angle-reverse)) scale(1.2);
   }
 }
 
@@ -5050,6 +5282,64 @@ button.definition-card:active,
   color: var(--muted);
 }
 
+.breeding-lab-dialog {
+  width: calc(100vw - 24px);
+  max-width: 1500px;
+  height: calc(100dvh - 24px);
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+}
+
+.breeding-lab-dialog::backdrop {
+  background: radial-gradient(circle at 50% 20%, rgba(156, 165, 255, 0.12), transparent 34%), rgba(5, 6, 10, 0.9);
+  backdrop-filter: blur(5px);
+}
+
+.breeding-lab-panel {
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  overflow: hidden;
+  border: 2px solid var(--iris);
+  background:
+    linear-gradient(90deg, rgba(156, 165, 255, 0.06), transparent 24%),
+    repeating-linear-gradient(0deg, transparent 0 47px, rgba(255, 255, 255, 0.015) 48px), var(--panel);
+  box-shadow:
+    8px 8px 0 var(--void-deep),
+    inset 0 0 0 1px var(--line-soft);
+}
+
+.breeding-lab-panel::before {
+  background: var(--iris);
+}
+
+.breeding-lab-close {
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+}
+
+.breeding-lab-title {
+  min-height: 54px;
+  padding: 1px 44px 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.breeding-lab-title h2 {
+  font-size: 23px;
+}
+
+.breeding-lab-title p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+}
+
 @media (max-width: 800px) {
   .stat-grid.is-breakdown > .stat-cell {
     min-height: 64px;
@@ -5383,6 +5673,202 @@ button.effect-skill-card {
   scroll-snap-align: start;
 }
 
+.parent-skill-banks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.parent-skill-bank {
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: var(--void);
+}
+
+.parent-skill-bank > header {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 5px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.parent-skill-bank > header span {
+  color: var(--pink);
+  font-size: 7px;
+}
+
+.parent-skill-bank > header strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parent-skill-bank > div {
+  display: grid;
+  gap: 4px;
+}
+
+.inheritance-skill-token {
+  display: grid;
+  min-width: 0;
+  min-height: 48px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 7px;
+  padding: 5px 6px;
+  border: 1px solid var(--line-soft);
+  border-left: 4px solid var(--pink);
+  background: var(--deck);
+  color: var(--paper);
+  cursor: grab;
+  text-align: left;
+}
+
+.inheritance-skill-token:active {
+  cursor: grabbing;
+}
+
+.inheritance-skill-token:disabled {
+  border-left-color: var(--line);
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.inheritance-skill-token.is-selected {
+  border-color: var(--mint);
+  border-left-color: var(--mint);
+  background: rgba(124, 224, 189, 0.12);
+  box-shadow: inset 0 0 0 1px var(--mint);
+}
+
+.inheritance-skill-token > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.inheritance-skill-token small {
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.inheritance-skill-token strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inheritance-skill-token b {
+  color: var(--gold);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.inheritance-skill-token i {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inheritance-drop-slot {
+  position: relative;
+  display: grid;
+  min-height: 104px;
+  place-content: center;
+  margin-top: 8px;
+  padding: 10px 13px;
+  overflow: hidden;
+  border: 2px dashed var(--gold);
+  background: repeating-linear-gradient(135deg, rgba(245, 202, 107, 0.08) 0 8px, transparent 8px 16px), var(--void);
+  text-align: center;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.inheritance-drop-slot::before,
+.inheritance-drop-slot::after {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--gold);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.inheritance-drop-slot::before {
+  top: -10px;
+  left: -10px;
+}
+
+.inheritance-drop-slot::after {
+  right: -10px;
+  bottom: -10px;
+}
+
+.inheritance-drop-slot.is-drop-active {
+  border-style: solid;
+  border-color: var(--mint);
+  background: rgba(124, 224, 189, 0.18);
+  transform: translateY(-2px);
+}
+
+.inheritance-drop-slot.has-inherited {
+  border-style: solid;
+  border-color: var(--mint);
+  box-shadow: inset 0 0 24px rgba(124, 224, 189, 0.12);
+}
+
+.inheritance-drop-slot > span {
+  color: var(--gold);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.inheritance-drop-slot.has-inherited > span {
+  color: var(--mint);
+}
+
+.inheritance-drop-slot > strong {
+  margin: 4px 0 2px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 17px;
+}
+
+.inheritance-drop-slot > p,
+.inheritance-drop-slot > small {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+}
+
+.inheritance-drop-slot > button {
+  width: max-content;
+  margin: 7px auto 0;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  background: var(--deck);
+  color: var(--paper);
+  cursor: pointer;
+  font-size: 7px;
+}
+
 .candidate-pool > .inheritance-control {
   max-height: none;
   flex: 1 1 auto;
@@ -5538,6 +6024,36 @@ button.effect-skill-card {
     grid-template-columns: minmax(230px, 0.52fr) 32px minmax(0, 1.48fr);
   }
 
+  .breeding-lab-panel .parent-choice {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 7px;
+    padding: 6px 8px;
+  }
+
+  .breeding-lab-panel .parent-choice .monster-sigil {
+    width: 44px;
+    height: 44px;
+  }
+
+  .breeding-lab-panel .parent-choice .monster-sigil > span {
+    font-size: 25px;
+  }
+
+  .breeding-lab-panel .parent-choice strong {
+    font-size: 10px;
+  }
+
+  .breeding-lab-panel .parent-choice small {
+    font-size: 8px;
+  }
+
+  .breeding-lab-panel .parent-choice > b {
+    display: block;
+    grid-column: 2;
+    color: var(--monster-color);
+    font-size: 7px;
+  }
+
   .candidate-scroll {
     min-height: 78px;
     flex: 0 0 78px;
@@ -5571,9 +6087,59 @@ button.effect-skill-card {
   .candidate-pool > .inheritance-control > .primary-button {
     grid-row: 3;
   }
+
+  .breeding-outcome {
+    grid-template-columns: minmax(360px, 0.9fr) minmax(440px, 1.1fr);
+    align-content: start;
+  }
+
+  .breeding-outcome-identity {
+    grid-column: 1 / -1;
+  }
+
+  .breeding-stat-ledger {
+    grid-column: 1;
+  }
+
+  .breeding-skill-workbench {
+    grid-column: 2;
+    padding-top: 0;
+    padding-left: 12px;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+  }
 }
 
 @media (max-width: 800px) {
+  .breeding-lab-dialog {
+    width: calc(100vw - 6px);
+    height: calc(100dvh - 6px);
+    max-height: none;
+  }
+
+  .breeding-lab-panel {
+    padding: 9px 7px;
+    border-width: 1px;
+    box-shadow: none;
+  }
+
+  .breeding-lab-title {
+    min-height: 66px;
+    padding-right: 35px;
+  }
+
+  .breeding-lab-title h2 {
+    font-size: 19px;
+  }
+
+  .breeding-lab-title p {
+    font-size: 8px;
+  }
+
+  .breeding-lab-title .recipe-archive-button {
+    margin-top: 22px;
+  }
+
   .breeding-outcome {
     gap: 10px;
     padding: 9px;
@@ -5642,6 +6208,18 @@ button.effect-skill-card {
   .inheritance-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .parent-skill-banks {
+    grid-template-columns: 1fr;
+  }
+
+  .inheritance-skill-token {
+    min-height: 54px;
+  }
+
+  .inheritance-drop-slot {
+    min-height: 118px;
   }
 
   .inheritance-options .effect-skill-choice {

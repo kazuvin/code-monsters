@@ -57,7 +57,6 @@ import type {
 } from './core/types';
 import { GAME_DATA } from './game/game-data';
 
-type WorkshopTab = 'shop' | 'breed';
 type InspectorTab = 'profile' | 'gambit';
 type ReplaySpeed = 1 | 2 | 4;
 type BattleFeedback = {
@@ -1105,26 +1104,39 @@ function ShopView({
 
 function BreedingOutcome({
   child,
+  parents,
   skillChoices,
   selectedSkillId,
   onSelectSkill,
 }: {
   child: MonsterInstance;
+  parents: [MonsterInstance, MonsterInstance];
   skillChoices: string[];
   selectedSkillId: string;
   onSelectSkill: (skillId: string) => void;
 }) {
+  const [dropActive, setDropActive] = useState(false);
   const definition = definitionFor(GAME_DATA, child);
   const intrinsicSkills = definition.intrinsicSkillIds.flatMap((skillId) => {
     const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
     return skill ? [skill] : [];
   });
-  const thirdSlotOptions = [
-    { selectionId: '', skillId: definition.defaultSkillId, badge: '初期スキル' },
-    ...skillChoices
-      .filter((skillId) => skillId !== definition.defaultSkillId)
-      .map((skillId) => ({ selectionId: skillId, skillId, badge: '継承候補' })),
-  ];
+  const selectedSlotSkill = GAME_DATA.skills.find(
+    (skill) => skill.id === (selectedSkillId || definition.defaultSkillId),
+  );
+  const parentSkillBanks = parents.map((parent, parentIndex) => ({
+    parent,
+    parentIndex,
+    definition: definitionFor(GAME_DATA, parent),
+    skills: skillIdsFor(GAME_DATA, parent).flatMap((skillId) => {
+      const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
+      return skill ? [skill] : [];
+    }),
+  }));
+  const acceptInheritedSkill = (skillId: string) => {
+    if (skillChoices.includes(skillId)) onSelectSkill(skillId);
+    setDropActive(false);
+  };
   return (
     <section className="breeding-outcome" style={monsterStyle(GAME_DATA, definition)}>
       <header className="breeding-outcome-identity">
@@ -1153,22 +1165,85 @@ function BreedingOutcome({
           ))}
         </div>
         <div className="inheritance-heading">
-          <span>3つ目のスキル</span>
-          <small>カードを選ぶと誕生後の構成へ反映</small>
+          <span>親スキルから継承する</span>
+          <small>ドラッグして遺伝子カセットへ。タップでも選択できます</small>
         </div>
-        <div className="inheritance-options">
-          {thirdSlotOptions.map((option) => {
-            const skill = GAME_DATA.skills.find((entry) => entry.id === option.skillId);
-            return skill ? (
-              <SkillEffectCard
-                skill={skill}
-                badge={option.badge}
-                selected={selectedSkillId === option.selectionId}
-                onSelect={() => onSelectSkill(option.selectionId)}
-                key={`${option.selectionId || 'default'}-${option.skillId}`}
-              />
-            ) : null;
-          })}
+        <div className="parent-skill-banks">
+          {parentSkillBanks.map(({ parent, parentIndex, definition: parentDefinition, skills }) => (
+            <section className="parent-skill-bank" key={parent.id}>
+              <header>
+                <span>親 {parentIndex === 0 ? 'A' : 'B'}</span>
+                <strong>{parentDefinition.name}</strong>
+              </header>
+              <div>
+                {skills.map((skill) => {
+                  const inheritable = skillChoices.includes(skill.id);
+                  return (
+                    <button
+                      type="button"
+                      className={`inheritance-skill-token${selectedSkillId === skill.id ? ' is-selected' : ''}`}
+                      data-skill-id={skill.id}
+                      draggable={inheritable}
+                      disabled={!inheritable}
+                      aria-pressed={selectedSkillId === skill.id}
+                      onClick={() => acceptInheritedSkill(skill.id)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'copy';
+                        event.dataTransfer.setData('text/plain', skill.id);
+                        event.dataTransfer.setData('application/x-code-monsters-skill', skill.id);
+                      }}
+                      onDragEnd={() => setDropActive(false)}
+                      key={`${parent.id}-${skill.id}`}
+                    >
+                      <span>
+                        <small>{inheritable ? 'DRAG / TAP' : '固有と重複'}</small>
+                        <strong>{skill.name}</strong>
+                      </span>
+                      <b>MP {skill.mpCost}</b>
+                      <i>{effectFactFor(skill.effects[0] as EffectDefinition)}</i>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+        <div
+          className={`inheritance-drop-slot${dropActive ? ' is-drop-active' : ''}${selectedSkillId ? ' has-inherited' : ''}`}
+          data-selected-skill-id={selectedSkillId}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setDropActive(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+            setDropActive(true);
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropActive(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            acceptInheritedSkill(
+              event.dataTransfer.getData('application/x-code-monsters-skill') ||
+                event.dataTransfer.getData('text/plain'),
+            );
+          }}
+          aria-label="継承スキルの遺伝子カセット"
+        >
+          <span>{selectedSkillId ? 'INHERITED GENE / 継承確定' : 'DEFAULT GENE / 初期スキル'}</span>
+          <strong>{selectedSlotSkill?.name ?? 'スキル未選択'}</strong>
+          <p>
+            {selectedSlotSkill ? effectFactFor(selectedSlotSkill.effects[0] as EffectDefinition) : '親スキルを選択'}
+          </p>
+          {selectedSkillId ? (
+            <button type="button" onClick={() => onSelectSkill('')}>
+              初期スキルに戻す
+            </button>
+          ) : (
+            <small>親のスキルをここへドロップ</small>
+          )}
         </div>
       </section>
     </section>
@@ -1312,7 +1387,7 @@ function BreedingRevealDialog({ child, onComplete }: { child?: MonsterInstance; 
           disabled={stage < 2}
           onClick={() => dialogRef.current?.close()}
         >
-          この仲間を見る →
+          ホームへ戻る
         </button>
       </section>
     </dialog>
@@ -1320,20 +1395,23 @@ function BreedingRevealDialog({ child, onComplete }: { child?: MonsterInstance; 
 }
 
 function BreedingView({
+  open,
   run,
   discoveredMonsterIds,
   parentIds,
   setParentIds,
   onCommand,
-  onInspect,
+  onClose,
 }: {
+  open: boolean;
   run: CasualRunState;
   discoveredMonsterIds: ReadonlySet<string>;
   parentIds: string[];
   setParentIds: (ids: string[]) => void;
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
-  onInspect: (monsterId: string) => void;
+  onClose: () => void;
 }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const candidates = useMemo(
     () =>
       parentIds.length === 2
@@ -1346,6 +1424,12 @@ function BreedingView({
   const [recipeArchiveOpen, setRecipeArchiveOpen] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [revealedChild, setRevealedChild] = useState<MonsterInstance>();
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
   useEffect(() => {
     setCandidateId(candidates[0]?.id ?? '');
     setSkillId('');
@@ -1374,115 +1458,142 @@ function BreedingView({
   };
 
   return (
-    <section className="workshop-view breeding-view" aria-label="配合">
-      <div className="workshop-title">
-        <div>
-          <span className="section-index">LINEAGE LOOM</span>
-          <h2>血統を編み直す</h2>
-        </div>
-        <button type="button" className="recipe-archive-button" onClick={() => setRecipeArchiveOpen(true)}>
-          <span>SPECIAL</span>
-          特殊配合図鑑 <b>{GAME_DATA.specialRecipes.length}</b>
-        </button>
-      </div>
-      <div className="breeding-loom">
-        <div className="parent-pool">
-          <h3>親を2体選択</h3>
-          {run.roster.map((monster) => {
-            const definition = definitionFor(GAME_DATA, monster);
-            const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel;
-            return (
-              <button
-                type="button"
-                key={monster.id}
-                className={`parent-choice${parentIds.includes(monster.id) ? ' is-selected' : ''}${
-                  rankUp && parentIds.includes(monster.id) ? ' is-rank-catalyst' : ''
-                }`}
-                disabled={!eligible}
-                onClick={() => toggleParent(monster.id)}
-                style={monsterStyle(GAME_DATA, definition)}
-              >
-                <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="small" />
-                <span>
-                  <strong>{definition.name}</strong>
-                  <small>
-                    Lv.{monster.level} · 実効★{effectiveStarsFor(GAME_DATA, monster)}
-                  </small>
-                </span>
-                <b>
-                  {eligible
-                    ? rankUp && parentIds.includes(monster.id)
-                      ? '位階上昇の核'
-                      : parentIds.includes(monster.id)
-                        ? '選択中'
-                        : '選ぶ'
-                    : 'Lv.3必要'}
-                </b>
-              </button>
-            );
-          })}
-        </div>
-        <div className="gene-stitch" aria-hidden="true">
-          <span>×</span>
-          <i />
-          <b>↓</b>
-        </div>
-        <div className="candidate-pool">
-          <h3>配合先候補</h3>
-          <div className="candidate-scroll">
-            {candidates.length === 0 && (
-              <div className="loom-placeholder">
-                <span>?</span>
-                <p>レベル3以上の親を2体選ぶと、系統×属性×実効星から候補を算出します。</p>
-              </div>
-            )}
-            {candidates.map((entry) => {
-              const definition = definitionById(GAME_DATA, entry.definitionId);
-              return (
-                <div className="breeding-candidate" key={entry.id}>
-                  <DefinitionCard
-                    data={GAME_DATA}
-                    definition={definition}
-                    colorStars={entry.colorStars}
-                    eyebrow={
-                      entry.kind === 'special'
-                        ? 'SPECIAL RECIPE'
-                        : entry.kind === 'same-name'
-                          ? 'COLOR STAR'
-                          : 'RANK BREED'
-                    }
-                    selected={candidateId === entry.id}
-                    onClick={() => setCandidateId(entry.id)}
-                    footer={<span>{entry.label}</span>}
-                  />
-                </div>
-              );
-            })}
+    <>
+      <dialog
+        ref={dialogRef}
+        className="breeding-lab-dialog"
+        onClose={onClose}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+        aria-label="配合ラボ"
+      >
+        <section className="workshop-view breeding-view breeding-lab-panel panel" aria-label="配合">
+          <button
+            type="button"
+            className="dialog-close breeding-lab-close"
+            onClick={() => dialogRef.current?.close()}
+            aria-label="配合ラボを閉じる"
+          >
+            ×
+          </button>
+          <div className="workshop-title breeding-lab-title">
+            <div>
+              <span className="section-index">LINEAGE LOOM / FULL WORKBENCH</span>
+              <h2>血統を編み直す</h2>
+              <p>親・誕生個体・継承スキルを同じ机で比較してから配合します。</p>
+            </div>
+            <button type="button" className="recipe-archive-button" onClick={() => setRecipeArchiveOpen(true)}>
+              <span>SPECIAL</span>
+              特殊配合図鑑 <b>{GAME_DATA.specialRecipes.length}</b>
+            </button>
           </div>
-          {candidate && previewChild && previewDefinition && (
-            <div className="inheritance-control">
-              {rankUp && (
-                <div className="rank-up-signal" aria-live="polite">
-                  <span>RANK UP ROUTE</span>
-                  <b>
-                    ★{parentWhiteStars} → ★{previewDefinition.whiteStars}
-                  </b>
-                  <small>選んだ2体の実効星が、次の位階へ届いています</small>
+          <div className="breeding-loom">
+            <div className="parent-pool">
+              <h3>親を2体選択</h3>
+              {run.roster.map((monster) => {
+                const definition = definitionFor(GAME_DATA, monster);
+                const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel;
+                return (
+                  <button
+                    type="button"
+                    key={monster.id}
+                    className={`parent-choice${parentIds.includes(monster.id) ? ' is-selected' : ''}${
+                      rankUp && parentIds.includes(monster.id) ? ' is-rank-catalyst' : ''
+                    }`}
+                    disabled={!eligible}
+                    onClick={() => toggleParent(monster.id)}
+                    style={monsterStyle(GAME_DATA, definition)}
+                  >
+                    <MonsterSigil
+                      data={GAME_DATA}
+                      definition={definition}
+                      colorStars={monster.colorStars}
+                      size="small"
+                    />
+                    <span>
+                      <strong>{definition.name}</strong>
+                      <small>
+                        Lv.{monster.level} · 実効★{effectiveStarsFor(GAME_DATA, monster)}
+                      </small>
+                    </span>
+                    <b>
+                      {eligible
+                        ? rankUp && parentIds.includes(monster.id)
+                          ? '位階上昇の核'
+                          : parentIds.includes(monster.id)
+                            ? '選択中'
+                            : '選ぶ'
+                        : 'Lv.3必要'}
+                    </b>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="gene-stitch" aria-hidden="true">
+              <span>×</span>
+              <i />
+              <b>↓</b>
+            </div>
+            <div className="candidate-pool">
+              <h3>配合先候補</h3>
+              <div className="candidate-scroll">
+                {candidates.length === 0 && (
+                  <div className="loom-placeholder">
+                    <span>?</span>
+                    <p>レベル3以上の親を2体選ぶと、系統×属性×実効星から候補を算出します。</p>
+                  </div>
+                )}
+                {candidates.map((entry) => {
+                  const definition = definitionById(GAME_DATA, entry.definitionId);
+                  return (
+                    <div className="breeding-candidate" key={entry.id}>
+                      <DefinitionCard
+                        data={GAME_DATA}
+                        definition={definition}
+                        colorStars={entry.colorStars}
+                        eyebrow={
+                          entry.kind === 'special'
+                            ? 'SPECIAL RECIPE'
+                            : entry.kind === 'same-name'
+                              ? 'COLOR STAR'
+                              : 'RANK BREED'
+                        }
+                        selected={candidateId === entry.id}
+                        onClick={() => setCandidateId(entry.id)}
+                        footer={<span>{entry.label}</span>}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              {candidate && previewChild && previewDefinition && first && second && (
+                <div className="inheritance-control">
+                  {rankUp && (
+                    <div className="rank-up-signal" aria-live="polite">
+                      <span>RANK UP ROUTE</span>
+                      <b>
+                        ★{parentWhiteStars} → ★{previewDefinition.whiteStars}
+                      </b>
+                      <small>選んだ2体の実効星が、次の位階へ届いています</small>
+                    </div>
+                  )}
+                  <BreedingOutcome
+                    child={previewChild}
+                    parents={[first, second]}
+                    skillChoices={skillChoices}
+                    selectedSkillId={skillId}
+                    onSelectSkill={setSkillId}
+                  />
+                  <button type="button" className="primary-button" onClick={() => setConfirmationOpen(true)}>
+                    配合内容を確認 <span>両親を消費</span>
+                  </button>
                 </div>
               )}
-              <BreedingOutcome
-                child={previewChild}
-                skillChoices={skillChoices}
-                selectedSkillId={skillId}
-                onSelectSkill={setSkillId}
-              />
-              <button type="button" className="primary-button" onClick={() => setConfirmationOpen(true)}>
-                配合内容を確認 <span>両親を消費</span>
-              </button>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </section>
+      </dialog>
       <RecipeArchiveDialog
         open={recipeArchiveOpen}
         discoveredMonsterIds={discoveredMonsterIds}
@@ -1512,12 +1623,11 @@ function BreedingView({
       <BreedingRevealDialog
         child={revealedChild}
         onComplete={() => {
-          const childId = revealedChild?.id;
           setRevealedChild(undefined);
-          if (childId) window.setTimeout(() => onInspect(childId), 0);
+          onClose();
         }}
       />
-    </section>
+    </>
   );
 }
 
@@ -1966,7 +2076,7 @@ function WorkshopScreen({
   setRun: (run: CasualRunState) => void;
   onStartBattle: () => void;
 }) {
-  const [tab, setTab] = useState<WorkshopTab>('shop');
+  const [breedingOpen, setBreedingOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(run.activeIds[0]);
   const [inspectedId, setInspectedId] = useState<string>();
   const [parentIds, setParentIds] = useState<string[]>([]);
@@ -2013,28 +2123,35 @@ function WorkshopScreen({
         />
         <section className="workbench panel">
           <nav className="workshop-tabs" aria-label="育成メニュー">
-            <button type="button" className={tab === 'shop' ? 'is-active' : ''} onClick={() => setTab('shop')}>
+            <button
+              type="button"
+              className="is-active"
+              aria-pressed={!breedingOpen}
+              onClick={() => setBreedingOpen(false)}
+            >
               <span>01</span> ショップ
             </button>
-            <button type="button" className={tab === 'breed' ? 'is-active' : ''} onClick={() => setTab('breed')}>
+            <button
+              type="button"
+              className={breedingOpen ? 'is-active' : ''}
+              aria-pressed={breedingOpen}
+              onClick={() => setBreedingOpen(true)}
+            >
               <span>02</span> 配合
             </button>
           </nav>
-          {tab === 'shop' && (
-            <ShopView run={run} onCommand={onCommand} onFreeze={() => setRun(toggleShopFreeze(run))} />
-          )}
-          {tab === 'breed' && (
-            <BreedingView
-              run={run}
-              discoveredMonsterIds={discoveredMonsterIds}
-              parentIds={parentIds}
-              setParentIds={setParentIds}
-              onCommand={onCommand}
-              onInspect={setInspectedId}
-            />
-          )}
+          <ShopView run={run} onCommand={onCommand} onFreeze={() => setRun(toggleShopFreeze(run))} />
         </section>
       </div>
+      <BreedingView
+        open={breedingOpen}
+        run={run}
+        discoveredMonsterIds={discoveredMonsterIds}
+        parentIds={parentIds}
+        setParentIds={setParentIds}
+        onCommand={onCommand}
+        onClose={() => setBreedingOpen(false)}
+      />
       <Inspector
         run={run}
         monster={inspected}
@@ -2096,6 +2213,7 @@ function BattleMonster({
   pulseKey,
   previousHp,
   hpRevealDelayMs,
+  critical,
 }: {
   fighter: FighterSnapshot;
   side: 'player' | 'enemy';
@@ -2108,6 +2226,7 @@ function BattleMonster({
   pulseKey: number;
   previousHp: number;
   hpRevealDelayMs: number;
+  critical: boolean;
 }) {
   const definition = definitionById(GAME_DATA, fighter.definitionId);
   const [displayedHp, setDisplayedHp] = useState(previousHp);
@@ -2130,7 +2249,8 @@ function BattleMonster({
       feedback.some((entry) => entry.tone === 'debuff' || (entry.tone === 'shield' && entry.label.includes('-'))));
   return (
     <article
-      className={`battle-sprite is-${side}${fighter.alive ? '' : ' is-defeated'}${acting ? ' is-acting' : ''}${targeted ? ' is-targeted' : ''}${hit ? ' is-hit' : ''}${hpDelta < 0 ? ' is-healed' : ''}`}
+      className={`battle-sprite is-${side}${fighter.alive ? '' : ' is-defeated'}${acting ? ' is-acting' : ''}${targeted ? ' is-targeted' : ''}${hit ? ' is-hit' : ''}${critical ? ' is-critical-hit' : ''}${hpDelta < 0 ? ' is-healed' : ''}`}
+      data-critical-hit={critical}
       data-fighter-id={fighter.id}
       data-hp-current={fighter.hp}
       data-hp-displayed={displayedHp}
@@ -2147,7 +2267,7 @@ function BattleMonster({
             </span>
           )}
           {hpDelta !== 0 && (
-            <b className={`battle-number${hpDelta < 0 ? ' is-heal' : ''}`}>
+            <b className={`battle-number${hpDelta < 0 ? ' is-heal' : ''}${critical ? ' is-critical' : ''}`}>
               {hpDelta < 0 ? `HP +${Math.abs(hpDelta)}` : `-${hpDelta}`}
             </b>
           )}
@@ -2163,6 +2283,23 @@ function BattleMonster({
         </div>
       )}
       {targeted && <span className={`battle-target-fx is-${skillFx}`} key={`target-${pulseKey}`} aria-hidden="true" />}
+      {critical && (
+        <span className="critical-impact" key={`critical-${pulseKey}`} aria-hidden="true">
+          <strong>CRITICAL!</strong>
+          <small>会心</small>
+          {Array.from({ length: 12 }, (_, index) => (
+            <i
+              key={index}
+              style={
+                {
+                  '--critical-angle': `${index * 30}deg`,
+                  '--critical-angle-reverse': `${index * -30}deg`,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </span>
+      )}
       <MonsterSigil data={GAME_DATA} definition={definition} colorStars={fighter.colorStars} size="large" />
       <div className="battle-monster-copy">
         <span>{side === 'player' ? 'YOUR LINE' : 'GHOST LINE'}</span>
@@ -2260,6 +2397,7 @@ function BattleScreen({
   }).length;
   const impact = damagedTargetCount > 0;
   const impactScope = damagedTargetCount > 1 ? 'multi' : impact ? 'single' : 'none';
+  const critical = frame.criticalTargetIds.length > 0;
   const effectLabel =
     frame.kind === 'environment'
       ? 'COLLAPSE!'
@@ -2274,7 +2412,9 @@ function BattleScreen({
           : 'BATTLE START';
   return (
     <main
-      className={`battle-screen${impact ? ` is-impact is-impact-${impactScope}` : ''} is-frame-${frame.kind} is-skill-${skillFx}`}
+      className={`battle-screen${impact ? ` is-impact is-impact-${impactScope}` : ''}${critical ? ' is-critical' : ''} is-frame-${frame.kind} is-skill-${skillFx}`}
+      data-critical={critical}
+      data-critical-frame-count={battle.result.frames.filter((event) => event.criticalTargetIds.length > 0).length}
       data-impact-scope={impactScope}
       data-skill-id={frame.skillId}
       data-replay-delay-ms={Math.round(REPLAY_STEP_MS / battle.speed)}
@@ -2323,6 +2463,7 @@ function BattleScreen({
                 pulseKey={battle.frameIndex}
                 previousHp={previousFighters.get(fighter.id)?.hp ?? fighter.hp}
                 hpRevealDelayMs={hpRevealDelayMs}
+                critical={frame.criticalTargetIds.includes(fighter.id)}
               />
             ))}
           </div>
@@ -2349,6 +2490,7 @@ function BattleScreen({
                 pulseKey={battle.frameIndex}
                 previousHp={previousFighters.get(fighter.id)?.hp ?? fighter.hp}
                 hpRevealDelayMs={hpRevealDelayMs}
+                critical={frame.criticalTargetIds.includes(fighter.id)}
               />
             ))}
           </div>

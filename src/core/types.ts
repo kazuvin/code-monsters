@@ -308,6 +308,7 @@ export type BattleFrame = {
   actorId?: string;
   skillId?: string | 'normal-attack';
   targetIds: string[];
+  criticalTargetIds: string[];
   text: string;
   fighters: FighterSnapshot[];
 };
