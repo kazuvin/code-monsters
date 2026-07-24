@@ -77,6 +77,12 @@ if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
 if ((await desktop.locator('.prospect-dialog .stat-bonus.is-base').count()) !== 7) {
   throw new Error('Base shop prospect stats do not expose their baseline breakdown');
 }
+if ((await desktop.locator('.prospect-dialog .effect-skill-card').count()) !== 3) {
+  throw new Error('Monster detail does not show all three skills as effect cards');
+}
+if ((await desktop.locator('.prospect-dialog .skill-effect-fact').count()) < 3) {
+  throw new Error('Monster detail skill cards do not expose concrete effect values');
+}
 await desktop.screenshot({ path: '/tmp/code-monsters-prospect-desktop.png', fullPage: true });
 await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
 
@@ -298,19 +304,28 @@ if ((await eligibleParents.count()) < 2) {
 }
 await eligibleParents.first().click();
 await eligibleParents.nth(1).click();
-await desktop.locator('.breeding-preview').waitFor();
-if ((await desktop.locator('.breeding-preview .preview-stat').count()) !== 7) {
-  throw new Error('Selected breeding result does not preview all seven stats');
+await desktop.locator('.breeding-outcome').waitFor();
+if ((await desktop.locator('.breeding-outcome .breeding-stat-row').count()) !== 7) {
+  throw new Error('Selected breeding result does not prominently list all seven stats');
 }
-if ((await desktop.locator('.breeding-preview .stat-bonus.is-individual').count()) < 1) {
-  throw new Error('Breeding result does not show its inherited individual-value bonus');
+if ((await desktop.locator('.breeding-outcome [data-inherited-bonus]').count()) !== 7) {
+  throw new Error('Breeding result does not expose the inherited bonus for every stat');
 }
-await desktop.getByRole('button', { name: '能力を詳しく見る' }).click();
-await desktop.locator('.prospect-dialog[open]').waitFor();
-if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
-  throw new Error('Breeding result detail does not show all seven stats');
+if ((await desktop.locator('.breeding-intrinsic-skills .effect-skill-card').count()) !== 2) {
+  throw new Error('Breeding result does not prominently show both intrinsic skills');
 }
-await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
+if ((await desktop.locator('.breeding-outcome .skill-effect-fact').count()) < 3) {
+  throw new Error('Breeding skill cards do not expose concrete effect values');
+}
+if ((await desktop.locator('.inheritance-options .effect-skill-choice').count()) < 2) {
+  throw new Error('Breeding skill inheritance is not presented as visible skill cards');
+}
+const selectedInheritanceChoice = desktop.locator('.inheritance-options .effect-skill-choice').nth(1);
+const selectedInheritanceSkillName = (await selectedInheritanceChoice.locator(':scope > strong').textContent())?.trim();
+await selectedInheritanceChoice.click();
+if ((await selectedInheritanceChoice.getAttribute('aria-pressed')) !== 'true') {
+  throw new Error('Breeding inheritance skill cards do not expose their selected state');
+}
 if ((await desktop.getByRole('button', { name: '配合内容を確認' }).count()) !== 1) {
   throw new Error('Breeding flow does not include a confirmation step');
 }
@@ -321,11 +336,13 @@ const mobileBreedingLayout = await desktop.evaluate(() => {
   const parentPool = document.querySelector('.parent-pool');
   const candidatePool = document.querySelector('.candidate-pool');
   const preview = document.querySelector('.inheritance-control');
-  if (!view || !parentPool || !candidatePool || !preview) return undefined;
+  const outcome = document.querySelector('.breeding-outcome');
+  if (!view || !parentPool || !candidatePool || !preview || !outcome) return undefined;
   const viewBox = view.getBoundingClientRect();
   const parentBox = parentPool.getBoundingClientRect();
   const candidateBox = candidatePool.getBoundingClientRect();
   const previewBox = preview.getBoundingClientRect();
+  const outcomeBox = outcome.getBoundingClientRect();
   return {
     viewClientWidth: view.clientWidth,
     viewScrollWidth: view.scrollWidth,
@@ -333,6 +350,8 @@ const mobileBreedingLayout = await desktop.evaluate(() => {
     candidateTop: candidateBox.top,
     previewLeft: previewBox.left,
     previewRight: previewBox.right,
+    outcomeLeft: outcomeBox.left,
+    outcomeRight: outcomeBox.right,
     viewLeft: viewBox.left,
     viewRight: viewBox.right,
   };
@@ -342,12 +361,44 @@ if (
   mobileBreedingLayout.viewScrollWidth > mobileBreedingLayout.viewClientWidth + 1 ||
   mobileBreedingLayout.candidateTop < mobileBreedingLayout.parentBottom - 1 ||
   mobileBreedingLayout.previewLeft < mobileBreedingLayout.viewLeft - 1 ||
-  mobileBreedingLayout.previewRight > mobileBreedingLayout.viewRight + 1
+  mobileBreedingLayout.previewRight > mobileBreedingLayout.viewRight + 1 ||
+  mobileBreedingLayout.outcomeLeft < mobileBreedingLayout.previewLeft - 1 ||
+  mobileBreedingLayout.outcomeRight > mobileBreedingLayout.previewRight + 1
 ) {
   throw new Error(`Mobile breeding controls are clipped or overlapping: ${JSON.stringify(mobileBreedingLayout)}`);
 }
+const mobileBreedingStatLayout = await desktop
+  .locator('.breeding-stat-row')
+  .first()
+  .evaluate((row) => ({
+    clientWidth: row.clientWidth,
+    scrollWidth: row.scrollWidth,
+    gridTemplateColumns: getComputedStyle(row).gridTemplateColumns,
+    rowRight: row.getBoundingClientRect().right,
+    ledgerRight: row.closest('.breeding-stat-ledger')?.getBoundingClientRect().right,
+    outcomeRight: row.closest('.breeding-outcome')?.getBoundingClientRect().right,
+  }));
+if (
+  mobileBreedingStatLayout.scrollWidth > mobileBreedingStatLayout.clientWidth + 1 ||
+  !mobileBreedingStatLayout.ledgerRight ||
+  !mobileBreedingStatLayout.outcomeRight ||
+  mobileBreedingStatLayout.rowRight > mobileBreedingStatLayout.ledgerRight + 1 ||
+  mobileBreedingStatLayout.ledgerRight > mobileBreedingStatLayout.outcomeRight + 1
+) {
+  throw new Error(`Mobile breeding stat row overflows: ${JSON.stringify(mobileBreedingStatLayout)}`);
+}
+const clippedMobileBreedingBonuses = await desktop
+  .locator('.breeding-stat-row > b')
+  .evaluateAll((bonuses) =>
+    bonuses.filter((bonus) => bonus.scrollWidth > bonus.clientWidth + 1).map((bonus) => bonus.textContent?.trim()),
+  );
+if (clippedMobileBreedingBonuses.length > 0) {
+  throw new Error(`Mobile breeding bonuses are clipped: ${JSON.stringify(clippedMobileBreedingBonuses)}`);
+}
 await desktop.locator('.inheritance-control').scrollIntoViewIfNeeded();
 await desktop.screenshot({ path: '/tmp/code-monsters-breeding-mobile.png' });
+await desktop.locator('.breeding-skill-workbench').scrollIntoViewIfNeeded();
+await desktop.screenshot({ path: '/tmp/code-monsters-breeding-skills-mobile.png' });
 await desktop.setViewportSize({ width: 1440, height: 1100 });
 await desktop.getByRole('button', { name: '配合内容を確認' }).click();
 await desktop.locator('.breeding-confirm-dialog[open]').waitFor();
@@ -357,6 +408,20 @@ if ((await desktop.locator('.breeding-confirm-dialog li').count()) !== 4) {
 await desktop.getByRole('button', { name: 'この内容で配合する' }).click();
 await desktop.locator('.breeding-reveal-dialog[open]').waitFor();
 await desktop.locator('.breeding-reveal-dialog.reveal-stage-2').waitFor();
+if ((await desktop.locator('.breeding-reveal-dialog .breeding-stat-row').count()) !== 7) {
+  throw new Error('Breeding reveal does not retain the full inherited-stat ledger');
+}
+if ((await desktop.locator('.breeding-reveal-dialog .effect-skill-card').count()) !== 3) {
+  throw new Error('Breeding reveal does not show the newborn complete skill set');
+}
+if (
+  !selectedInheritanceSkillName ||
+  !(await desktop.locator('.breeding-reveal-dialog .effect-skill-card > strong').allTextContents()).includes(
+    selectedInheritanceSkillName,
+  )
+) {
+  throw new Error('Breeding reveal does not retain the selected inherited skill');
+}
 await desktop.screenshot({ path: '/tmp/code-monsters-breeding-reveal-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: 'この仲間を見る →' }).click();
 await desktop.locator('.monster-dialog[open]').waitFor();
@@ -470,6 +535,7 @@ console.log(
       '/tmp/code-monsters-result-desktop.png',
       '/tmp/code-monsters-breeding-desktop.png',
       '/tmp/code-monsters-breeding-mobile.png',
+      '/tmp/code-monsters-breeding-skills-mobile.png',
       '/tmp/code-monsters-breeding-reveal-desktop.png',
       '/tmp/code-monsters-draft-mobile.png',
       '/tmp/code-monsters-stat-breakdown-mobile.png',

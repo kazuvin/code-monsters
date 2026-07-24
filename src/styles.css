@@ -1312,83 +1312,6 @@ button.definition-card:active,
   border-top: 1px solid var(--line);
 }
 
-.breeding-preview {
-  --monster-color: var(--gold);
-  padding: 6px;
-  border: 1px solid var(--monster-color);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 14%, transparent), transparent 54%), var(--deck);
-}
-
-.breeding-preview header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: 2px 6px;
-}
-
-.breeding-preview header > span {
-  grid-column: 1 / -1;
-  color: var(--monster-color);
-  font-size: 6px;
-  letter-spacing: 0.07em;
-}
-
-.breeding-preview header strong {
-  overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 9px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.breeding-preview header b {
-  color: var(--gold);
-  font-size: 7px;
-}
-
-.breeding-preview-stats {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 1px;
-  margin: 5px 0;
-  background: var(--line-soft);
-}
-
-.preview-stat {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  min-height: 30px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: var(--void);
-}
-
-.preview-stat small {
-  color: var(--muted);
-  font-size: 5px;
-}
-
-.preview-stat b {
-  font-size: 8px;
-}
-
-.preview-stat i {
-  position: absolute;
-  top: 1px;
-  right: 1px;
-  color: var(--mint);
-  font-size: 4px;
-  font-style: normal;
-}
-
-.breeding-preview .card-detail-button {
-  width: 100%;
-  min-height: 24px;
-}
-
 .inheritance-control label,
 .gambit-row label {
   color: var(--muted);
@@ -1844,63 +1767,6 @@ button.definition-card:active,
   margin-top: 5px;
   padding: 0;
   border: 0;
-}
-
-.skill-card {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  min-height: 92px;
-  flex-direction: column;
-  padding: 7px 5px 5px;
-  overflow: hidden;
-  border: 1px solid var(--monster-color);
-  background: var(--deck);
-}
-
-.skill-card > b {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  display: grid;
-  width: 17px;
-  height: 17px;
-  place-items: center;
-  border: 1px solid var(--monster-color);
-  color: var(--monster-color);
-  font-size: 7px;
-}
-
-.skill-card > span {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  padding-right: 18px;
-}
-
-.skill-card strong {
-  overflow: hidden;
-  font-size: 9px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.skill-card small {
-  color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 7px;
-}
-
-.skill-card p {
-  display: -webkit-box;
-  margin: auto 0 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 7px;
-  line-height: 1.4;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
 }
 
 .equipment-card {
@@ -5163,40 +5029,6 @@ button.definition-card:active,
   color: var(--muted);
 }
 
-.breeding-preview-stats.is-breakdown .preview-stat {
-  min-height: 42px;
-  justify-content: flex-start;
-  padding: 3px 1px;
-}
-
-.breeding-preview-stats.is-breakdown .preview-stat > b {
-  margin: 1px 0 2px;
-  color: var(--paper);
-  font-size: 8px;
-  line-height: 1;
-}
-
-.breeding-preview-stats.is-breakdown .stat-label {
-  font-size: 5px;
-}
-
-.breeding-preview-stats.is-breakdown .stat-bonus-list {
-  justify-content: center;
-  gap: 1px;
-}
-
-.breeding-preview-stats.is-breakdown .stat-bonus {
-  position: static;
-  padding: 1px 2px;
-  border-left-width: 1px;
-  font-size: 4px;
-  line-height: 1;
-}
-
-.breeding-preview-stats.is-breakdown .stat-bonus em {
-  font-size: 4px;
-}
-
 @media (max-width: 800px) {
   .stat-grid.is-breakdown > .stat-cell {
     min-height: 64px;
@@ -5213,9 +5045,630 @@ button.definition-card:active,
   .stat-bonus em {
     font-size: 5px;
   }
+}
 
-  .breeding-preview-stats.is-breakdown .stat-bonus em {
+.breeding-outcome {
+  --monster-color: var(--gold);
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid var(--monster-color);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 13%, transparent), transparent 32%),
+    repeating-linear-gradient(90deg, transparent 0 47px, rgba(255, 255, 255, 0.018) 48px), var(--deck);
+  box-shadow: 5px 5px 0 var(--void-deep);
+}
+
+.breeding-outcome-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--monster-color);
+}
+
+.breeding-outcome-identity .monster-sigil {
+  width: 72px;
+  height: 72px;
+  background: var(--void);
+}
+
+.breeding-outcome-identity .monster-sigil > span {
+  font-size: 45px;
+}
+
+.breeding-outcome-identity > div {
+  min-width: 0;
+}
+
+.breeding-outcome-identity > div > span,
+.breeding-stat-ledger > header span,
+.breeding-skill-workbench > header span,
+.breeding-final-skills > header span {
+  color: var(--monster-color);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.breeding-outcome-identity h3 {
+  margin: 2px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 22px;
+}
+
+.breeding-outcome-identity p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.breeding-stat-ledger {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.breeding-stat-ledger > header,
+.breeding-skill-workbench > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.breeding-stat-ledger > header > div,
+.breeding-skill-workbench > header > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.breeding-stat-ledger > header strong,
+.breeding-skill-workbench > header strong,
+.breeding-final-skills > header strong {
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 11px;
+}
+
+.breeding-stat-ledger > header small,
+.breeding-skill-workbench > header small {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  text-align: right;
+}
+
+.breeding-stat-rows {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: 2px;
+  border: 1px solid var(--line);
+  background: var(--line-soft);
+}
+
+.breeding-stat-row {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(70px, 0.72fr) minmax(54px, 0.45fr) repeat(3, minmax(78px, 1fr));
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 5px 8px;
+  background: var(--void);
+}
+
+.breeding-stat-row > span {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+}
+
+.breeding-stat-row > strong {
+  color: var(--paper);
+  font-size: 19px;
+}
+
+.breeding-stat-row > small,
+.breeding-stat-row > b,
+.breeding-stat-row > i {
+  padding: 5px 6px;
+  border-left: 3px solid var(--line);
+  background: var(--deck);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.breeding-stat-row > small {
+  color: var(--muted);
+}
+
+.breeding-stat-row > b {
+  border-left-color: var(--gold);
+  color: var(--gold);
+}
+
+.breeding-stat-row > i {
+  border-left-color: var(--mint);
+  color: var(--mint);
+}
+
+.breeding-skill-workbench {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.breeding-intrinsic-skills,
+.breeding-final-skills > div,
+.skill-list > .skill-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.effect-skill-card {
+  --skill-color: var(--monster-color, var(--gold));
+  display: flex;
+  min-width: 0;
+  min-height: 142px;
+  flex-direction: column;
+  padding: 9px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--skill-color);
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--paper);
+  font: inherit;
+  text-align: left;
+}
+
+button.effect-skill-card {
+  cursor: pointer;
+}
+
+.effect-skill-card.is-selected {
+  border-color: var(--mint);
+  border-left-color: var(--mint);
+  background: linear-gradient(135deg, rgba(124, 224, 189, 0.14), transparent 50%), var(--panel-high);
+  box-shadow: inset 0 0 0 1px var(--mint);
+}
+
+.effect-skill-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.effect-skill-card > header span {
+  padding: 3px 5px;
+  background: var(--skill-color);
+  color: var(--void-deep);
+  font-size: 8px;
+}
+
+.effect-skill-card.is-selected > header span {
+  background: var(--mint);
+}
+
+.effect-skill-card > header b {
+  color: var(--gold);
+  font-size: 10px;
+}
+
+.effect-skill-card > strong {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-effect-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.skill-effect-tags i {
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  background: var(--void);
+  color: var(--mint);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.effect-skill-card ul {
+  display: grid;
+  gap: 3px;
+  margin: 7px 0 5px;
+  padding: 0;
+  list-style: none;
+}
+
+.skill-effect-fact {
+  padding: 3px 5px;
+  border-left: 2px solid var(--gold);
+  background: var(--void);
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.effect-skill-card > p {
+  margin: auto 0 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.inheritance-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 11px 0 5px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.inheritance-heading span {
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.inheritance-heading small {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+}
+
+.inheritance-options {
+  display: flex;
+  gap: 7px;
+  padding: 1px 1px 7px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: var(--mint) var(--void);
+  scrollbar-width: thin;
+}
+
+.inheritance-options .effect-skill-choice {
+  min-width: min(250px, 75%);
+  flex: 0 0 min(250px, 75%);
+  scroll-snap-align: start;
+}
+
+.candidate-pool > .inheritance-control {
+  max-height: none;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
+  padding: 8px;
+}
+
+.candidate-pool > .inheritance-control > .primary-button {
+  min-height: 42px;
+  flex: 0 0 auto;
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--void-deep);
+  font-size: 12px;
+}
+
+.breeding-reveal-dialog {
+  width: min(980px, calc(100vw - 20px));
+  max-height: calc(100dvh - 20px);
+}
+
+.breeding-reveal-stage {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: min(680px, calc(100dvh - 24px));
+  max-height: calc(100dvh - 24px);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 18px;
+  text-align: left;
+}
+
+.newborn-identity {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 4px 8px 11px;
+  border-bottom: 1px solid var(--monster-color);
+}
+
+.newborn-identity .newborn-sigil {
+  width: 104px;
+  height: 104px;
+}
+
+.newborn-identity .newborn-sigil::before {
+  inset: 12px;
+}
+
+.newborn-identity .newborn-sigil .monster-sigil {
+  width: 78px;
+  height: 78px;
+}
+
+.newborn-identity .newborn-sigil .monster-sigil > span {
+  font-size: 62px;
+}
+
+.newborn-identity p,
+.newborn-identity h2,
+.newborn-identity strong {
+  opacity: 0;
+  transform: translateY(7px);
+}
+
+.breeding-reveal-dialog.reveal-stage-2 .newborn-identity p,
+.breeding-reveal-dialog.reveal-stage-2 .newborn-identity h2,
+.breeding-reveal-dialog.reveal-stage-2 .newborn-identity strong {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 260ms steps(4),
+    transform 260ms steps(4);
+}
+
+.newborn-identity p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+}
+
+.newborn-identity h2 {
+  margin: 1px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 30px;
+}
+
+.newborn-identity strong {
+  color: var(--monster-color);
+}
+
+.breeding-reveal-dossier {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  gap: 12px;
+  padding: 2px;
+  overflow: auto;
+  opacity: 0;
+  scrollbar-color: var(--monster-color) var(--void);
+  scrollbar-width: thin;
+  transform: translateY(10px);
+}
+
+.breeding-reveal-dialog.reveal-stage-2 .breeding-reveal-dossier {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 320ms steps(5) 120ms,
+    transform 320ms steps(5) 120ms;
+}
+
+.breeding-final-skills {
+  min-width: 0;
+}
+
+.breeding-final-skills > header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 5px;
+}
+
+.breeding-final-skills > div {
+  grid-template-columns: 1fr;
+}
+
+.breeding-reveal-stage > button {
+  position: relative;
+  z-index: 2;
+  width: min(340px, 100%);
+  min-height: 42px;
+  margin: 0 auto;
+  flex: 0 0 auto;
+}
+
+.skill-list > .skill-card-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 801px) {
+  .breeding-loom {
+    grid-template-columns: minmax(230px, 0.52fr) 32px minmax(0, 1.48fr);
+  }
+
+  .candidate-scroll {
+    min-height: 78px;
+    flex: 0 0 78px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .breeding-candidate {
+    min-height: 74px;
+    flex: 0 0 min(250px, 46%);
+  }
+
+  .candidate-pool > .inheritance-control {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+
+  .candidate-pool > .inheritance-control > .rank-up-signal {
+    grid-row: 1;
+  }
+
+  .candidate-pool > .inheritance-control > .breeding-outcome {
+    grid-row: 2;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--gold) var(--void);
+    scrollbar-width: thin;
+  }
+
+  .candidate-pool > .inheritance-control > .primary-button {
+    grid-row: 3;
+  }
+}
+
+@media (max-width: 800px) {
+  .breeding-outcome {
+    gap: 10px;
+    padding: 9px;
+    box-shadow: 3px 3px 0 var(--void-deep);
+  }
+
+  .breeding-outcome-identity .monster-sigil {
+    width: 58px;
+    height: 58px;
+  }
+
+  .breeding-outcome-identity .monster-sigil > span {
+    font-size: 36px;
+  }
+
+  .breeding-outcome-identity h3 {
+    font-size: 18px;
+  }
+
+  .breeding-stat-row {
+    min-width: 0;
+    grid-template-columns: 52px 44px repeat(2, minmax(0, 1fr));
+    gap: 3px;
+    padding-inline: 4px;
+  }
+
+  .breeding-stat-rows {
+    overflow: visible;
+  }
+
+  .breeding-stat-row > span,
+  .breeding-stat-row > small,
+  .breeding-stat-row > b,
+  .breeding-stat-row > i {
+    font-size: 8px;
+  }
+
+  .breeding-stat-row > strong {
+    font-size: 16px;
+  }
+
+  .breeding-stat-row > i {
     display: none;
+  }
+
+  .breeding-stat-row > small,
+  .breeding-stat-row > b,
+  .breeding-stat-row > i {
+    padding-inline: 4px;
+  }
+
+  .candidate-pool > .inheritance-control {
+    grid-template-rows: none;
+    overflow: visible;
+  }
+
+  .breeding-intrinsic-skills {
+    grid-template-columns: 1fr;
+  }
+
+  .effect-skill-card {
+    min-height: 132px;
+  }
+
+  .inheritance-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .inheritance-options .effect-skill-choice {
+    min-width: min(270px, 88%);
+    flex-basis: min(270px, 88%);
+  }
+
+  .breeding-reveal-dialog {
+    width: calc(100vw - 12px);
+  }
+
+  .breeding-reveal-stage {
+    height: calc(100dvh - 12px);
+    padding: 10px;
+  }
+
+  .newborn-identity {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 8px;
+    padding: 0 3px 8px;
+  }
+
+  .newborn-identity .newborn-sigil {
+    width: 72px;
+    height: 72px;
+  }
+
+  .newborn-identity .newborn-sigil .monster-sigil {
+    width: 56px;
+    height: 56px;
+  }
+
+  .newborn-identity .newborn-sigil .monster-sigil > span {
+    font-size: 45px;
+  }
+
+  .newborn-identity h2 {
+    font-size: 22px;
+  }
+
+  .breeding-reveal-dossier {
+    display: block;
+  }
+
+  .breeding-final-skills {
+    margin-top: 14px;
+  }
+
+  .breeding-final-skills > div {
+    grid-template-columns: 1fr;
   }
 }
 

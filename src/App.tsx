@@ -42,13 +42,16 @@ import type {
   CasualRunState,
   ColorStars,
   CommandResult,
+  EffectDefinition,
   FighterSnapshot,
   GameData,
   GambitCondition,
   GambitRule,
   MonsterDefinition,
   MonsterInstance,
+  SkillDefinition,
   StatBlock,
+  StatId,
   StatusId,
   TargetRule,
 } from './core/types';
@@ -141,6 +144,24 @@ const STAT_LABELS: Array<[keyof StatBlock, string]> = [
   ['wisdom', '賢'],
   ['crit', '会'],
 ];
+
+const STAT_NAMES: Record<StatId, string> = {
+  maxHp: '最大HP',
+  maxMp: '最大MP',
+  attack: '攻撃力',
+  defense: '防御力',
+  speed: '素早さ',
+  wisdom: '賢さ',
+  crit: '会心率',
+};
+
+const SKILL_TARGET_LABELS: Record<SkillDefinition['targetScope'], string> = {
+  'single-enemy': '敵単体',
+  'single-ally': '味方単体',
+  self: '自分',
+  'all-enemies': '敵全体',
+  'all-allies': '味方全体',
+};
 
 const MONSTER_EMOJI: Record<string, string> = {
   'dragon-light': '🐲',
@@ -290,6 +311,151 @@ function DefinitionCard({
   );
 }
 
+const EFFECT_TARGET_LABELS: Record<EffectDefinition['target'], string> = {
+  'action-target': '対象',
+  self: '自分',
+  'all-allies': '味方全体',
+  'all-enemies': '敵全体',
+};
+
+const effectFactFor = (effect: EffectDefinition) => {
+  const target = EFFECT_TARGET_LABELS[effect.target];
+  switch (effect.kind) {
+    case 'damage':
+      return `威力 ${effect.power}${effect.canCrit ? ' · 会心可能' : ''}`;
+    case 'heal':
+      return `${target}を回復 · 回復力 ${effect.power}`;
+    case 'shield':
+      return `${target}に最大HP ${effect.maxHpPercent}%の盾`;
+    case 'status': {
+      if (effect.statusId === 'silence') return `${target}を沈黙 · ${effect.durationSeconds}秒`;
+      const direction = effect.statusId.endsWith('-down') ? '-' : '+';
+      const unit = effect.statusId === 'regeneration' || effect.statusId === 'damage-over-time' ? '%' : '';
+      return `${target}の${STATUS_LABELS[effect.statusId]} ${direction}${effect.amount}${unit} · ${effect.durationSeconds}秒`;
+    }
+    case 'atb':
+      return `${target}の行動ゲージ ${effect.amount >= 0 ? '+' : ''}${effect.amount}`;
+    case 'mp':
+      return `${target}のMP ${effect.amount >= 0 ? '+' : ''}${effect.amount}`;
+  }
+};
+
+const skillTagsFor = (skill: SkillDefinition) => {
+  const damage = skill.effects.find((effect) => effect.kind === 'damage');
+  const healing = skill.effects.some((effect) => effect.kind === 'heal');
+  const tags = [SKILL_TARGET_LABELS[skill.targetScope]];
+  if (damage?.kind === 'damage') {
+    tags.unshift(damage.scaling === 'physical' ? '物理' : '魔法');
+    tags.push(damage.scaling === 'physical' ? '攻撃力参照' : '賢さ参照');
+  } else if (healing) {
+    tags.unshift('回復');
+    tags.push('賢さ参照');
+  } else if (skill.effects.some((effect) => effect.kind === 'shield')) {
+    tags.unshift('防護');
+  } else {
+    tags.unshift('補助');
+  }
+  return tags;
+};
+
+const skillSummaryText = (skill?: SkillDefinition) =>
+  skill
+    ? `${skillTagsFor(skill).join(' / ')}。${skill.effects.map(effectFactFor).join('。')}。`
+    : '攻撃力を使って敵1体へ物理ダメージ。MPがなくても実行します。';
+
+function SkillEffectCard({
+  skill,
+  badge,
+  selected = false,
+  onSelect,
+}: {
+  skill: SkillDefinition;
+  badge: string;
+  selected?: boolean;
+  onSelect?: () => void;
+}) {
+  const content = (
+    <>
+      <header>
+        <span>{badge}</span>
+        <b>MP {skill.mpCost}</b>
+      </header>
+      <strong>{skill.name}</strong>
+      <div className="skill-effect-tags">
+        {skillTagsFor(skill).map((tag) => (
+          <i key={tag}>{tag}</i>
+        ))}
+      </div>
+      <ul>
+        {skill.effects.map((effect, index) => (
+          <li className="skill-effect-fact" key={`${skill.id}-effect-${index}`}>
+            {effectFactFor(effect)}
+          </li>
+        ))}
+      </ul>
+      <p>{skill.description}</p>
+    </>
+  );
+  if (onSelect) {
+    return (
+      <button
+        type="button"
+        className={`effect-skill-card effect-skill-choice${selected ? ' is-selected' : ''}`}
+        aria-pressed={selected}
+        onClick={onSelect}
+      >
+        {content}
+      </button>
+    );
+  }
+  return <article className="effect-skill-card">{content}</article>;
+}
+
+function BreedingStatLedger({ monster }: { monster: MonsterInstance }) {
+  const definition = definitionFor(GAME_DATA, monster);
+  const breakdown = statBreakdownFor(GAME_DATA, monster);
+  const growthMultiplier = GAME_DATA.rules.breeding.colorGrowthBonus[monster.colorStars];
+  return (
+    <section className="breeding-stat-ledger" aria-label="誕生後の能力と配合継承値">
+      <header>
+        <div>
+          <span>誕生時パラメーター</span>
+          <strong>最終値と配合による上乗せ</strong>
+        </div>
+        <small>{monster.colorStars > 0 ? `色星成長 ×${growthMultiplier.toFixed(1)}` : 'Lv.1 / 装備なし'}</small>
+      </header>
+      <div className="breeding-stat-rows">
+        {STAT_LABELS.map(([id]) => {
+          const stat = breakdown[id];
+          const nextGrowth = Math.floor(definition.growthPerLevel[id] * growthMultiplier);
+          const suffix = id === 'crit' ? '%' : '';
+          return (
+            <div className="breeding-stat-row" data-stat-id={id} data-inherited-bonus={stat.individual} key={id}>
+              <span>{STAT_NAMES[id]}</span>
+              <strong>
+                {stat.total}
+                {suffix}
+              </strong>
+              <small>
+                基礎 {stat.base}
+                {suffix}
+              </small>
+              <b>
+                配合 +{stat.individual}
+                {suffix}
+              </b>
+              <i>
+                次のLv +{nextGrowth}
+                {suffix}
+              </i>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function MonsterDetailCard({
   monster,
   showExperience = false,
@@ -328,16 +494,13 @@ function MonsterDetailCard({
         <div className="skill-card-grid">
           {skillIdsFor(GAME_DATA, monster).map((skillId, index) => {
             const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
-            return (
-              <article className="skill-card" key={`${skillId}-${index}`}>
-                <b>{index === 2 && monster.inheritedSkillId ? '継' : index + 1}</b>
-                <span>
-                  <strong>{skill?.name}</strong>
-                  <small>MP {skill?.mpCost}</small>
-                </span>
-                <p>{skill?.description}</p>
-              </article>
-            );
+            return skill ? (
+              <SkillEffectCard
+                skill={skill}
+                badge={index === 2 && monster.inheritedSkillId ? '継承' : index === 2 ? '初期' : `固有${index + 1}`}
+                key={`${skillId}-${index}`}
+              />
+            ) : null;
           })}
         </div>
       </section>
@@ -345,23 +508,20 @@ function MonsterDetailCard({
   );
 }
 
-function StatBreakdownGrid({ monster, compact = false }: { monster: MonsterInstance; compact?: boolean }) {
+function StatBreakdownGrid({ monster }: { monster: MonsterInstance }) {
   const breakdown = statBreakdownFor(GAME_DATA, monster);
   return (
-    <div
-      className={compact ? 'breeding-preview-stats is-breakdown' : 'stat-grid is-breakdown'}
-      aria-label={compact ? '配合後の能力と個体値' : '能力の最終値と上昇内訳'}
-    >
+    <div className="stat-grid is-breakdown" aria-label="能力の最終値と上昇内訳">
       {STAT_LABELS.map(([id, label]) => {
         const stat = breakdown[id];
         const bonuses = [
-          ['growth', compact ? '成' : '成長', stat.growth],
-          ['individual', compact ? '個' : '個体値', stat.individual],
-          ['equipment', compact ? '装' : '装備', stat.equipment],
+          ['growth', '成長', stat.growth],
+          ['individual', '個体値', stat.individual],
+          ['equipment', '装備', stat.equipment],
         ] as const;
         const visibleBonuses = bonuses.filter(([, , value]) => value > 0);
         return (
-          <span className={compact ? 'preview-stat' : 'stat-cell'} data-stat-id={id} key={id}>
+          <span className="stat-cell" data-stat-id={id} key={id}>
             <small className="stat-label">{label}</small>
             <b data-stat-total={stat.total}>
               {stat.total}
@@ -940,6 +1100,78 @@ function ShopView({
   );
 }
 
+function BreedingOutcome({
+  child,
+  skillChoices,
+  selectedSkillId,
+  onSelectSkill,
+}: {
+  child: MonsterInstance;
+  skillChoices: string[];
+  selectedSkillId: string;
+  onSelectSkill: (skillId: string) => void;
+}) {
+  const definition = definitionFor(GAME_DATA, child);
+  const intrinsicSkills = definition.intrinsicSkillIds.flatMap((skillId) => {
+    const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
+    return skill ? [skill] : [];
+  });
+  const thirdSlotOptions = [
+    { selectionId: '', skillId: definition.defaultSkillId, badge: '初期スキル' },
+    ...skillChoices
+      .filter((skillId) => skillId !== definition.defaultSkillId)
+      .map((skillId) => ({ selectionId: skillId, skillId, badge: '継承候補' })),
+  ];
+  return (
+    <section className="breeding-outcome" style={monsterStyle(GAME_DATA, definition)}>
+      <header className="breeding-outcome-identity">
+        <MonsterSigil data={GAME_DATA} definition={definition} colorStars={child.colorStars} size="large" />
+        <div>
+          <span>BREEDING RESULT / LEVEL 1</span>
+          <h3>{definition.name}</h3>
+          <p>
+            {starText(definition.whiteStars, child.colorStars)} · {lineageName(GAME_DATA, definition)} ×{' '}
+            {attributeName(GAME_DATA, definition)}
+          </p>
+        </div>
+      </header>
+      <BreedingStatLedger monster={child} />
+      <section className="breeding-skill-workbench">
+        <header>
+          <div>
+            <span>誕生後のスキル</span>
+            <strong>効果を見て、3つ目のスキルを選ぶ</strong>
+          </div>
+          <small>固有2枠 + 初期／継承1枠</small>
+        </header>
+        <div className="breeding-intrinsic-skills">
+          {intrinsicSkills.map((skill, index) => (
+            <SkillEffectCard skill={skill} badge={`固有${index + 1}`} key={skill.id} />
+          ))}
+        </div>
+        <div className="inheritance-heading">
+          <span>3つ目のスキル</span>
+          <small>カードを選ぶと誕生後の構成へ反映</small>
+        </div>
+        <div className="inheritance-options">
+          {thirdSlotOptions.map((option) => {
+            const skill = GAME_DATA.skills.find((entry) => entry.id === option.skillId);
+            return skill ? (
+              <SkillEffectCard
+                skill={skill}
+                badge={option.badge}
+                selected={selectedSkillId === option.selectionId}
+                onSelect={() => onSelectSkill(option.selectionId)}
+                key={`${option.selectionId || 'default'}-${option.skillId}`}
+              />
+            ) : null;
+          })}
+        </div>
+      </section>
+    </section>
+  );
+}
+
 function BreedingConfirmationDialog({
   child,
   parents,
@@ -1024,6 +1256,10 @@ function BreedingRevealDialog({ child, onComplete }: { child?: MonsterInstance; 
   }, [childId]);
   if (!child) return null;
   const definition = definitionFor(GAME_DATA, child);
+  const skills = skillIdsFor(GAME_DATA, child).flatMap((skillId) => {
+    const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
+    return skill ? [skill] : [];
+  });
   return (
     <dialog
       ref={dialogRef}
@@ -1038,13 +1274,35 @@ function BreedingRevealDialog({ child, onComplete }: { child?: MonsterInstance; 
           <i />
           <i />
         </div>
-        <span className="section-index">LINEAGE REWRITTEN</span>
-        <div className="newborn-sigil">
-          <MonsterSigil data={GAME_DATA} definition={definition} colorStars={child.colorStars} size="large" />
+        <header className="newborn-identity">
+          <div className="newborn-sigil">
+            <MonsterSigil data={GAME_DATA} definition={definition} colorStars={child.colorStars} size="large" />
+          </div>
+          <div>
+            <span className="section-index">LINEAGE REWRITTEN</span>
+            <p>新しい血統が誕生しました</p>
+            <h2>{definition.name}</h2>
+            <strong>{starText(definition.whiteStars, child.colorStars)} · Lv.1</strong>
+          </div>
+        </header>
+        <div className="breeding-reveal-dossier">
+          <BreedingStatLedger monster={child} />
+          <section className="breeding-final-skills">
+            <header>
+              <span>誕生後のスキル構成</span>
+              <strong>数値と追加効果を確認</strong>
+            </header>
+            <div>
+              {skills.map((skill, index) => (
+                <SkillEffectCard
+                  skill={skill}
+                  badge={index === 2 && child.inheritedSkillId ? '継承' : index === 2 ? '初期' : `固有${index + 1}`}
+                  key={`${skill.id}-${index}`}
+                />
+              ))}
+            </div>
+          </section>
         </div>
-        <p>新しい血統が誕生しました</p>
-        <h2>{definition.name}</h2>
-        <strong>{starText(definition.whiteStars, child.colorStars)} · Lv.1</strong>
         <button
           type="button"
           className="primary-button"
@@ -1083,7 +1341,6 @@ function BreedingView({
   const [candidateId, setCandidateId] = useState('');
   const [skillId, setSkillId] = useState('');
   const [recipeArchiveOpen, setRecipeArchiveOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [revealedChild, setRevealedChild] = useState<MonsterInstance>();
   useEffect(() => {
@@ -1210,26 +1467,12 @@ function BreedingView({
                   <small>選んだ2体の実効星が、次の位階へ届いています</small>
                 </div>
               )}
-              <div className="breeding-preview" style={monsterStyle(GAME_DATA, previewDefinition)}>
-                <header>
-                  <span>配合プレビュー</span>
-                  <strong>{previewDefinition.name}</strong>
-                  <b>Lv.1</b>
-                </header>
-                <StatBreakdownGrid monster={previewChild} compact />
-                <button type="button" className="card-detail-button" onClick={() => setPreviewOpen(true)}>
-                  能力を詳しく見る
-                </button>
-              </div>
-              <label htmlFor="inherit-skill">継承スキル（1つ）</label>
-              <select id="inherit-skill" value={skillId} onChange={(event) => setSkillId(event.target.value)}>
-                <option value="">継承しない</option>
-                {skillChoices.map((id) => (
-                  <option key={id} value={id}>
-                    {GAME_DATA.skills.find((skill) => skill.id === id)?.name ?? id}
-                  </option>
-                ))}
-              </select>
+              <BreedingOutcome
+                child={previewChild}
+                skillChoices={skillChoices}
+                selectedSkillId={skillId}
+                onSelectSkill={setSkillId}
+              />
               <button type="button" className="primary-button" onClick={() => setConfirmationOpen(true)}>
                 配合内容を確認 <span>両親を消費</span>
               </button>
@@ -1241,12 +1484,6 @@ function BreedingView({
         open={recipeArchiveOpen}
         discoveredMonsterIds={discoveredMonsterIds}
         onClose={() => setRecipeArchiveOpen(false)}
-      />
-      <MonsterProspectDialog
-        monster={previewOpen ? previewChild : undefined}
-        eyebrow="BREEDING RESULT / LEVEL 1"
-        summary="現在選んでいる親・配合先・継承スキルを反映した、誕生直後の能力です。"
-        onClose={() => setPreviewOpen(false)}
       />
       <BreedingConfirmationDialog
         child={previewChild}
@@ -1441,7 +1678,7 @@ function TacticsView({
                 </div>
                 <p className="gambit-skill-note">
                   <b>{rule.action.skillId === 'normal-attack' ? 'MP 0' : `MP ${selectedSkill?.mpCost ?? 0}`}</b>
-                  {selectedSkill?.description ?? '攻撃力を使って敵1体へ物理ダメージ。MPがなくても実行します。'}
+                  {skillSummaryText(selectedSkill)}
                 </p>
               </div>
             </article>
