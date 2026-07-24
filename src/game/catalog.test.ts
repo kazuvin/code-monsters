@@ -25,6 +25,21 @@ describe('DQM run game data', () => {
     }
   });
 
+  it('treats every white-star step as a distinct species instead of a renamed stat tier', () => {
+    for (const archetype of GAME_DATA.archetypes) {
+      const species = GAME_DATA.monsters.filter((monster) => monster.archetypeId === archetype.id);
+      const skillLoadouts = species.map((monster) =>
+        [...monster.intrinsicSkillIds, monster.defaultSkillId].sort().join('|'),
+      );
+
+      expect(species, archetype.id).toHaveLength(5);
+      expect(new Set(species.map((monster) => monster.glyph)).size, `${archetype.id} silhouette`).toBe(5);
+      expect(new Set(species.map((monster) => monster.appearance.attire)).size, `${archetype.id} attire`).toBe(5);
+      expect(new Set(skillLoadouts).size, `${archetype.id} skill loadout`).toBe(5);
+      expect(new Set(species.map((monster) => monster.traitId)).size, `${archetype.id} trait`).toBe(5);
+    }
+  });
+
   it('passes referential and tuning validation', () => {
     expect(validateGameData(GAME_DATA)).toEqual([]);
   });

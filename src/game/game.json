@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rules": {
-    "contentVersion": "casual-prototype-1",
+    "contentVersion": "casual-prototype-2",
     "maxCycles": 12,
     "maxLosses": 5,
     "rosterLimit": 7,
@@ -58,109 +58,442 @@
       "id": "light-dragon",
       "lineageId": "dragon",
       "attributeId": "light",
-      "names": ["ハクリュウコ", "曙光ドレイク", "天環ワイバーン", "白耀竜レグナ", "光冠竜アステリオン"],
-      "glyph": "◇",
       "baseStats": { "maxHp": 92, "maxMp": 28, "attack": 24, "defense": 27, "speed": 19, "wisdom": 16, "crit": 6 },
       "growthPerLevel": { "maxHp": 8, "maxMp": 2, "attack": 3, "defense": 3, "speed": 2, "wisdom": 2, "crit": 0 },
-      "intrinsicSkillIds": ["halo-bite", "ward-roar"],
-      "defaultSkillId": "tail-swipe",
-      "traitId": "sunscale"
+      "forms": [
+        {
+          "name": "ハクリュウコ",
+          "glyph": "◌",
+          "appearance": { "body": "🦎", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["halo-bite", "scale-wall"],
+          "defaultSkillId": "tail-swipe",
+          "traitId": "whelp-instinct"
+        },
+        {
+          "name": "曙光ドレイク",
+          "glyph": "◇",
+          "appearance": { "body": "🐲", "attire": "☀", "form": "scout" },
+          "intrinsicSkillIds": ["halo-bite", "guard-break"],
+          "defaultSkillId": "ward-roar",
+          "traitId": "sunscale"
+        },
+        {
+          "name": "天環ワイバーン",
+          "glyph": "✧",
+          "appearance": { "body": "🐉", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["ward-roar", "wing-gale"],
+          "defaultSkillId": "guard-break",
+          "traitId": "sky-hunter"
+        },
+        {
+          "name": "白耀竜レグナ",
+          "glyph": "⬡",
+          "appearance": { "body": "🐲", "attire": "▣", "form": "armored" },
+          "intrinsicSkillIds": ["wing-gale", "aegis-dust"],
+          "defaultSkillId": "halo-bite",
+          "traitId": "ancient-carapace"
+        },
+        {
+          "name": "光冠竜アステリオン",
+          "glyph": "♔",
+          "appearance": { "body": "🐉", "attire": "♛", "form": "sovereign" },
+          "intrinsicSkillIds": ["solar-breath", "ward-roar"],
+          "defaultSkillId": "wing-gale",
+          "traitId": "dragon-sovereignty"
+        }
+      ]
     },
     {
       "id": "dark-dragon",
       "lineageId": "dragon",
       "attributeId": "dark",
-      "names": ["ヨイヤモリ", "黒月ドレイク", "蝕影ワイバーン", "冥鱗竜ノクス", "深淵竜ヴェスパー"],
-      "glyph": "◆",
       "baseStats": { "maxHp": 84, "maxMp": 30, "attack": 28, "defense": 21, "speed": 24, "wisdom": 17, "crit": 10 },
       "growthPerLevel": { "maxHp": 7, "maxMp": 2, "attack": 3, "defense": 2, "speed": 3, "wisdom": 2, "crit": 1 },
-      "intrinsicSkillIds": ["night-claw", "blood-focus"],
-      "defaultSkillId": "tail-swipe",
-      "traitId": "eclipse-fang"
+      "forms": [
+        {
+          "name": "ヨイヤモリ",
+          "glyph": "•",
+          "appearance": { "body": "🦎", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["night-claw", "blood-focus"],
+          "defaultSkillId": "tail-swipe",
+          "traitId": "whelp-instinct"
+        },
+        {
+          "name": "黒月ドレイク",
+          "glyph": "◆",
+          "appearance": { "body": "🐉", "attire": "☾", "form": "scout" },
+          "intrinsicSkillIds": ["night-claw", "guard-break"],
+          "defaultSkillId": "blood-focus",
+          "traitId": "eclipse-fang"
+        },
+        {
+          "name": "蝕影ワイバーン",
+          "glyph": "✦",
+          "appearance": { "body": "🐲", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["blood-focus", "wing-gale"],
+          "defaultSkillId": "guard-break",
+          "traitId": "sky-hunter"
+        },
+        {
+          "name": "冥鱗竜ノクス",
+          "glyph": "⬢",
+          "appearance": { "body": "🐉", "attire": "▣", "form": "armored" },
+          "intrinsicSkillIds": ["night-claw", "wing-gale"],
+          "defaultSkillId": "silence-mark",
+          "traitId": "ancient-carapace"
+        },
+        {
+          "name": "深淵竜ヴェスパー",
+          "glyph": "♚",
+          "appearance": { "body": "🐉", "attire": "♚", "form": "sovereign" },
+          "intrinsicSkillIds": ["eclipse-dive", "blood-focus"],
+          "defaultSkillId": "wing-gale",
+          "traitId": "dragon-sovereignty"
+        }
+      ]
     },
     {
       "id": "fire-dragon",
       "lineageId": "dragon",
       "attributeId": "fire",
-      "names": ["ヒノコトカゲ", "熾火ドレイク", "炎脈ワイバーン", "爆鱗竜イグナ", "劫火竜ヴォルカ"],
-      "glyph": "△",
       "baseStats": { "maxHp": 88, "maxMp": 27, "attack": 29, "defense": 23, "speed": 22, "wisdom": 15, "crit": 8 },
       "growthPerLevel": { "maxHp": 8, "maxMp": 2, "attack": 4, "defense": 2, "speed": 2, "wisdom": 1, "crit": 0 },
-      "intrinsicSkillIds": ["ember-drive", "scale-wall"],
-      "defaultSkillId": "tail-swipe",
-      "traitId": "furnace-heart"
+      "forms": [
+        {
+          "name": "ヒノコトカゲ",
+          "glyph": "△",
+          "appearance": { "body": "🦎", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["ember-drive", "scale-wall"],
+          "defaultSkillId": "tail-swipe",
+          "traitId": "whelp-instinct"
+        },
+        {
+          "name": "熾火ドレイク",
+          "glyph": "▲",
+          "appearance": { "body": "🐲", "attire": "✹", "form": "scout" },
+          "intrinsicSkillIds": ["ember-drive", "guard-break"],
+          "defaultSkillId": "scale-wall",
+          "traitId": "furnace-heart"
+        },
+        {
+          "name": "炎脈ワイバーン",
+          "glyph": "✺",
+          "appearance": { "body": "🐉", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["scale-wall", "wing-gale"],
+          "defaultSkillId": "ember-drive",
+          "traitId": "sky-hunter"
+        },
+        {
+          "name": "爆鱗竜イグナ",
+          "glyph": "⬟",
+          "appearance": { "body": "🐲", "attire": "▣", "form": "armored" },
+          "intrinsicSkillIds": ["ember-drive", "wing-gale"],
+          "defaultSkillId": "battle-chant",
+          "traitId": "ancient-carapace"
+        },
+        {
+          "name": "劫火竜ヴォルカ",
+          "glyph": "♛",
+          "appearance": { "body": "🐉", "attire": "♛", "form": "sovereign" },
+          "intrinsicSkillIds": ["volcanic-roar", "ember-drive"],
+          "defaultSkillId": "wing-gale",
+          "traitId": "dragon-sovereignty"
+        }
+      ]
     },
     {
       "id": "light-demon",
       "lineageId": "demon",
       "attributeId": "light",
-      "names": ["ランプインプ", "聖灯グレムリン", "白翼アークデーモン", "戒光魔ラディウス", "審判魔セフィラ"],
-      "glyph": "✦",
       "baseStats": { "maxHp": 72, "maxMp": 44, "attack": 16, "defense": 18, "speed": 23, "wisdom": 30, "crit": 5 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 2, "wisdom": 4, "crit": 0 },
-      "intrinsicSkillIds": ["lumen-bolt", "mend"],
-      "defaultSkillId": "arc-shot",
-      "traitId": "merciful-contract"
+      "forms": [
+        {
+          "name": "ランプインプ",
+          "glyph": "·",
+          "appearance": { "body": "🧞", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["lumen-bolt", "mend"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "impish-opening"
+        },
+        {
+          "name": "聖灯グレムリン",
+          "glyph": "✦",
+          "appearance": { "body": "👼", "attire": "☀", "form": "scout" },
+          "intrinsicSkillIds": ["lumen-bolt", "mischief-bolt"],
+          "defaultSkillId": "mend",
+          "traitId": "merciful-contract"
+        },
+        {
+          "name": "白翼アークデーモン",
+          "glyph": "♢",
+          "appearance": { "body": "🧞", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["mend", "pact-flow"],
+          "defaultSkillId": "mischief-bolt",
+          "traitId": "winged-covenant"
+        },
+        {
+          "name": "戒光魔ラディウス",
+          "glyph": "⛨",
+          "appearance": { "body": "👹", "attire": "♜", "form": "armored" },
+          "intrinsicSkillIds": ["lumen-bolt", "pact-flow"],
+          "defaultSkillId": "aegis-dust",
+          "traitId": "archfiend-pressure"
+        },
+        {
+          "name": "審判魔セフィラ",
+          "glyph": "♕",
+          "appearance": { "body": "😇", "attire": "♛", "form": "sovereign" },
+          "intrinsicSkillIds": ["seraphic-verdict", "mend"],
+          "defaultSkillId": "pact-flow",
+          "traitId": "demon-sovereignty"
+        }
+      ]
     },
     {
       "id": "dark-demon",
       "lineageId": "demon",
       "attributeId": "dark",
-      "names": ["スミインプ", "夜帳グレムリン", "影翼アークデーモン", "禁呪魔アビス", "宵王魔メフィスト"],
-      "glyph": "✧",
       "baseStats": { "maxHp": 75, "maxMp": 42, "attack": 17, "defense": 17, "speed": 25, "wisdom": 31, "crit": 7 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 3, "wisdom": 4, "crit": 0 },
-      "intrinsicSkillIds": ["void-needle", "silence-mark"],
-      "defaultSkillId": "arc-shot",
-      "traitId": "black-covenant"
+      "forms": [
+        {
+          "name": "スミインプ",
+          "glyph": "◦",
+          "appearance": { "body": "👹", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["void-needle", "silence-mark"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "impish-opening"
+        },
+        {
+          "name": "夜帳グレムリン",
+          "glyph": "✧",
+          "appearance": { "body": "👿", "attire": "☾", "form": "scout" },
+          "intrinsicSkillIds": ["void-needle", "mischief-bolt"],
+          "defaultSkillId": "silence-mark",
+          "traitId": "black-covenant"
+        },
+        {
+          "name": "影翼アークデーモン",
+          "glyph": "♠",
+          "appearance": { "body": "🧞", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["silence-mark", "pact-flow"],
+          "defaultSkillId": "mischief-bolt",
+          "traitId": "winged-covenant"
+        },
+        {
+          "name": "禁呪魔アビス",
+          "glyph": "☗",
+          "appearance": { "body": "👹", "attire": "♜", "form": "armored" },
+          "intrinsicSkillIds": ["void-needle", "pact-flow"],
+          "defaultSkillId": "dusk-pulse",
+          "traitId": "archfiend-pressure"
+        },
+        {
+          "name": "宵王魔メフィスト",
+          "glyph": "♜",
+          "appearance": { "body": "😈", "attire": "♚", "form": "sovereign" },
+          "intrinsicSkillIds": ["nightmare-court", "silence-mark"],
+          "defaultSkillId": "pact-flow",
+          "traitId": "demon-sovereignty"
+        }
+      ]
     },
     {
       "id": "fire-demon",
       "lineageId": "demon",
       "attributeId": "fire",
-      "names": ["アカインプ", "火遊グレムリン", "炎翼アークデーモン", "灼契魔フレア", "紅蓮魔ベリアル"],
-      "glyph": "✷",
       "baseStats": { "maxHp": 78, "maxMp": 38, "attack": 22, "defense": 18, "speed": 21, "wisdom": 28, "crit": 7 },
       "growthPerLevel": { "maxHp": 7, "maxMp": 3, "attack": 2, "defense": 2, "speed": 2, "wisdom": 4, "crit": 0 },
-      "intrinsicSkillIds": ["fury-orb", "battle-chant"],
-      "defaultSkillId": "arc-shot",
-      "traitId": "riot-pact"
+      "forms": [
+        {
+          "name": "アカインプ",
+          "glyph": "×",
+          "appearance": { "body": "👾", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["fury-orb", "battle-chant"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "impish-opening"
+        },
+        {
+          "name": "火遊グレムリン",
+          "glyph": "✷",
+          "appearance": { "body": "👺", "attire": "✹", "form": "scout" },
+          "intrinsicSkillIds": ["fury-orb", "mischief-bolt"],
+          "defaultSkillId": "battle-chant",
+          "traitId": "riot-pact"
+        },
+        {
+          "name": "炎翼アークデーモン",
+          "glyph": "♣",
+          "appearance": { "body": "🧞", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["battle-chant", "pact-flow"],
+          "defaultSkillId": "mischief-bolt",
+          "traitId": "winged-covenant"
+        },
+        {
+          "name": "灼契魔フレア",
+          "glyph": "☖",
+          "appearance": { "body": "👹", "attire": "♜", "form": "armored" },
+          "intrinsicSkillIds": ["fury-orb", "pact-flow"],
+          "defaultSkillId": "quick-flare",
+          "traitId": "archfiend-pressure"
+        },
+        {
+          "name": "紅蓮魔ベリアル",
+          "glyph": "♝",
+          "appearance": { "body": "👿", "attire": "♛", "form": "sovereign" },
+          "intrinsicSkillIds": ["hellfire-rite", "battle-chant"],
+          "defaultSkillId": "pact-flow",
+          "traitId": "demon-sovereignty"
+        }
+      ]
     },
     {
       "id": "light-spirit",
       "lineageId": "spirit",
       "attributeId": "light",
-      "names": ["ヒカリノコ", "朝露ピクシー", "陽だまりシルフ", "光庭精ルーチェ", "星祈精エリュシア"],
-      "glyph": "○",
       "baseStats": { "maxHp": 74, "maxMp": 40, "attack": 15, "defense": 20, "speed": 27, "wisdom": 27, "crit": 5 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 1, "defense": 2, "speed": 3, "wisdom": 4, "crit": 0 },
-      "intrinsicSkillIds": ["gentle-ray", "aegis-dust"],
-      "defaultSkillId": "spirit-spark",
-      "traitId": "morning-dew"
+      "forms": [
+        {
+          "name": "ヒカリノコ",
+          "glyph": "○",
+          "appearance": { "body": "✦", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["gentle-ray", "aegis-dust"],
+          "defaultSkillId": "spirit-spark",
+          "traitId": "mote-awakening"
+        },
+        {
+          "name": "朝露ピクシー",
+          "glyph": "✧",
+          "appearance": { "body": "🧚", "attire": "☀", "form": "scout" },
+          "intrinsicSkillIds": ["gentle-ray", "mote-dart"],
+          "defaultSkillId": "aegis-dust",
+          "traitId": "morning-dew"
+        },
+        {
+          "name": "陽だまりシルフ",
+          "glyph": "❋",
+          "appearance": { "body": "🧚", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["aegis-dust", "veil-step"],
+          "defaultSkillId": "mote-dart",
+          "traitId": "wind-veil"
+        },
+        {
+          "name": "光庭精ルーチェ",
+          "glyph": "✿",
+          "appearance": { "body": "🧝", "attire": "❋", "form": "armored" },
+          "intrinsicSkillIds": ["gentle-ray", "veil-step"],
+          "defaultSkillId": "ward-roar",
+          "traitId": "elemental-domain"
+        },
+        {
+          "name": "星祈精エリュシア",
+          "glyph": "✺",
+          "appearance": { "body": "🧚", "attire": "♕", "form": "sovereign" },
+          "intrinsicSkillIds": ["starlight-bloom", "aegis-dust"],
+          "defaultSkillId": "veil-step",
+          "traitId": "world-song"
+        }
+      ]
     },
     {
       "id": "dark-spirit",
       "lineageId": "spirit",
       "attributeId": "dark",
-      "names": ["カゲノコ", "宵露ピクシー", "夜凪シルフ", "月庭精ウンブラ", "夢渡精レヴェリィ"],
-      "glyph": "●",
       "baseStats": { "maxHp": 70, "maxMp": 42, "attack": 16, "defense": 18, "speed": 29, "wisdom": 28, "crit": 6 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 4, "wisdom": 3, "crit": 0 },
-      "intrinsicSkillIds": ["dusk-pulse", "wither"],
-      "defaultSkillId": "spirit-spark",
-      "traitId": "moon-mist"
+      "forms": [
+        {
+          "name": "カゲノコ",
+          "glyph": "●",
+          "appearance": { "body": "•", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["dusk-pulse", "wither"],
+          "defaultSkillId": "spirit-spark",
+          "traitId": "mote-awakening"
+        },
+        {
+          "name": "宵露ピクシー",
+          "glyph": "☾",
+          "appearance": { "body": "👻", "attire": "☾", "form": "scout" },
+          "intrinsicSkillIds": ["dusk-pulse", "mote-dart"],
+          "defaultSkillId": "wither",
+          "traitId": "moon-mist"
+        },
+        {
+          "name": "夜凪シルフ",
+          "glyph": "❈",
+          "appearance": { "body": "🧚", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["wither", "veil-step"],
+          "defaultSkillId": "mote-dart",
+          "traitId": "wind-veil"
+        },
+        {
+          "name": "月庭精ウンブラ",
+          "glyph": "❉",
+          "appearance": { "body": "👻", "attire": "❋", "form": "armored" },
+          "intrinsicSkillIds": ["dusk-pulse", "veil-step"],
+          "defaultSkillId": "silence-mark",
+          "traitId": "elemental-domain"
+        },
+        {
+          "name": "夢渡精レヴェリィ",
+          "glyph": "☽",
+          "appearance": { "body": "🌚", "attire": "☽", "form": "sovereign" },
+          "intrinsicSkillIds": ["dream-tide", "wither"],
+          "defaultSkillId": "veil-step",
+          "traitId": "world-song"
+        }
+      ]
     },
     {
       "id": "fire-spirit",
       "lineageId": "spirit",
       "attributeId": "fire",
-      "names": ["ホムラノコ", "火花ピクシー", "焔風シルフ", "火庭精エンバー", "日輪精サラマンナ"],
-      "glyph": "◎",
       "baseStats": { "maxHp": 73, "maxMp": 37, "attack": 19, "defense": 18, "speed": 31, "wisdom": 24, "crit": 7 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 2, "defense": 2, "speed": 4, "wisdom": 3, "crit": 0 },
-      "intrinsicSkillIds": ["quick-flare", "haste-song"],
-      "defaultSkillId": "spirit-spark",
-      "traitId": "wildfire-dance"
+      "forms": [
+        {
+          "name": "ホムラノコ",
+          "glyph": "◎",
+          "appearance": { "body": "🔥", "attire": "·", "form": "whelp" },
+          "intrinsicSkillIds": ["quick-flare", "haste-song"],
+          "defaultSkillId": "spirit-spark",
+          "traitId": "mote-awakening"
+        },
+        {
+          "name": "火花ピクシー",
+          "glyph": "✦",
+          "appearance": { "body": "🧚", "attire": "✹", "form": "scout" },
+          "intrinsicSkillIds": ["quick-flare", "mote-dart"],
+          "defaultSkillId": "haste-song",
+          "traitId": "wildfire-dance"
+        },
+        {
+          "name": "焔風シルフ",
+          "glyph": "❊",
+          "appearance": { "body": "🧚", "attire": "⌁", "form": "winged" },
+          "intrinsicSkillIds": ["haste-song", "veil-step"],
+          "defaultSkillId": "mote-dart",
+          "traitId": "wind-veil"
+        },
+        {
+          "name": "火庭精エンバー",
+          "glyph": "✹",
+          "appearance": { "body": "🔥", "attire": "❋", "form": "armored" },
+          "intrinsicSkillIds": ["quick-flare", "veil-step"],
+          "defaultSkillId": "battle-chant",
+          "traitId": "elemental-domain"
+        },
+        {
+          "name": "日輪精サラマンナ",
+          "glyph": "☀",
+          "appearance": { "body": "🌞", "attire": "☀", "form": "sovereign" },
+          "intrinsicSkillIds": ["sunwheel-dance", "haste-song"],
+          "defaultSkillId": "veil-step",
+          "traitId": "world-song"
+        }
+      ]
     }
   ],
   "skills": [
@@ -353,6 +686,195 @@
       "targetScope": "all-allies",
       "effects": [
         { "kind": "status", "statusId": "speed-up", "amount": 20, "durationSeconds": 9, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "guard-break",
+      "name": "ガードブレイク",
+      "description": "装甲の継ぎ目を砕き、守備力を下げる。",
+      "mpCost": 5,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 110, "target": "action-target", "canCrit": true },
+        {
+          "kind": "status",
+          "statusId": "defense-down",
+          "amount": 12,
+          "durationSeconds": 7,
+          "target": "action-target"
+        }
+      ]
+    },
+    {
+      "id": "wing-gale",
+      "name": "ウイングゲイル",
+      "description": "翼圧で敵全体を薙ぎ払う。",
+      "mpCost": 8,
+      "targetScope": "all-enemies",
+      "effects": [{ "kind": "damage", "scaling": "physical", "power": 75, "target": "all-enemies", "canCrit": true }]
+    },
+    {
+      "id": "solar-breath",
+      "name": "天陽のブレス",
+      "description": "敵全体を焼き、味方へ光の防壁を残す。",
+      "mpCost": 10,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 92, "target": "all-enemies", "canCrit": true },
+        { "kind": "shield", "maxHpPercent": 6, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "eclipse-dive",
+      "name": "蝕影急襲",
+      "description": "影から急襲し、敵の会心を封じる。",
+      "mpCost": 8,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 150, "target": "action-target", "canCrit": true },
+        {
+          "kind": "status",
+          "statusId": "crit-down",
+          "amount": 15,
+          "durationSeconds": 10,
+          "target": "action-target"
+        }
+      ]
+    },
+    {
+      "id": "volcanic-roar",
+      "name": "火山王の咆哮",
+      "description": "敵全体を灼きながら、自らの攻撃力を上げる。",
+      "mpCost": 10,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 88, "target": "all-enemies", "canCrit": true },
+        { "kind": "status", "statusId": "attack-up", "amount": 15, "durationSeconds": 9, "target": "self" }
+      ]
+    },
+    {
+      "id": "mischief-bolt",
+      "name": "トリックボルト",
+      "description": "軽い魔弾を当て、次の行動を早める。",
+      "mpCost": 4,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 90, "target": "action-target" },
+        { "kind": "atb", "amount": 18, "target": "self" }
+      ]
+    },
+    {
+      "id": "pact-flow",
+      "name": "契約循環",
+      "description": "契約の魔力を巡らせ、味方全体のMPを戻す。",
+      "mpCost": 6,
+      "targetScope": "all-allies",
+      "effects": [{ "kind": "mp", "amount": 4, "target": "all-allies" }]
+    },
+    {
+      "id": "seraphic-verdict",
+      "name": "熾天の裁定",
+      "description": "敵を裁く光が、同時に味方の傷を癒す。",
+      "mpCost": 10,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 155, "target": "action-target" },
+        { "kind": "heal", "power": 55, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "nightmare-court",
+      "name": "夢魔の宮廷",
+      "description": "悪夢で敵全体を包み、短く沈黙させる。",
+      "mpCost": 11,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 75, "target": "all-enemies" },
+        { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 2, "target": "all-enemies" }
+      ]
+    },
+    {
+      "id": "hellfire-rite",
+      "name": "獄炎儀式",
+      "description": "敵全体を焼き、味方全体の知恵を高める。",
+      "mpCost": 10,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 85, "target": "all-enemies" },
+        {
+          "kind": "status",
+          "statusId": "wisdom-up",
+          "amount": 12,
+          "durationSeconds": 8,
+          "target": "all-allies"
+        }
+      ]
+    },
+    {
+      "id": "mote-dart",
+      "name": "モートダート",
+      "description": "小さな精霊弾を放ち、身軽に次へつなぐ。",
+      "mpCost": 3,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 80, "target": "action-target" },
+        { "kind": "atb", "amount": 16, "target": "self" }
+      ]
+    },
+    {
+      "id": "veil-step",
+      "name": "ヴェイルステップ",
+      "description": "薄膜をまとい、守りながら加速する。",
+      "mpCost": 5,
+      "targetScope": "self",
+      "effects": [
+        { "kind": "shield", "maxHpPercent": 10, "target": "self" },
+        { "kind": "status", "statusId": "speed-up", "amount": 12, "durationSeconds": 8, "target": "self" }
+      ]
+    },
+    {
+      "id": "starlight-bloom",
+      "name": "星明かりの開花",
+      "description": "味方全体を癒し、短い再生を授ける。",
+      "mpCost": 10,
+      "targetScope": "all-allies",
+      "effects": [
+        { "kind": "heal", "power": 95, "target": "all-allies" },
+        {
+          "kind": "status",
+          "statusId": "regeneration",
+          "amount": 2,
+          "durationSeconds": 9,
+          "target": "all-allies"
+        }
+      ]
+    },
+    {
+      "id": "dream-tide",
+      "name": "夢渡りの潮",
+      "description": "敵全体を夢の潮へ沈め、素早さを奪う。",
+      "mpCost": 10,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 76, "target": "all-enemies" },
+        {
+          "kind": "status",
+          "statusId": "speed-down",
+          "amount": 12,
+          "durationSeconds": 8,
+          "target": "all-enemies"
+        }
+      ]
+    },
+    {
+      "id": "sunwheel-dance",
+      "name": "日輪の舞",
+      "description": "火輪をぶつけ、味方全体の行動を早める。",
+      "mpCost": 9,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 115, "target": "action-target" },
+        { "kind": "atb", "amount": 12, "target": "all-allies" }
       ]
     }
   ],
@@ -610,6 +1132,451 @@
         {
           "description": "味方全体へ行動ゲージを配る。",
           "battleStartEffects": [{ "kind": "atb", "amount": 15, "target": "all-allies" }]
+        }
+      ]
+    },
+    {
+      "id": "whelp-instinct",
+      "name": "幼竜の勘",
+      "stages": [
+        {
+          "description": "開戦時、行動ゲージを少し得る。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 12, "target": "self" }]
+        },
+        {
+          "description": "行動ゲージを得て、短時間攻撃力が上がる。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 18, "target": "self" },
+            { "kind": "status", "statusId": "attack-up", "amount": 8, "durationSeconds": 10, "target": "self" }
+          ]
+        },
+        {
+          "description": "先駆けの気配が味方全体へ伝わる。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 8, "target": "all-allies" }]
+        }
+      ]
+    },
+    {
+      "id": "sky-hunter",
+      "name": "天狩り",
+      "stages": [
+        {
+          "description": "開戦時、自分の素早さが上がる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "素早さに加え、行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "翼風が味方全体の素早さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ancient-carapace",
+      "name": "古竜装甲",
+      "stages": [
+        {
+          "description": "開戦時、厚い盾を得る。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 12, "target": "self" }]
+        },
+        {
+          "description": "盾に加え、守備力が上がる。",
+          "battleStartEffects": [
+            { "kind": "shield", "maxHpPercent": 14, "target": "self" },
+            { "kind": "status", "statusId": "defense-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "古い鱗が味方全体を覆う。",
+          "battleStartEffects": [
+            { "kind": "shield", "maxHpPercent": 8, "target": "all-allies" },
+            {
+              "kind": "status",
+              "statusId": "defense-up",
+              "amount": 8,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dragon-sovereignty",
+      "name": "竜王威",
+      "stages": [
+        {
+          "description": "開戦時、味方全体の攻撃力が上がる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-up",
+              "amount": 10,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        },
+        {
+          "description": "味方全体の攻撃力と守備力が上がる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-up",
+              "amount": 10,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            },
+            {
+              "kind": "status",
+              "statusId": "defense-up",
+              "amount": 10,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        },
+        {
+          "description": "竜王の威光が味方全体を強く鼓舞する。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-up",
+              "amount": 12,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            },
+            {
+              "kind": "status",
+              "statusId": "defense-up",
+              "amount": 12,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "impish-opening",
+      "name": "小悪魔の先手",
+      "stages": [
+        {
+          "description": "開戦時、行動ゲージを少し得る。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 12, "target": "self" }]
+        },
+        {
+          "description": "行動ゲージとMPを得る。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 18, "target": "self" },
+            { "kind": "mp", "amount": 3, "target": "self" }
+          ]
+        },
+        {
+          "description": "いたずらの合図で味方全体が先手を取る。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 8, "target": "all-allies" }]
+        }
+      ]
+    },
+    {
+      "id": "winged-covenant",
+      "name": "翼契",
+      "stages": [
+        {
+          "description": "開戦時、自分の知恵が上がる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "知恵と素早さが上がる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "翼の契約が味方全体の知恵と素早さを上げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-up",
+              "amount": 8,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            },
+            {
+              "kind": "status",
+              "statusId": "speed-up",
+              "amount": 8,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "archfiend-pressure",
+      "name": "大魔圧",
+      "stages": [
+        {
+          "description": "開戦時、敵全体の知恵を下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            }
+          ]
+        },
+        {
+          "description": "敵全体の知恵と攻撃力を下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            }
+          ]
+        },
+        {
+          "description": "敵全体を威圧し、短く沈黙させる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 2, "target": "all-enemies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "demon-sovereignty",
+      "name": "魔王勅",
+      "stages": [
+        {
+          "description": "開戦時、味方全体の知恵が上がる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-up",
+              "amount": 10,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        },
+        {
+          "description": "味方全体の攻撃力と知恵が上がる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-up",
+              "amount": 10,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            },
+            {
+              "kind": "status",
+              "statusId": "wisdom-up",
+              "amount": 10,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        },
+        {
+          "description": "味方を鼓舞し、敵全体の会心率を下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-up",
+              "amount": 12,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            },
+            {
+              "kind": "status",
+              "statusId": "wisdom-up",
+              "amount": 12,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            },
+            {
+              "kind": "status",
+              "statusId": "crit-down",
+              "amount": 8,
+              "durationSeconds": 60,
+              "target": "all-enemies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mote-awakening",
+      "name": "幼精の目覚め",
+      "stages": [
+        {
+          "description": "開戦時、行動ゲージを少し得る。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 14, "target": "self" }]
+        },
+        {
+          "description": "行動ゲージを得て、素早さが上がる。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 18, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 8, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "目覚めの光が味方全体を早める。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 9, "target": "all-allies" }]
+        }
+      ]
+    },
+    {
+      "id": "wind-veil",
+      "name": "風衣",
+      "stages": [
+        {
+          "description": "開戦時、盾と素早さを得る。",
+          "battleStartEffects": [
+            { "kind": "shield", "maxHpPercent": 8, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 8, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "風衣が厚くなり、行動ゲージも得る。",
+          "battleStartEffects": [
+            { "kind": "shield", "maxHpPercent": 10, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 10, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 10, "target": "self" }
+          ]
+        },
+        {
+          "description": "風衣が味方全体を包む。",
+          "battleStartEffects": [
+            { "kind": "shield", "maxHpPercent": 6, "target": "all-allies" },
+            {
+              "kind": "status",
+              "statusId": "speed-up",
+              "amount": 8,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "elemental-domain",
+      "name": "精霊圏",
+      "stages": [
+        {
+          "description": "開戦時、味方全体に短い再生を授ける。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "regeneration",
+              "amount": 2,
+              "durationSeconds": 9,
+              "target": "all-allies"
+            }
+          ]
+        },
+        {
+          "description": "再生に加え、味方全体へ盾を張る。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "regeneration",
+              "amount": 3,
+              "durationSeconds": 9,
+              "target": "all-allies"
+            },
+            { "kind": "shield", "maxHpPercent": 5, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "精霊圏が味方全体の知恵も高める。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "regeneration",
+              "amount": 3,
+              "durationSeconds": 12,
+              "target": "all-allies"
+            },
+            {
+              "kind": "status",
+              "statusId": "wisdom-up",
+              "amount": 8,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "world-song",
+      "name": "世界律",
+      "stages": [
+        {
+          "description": "開戦時、味方全体の行動ゲージを得る。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 10, "target": "all-allies" }]
+        },
+        {
+          "description": "行動ゲージに加え、味方全体へ再生を授ける。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 14, "target": "all-allies" },
+            {
+              "kind": "status",
+              "statusId": "regeneration",
+              "amount": 2,
+              "durationSeconds": 9,
+              "target": "all-allies"
+            }
+          ]
+        },
+        {
+          "description": "世界律が味方全体を大きく加速させる。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 18, "target": "all-allies" },
+            {
+              "kind": "status",
+              "statusId": "speed-up",
+              "amount": 10,
+              "durationSeconds": 60,
+              "target": "all-allies"
+            }
+          ]
         }
       ]
     }

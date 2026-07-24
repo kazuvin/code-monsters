@@ -387,7 +387,9 @@ button.definition-card:active,
   flex: 0 0 auto;
   place-items: center;
   border: 2px solid var(--monster-color);
-  background: linear-gradient(135deg, transparent 47%, rgba(255, 255, 255, 0.08) 48% 52%, transparent 53%), var(--void);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--monster-color) 19%, transparent) 0 31%, transparent 32%),
+    linear-gradient(135deg, transparent 47%, rgba(255, 255, 255, 0.08) 48% 52%, transparent 53%), var(--void);
   box-shadow: inset 0 0 0 3px var(--deck);
 }
 
@@ -416,6 +418,99 @@ button.definition-card:active,
   font-size: 31px;
   filter: saturate(0.9) contrast(1.05);
   image-rendering: pixelated;
+  transform-origin: 50% 68%;
+}
+
+.monster-sigil.is-form-whelp > span {
+  transform: translateY(3px) scale(0.78);
+}
+
+.monster-sigil.is-form-scout > span {
+  transform: translateY(1px) scale(0.9);
+}
+
+.monster-sigil.is-form-winged {
+  background:
+    linear-gradient(
+      155deg,
+      transparent 28%,
+      color-mix(in srgb, var(--monster-color) 18%, transparent) 29% 34%,
+      transparent 35%
+    ),
+    linear-gradient(
+      25deg,
+      transparent 62%,
+      color-mix(in srgb, var(--monster-color) 14%, transparent) 63% 68%,
+      transparent 69%
+    ),
+    var(--void);
+}
+
+.monster-sigil.is-form-winged > span {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.monster-sigil.is-form-armored {
+  box-shadow:
+    inset 0 0 0 3px var(--deck),
+    inset 0 0 0 5px color-mix(in srgb, var(--monster-color) 45%, transparent);
+}
+
+.monster-sigil.is-form-armored > span {
+  transform: scale(1.03);
+}
+
+.monster-sigil.is-form-sovereign {
+  border-color: var(--monster-accent);
+  background:
+    conic-gradient(
+      from 45deg,
+      color-mix(in srgb, var(--monster-color) 22%, transparent),
+      transparent 14% 36%,
+      color-mix(in srgb, var(--monster-color) 18%, transparent) 38%,
+      transparent 52% 76%,
+      color-mix(in srgb, var(--monster-color) 22%, transparent) 78%,
+      transparent
+    ),
+    var(--void);
+  box-shadow:
+    inset 0 0 0 3px var(--deck),
+    0 0 0 1px var(--monster-color);
+}
+
+.monster-sigil.is-form-sovereign > span {
+  transform: translateY(1px) scale(1.08);
+}
+
+.monster-sigil > em {
+  position: absolute;
+  z-index: 4;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  border: 1px solid var(--monster-color);
+  background: var(--void-deep);
+  color: var(--monster-accent);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1;
+  text-shadow: 1px 1px var(--void);
+}
+
+.monster-sigil > s {
+  position: absolute;
+  z-index: 3;
+  bottom: 1px;
+  left: 3px;
+  color: var(--monster-accent);
+  font-size: 8px;
+  line-height: 1;
+  text-decoration: none;
+  text-shadow: 1px 1px var(--void);
 }
 
 .monster-sigil > b {
@@ -443,6 +538,12 @@ button.definition-card:active,
   font-style: normal;
 }
 
+.monster-sigil.is-obscured > span {
+  opacity: 0.56;
+  filter: grayscale(1) brightness(0.48);
+  transform: scale(0.9);
+}
+
 .monster-sigil.is-small {
   width: 42px;
   height: 42px;
@@ -452,6 +553,16 @@ button.definition-card:active,
   font-size: 23px;
 }
 
+.monster-sigil.is-small > em {
+  width: 13px;
+  height: 13px;
+  font-size: 7px;
+}
+
+.monster-sigil.is-small > s {
+  font-size: 6px;
+}
+
 .monster-sigil.is-large {
   width: 68px;
   height: 68px;
@@ -459,6 +570,16 @@ button.definition-card:active,
 
 .monster-sigil.is-large > span {
   font-size: 39px;
+}
+
+.monster-sigil.is-large > em {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+}
+
+.monster-sigil.is-large > s {
+  font-size: 10px;
 }
 
 .monster-card-copy {
@@ -2410,6 +2531,21 @@ button.definition-card:active,
 
 .battle-sprite .monster-sigil > span {
   font-size: 48px;
+}
+
+.battle-sprite .monster-sigil > em {
+  top: 5px;
+  right: 2px;
+  width: auto;
+  height: auto;
+  border: 0;
+  background: transparent;
+  font-size: 15px;
+  filter: drop-shadow(1px 1px 0 var(--void-deep));
+}
+
+.battle-sprite .monster-sigil > s {
+  display: none;
 }
 
 .battle-monster-copy {

@@ -101,17 +101,36 @@ export type AttributeDefinition = {
   accent: string;
 };
 
+export type MonsterForm = 'whelp' | 'scout' | 'winged' | 'armored' | 'sovereign';
+
+export type MonsterAppearance = {
+  body: string;
+  attire: string;
+  form: MonsterForm;
+};
+
+export type MonsterFormDefinition = {
+  name: string;
+  glyph: string;
+  appearance: MonsterAppearance;
+  intrinsicSkillIds: [string, string];
+  defaultSkillId: string;
+  traitId: string;
+};
+
 export type MonsterArchetypeDefinition = {
   id: string;
   lineageId: LineageId;
   attributeId: AttributeId;
-  names: [string, string, string, string, string];
-  glyph: string;
   baseStats: StatBlock;
   growthPerLevel: StatBlock;
-  intrinsicSkillIds: [string, string];
-  defaultSkillId: string;
-  traitId: string;
+  forms: [
+    MonsterFormDefinition,
+    MonsterFormDefinition,
+    MonsterFormDefinition,
+    MonsterFormDefinition,
+    MonsterFormDefinition,
+  ];
 };
 
 export type MonsterDefinition = {
@@ -122,6 +141,7 @@ export type MonsterDefinition = {
   name: string;
   whiteStars: WhiteStars;
   glyph: string;
+  appearance: MonsterAppearance;
   baseStats: StatBlock;
   growthPerLevel: StatBlock;
   intrinsicSkillIds: [string, string];

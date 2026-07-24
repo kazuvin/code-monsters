@@ -169,16 +169,10 @@ const SKILL_TARGET_LABELS: Record<SkillDefinition['targetScope'], string> = {
   'all-allies': '味方全体',
 };
 
-const MONSTER_EMOJI: Record<string, string> = {
-  'dragon-light': '🐲',
-  'dragon-dark': '🐉',
-  'dragon-fire': '🦎',
-  'demon-light': '🧞',
-  'demon-dark': '😈',
-  'demon-fire': '👹',
-  'spirit-light': '🧚',
-  'spirit-dark': '👻',
-  'spirit-fire': '🔥',
+const LINEAGE_SILHOUETTE: Record<LineageId, string> = {
+  dragon: '🐉',
+  demon: '😈',
+  spirit: '✦',
 };
 
 const emptyCondition = (kind: GambitCondition['kind']): GambitCondition => {
@@ -254,16 +248,25 @@ function MonsterSigil({
   definition,
   colorStars = 0,
   size = 'regular',
+  obscured = false,
 }: {
   data: GameData;
   definition: MonsterDefinition;
   colorStars?: ColorStars;
   size?: 'small' | 'regular' | 'large';
+  obscured?: boolean;
 }) {
-  const emoji = MONSTER_EMOJI[`${definition.lineageId}-${definition.attributeId}`] ?? '👾';
+  const body = obscured ? LINEAGE_SILHOUETTE[definition.lineageId] : definition.appearance.body;
   return (
-    <div className={`monster-sigil is-${size}`} style={monsterStyle(data, definition)} aria-hidden="true">
-      <span>{emoji}</span>
+    <div
+      className={`monster-sigil is-${size} is-form-${definition.appearance.form}${obscured ? ' is-obscured' : ''}`}
+      style={monsterStyle(data, definition)}
+      data-white-stars={definition.whiteStars}
+      aria-hidden="true"
+    >
+      <span>{body}</span>
+      {!obscured && <em>{definition.appearance.attire}</em>}
+      {!obscured && <s>{definition.glyph}</s>}
       <b>{data.lineages.find((lineage) => lineage.id === definition.lineageId)?.mark}</b>
       {colorStars > 0 && <i>{colorStars}</i>}
     </div>
@@ -1846,7 +1849,7 @@ function RecipeToken({
       data-recipe-slot={slot}
       aria-label={locked ? `${label}は未解放` : `${label}: ${definition.name}`}
     >
-      <MonsterSigil data={GAME_DATA} definition={definition} colorStars={colorStars} size="small" />
+      <MonsterSigil data={GAME_DATA} definition={definition} colorStars={colorStars} size="small" obscured={locked} />
       <span>
         <small>{label}</small>
         <strong>{locked ? '???' : definition.name}</strong>
@@ -1972,7 +1975,7 @@ function MonsterCatalogCard({
       aria-pressed={selected}
     >
       <span className="catalog-card-number">NO.{recordNumber}</span>
-      <MonsterSigil data={GAME_DATA} definition={definition} size="small" />
+      <MonsterSigil data={GAME_DATA} definition={definition} size="small" obscured={!unlocked} />
       <span className="catalog-card-copy">
         <strong>{unlocked ? unlocked.name : '未確認標本'}</strong>
         <small>{unlocked ? starText(unlocked.whiteStars) : '記録なし'}</small>
@@ -1993,7 +1996,7 @@ function MonsterCatalogDetail({ entry }: { entry: MonsterCatalogEntry }) {
         data-catalog-detail-state="locked"
       >
         <div className="catalog-locked-sigil" aria-hidden="true">
-          <MonsterSigil data={GAME_DATA} definition={definition} size="large" />
+          <MonsterSigil data={GAME_DATA} definition={definition} size="large" obscured />
           <span>?</span>
         </div>
         <span className="section-index">FIELD RECORD NO.{recordNumber}</span>

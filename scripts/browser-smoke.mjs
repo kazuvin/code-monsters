@@ -100,7 +100,7 @@ const assertReadableMonsterCards = async (page, label, cardSelector, nameSelecto
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
 await desktop.addInitScript(() => {
-  window.localStorage.setItem('code-monsters:recipe-discovery:v1', JSON.stringify(['fire-spirit-3']));
+  window.localStorage.setItem('code-monsters:recipe-discovery:v2', JSON.stringify(['fire-spirit-3']));
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();

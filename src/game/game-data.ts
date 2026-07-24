@@ -11,21 +11,22 @@ const scaleStats = (stats: StatBlock, multiplier: number): StatBlock =>
 const fileData = rawGameData as RawGameData;
 
 const monsters: MonsterDefinition[] = fileData.archetypes.flatMap((archetype) =>
-  archetype.names.map((name, index) => {
+  archetype.forms.map((form, index) => {
     const whiteStars = (index + 1) as WhiteStars;
     return {
       id: `${archetype.attributeId}-${archetype.lineageId}-${whiteStars}`,
       archetypeId: archetype.id,
       lineageId: archetype.lineageId,
       attributeId: archetype.attributeId,
-      name,
+      name: form.name,
       whiteStars,
-      glyph: archetype.glyph,
+      glyph: form.glyph,
+      appearance: form.appearance,
       baseStats: scaleStats(archetype.baseStats, fileData.rankStatMultipliers[index] ?? 1),
       growthPerLevel: scaleStats(archetype.growthPerLevel, 1 + index * 0.08),
-      intrinsicSkillIds: archetype.intrinsicSkillIds,
-      defaultSkillId: archetype.defaultSkillId,
-      traitId: archetype.traitId,
+      intrinsicSkillIds: form.intrinsicSkillIds,
+      defaultSkillId: form.defaultSkillId,
+      traitId: form.traitId,
       price: PRICES[index] ?? PRICES[0],
       sellPrice: SELL_PRICES[index] ?? SELL_PRICES[0],
     };
@@ -83,12 +84,30 @@ export function validateGameData(data: GameData): string[] {
   const traitIds = new Set(data.traits.map((entry) => entry.id));
   const monsterIds = new Set(data.monsters.map((entry) => entry.id));
   for (const archetype of data.archetypes) {
-    for (const skillId of [...archetype.intrinsicSkillIds, archetype.defaultSkillId]) {
-      if (!skillIds.has(skillId)) errors.push(`${archetype.id} references unknown skill "${skillId}"`);
+    if (archetype.forms.length !== 5) errors.push(`${archetype.id} needs exactly five white-star forms`);
+    const formLoadouts = new Set<string>();
+    const formGlyphs = new Set<string>();
+    const formAttires = new Set<string>();
+    const formTraits = new Set<string>();
+    for (const [index, form] of archetype.forms.entries()) {
+      const label = `${archetype.id} white-star ${index + 1}`;
+      const skillIdsForForm = [...form.intrinsicSkillIds, form.defaultSkillId];
+      if (new Set(skillIdsForForm).size !== 3) errors.push(`${label} must have three different skills`);
+      for (const skillId of skillIdsForForm) {
+        if (!skillIds.has(skillId)) errors.push(`${label} references unknown skill "${skillId}"`);
+      }
+      if (!traitIds.has(form.traitId)) {
+        errors.push(`${label} references unknown trait "${form.traitId}"`);
+      }
+      formLoadouts.add([...skillIdsForForm].sort().join('|'));
+      formGlyphs.add(form.glyph);
+      formAttires.add(form.appearance.attire);
+      formTraits.add(form.traitId);
     }
-    if (!traitIds.has(archetype.traitId)) {
-      errors.push(`${archetype.id} references unknown trait "${archetype.traitId}"`);
-    }
+    if (formLoadouts.size !== 5) errors.push(`${archetype.id} must change skill loadout at every white star`);
+    if (formGlyphs.size !== 5) errors.push(`${archetype.id} must change appearance at every white star`);
+    if (formAttires.size !== 5) errors.push(`${archetype.id} must change attire at every white star`);
+    if (formTraits.size !== 5) errors.push(`${archetype.id} must change trait at every white star`);
   }
   for (const recipe of data.specialRecipes) {
     for (const parentId of recipe.parentDefinitionIds) {
