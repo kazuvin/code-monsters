@@ -3044,7 +3044,7 @@ button.definition-card:active,
 
 .battle-report-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px;
   background: var(--line-soft);
 }
@@ -3052,24 +3052,25 @@ button.definition-card:active,
 .battle-report-metric {
   display: grid;
   min-width: 0;
+  min-height: 58px;
   grid-template-columns: 1fr auto;
   align-items: end;
-  gap: 1px 4px;
-  padding: 5px;
+  gap: 2px 4px;
+  padding: 7px;
   background: var(--deck);
 }
 
 .battle-report-metric span {
   grid-column: 1 / -1;
   color: var(--muted);
-  font-size: 5px;
+  font-size: 7px;
   letter-spacing: 0.08em;
 }
 
 .battle-report-metric b {
   overflow: hidden;
   color: var(--paper);
-  font-size: 15px;
+  font-size: 24px;
   line-height: 1;
   text-overflow: ellipsis;
 }
@@ -3077,7 +3078,7 @@ button.definition-card:active,
 .battle-report-metric small {
   color: var(--muted);
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 5px;
+  font-size: 7px;
 }
 
 .result-roster {
@@ -3168,7 +3169,8 @@ button.definition-card:active,
 
 .xp-gain {
   color: var(--mint);
-  font-size: 12px;
+  font-size: 17px;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -3182,12 +3184,12 @@ button.definition-card:active,
 }
 
 .result-level-line span {
-  font-size: 7px;
+  font-size: 10px;
 }
 
 .result-level-line b {
   color: var(--gold);
-  font-size: 6px;
+  font-size: 9px;
 }
 
 .result-progress {
@@ -3225,7 +3227,7 @@ button.definition-card:active,
 .result-growth span {
   overflow: hidden;
   color: var(--muted);
-  font-size: 5px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3416,6 +3418,10 @@ button.definition-card:active,
 }
 
 @media (min-width: 801px) {
+  .battle-report-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .draft-screen,
   .run-screen,
   .event-screen,
@@ -3772,8 +3778,8 @@ button.definition-card:active,
   }
 
   .result-monster-card {
-    min-height: 84px;
-    padding: 7px;
+    min-height: 96px;
+    padding: 8px;
   }
 
   .result-monster-identity {
@@ -3795,7 +3801,7 @@ button.definition-card:active,
   }
 
   .xp-gain {
-    font-size: 15px;
+    font-size: 20px;
   }
 
   .result-hero p {
@@ -3803,11 +3809,22 @@ button.definition-card:active,
   }
 
   .battle-report-metric {
-    padding: 7px;
+    min-height: 72px;
+    padding: 9px;
   }
 
   .battle-report-metric b {
-    font-size: 20px;
+    font-size: 32px;
+  }
+
+  .result-level-line span {
+    font-size: 12px;
+  }
+
+  .result-level-line b,
+  .result-growth small,
+  .result-growth span {
+    font-size: 10px;
   }
 }
 
@@ -5111,7 +5128,7 @@ button.definition-card:active,
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .breeding-stat-ledger > header,
@@ -5159,23 +5176,24 @@ button.definition-card:active,
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  grid-template-columns: minmax(70px, 0.72fr) minmax(54px, 0.45fr) repeat(3, minmax(78px, 1fr));
+  grid-template-columns: minmax(78px, 0.72fr) minmax(64px, 0.45fr) repeat(3, minmax(82px, 1fr));
   align-items: center;
   gap: 5px;
-  min-height: 44px;
-  padding: 5px 8px;
+  min-height: 56px;
+  padding: 7px 8px;
   background: var(--void);
 }
 
 .breeding-stat-row > span {
   color: var(--muted);
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .breeding-stat-row > strong {
   color: var(--paper);
-  font-size: 19px;
+  font-size: 27px;
+  line-height: 1;
 }
 
 .breeding-stat-row > small,
@@ -5185,7 +5203,7 @@ button.definition-card:active,
   border-left: 3px solid var(--line);
   background: var(--deck);
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 9px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 600;
   white-space: nowrap;
@@ -5573,8 +5591,9 @@ button.effect-skill-card {
 
   .breeding-stat-row {
     min-width: 0;
-    grid-template-columns: 52px 44px repeat(2, minmax(0, 1fr));
+    grid-template-columns: 58px 52px repeat(2, minmax(0, 1fr));
     gap: 3px;
+    min-height: 52px;
     padding-inline: 4px;
   }
 
@@ -5586,11 +5605,11 @@ button.effect-skill-card {
   .breeding-stat-row > small,
   .breeding-stat-row > b,
   .breeding-stat-row > i {
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .breeding-stat-row > strong {
-    font-size: 16px;
+    font-size: 22px;
   }
 
   .breeding-stat-row > i {

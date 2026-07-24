@@ -185,6 +185,12 @@ if (
 ) {
   throw new Error('Battle skill did not select an effect presentation');
 }
+const singleTargetImpact = desktop.locator('.battle-screen.is-impact-single .battlefield');
+await singleTargetImpact.waitFor({ timeout: 5000 });
+const singleTargetImpactAnimation = await singleTargetImpact.evaluate((field) => getComputedStyle(field).animationName);
+if (!singleTargetImpactAnimation.includes('arena-shake')) {
+  throw new Error(`Single-target damage does not shake the battlefield: ${singleTargetImpactAnimation}`);
+}
 const actingSkillCallout = desktop.locator('.battle-sprite.is-acting .skill-callout');
 await actingSkillCallout.waitFor();
 if (!(await actingSkillCallout.locator('small').textContent())?.trim()) {
@@ -278,6 +284,28 @@ if ((await desktop.locator('.result-monster-card').count()) !== 4) {
 if ((await desktop.locator('.result-monster-card [data-xp-gain]').count()) !== 4) {
   throw new Error('Battle result does not expose each monster XP gain');
 }
+const desktopResultType = await desktop.evaluate(() => ({
+  metricValue: Number.parseFloat(getComputedStyle(document.querySelector('.battle-report-metric b')).fontSize),
+  xpGain: Number.parseFloat(getComputedStyle(document.querySelector('.xp-gain')).fontSize),
+  levelValue: Number.parseFloat(getComputedStyle(document.querySelector('.result-level-line span')).fontSize),
+  growthValue: Number.parseFloat(getComputedStyle(document.querySelector('.result-growth span')).fontSize),
+}));
+if (
+  desktopResultType.metricValue < 28 ||
+  desktopResultType.xpGain < 18 ||
+  desktopResultType.levelValue < 10 ||
+  desktopResultType.growthValue < 9
+) {
+  throw new Error(`Desktop battle report numbers are too small: ${JSON.stringify(desktopResultType)}`);
+}
+const clippedDesktopReportValues = await desktop
+  .locator('.battle-report-metric b')
+  .evaluateAll((values) =>
+    values.filter((value) => value.scrollWidth > value.clientWidth + 1).map((value) => value.textContent?.trim()),
+  );
+if (clippedDesktopReportValues.length > 0) {
+  throw new Error(`Desktop battle report values are clipped: ${JSON.stringify(clippedDesktopReportValues)}`);
+}
 await desktop.waitForTimeout(450);
 await desktop.screenshot({ path: '/tmp/code-monsters-result-desktop.png', fullPage: true });
 
@@ -319,6 +347,33 @@ if ((await desktop.locator('.breeding-outcome .skill-effect-fact').count()) < 3)
 }
 if ((await desktop.locator('.inheritance-options .effect-skill-choice').count()) < 2) {
   throw new Error('Breeding skill inheritance is not presented as visible skill cards');
+}
+const desktopBreedingType = await desktop.evaluate(() => ({
+  total: Number.parseFloat(getComputedStyle(document.querySelector('.breeding-stat-row > strong')).fontSize),
+  breakdown: Number.parseFloat(getComputedStyle(document.querySelector('.breeding-stat-row > b')).fontSize),
+}));
+if (desktopBreedingType.total < 26 || desktopBreedingType.breakdown < 11) {
+  throw new Error(`Desktop breeding parameters are too small: ${JSON.stringify(desktopBreedingType)}`);
+}
+const desktopBreedingStatVisibility = await desktop.locator('.breeding-stat-ledger').evaluate((ledger) => {
+  const firstRow = ledger.querySelector('.breeding-stat-row');
+  if (!firstRow) return undefined;
+  const ledgerBox = ledger.getBoundingClientRect();
+  const rowBox = firstRow.getBoundingClientRect();
+  return {
+    ledgerBottom: ledgerBox.bottom,
+    rowTop: rowBox.top,
+    rowBottom: rowBox.bottom,
+    rowHeight: rowBox.height,
+  };
+});
+if (
+  !desktopBreedingStatVisibility ||
+  desktopBreedingStatVisibility.rowHeight < 50 ||
+  desktopBreedingStatVisibility.rowTop < 0 ||
+  desktopBreedingStatVisibility.rowBottom > desktopBreedingStatVisibility.ledgerBottom + 1
+) {
+  throw new Error(`Desktop breeding parameters are hidden: ${JSON.stringify(desktopBreedingStatVisibility)}`);
 }
 const selectedInheritanceChoice = desktop.locator('.inheritance-options .effect-skill-choice').nth(1);
 const selectedInheritanceSkillName = (await selectedInheritanceChoice.locator(':scope > strong').textContent())?.trim();
@@ -394,6 +449,13 @@ const clippedMobileBreedingBonuses = await desktop
   );
 if (clippedMobileBreedingBonuses.length > 0) {
   throw new Error(`Mobile breeding bonuses are clipped: ${JSON.stringify(clippedMobileBreedingBonuses)}`);
+}
+const mobileBreedingType = await desktop.evaluate(() => ({
+  total: Number.parseFloat(getComputedStyle(document.querySelector('.breeding-stat-row > strong')).fontSize),
+  breakdown: Number.parseFloat(getComputedStyle(document.querySelector('.breeding-stat-row > b')).fontSize),
+}));
+if (mobileBreedingType.total < 20 || mobileBreedingType.breakdown < 9) {
+  throw new Error(`Mobile breeding parameters are too small: ${JSON.stringify(mobileBreedingType)}`);
 }
 await desktop.locator('.inheritance-control').scrollIntoViewIfNeeded();
 await desktop.screenshot({ path: '/tmp/code-monsters-breeding-mobile.png' });
@@ -518,6 +580,28 @@ const revealMobileRewards = mobile.getByRole('button', { name: '報酬をすべ�
 if ((await revealMobileRewards.count()) === 1) await revealMobileRewards.click();
 await mobile.locator('.result-screen[data-reveal-complete="true"]').waitFor();
 await mobile.waitForTimeout(450);
+const mobileResultType = await mobile.evaluate(() => ({
+  metricValue: Number.parseFloat(getComputedStyle(document.querySelector('.battle-report-metric b')).fontSize),
+  xpGain: Number.parseFloat(getComputedStyle(document.querySelector('.xp-gain')).fontSize),
+  levelValue: Number.parseFloat(getComputedStyle(document.querySelector('.result-level-line span')).fontSize),
+  growthValue: Number.parseFloat(getComputedStyle(document.querySelector('.result-growth span')).fontSize),
+}));
+if (
+  mobileResultType.metricValue < 22 ||
+  mobileResultType.xpGain < 16 ||
+  mobileResultType.levelValue < 10 ||
+  mobileResultType.growthValue < 9
+) {
+  throw new Error(`Mobile battle report numbers are too small: ${JSON.stringify(mobileResultType)}`);
+}
+const clippedMobileReportValues = await mobile
+  .locator('.battle-report-metric b')
+  .evaluateAll((values) =>
+    values.filter((value) => value.scrollWidth > value.clientWidth + 1).map((value) => value.textContent?.trim()),
+  );
+if (clippedMobileReportValues.length > 0) {
+  throw new Error(`Mobile battle report values are clipped: ${JSON.stringify(clippedMobileReportValues)}`);
+}
 await assertFitsViewport(mobile, 'Mobile result');
 await mobile.screenshot({ path: '/tmp/code-monsters-result-mobile.png' });
 

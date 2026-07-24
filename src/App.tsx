@@ -2228,10 +2228,12 @@ function BattleScreen({
           : frame.kind === 'action'
             ? 'physical'
             : 'none';
-  const impact = frame.targetIds.some((id) => {
+  const damagedTargetCount = frame.targetIds.filter((id) => {
     const current = frame.fighters.find((fighter) => fighter.id === id);
     return current ? hpDeltaFor(current) > 0 : false;
-  });
+  }).length;
+  const impact = damagedTargetCount > 0;
+  const impactScope = damagedTargetCount > 1 ? 'multi' : impact ? 'single' : 'none';
   const effectLabel =
     frame.kind === 'environment'
       ? 'COLLAPSE!'
@@ -2246,7 +2248,8 @@ function BattleScreen({
           : 'BATTLE START';
   return (
     <main
-      className={`battle-screen${impact ? ' is-impact' : ''} is-frame-${frame.kind} is-skill-${skillFx}`}
+      className={`battle-screen${impact ? ` is-impact is-impact-${impactScope}` : ''} is-frame-${frame.kind} is-skill-${skillFx}`}
+      data-impact-scope={impactScope}
       data-skill-id={frame.skillId}
       data-replay-delay-ms={Math.round(REPLAY_STEP_MS / battle.speed)}
       style={
@@ -2269,7 +2272,7 @@ function BattleScreen({
         <span style={{ width: `${Math.min(100, (frame.atSeconds / 45) * 100)}%` }} />
         <b>{frame.atSeconds < 45 ? `環境崩壊まで ${(45 - frame.atSeconds).toFixed(1)}s` : '環境崩壊 発動中'}</b>
       </div>
-      <section className="battlefield battle-arena">
+      <section className="battlefield battle-arena" key={impact ? `impact-${battle.frameIndex}` : 'steady'}>
         <div className="arena-scanlines" aria-hidden="true" />
         <div className="arena-core" aria-hidden="true">
           <span>ATB</span>
