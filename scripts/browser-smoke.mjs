@@ -168,13 +168,27 @@ await assertReadableMonsterCards(
   '.catalog-card.is-unlocked',
   '.catalog-card-copy strong',
 );
-await desktop.locator('.catalog-card.is-locked').first().click();
+await desktop.locator('.catalog-card[data-catalog-id="light-dragon-2"]').click();
 if ((await desktop.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
   throw new Error('Undiscovered monster does not open a locked silhouette record');
 }
 if ((await desktop.locator('.catalog-detail.is-locked .effect-skill-card').count()) !== 0) {
   throw new Error('Undiscovered monster exposes skill effects');
 }
+if ((await desktop.locator('.catalog-detail-tabs button').count()) !== 2) {
+  throw new Error('Catalog detail does not expose profile and special breeding tabs');
+}
+await desktop.locator('.catalog-detail-tabs').getByRole('button', { name: '特殊配合' }).click();
+if ((await desktop.locator('[data-recipe-relation="used-by"] .recipe-card.is-special').count()) !== 3) {
+  throw new Error('Catalog detail does not show all special recipes that consume the selected monster');
+}
+if ((await desktop.locator('.catalog-detail [data-recipe-focus="true"].is-locked').count()) !== 3) {
+  throw new Error('Undiscovered selected monster is not silhouetted in its catalog recipe relations');
+}
+if ((await desktop.locator('.catalog-detail .recipe-card:not(.is-special)').count()) !== 0) {
+  throw new Error('Catalog detail recipe tab contains a non-special recipe');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-catalog-recipes-desktop.png', fullPage: true });
 await desktop.locator('.catalog-card.is-unlocked').first().click();
 if ((await desktop.locator('.catalog-detail.is-unlocked .catalog-stat-grid span').count()) !== 7) {
   throw new Error('Discovered catalog record does not show all seven base stats');
@@ -248,9 +262,17 @@ await desktop.locator('.gambit-row select[aria-label="スキル"]').first().sele
 if ((await desktop.locator('.monster-dialog[open]').count()) !== 1) {
   throw new Error('Editing a gambit closed the monster detail dialog');
 }
-if ((await desktop.locator('.inspector-tabs button').count()) !== 2) {
-  throw new Error('Monster detail still contains a breeding recipe tab');
+if ((await desktop.locator('.monster-dialog .inspector-tabs button').count()) !== 3) {
+  throw new Error('Monster detail does not expose profile, gambit, and special breeding tabs');
 }
+await desktop.locator('.monster-dialog .inspector-tabs').getByRole('button', { name: '特殊配合' }).click();
+if ((await desktop.locator('.monster-dialog .monster-recipe-relation').count()) !== 2) {
+  throw new Error('Monster detail does not show both directions of special breeding relations');
+}
+if ((await desktop.locator('.monster-dialog .recipe-card:not(.is-special)').count()) !== 0) {
+  throw new Error('Monster detail recipe tab contains a non-special recipe');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-monster-recipes-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: '閉じる', exact: true }).click();
 await desktop.getByRole('button', { name: '02 配合' }).click();
 await desktop.getByRole('button', { name: /特殊配合図鑑/ }).click();
@@ -785,9 +807,16 @@ await assertReadableMonsterCards(
   '.catalog-card.is-unlocked',
   '.catalog-card-copy strong',
 );
-await mobile.locator('.catalog-card.is-locked').first().click();
+await mobile.locator('.catalog-card[data-catalog-id="light-dragon-2"]').click();
 if ((await mobile.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
   throw new Error('Mobile undiscovered monster does not remain locked');
+}
+await mobile.locator('.catalog-detail-tabs').getByRole('button', { name: '特殊配合' }).click();
+if ((await mobile.locator('[data-recipe-relation="used-by"] .recipe-card.is-special').count()) !== 3) {
+  throw new Error('Mobile catalog does not show the selected monster special breeding descendants');
+}
+if ((await mobile.locator('.catalog-detail [data-recipe-focus="true"].is-locked').count()) !== 3) {
+  throw new Error('Mobile catalog exposes an undiscovered monster in special breeding relations');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png' });
 await mobile.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
@@ -803,9 +832,14 @@ await mobile.getByRole('button', { name: 'ガンビット' }).click();
 if ((await mobile.locator('.monster-dialog .gambit-row').count()) !== 3) {
   throw new Error('Mobile monster dialog does not show all three gambits');
 }
-if ((await mobile.locator('.monster-dialog .inspector-tabs button').count()) !== 2) {
-  throw new Error('Mobile monster dialog still contains a breeding recipe tab');
+if ((await mobile.locator('.monster-dialog .inspector-tabs button').count()) !== 3) {
+  throw new Error('Mobile monster dialog does not expose its special breeding tab');
 }
+await mobile.locator('.monster-dialog .inspector-tabs').getByRole('button', { name: '特殊配合' }).click();
+if ((await mobile.locator('.monster-dialog .monster-recipe-relation').count()) !== 2) {
+  throw new Error('Mobile monster dialog does not show both special breeding relation directions');
+}
+await mobile.screenshot({ path: '/tmp/code-monsters-monster-recipes-mobile.png' });
 await mobile.getByRole('button', { name: '閉じる', exact: true }).click();
 await mobile.getByRole('button', { name: '02 配合' }).click();
 await mobile.locator('.breeding-lab-dialog[open]').waitFor();
@@ -896,7 +930,9 @@ console.log(
       '/tmp/code-monsters-casual-desktop.png',
       '/tmp/code-monsters-prospect-desktop.png',
       '/tmp/code-monsters-catalog-desktop.png',
+      '/tmp/code-monsters-catalog-recipes-desktop.png',
       '/tmp/code-monsters-stat-breakdown-desktop.png',
+      '/tmp/code-monsters-monster-recipes-desktop.png',
       '/tmp/code-monsters-battle-desktop.png',
       '/tmp/code-monsters-critical-desktop.png',
       '/tmp/code-monsters-result-desktop.png',
@@ -908,6 +944,7 @@ console.log(
       '/tmp/code-monsters-breeding-reveal-desktop.png',
       '/tmp/code-monsters-draft-mobile.png',
       '/tmp/code-monsters-catalog-mobile.png',
+      '/tmp/code-monsters-monster-recipes-mobile.png',
       '/tmp/code-monsters-stat-breakdown-mobile.png',
       '/tmp/code-monsters-recipes-mobile.png',
       '/tmp/code-monsters-workshop-mobile.png',

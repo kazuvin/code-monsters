@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
-import { mergeDiscoveredMonsterIds, monsterCatalogEntries, normalizeDiscoveredMonsterIds } from './catalog';
+import {
+  mergeDiscoveredMonsterIds,
+  monsterCatalogEntries,
+  normalizeDiscoveredMonsterIds,
+  specialRecipeRelationsFor,
+} from './catalog';
 import { createMonster } from './monster';
 
 describe('monster catalog discovery', () => {
@@ -38,5 +43,21 @@ describe('monster catalog discovery', () => {
     const merged = mergeDiscoveredMonsterIds(GAME_DATA, restored, roster);
 
     expect([...merged].sort()).toEqual([firstId, secondId].sort());
+  });
+
+  it('finds only special recipes that create or consume a selected species', () => {
+    const resultRelations = specialRecipeRelationsFor(GAME_DATA, 'fire-spirit-3');
+    const parentRelations = specialRecipeRelationsFor(GAME_DATA, 'light-dragon-2');
+    const unrelatedRelations = specialRecipeRelationsFor(GAME_DATA, 'fire-dragon-5');
+
+    expect(resultRelations.createdBy.map((recipe) => recipe.id)).toEqual(['dawn-chimera']);
+    expect(resultRelations.usedBy).toEqual([]);
+    expect(parentRelations.createdBy).toEqual([]);
+    expect(parentRelations.usedBy.map((recipe) => recipe.id)).toEqual([
+      'dawn-chimera',
+      'cinder-contract',
+      'umbral-grove',
+    ]);
+    expect(unrelatedRelations).toEqual({ createdBy: [], usedBy: [] });
   });
 });

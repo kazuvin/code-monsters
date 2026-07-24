@@ -1,4 +1,12 @@
-import type { AttributeId, GameData, LineageId, MonsterDefinition, MonsterInstance, WhiteStars } from './types';
+import type {
+  AttributeId,
+  GameData,
+  LineageId,
+  MonsterDefinition,
+  MonsterInstance,
+  SpecialRecipeDefinition,
+  WhiteStars,
+} from './types';
 
 export type MonsterCatalogEntry = {
   id: string;
@@ -45,4 +53,16 @@ export function monsterCatalogEntries(data: GameData, discoveredIds: ReadonlySet
     },
     details: discoveredIds.has(definition.id) ? definition : undefined,
   }));
+}
+
+export type MonsterSpecialRecipeRelations = {
+  createdBy: SpecialRecipeDefinition[];
+  usedBy: SpecialRecipeDefinition[];
+};
+
+export function specialRecipeRelationsFor(data: GameData, definitionId: string): MonsterSpecialRecipeRelations {
+  return {
+    createdBy: data.specialRecipes.filter((recipe) => recipe.resultDefinitionId === definitionId),
+    usedBy: data.specialRecipes.filter((recipe) => recipe.parentDefinitionIds.includes(definitionId)),
+  };
 }

@@ -12,6 +12,7 @@ import {
   mergeDiscoveredMonsterIds,
   monsterCatalogEntries,
   normalizeDiscoveredMonsterIds,
+  specialRecipeRelationsFor,
   type MonsterCatalogEntry,
 } from './core/catalog';
 import { createGhostTeam } from './core/ghost';
@@ -67,7 +68,8 @@ import type {
 } from './core/types';
 import { GAME_DATA } from './game/game-data';
 
-type InspectorTab = 'profile' | 'gambit';
+type InspectorTab = 'profile' | 'gambit' | 'recipes';
+type CatalogDetailTab = 'profile' | 'recipes';
 type ReplaySpeed = 1 | 2 | 4;
 type BattleFeedback = {
   label: string;
@@ -1841,19 +1843,22 @@ function RecipeToken({
   colorStars = 0,
   label,
   locked = false,
+  focused = false,
   slot,
 }: {
   definition: MonsterDefinition;
   colorStars?: ColorStars;
   label: string;
   locked?: boolean;
+  focused?: boolean;
   slot: 'parent' | 'result';
 }) {
   return (
     <div
-      className={`recipe-token${locked ? ' is-locked' : ''}`}
+      className={`recipe-token${locked ? ' is-locked' : ''}${focused ? ' is-focused' : ''}`}
       style={monsterStyle(GAME_DATA, definition)}
       data-recipe-slot={slot}
+      data-recipe-focus={focused || undefined}
       aria-label={locked ? `${label}は未解放` : `${label}: ${definition.name}`}
     >
       <MonsterSigil data={GAME_DATA} definition={definition} colorStars={colorStars} size="small" obscured={locked} />
@@ -1863,6 +1868,129 @@ function RecipeToken({
         <i>{locked ? '未解放' : starText(definition.whiteStars, colorStars)}</i>
       </span>
     </div>
+  );
+}
+
+function SpecialRecipeCard({
+  recipeId,
+  discoveredMonsterIds,
+  focusedDefinitionId,
+}: {
+  recipeId: string;
+  discoveredMonsterIds: ReadonlySet<string>;
+  focusedDefinitionId?: string;
+}) {
+  const recipeIndex = GAME_DATA.specialRecipes.findIndex((recipe) => recipe.id === recipeId);
+  const recipe = GAME_DATA.specialRecipes[recipeIndex];
+  if (!recipe) return null;
+  const parents = [
+    definitionById(GAME_DATA, recipe.parentDefinitionIds[0]),
+    definitionById(GAME_DATA, recipe.parentDefinitionIds[1]),
+  ] as const;
+  const result = definitionById(GAME_DATA, recipe.resultDefinitionId);
+  const discoveredCount = [...parents, result].filter((definition) => discoveredMonsterIds.has(definition.id)).length;
+  return (
+    <article className="recipe-card is-special" data-recipe-id={recipe.id}>
+      <span className="recipe-kind is-special">SPECIAL #{String(recipeIndex + 1).padStart(2, '0')}</span>
+      <span className={`recipe-state${discoveredCount === 3 ? ' is-unlocked' : ''}`}>{discoveredCount}/3 記録</span>
+      <div className="recipe-equation">
+        <RecipeToken
+          definition={parents[0]}
+          label="親 A"
+          locked={!discoveredMonsterIds.has(parents[0].id)}
+          focused={focusedDefinitionId === parents[0].id}
+          slot="parent"
+        />
+        <b>＋</b>
+        <RecipeToken
+          definition={parents[1]}
+          label="親 B"
+          locked={!discoveredMonsterIds.has(parents[1].id)}
+          focused={focusedDefinitionId === parents[1].id}
+          slot="parent"
+        />
+        <b>＝</b>
+        <RecipeToken
+          definition={result}
+          label="特殊種"
+          locked={!discoveredMonsterIds.has(result.id)}
+          focused={focusedDefinitionId === result.id}
+          slot="result"
+        />
+      </div>
+    </article>
+  );
+}
+
+function MonsterRecipeView({
+  definitionId,
+  discoveredMonsterIds,
+}: {
+  definitionId: string;
+  discoveredMonsterIds: ReadonlySet<string>;
+}) {
+  const relations = specialRecipeRelationsFor(GAME_DATA, definitionId);
+  const definitionKnown = discoveredMonsterIds.has(definitionId);
+  const relationSections = [
+    {
+      id: 'created-by',
+      label: 'この種を作る',
+      note: '誕生に必要な特殊配合',
+      recipes: relations.createdBy,
+    },
+    {
+      id: 'used-by',
+      label: 'この種を使う',
+      note: '親としてつながる特殊配合',
+      recipes: relations.usedBy,
+    },
+  ] as const;
+  return (
+    <section className="monster-recipe-view" aria-label="このモンスターに関わる特殊配合">
+      <header className="monster-recipe-heading">
+        <span>LINEAGE CROSS-REFERENCE</span>
+        <p>
+          {definitionKnown
+            ? '記録済みの種だけ名称を表示します。未入手種は輪郭から探索できます。'
+            : 'この標本を含め、未入手の種は輪郭だけを記録しています。'}
+        </p>
+      </header>
+      <div className="monster-recipe-relations">
+        {relationSections.map((section) => (
+          <section
+            className={`monster-recipe-relation is-${section.id}`}
+            data-recipe-relation={section.id}
+            key={section.id}
+          >
+            <header>
+              <div>
+                <span>{section.id === 'created-by' ? 'ORIGIN' : 'DESCENDANTS'}</span>
+                <h3>{section.label}</h3>
+                <p>{section.note}</p>
+              </div>
+              <b>{String(section.recipes.length).padStart(2, '0')}</b>
+            </header>
+            {section.recipes.length > 0 ? (
+              <div className="monster-recipe-list">
+                {section.recipes.map((recipe) => (
+                  <SpecialRecipeCard
+                    recipeId={recipe.id}
+                    discoveredMonsterIds={discoveredMonsterIds}
+                    focusedDefinitionId={definitionId}
+                    key={recipe.id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="monster-recipe-empty">
+                <span>NO SPECIAL ROUTE</span>
+                <p>この方向の特殊配合はまだ記録されていません。</p>
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1876,39 +2004,9 @@ function RecipeView({ discoveredMonsterIds }: { discoveredMonsterIds: ReadonlySe
         </p>
       </div>
       <div className="recipe-list">
-        {GAME_DATA.specialRecipes.map((recipe, index) => {
-          const parents = [
-            definitionById(GAME_DATA, recipe.parentDefinitionIds[0]),
-            definitionById(GAME_DATA, recipe.parentDefinitionIds[1]),
-          ] as const;
-          const result = definitionById(GAME_DATA, recipe.resultDefinitionId);
-          const resultUnlocked = discoveredMonsterIds.has(result.id);
-          return (
-            <article className="recipe-card is-special" key={recipe.id} data-recipe-id={recipe.id}>
-              <span className="recipe-kind is-special">SPECIAL #{String(index + 1).padStart(2, '0')}</span>
-              <span className={`recipe-state${resultUnlocked ? ' is-unlocked' : ''}`}>
-                {resultUnlocked ? '解放済み' : '未解放'}
-              </span>
-              <div className="recipe-equation">
-                <RecipeToken
-                  definition={parents[0]}
-                  label="親 A"
-                  locked={!resultUnlocked && !discoveredMonsterIds.has(parents[0].id)}
-                  slot="parent"
-                />
-                <b>＋</b>
-                <RecipeToken
-                  definition={parents[1]}
-                  label="親 B"
-                  locked={!resultUnlocked && !discoveredMonsterIds.has(parents[1].id)}
-                  slot="parent"
-                />
-                <b>＝</b>
-                <RecipeToken definition={result} label="特殊種" locked={!resultUnlocked} slot="result" />
-              </div>
-            </article>
-          );
-        })}
+        {GAME_DATA.specialRecipes.map((recipe) => (
+          <SpecialRecipeCard recipeId={recipe.id} discoveredMonsterIds={discoveredMonsterIds} key={recipe.id} />
+        ))}
       </div>
     </section>
   );
@@ -1992,16 +2090,12 @@ function MonsterCatalogCard({
   );
 }
 
-function MonsterCatalogDetail({ entry }: { entry: MonsterCatalogEntry }) {
+function MonsterCatalogProfile({ entry }: { entry: MonsterCatalogEntry }) {
   const definition = definitionById(GAME_DATA, entry.id);
   const recordNumber = String(entry.index).padStart(2, '0');
   if (!entry.details) {
     return (
-      <section
-        className="catalog-detail is-locked"
-        style={monsterStyle(GAME_DATA, definition)}
-        data-catalog-detail-state="locked"
-      >
+      <div className="catalog-profile is-locked">
         <div className="catalog-locked-sigil" aria-hidden="true">
           <MonsterSigil data={GAME_DATA} definition={definition} size="large" obscured />
           <span>?</span>
@@ -2010,7 +2104,7 @@ function MonsterCatalogDetail({ entry }: { entry: MonsterCatalogEntry }) {
         <h3>未確認標本</h3>
         <p>旅の仲間として迎えると、名前・能力・特性・スキルの記録が開きます。</p>
         <small>シルエット以外の生態情報は未解放です。</small>
-      </section>
+      </div>
     );
   }
 
@@ -2019,11 +2113,7 @@ function MonsterCatalogDetail({ entry }: { entry: MonsterCatalogEntry }) {
     .map((skillId) => GAME_DATA.skills.find((skill) => skill.id === skillId))
     .filter((skill): skill is SkillDefinition => Boolean(skill));
   return (
-    <section
-      className="catalog-detail is-unlocked"
-      style={monsterStyle(GAME_DATA, definition)}
-      data-catalog-detail-state="unlocked"
-    >
+    <div className="catalog-profile is-unlocked">
       <header className="catalog-detail-identity">
         <MonsterSigil data={GAME_DATA} definition={definition} size="large" />
         <div>
@@ -2056,6 +2146,41 @@ function MonsterCatalogDetail({ entry }: { entry: MonsterCatalogEntry }) {
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+function MonsterCatalogDetail({
+  entry,
+  discoveredMonsterIds,
+}: {
+  entry: MonsterCatalogEntry;
+  discoveredMonsterIds: ReadonlySet<string>;
+}) {
+  const [tab, setTab] = useState<CatalogDetailTab>('profile');
+  const definition = definitionById(GAME_DATA, entry.id);
+  useEffect(() => setTab('profile'), [entry.id]);
+  return (
+    <section
+      className={`catalog-detail is-${entry.state}`}
+      style={monsterStyle(GAME_DATA, definition)}
+      data-catalog-detail-state={entry.state}
+    >
+      <nav className="inspector-tabs catalog-detail-tabs" aria-label="図鑑詳細メニュー">
+        <button type="button" className={tab === 'profile' ? 'is-active' : ''} onClick={() => setTab('profile')}>
+          生態記録
+        </button>
+        <button type="button" className={tab === 'recipes' ? 'is-active' : ''} onClick={() => setTab('recipes')}>
+          特殊配合
+        </button>
+      </nav>
+      <div className="catalog-detail-tab-panel">
+        {tab === 'profile' ? (
+          <MonsterCatalogProfile entry={entry} />
+        ) : (
+          <MonsterRecipeView definitionId={entry.id} discoveredMonsterIds={discoveredMonsterIds} />
+        )}
+      </div>
     </section>
   );
 }
@@ -2153,7 +2278,13 @@ function MonsterCatalogDialog({
               />
             ))}
           </div>
-          {selectedEntry && <MonsterCatalogDetail entry={selectedEntry} />}
+          {selectedEntry && (
+            <MonsterCatalogDetail
+              key={selectedEntry.id}
+              entry={selectedEntry}
+              discoveredMonsterIds={discoveredMonsterIds}
+            />
+          )}
         </div>
       </section>
     </dialog>
@@ -2163,12 +2294,14 @@ function MonsterCatalogDialog({
 function Inspector({
   run,
   monster,
+  discoveredMonsterIds,
   onCommand,
   onChange,
   onClose,
 }: {
   run: CasualRunState;
   monster?: MonsterInstance;
+  discoveredMonsterIds: ReadonlySet<string>;
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
   onChange: (run: CasualRunState) => void;
   onClose: () => void;
@@ -2221,6 +2354,9 @@ function Inspector({
           </button>
           <button type="button" className={tab === 'gambit' ? 'is-active' : ''} onClick={() => setTab('gambit')}>
             ガンビット
+          </button>
+          <button type="button" className={tab === 'recipes' ? 'is-active' : ''} onClick={() => setTab('recipes')}>
+            特殊配合
           </button>
         </nav>
         <div className="inspector-tab-panel">
@@ -2296,6 +2432,9 @@ function Inspector({
             </div>
           )}
           {tab === 'gambit' && <TacticsView run={run} monster={monster} onChange={onChange} />}
+          {tab === 'recipes' && (
+            <MonsterRecipeView definitionId={definition.id} discoveredMonsterIds={discoveredMonsterIds} />
+          )}
         </div>
       </aside>
     </dialog>
@@ -2393,6 +2532,7 @@ function WorkshopScreen({
       <Inspector
         run={run}
         monster={inspected}
+        discoveredMonsterIds={discoveredMonsterIds}
         onCommand={onCommand}
         onChange={setRun}
         onClose={() => setInspectedId(undefined)}
