@@ -3,6 +3,7 @@ import { GAME_DATA } from '../game/game-data';
 import { createMonster } from './monster';
 import {
   applyBattleResult,
+  buyMonster,
   chooseEvent,
   chooseDraftMonster,
   continueEvent,
@@ -24,11 +25,48 @@ describe('casual run', () => {
   it('starts with three free monsters and cycle-one income', () => {
     const run = finishDraft();
 
+    expect(run.schemaVersion).toBe(3);
+    expect(run.contentVersion).toBe(GAME_DATA.rules.contentVersion);
+    expect(run.commandLogVersion).toBe(1);
     expect(run.phase).toBe('prepare');
     expect(run.roster).toHaveLength(3);
     expect(run.activeIds).toHaveLength(3);
     expect(run.coins).toBe(10);
     expect(run.cycle).toBe(1);
+    expect(run.commandLog).toEqual(
+      run.roster.map((monster, index) => ({
+        schemaVersion: 1,
+        index: index + 1,
+        cycle: 1,
+        phase: 'draft',
+        kind: 'draft-monster',
+        definitionId: monster.definitionId,
+        monsterId: monster.id,
+      })),
+    );
+  });
+
+  it('records successful commands without logging rejected attempts', () => {
+    const run = finishDraft();
+    const offer = run.shop?.monsters[0];
+    expect(offer).toBeTruthy();
+
+    const bought = buyMonster(GAME_DATA, run, offer?.id ?? '');
+    expect(bought.ok).toBe(true);
+    expect(bought.state.commandLog.at(-1)).toMatchObject({
+      schemaVersion: 1,
+      index: 4,
+      cycle: 1,
+      phase: 'prepare',
+      kind: 'buy-monster',
+      offerId: offer?.id,
+      definitionId: offer?.definitionId,
+      monsterId: 'monster-4',
+    });
+
+    const rejected = buyMonster(GAME_DATA, bought.state, 'missing-offer');
+    expect(rejected.ok).toBe(false);
+    expect(rejected.state.commandLog).toEqual(bought.state.commandLog);
   });
 
   it('ends immediately on the fifth loss', () => {
@@ -47,6 +85,11 @@ describe('casual run', () => {
 
     expect(run.phase).toBe('finished');
     expect(run.losses).toBe(5);
+    expect(run.commandLog.filter((command) => command.kind === 'battle-complete')).toHaveLength(5);
+    expect(run.commandLog.at(-1)).toMatchObject({
+      kind: 'finish-run',
+      reason: 'max-losses',
+    });
   });
 
   it('ends after exactly twelve completed cycles', () => {

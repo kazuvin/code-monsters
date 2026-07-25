@@ -24,6 +24,7 @@ import {
   statBreakdownFor,
   targetRulesForSkill,
 } from './core/monster';
+import { createPlaytestReport, serializePlaytestReport } from './core/playtest-report';
 import { deriveSeed } from './core/rng';
 import {
   applyBattleResult,
@@ -3362,46 +3363,152 @@ function ResultScreen({
   );
 }
 
-function FinishedScreen({ run, onRestart }: { run: CasualRunState; onRestart: () => void }) {
+const formatRunDuration = (durationSeconds: number) => {
+  const hours = Math.floor(durationSeconds / 3600);
+  const minutes = Math.floor((durationSeconds % 3600) / 60);
+  const seconds = durationSeconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${minutes}:${String(seconds).padStart(2, '0')}`;
+};
+
+function FinishedScreen({
+  run,
+  startedAt,
+  completedAt,
+  onRestart,
+}: {
+  run: CasualRunState;
+  startedAt: string;
+  completedAt: string;
+  onRestart: () => void;
+}) {
   const completion = run.completedCycles >= GAME_DATA.rules.maxCycles;
+  const [exportNotice, setExportNotice] = useState('');
+  const report = useMemo(
+    () => createPlaytestReport(GAME_DATA, run, { startedAt, completedAt }),
+    [run, startedAt, completedAt],
+  );
+  const reportJson = useMemo(() => serializePlaytestReport(report), [report]);
+  const reportFileName = `code-monsters-playtest-${report.contentVersion}-seed-${run.seed}.json`;
+  const copyReport = async () => {
+    try {
+      await navigator.clipboard.writeText(reportJson);
+      setExportNotice('航路記録をコピーしました');
+    } catch {
+      setExportNotice('コピーできませんでした。JSON保存を利用してください');
+    }
+  };
+  const saveReport = () => {
+    const url = URL.createObjectURL(new Blob([reportJson], { type: 'application/json' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = reportFileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setExportNotice(`${reportFileName} を保存しました`);
+  };
+  const activityMetrics = [
+    ['BREED', report.activity.breeds, '配合'],
+    ['MONSTER', report.activity.monstersBought, '購入'],
+    ['EQUIP', report.activity.equipmentBought, '装備購入'],
+    ['REROLL', report.activity.shopRerolls, '更新'],
+    ['GAMBIT', report.activity.gambitChanges, '変更'],
+    ['COMMAND', report.run.commandCount, '全操作'],
+  ] as const;
+
   return (
     <main className="finished-screen">
-      <div className="finish-sigil" aria-hidden="true">
-        <span>竜</span>
-        <span>魔</span>
-        <span>精</span>
-      </div>
-      <span className="section-index">CASUAL RUN / COMPLETE</span>
-      <h1>{completion ? '十二の航路を完走' : '血統の旅はここまで'}</h1>
-      <p>
-        {run.wins}勝 {run.losses}敗 · {run.completedCycles}サイクル
-      </p>
-      <div className="final-lineage">
-        {run.activeIds.map((id) => {
-          const monster = run.roster.find((entry) => entry.id === id);
-          if (!monster) return null;
-          const definition = definitionFor(GAME_DATA, monster);
-          return (
-            <div key={id}>
-              <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="large" />
-              <strong>{definition.name}</strong>
-              <span>
-                {starText(definition.whiteStars, monster.colorStars)} · Lv.{monster.level}
-              </span>
+      <div className="finished-stage">
+        <section className="finished-lineage-panel">
+          <div className="finish-sigil" aria-hidden="true">
+            <span>竜</span>
+            <span>魔</span>
+            <span>精</span>
+          </div>
+          <span className="section-index">CASUAL RUN / COMPLETE</span>
+          <h1>{completion ? '十二の航路を完走' : '血統の旅はここまで'}</h1>
+          <p className="finished-score">
+            {run.wins}勝 {run.losses}敗 · {run.completedCycles}サイクル
+          </p>
+          <div className="final-lineage">
+            {run.activeIds.map((id) => {
+              const monster = run.roster.find((entry) => entry.id === id);
+              if (!monster) return null;
+              const definition = definitionFor(GAME_DATA, monster);
+              return (
+                <div key={id}>
+                  <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="large" />
+                  <strong>{definition.name}</strong>
+                  <span>
+                    {starText(definition.whiteStars, monster.colorStars)} · Lv.{monster.level}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="playtest-ledger" aria-labelledby="playtest-ledger-title">
+          <header>
+            <div>
+              <span>PLAYTEST LOG / V{report.schemaVersion}</span>
+              <h2 id="playtest-ledger-title">航路記録</h2>
             </div>
-          );
-        })}
+            <code>SEED {run.seed}</code>
+          </header>
+          <dl className="playtest-ledger-meta">
+            <div>
+              <dt>所要時間</dt>
+              <dd>{formatRunDuration(report.run.durationSeconds)}</dd>
+            </div>
+            <div>
+              <dt>コンテンツ</dt>
+              <dd>{report.contentVersion}</dd>
+            </div>
+          </dl>
+          <div className="playtest-ledger-grid">
+            {activityMetrics.map(([id, value, label]) => (
+              <div key={id}>
+                <span>{id}</span>
+                <b>{value}</b>
+                <small>{label}</small>
+              </div>
+            ))}
+          </div>
+          <p className="playtest-ledger-note">
+            シード、編成、購入、配合、ガンビット、戦闘結果を、再現可能な操作順で記録しました。
+          </p>
+          <div className="playtest-export-actions">
+            <button type="button" onClick={copyReport}>
+              <span>COPY LOG</span>
+              航路記録をコピー
+            </button>
+            <button type="button" onClick={saveReport}>
+              <span>JSON / {report.commandLogVersion}</span>
+              JSONを保存
+            </button>
+          </div>
+          <p className="playtest-export-notice" aria-live="polite">
+            {exportNotice || '個人情報は含まれません'}
+          </p>
+        </section>
       </div>
-      <button type="button" className="launch-button" onClick={onRestart}>
-        <span>NEW SEED</span>新しい旅を始める
-      </button>
-      <small>ランクポイントはランクモード実装時に追加予定</small>
+
+      <footer className="finished-actions">
+        <button type="button" className="launch-button" onClick={onRestart}>
+          <span>NEW SEED</span>新しい旅を始める
+        </button>
+        <small>この記録はバランス調整とプレイフィール検証に利用できます</small>
+      </footer>
     </main>
   );
 }
 
 export function App() {
   const [run, setRun] = useState(() => createCasualRun(GAME_DATA, INITIAL_SEED));
+  const [runStartedAt, setRunStartedAt] = useState(() => new Date().toISOString());
+  const [runCompletedAt, setRunCompletedAt] = useState<string>();
   const [battle, setBattle] = useState<BattleViewState>();
   const [lastBattleRoster, setLastBattleRoster] = useState<MonsterInstance[]>([]);
   const [lastBattleEnemy, setLastBattleEnemy] = useState<MonsterInstance[]>([]);
@@ -3426,6 +3533,17 @@ export function App() {
     const result = simulateBattle(GAME_DATA, { player, enemy, seed: battleSeed });
     setRun(applyBattleResult(GAME_DATA, run, result));
     setBattle({ result, enemy, beforeRoster: run.roster, frameIndex: 0, playing: true, speed: 1 });
+  };
+  const continueAfterBattle = () => {
+    const next = continueRun(GAME_DATA, run);
+    if (next.phase === 'finished') setRunCompletedAt(new Date().toISOString());
+    setRun(next);
+  };
+  const restartRun = () => {
+    const startedAt = new Date().toISOString();
+    setRunStartedAt(startedAt);
+    setRunCompletedAt(undefined);
+    setRun(createCasualRun(GAME_DATA, deriveSeed(run.seed, run.commandIndex + 71)));
   };
 
   if (battle) {
@@ -3466,14 +3584,16 @@ export function App() {
         run={run}
         beforeRoster={lastBattleRoster}
         enemy={lastBattleEnemy}
-        onContinue={() => setRun(continueRun(GAME_DATA, run))}
+        onContinue={continueAfterBattle}
       />
     );
   }
   return (
     <FinishedScreen
       run={run}
-      onRestart={() => setRun(createCasualRun(GAME_DATA, deriveSeed(run.seed, run.commandIndex + 71)))}
+      startedAt={runStartedAt}
+      completedAt={runCompletedAt ?? runStartedAt}
+      onRestart={restartRun}
     />
   );
 }

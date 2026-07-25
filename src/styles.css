@@ -3832,20 +3832,41 @@ button.definition-card:active,
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 10px;
+  overflow-y: auto;
   text-align: center;
+}
+
+.finished-stage {
+  display: grid;
+  width: min(920px, 100%);
+  gap: 8px;
+  margin: auto 0 0;
+}
+
+.finished-lineage-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border: 2px solid var(--line);
+  background: linear-gradient(135deg, rgba(245, 202, 107, 0.08), transparent 48%), var(--panel);
+  box-shadow: var(--pixel-shadow);
 }
 
 .finish-sigil {
   display: flex;
   gap: 5px;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .finish-sigil span {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   place-items: center;
   border: 2px solid var(--line);
   background: var(--deck);
@@ -3870,10 +3891,10 @@ button.definition-card:active,
 .finished-screen h1 {
   margin: 4px 0;
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: clamp(25px, 8vw, 52px);
+  font-size: clamp(24px, 6vw, 42px);
 }
 
-.finished-screen > p {
+.finished-score {
   margin: 4px 0;
   color: var(--gold);
   font-size: 17px;
@@ -3882,7 +3903,7 @@ button.definition-card:active,
 .final-lineage {
   display: grid;
   width: min(620px, 100%);
-  height: min(210px, 28vh);
+  min-height: 132px;
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
   margin: 13px 0;
@@ -3913,13 +3934,204 @@ button.definition-card:active,
   font-size: 7px;
 }
 
-.finished-screen > small {
-  margin-top: 10px;
+.playtest-ledger {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 10px 19px;
+  border: 2px solid var(--mint);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 30px, rgba(124, 224, 189, 0.05) 30px 31px), var(--void-deep);
+  box-shadow: 4px 4px 0 #000;
+  text-align: left;
+}
+
+.playtest-ledger::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 7px;
+  width: 3px;
+  background: repeating-linear-gradient(180deg, var(--mint) 0 5px, transparent 5px 10px);
+  content: "";
+  opacity: 0.55;
+}
+
+.playtest-ledger header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line);
+}
+
+.playtest-ledger header span {
+  color: var(--mint);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.playtest-ledger h2 {
+  margin: 1px 0 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 20px;
+}
+
+.playtest-ledger code {
+  padding: 5px 7px;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.playtest-ledger-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+}
+
+.playtest-ledger-meta > div {
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.playtest-ledger-meta dt {
   color: var(--muted);
   font-size: 7px;
 }
 
+.playtest-ledger-meta dd {
+  overflow: hidden;
+  margin: 2px 0 0;
+  color: var(--paper);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playtest-ledger-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.playtest-ledger-grid > div {
+  display: grid;
+  min-width: 0;
+  min-height: 48px;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.playtest-ledger-grid span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 7px;
+}
+
+.playtest-ledger-grid b {
+  color: var(--mint);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.playtest-ledger-grid small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.playtest-ledger-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.65;
+}
+
+.playtest-export-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.playtest-export-actions button {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6px 8px;
+  border: 2px solid var(--paper);
+  background: var(--deck);
+  color: var(--paper);
+  cursor: pointer;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 #000;
+}
+
+.playtest-export-actions button:last-child {
+  border-color: var(--mint);
+  background: var(--mint);
+  color: var(--void-deep);
+}
+
+.playtest-export-actions button span {
+  color: var(--gold);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 7px;
+}
+
+.playtest-export-actions button:last-child span {
+  color: #18493e;
+}
+
+.playtest-export-notice {
+  min-height: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.finished-actions {
+  display: flex;
+  width: min(920px, 100%);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  background: rgba(8, 9, 14, 0.72);
+}
+
+.finished-actions > small {
+  color: var(--muted);
+  font-size: 7px;
+  text-align: right;
+}
+
 @media (min-width: 801px) {
+  .finished-stage {
+    grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr);
+  }
+
   .battle-report-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -7226,6 +7438,21 @@ button.effect-skill-card {
 
   .catalog-skills > div {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .finished-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .finished-actions .launch-button {
+    width: 100%;
+  }
+
+  .finished-actions > small {
+    text-align: center;
   }
 }
 

@@ -295,9 +295,66 @@ export type ShopState = {
 
 export type RunPhase = 'draft' | 'event' | 'event-result' | 'prepare' | 'result' | 'finished';
 
+type RunCommandBase = {
+  schemaVersion: 1;
+  index: number;
+  cycle: number;
+  phase: RunPhase;
+};
+
+export type RunCommandPayload =
+  | { kind: 'draft-monster'; definitionId: string; monsterId: string }
+  | { kind: 'reroll-shop'; cost: number; usedFreeReroll: boolean }
+  | { kind: 'freeze-shop'; frozen: boolean }
+  | {
+      kind: 'buy-monster';
+      offerId: string;
+      definitionId: string;
+      monsterId: string;
+      price: number;
+    }
+  | { kind: 'buy-equipment'; offerId: string; equipmentId: string; price: number }
+  | { kind: 'sell-monster'; monsterId: string; definitionId: string; coinsGained: number }
+  | { kind: 'toggle-active'; monsterId: string; active: boolean }
+  | {
+      kind: 'move-monster';
+      monsterId: string;
+      sourceZone: 'active' | 'bench';
+      targetZone: 'active' | 'bench';
+      targetIndex: number;
+    }
+  | { kind: 'change-equipment'; monsterId: string; fromEquipmentId?: string; toEquipmentId?: string }
+  | { kind: 'change-gambit'; monsterId: string; slot: 0 | 1 | 2; gambit: GambitRule }
+  | {
+      kind: 'breed';
+      firstParentId: string;
+      secondParentId: string;
+      candidateId: string;
+      resultDefinitionId: string;
+      childId: string;
+      inheritedSkillId?: string;
+    }
+  | {
+      kind: 'battle-complete';
+      winner: BattleWinner;
+      durationSeconds: number;
+      playerDamage: number;
+      enemyDamage: number;
+    }
+  | { kind: 'continue-cycle'; nextCycle: number }
+  | { kind: 'finish-run'; reason: 'max-losses' | 'max-cycles' }
+  | { kind: 'choose-event'; eventId: string; targetMonsterId?: string; tone: EventResolution['tone'] }
+  | { kind: 'skip-event' }
+  | { kind: 'continue-event'; eventId: string };
+
+export type RunCommand = RunCommandBase & RunCommandPayload;
+
 export type CasualRunState = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   mode: 'casual';
+  contentVersion: string;
+  commandLogVersion: 1;
+  commandLog: RunCommand[];
   seed: number;
   commandIndex: number;
   phase: RunPhase;

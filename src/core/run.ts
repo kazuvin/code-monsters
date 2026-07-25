@@ -2,7 +2,15 @@ import { breedMonsters, listBreedingCandidates } from './breeding';
 import { definitionFor, gainMonsterXp, setMonsterGambit } from './monster';
 import { deriveSeed, createSeededRandom } from './rng';
 import { createShop } from './shop';
-import type { BattleResult, BreedingCandidate, CasualRunState, CommandResult, GameData, GambitRule } from './types';
+import type {
+  BattleResult,
+  BreedingCandidate,
+  CasualRunState,
+  CommandResult,
+  GameData,
+  GambitRule,
+  RunCommandPayload,
+} from './types';
 import { createMonster } from './monster';
 
 const draftChoicesFor = (data: GameData, seed: number, round: number) => {
@@ -15,11 +23,27 @@ const draftChoicesFor = (data: GameData, seed: number, round: number) => {
 
 const nextShopSeed = (run: CasualRunState) => deriveSeed(run.seed, 1000 + run.commandIndex + run.cycle * 31);
 const shopChanceFor = (data: GameData, run: CasualRunState) => data.rules.shop.luckyUpgradeChance + run.shopLuckBonus;
+const commandUpdate = (run: CasualRunState, index: number, command: RunCommandPayload) => ({
+  commandIndex: index,
+  commandLog: [
+    ...run.commandLog,
+    {
+      schemaVersion: 1 as const,
+      index,
+      cycle: run.cycle,
+      phase: run.phase,
+      ...command,
+    },
+  ],
+});
 
 export function createCasualRun(data: GameData, seed: number): CasualRunState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     mode: 'casual',
+    contentVersion: data.rules.contentVersion,
+    commandLogVersion: 1,
+    commandLog: [],
     seed,
     commandIndex: 0,
     phase: 'draft',
@@ -46,11 +70,16 @@ export function chooseDraftMonster(data: GameData, run: CasualRunState, definiti
   const monster = createMonster(data, definitionId, `monster-${commandIndex}`);
   const roster = [...run.roster, monster];
   const activeIds = [...run.activeIds, monster.id];
+  const command = commandUpdate(run, commandIndex, {
+    kind: 'draft-monster',
+    definitionId,
+    monsterId: monster.id,
+  });
   if (run.draftRound < data.rules.activeLimit) {
     const draftRound = run.draftRound + 1;
     return {
       ...run,
-      commandIndex,
+      ...command,
       roster,
       activeIds,
       draftRound,
@@ -59,7 +88,7 @@ export function chooseDraftMonster(data: GameData, run: CasualRunState, definiti
   }
   const prepared = {
     ...run,
-    commandIndex,
+    ...command,
     roster,
     activeIds,
     draftRound: data.rules.activeLimit,
@@ -77,10 +106,12 @@ export function rerollShop(data: GameData, run: CasualRunState): CommandResult<C
   if (run.phase !== 'prepare' || !run.shop) return failure(run, '今はショップを更新できません');
   const usesFreeReroll = run.freeRerolls > 0;
   if (!usesFreeReroll && run.coins < data.rules.shop.rerollCost) return failure(run, 'コインが足りません');
+  const cost = usesFreeReroll ? 0 : data.rules.shop.rerollCost;
+  const commandIndex = run.commandIndex + 1;
   const updated = {
     ...run,
-    commandIndex: run.commandIndex + 1,
-    coins: run.coins - (usesFreeReroll ? 0 : data.rules.shop.rerollCost),
+    ...commandUpdate(run, commandIndex, { kind: 'reroll-shop', cost, usedFreeReroll: usesFreeReroll }),
+    coins: run.coins - cost,
     freeRerolls: Math.max(0, run.freeRerolls - (usesFreeReroll ? 1 : 0)),
   };
   return success({
@@ -91,10 +122,12 @@ export function rerollShop(data: GameData, run: CasualRunState): CommandResult<C
 
 export function toggleShopFreeze(run: CasualRunState): CasualRunState {
   if (run.phase !== 'prepare' || !run.shop) return run;
+  const frozen = !run.shop.frozen;
+  const commandIndex = run.commandIndex + 1;
   return {
     ...run,
-    commandIndex: run.commandIndex + 1,
-    shop: { ...run.shop, frozen: !run.shop.frozen },
+    ...commandUpdate(run, commandIndex, { kind: 'freeze-shop', frozen }),
+    shop: { ...run.shop, frozen },
   };
 }
 
@@ -113,7 +146,13 @@ export function buyMonster(data: GameData, run: CasualRunState, offerId: string)
   monsters[offerIndex] = null;
   return success({
     ...run,
-    commandIndex,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'buy-monster',
+      offerId,
+      definitionId: definition.id,
+      monsterId: monster.id,
+      price: definition.price,
+    }),
     coins: run.coins - definition.price,
     roster: [...run.roster, monster],
     activeIds: run.activeIds.length < data.rules.activeLimit ? [...run.activeIds, monster.id] : run.activeIds,
@@ -132,9 +171,15 @@ export function buyEquipment(data: GameData, run: CasualRunState, offerId: strin
   if (run.coins < equipment.price) return failure(run, 'コインが足りません');
   const offers = [...run.shop.equipment];
   offers[offerIndex] = null;
+  const commandIndex = run.commandIndex + 1;
   return success({
     ...run,
-    commandIndex: run.commandIndex + 1,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'buy-equipment',
+      offerId,
+      equipmentId: equipment.id,
+      price: equipment.price,
+    }),
     coins: run.coins - equipment.price,
     equipmentInventory: [...run.equipmentInventory, equipment.id],
     shop: { ...run.shop, equipment: offers },
@@ -148,10 +193,17 @@ export function sellMonster(data: GameData, run: CasualRunState, monsterId: stri
   if (!monster) return failure(run, '仲間が見つかりません');
   const definition = data.monsters.find((entry) => entry.id === monster.definitionId);
   if (!definition) return failure(run, 'モンスターデータが見つかりません');
+  const commandIndex = run.commandIndex + 1;
+  const coinsGained = definition.sellPrice + monster.colorStars;
   return success({
     ...run,
-    commandIndex: run.commandIndex + 1,
-    coins: run.coins + definition.sellPrice + monster.colorStars,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'sell-monster',
+      monsterId,
+      definitionId: definition.id,
+      coinsGained,
+    }),
+    coins: run.coins + coinsGained,
     roster: run.roster.filter((entry) => entry.id !== monsterId),
     activeIds: run.activeIds.filter((id) => id !== monsterId),
     equipmentInventory: monster.equipmentId ? [...run.equipmentInventory, monster.equipmentId] : run.equipmentInventory,
@@ -165,16 +217,18 @@ export function toggleActiveMonster(
 ): CommandResult<CasualRunState> {
   if (!run.roster.some((monster) => monster.id === monsterId)) return failure(run, '仲間が見つかりません');
   if (run.activeIds.includes(monsterId)) {
+    const commandIndex = run.commandIndex + 1;
     return success({
       ...run,
-      commandIndex: run.commandIndex + 1,
+      ...commandUpdate(run, commandIndex, { kind: 'toggle-active', monsterId, active: false }),
       activeIds: run.activeIds.filter((id) => id !== monsterId),
     });
   }
   if (run.activeIds.length >= data.rules.activeLimit) return failure(run, '先に主力から1体外してください');
+  const commandIndex = run.commandIndex + 1;
   return success({
     ...run,
-    commandIndex: run.commandIndex + 1,
+    ...commandUpdate(run, commandIndex, { kind: 'toggle-active', monsterId, active: true }),
     activeIds: [...run.activeIds, monsterId],
   });
 }
@@ -219,9 +273,16 @@ export function moveMonsterToPartySlot(
     const monster = monsterById.get(id);
     return monster ? [monster] : [];
   });
+  const commandIndex = run.commandIndex + 1;
   return success({
     ...run,
-    commandIndex: run.commandIndex + 1,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'move-monster',
+      monsterId,
+      sourceZone,
+      targetZone,
+      targetIndex,
+    }),
     roster: orderedRoster,
     activeIds,
   });
@@ -241,9 +302,15 @@ export function equipItem(
   const inventory = [...run.equipmentInventory];
   if (equipmentId) inventory.splice(inventory.indexOf(equipmentId), 1);
   if (monster.equipmentId) inventory.push(monster.equipmentId);
+  const commandIndex = run.commandIndex + 1;
   return success({
     ...run,
-    commandIndex: run.commandIndex + 1,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'change-equipment',
+      monsterId,
+      fromEquipmentId: monster.equipmentId,
+      toEquipmentId: equipmentId,
+    }),
     equipmentInventory: inventory,
     roster: run.roster.map((entry) => (entry.id === monsterId ? { ...entry, equipmentId } : entry)),
   });
@@ -255,9 +322,10 @@ export function updateGambit(
   index: 0 | 1 | 2,
   gambit: GambitRule,
 ): CasualRunState {
+  const commandIndex = run.commandIndex + 1;
   return {
     ...run,
-    commandIndex: run.commandIndex + 1,
+    ...commandUpdate(run, commandIndex, { kind: 'change-gambit', monsterId, slot: index, gambit }),
     roster: run.roster.map((monster) =>
       monster.id === monsterId ? setMonsterGambit(monster, index, gambit) : monster,
     ),
@@ -299,7 +367,15 @@ export function breedInRun(
   if (parentWasActive && activeIds.length < data.rules.activeLimit) activeIds.push(child.id);
   return success({
     ...run,
-    commandIndex,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'breed',
+      firstParentId: firstId,
+      secondParentId: secondId,
+      candidateId,
+      resultDefinitionId: child.definitionId,
+      childId: child.id,
+      inheritedSkillId,
+    }),
     coins: run.coins + data.rules.breedingCoinBonus,
     roster: [...run.roster.filter((monster) => !parentIds.has(monster.id)), child],
     activeIds,
@@ -317,9 +393,16 @@ export function applyBattleResult(data: GameData, run: CasualRunState, result: B
   const won = result.winner === 'player';
   const activeXp = xpForCycle(data, run.cycle, won);
   const benchXp = Math.floor(activeXp * data.rules.benchXpRate);
+  const commandIndex = run.commandIndex + 1;
   return {
     ...run,
-    commandIndex: run.commandIndex + 1,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'battle-complete',
+      winner: result.winner,
+      durationSeconds: result.durationSeconds,
+      playerDamage: result.damageByTeam.player,
+      enemyDamage: result.damageByTeam.enemy,
+    }),
     phase: 'result',
     completedCycles: run.completedCycles + 1,
     wins: run.wins + (won ? 1 : 0),
@@ -346,7 +429,7 @@ const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
     : [];
   return {
     ...run,
-    commandIndex,
+    ...commandUpdate(run, commandIndex, { kind: 'continue-cycle', nextCycle }),
     phase: eventCycle ? 'event' : 'prepare',
     cycle: nextCycle,
     coins: run.coins + data.rules.cycleIncome,
@@ -359,7 +442,15 @@ const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
 export function continueRun(data: GameData, run: CasualRunState): CasualRunState {
   if (run.phase !== 'result') return run;
   if (run.losses >= data.rules.maxLosses || run.completedCycles >= data.rules.maxCycles) {
-    return { ...run, commandIndex: run.commandIndex + 1, phase: 'finished' };
+    const commandIndex = run.commandIndex + 1;
+    return {
+      ...run,
+      ...commandUpdate(run, commandIndex, {
+        kind: 'finish-run',
+        reason: run.losses >= data.rules.maxLosses ? 'max-losses' : 'max-cycles',
+      }),
+      phase: 'finished',
+    };
   }
   return newCycleState(data, run);
 }
@@ -389,19 +480,27 @@ export function chooseEvent(
     next: CasualRunState,
     text: string,
     tone: NonNullable<CasualRunState['eventResolution']>['tone'] = 'gain',
-  ): CasualRunState => ({
-    ...next,
-    commandIndex: run.commandIndex + 1,
-    phase: 'event-result',
-    eventChoices: [],
-    eventResolution: {
-      eventId,
-      title: event.name,
-      text,
-      tone,
-      targetMonsterId: target?.id,
-    },
-  });
+  ): CasualRunState => {
+    const commandIndex = run.commandIndex + 1;
+    return {
+      ...next,
+      ...commandUpdate(run, commandIndex, {
+        kind: 'choose-event',
+        eventId,
+        targetMonsterId: target?.id,
+        tone,
+      }),
+      phase: 'event-result',
+      eventChoices: [],
+      eventResolution: {
+        eventId,
+        title: event.name,
+        text,
+        tone,
+        targetMonsterId: target?.id,
+      },
+    };
+  };
 
   switch (event.effect.kind) {
     case 'coins':
@@ -501,14 +600,24 @@ export function chooseEvent(
 
 export function skipEvent(_data: GameData, run: CasualRunState): CasualRunState {
   if (run.phase !== 'event') return run;
-  return { ...run, commandIndex: run.commandIndex + 1, phase: 'prepare', eventChoices: [] };
+  const commandIndex = run.commandIndex + 1;
+  return {
+    ...run,
+    ...commandUpdate(run, commandIndex, { kind: 'skip-event' }),
+    phase: 'prepare',
+    eventChoices: [],
+  };
 }
 
 export function continueEvent(run: CasualRunState): CasualRunState {
   if (run.phase !== 'event-result') return run;
+  const commandIndex = run.commandIndex + 1;
   return {
     ...run,
-    commandIndex: run.commandIndex + 1,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'continue-event',
+      eventId: run.eventResolution?.eventId ?? 'unknown-event',
+    }),
     phase: 'prepare',
     eventResolution: undefined,
   };

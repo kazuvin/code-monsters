@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { readFile } from 'node:fs/promises';
 
 const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
 const target = new URL(requestedTarget);
@@ -920,6 +921,92 @@ if ((await mobile.locator('.combat-ledger-card').count()) !== 6) {
 await assertFitsViewport(mobile, 'Mobile result', true);
 await mobile.screenshot({ path: '/tmp/code-monsters-result-mobile.png', fullPage: true });
 
+const playtest = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
+watchErrors(playtest);
+await playtest.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: target.origin });
+await playtest.goto(target.toString(), { waitUntil: 'networkidle' });
+await playtest.getByRole('heading', { name: '旅のはじまりを選ぶ' }).waitFor();
+for (let round = 0; round < 3; round += 1) {
+  await playtest.locator('.draft-choice .monster-card-footer button').first().click();
+}
+
+for (let battleNumber = 0; battleNumber < 12; battleNumber += 1) {
+  await playtest.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
+  await playtest.getByRole('button', { name: '最後まで送る' }).click();
+  await playtest.getByRole('button', { name: '結果を見る →' }).click();
+  await playtest.getByRole('heading', { name: '戦闘報告' }).waitFor();
+  const reveal = playtest.getByRole('button', { name: '報酬をすべて表示' });
+  if ((await reveal.count()) === 1) await reveal.click();
+  await playtest.locator('.result-screen[data-reveal-complete="true"]').waitFor();
+  await playtest.locator('.result-actions .launch-button').click();
+  await playtest.waitForFunction(() =>
+    Boolean(document.querySelector('.finished-screen, .event-choice-card, .battle-launcher')),
+  );
+
+  if ((await playtest.locator('.finished-screen').count()) === 1) break;
+  if ((await playtest.locator('.event-choice-card').count()) > 0) {
+    await playtest.locator('.event-commit:not(:disabled)').first().click();
+    await playtest.locator('.event-result-stage').waitFor();
+    await playtest.getByRole('button', { name: '育成と編成へ進む' }).click();
+  }
+  await playtest.locator('.battle-launcher').waitFor();
+}
+
+await playtest.locator('.finished-screen').waitFor();
+await playtest.getByRole('heading', { name: /十二の航路を完走|血統の旅はここまで/ }).waitFor();
+if ((await playtest.locator('.playtest-ledger-grid > div').count()) !== 6) {
+  throw new Error('Finished screen does not show all playtest activity metrics');
+}
+const commandMetric = Number(
+  (await playtest.locator('.playtest-ledger-grid > div').last().locator('b').textContent())?.trim(),
+);
+if (!Number.isInteger(commandMetric) || commandMetric < 10) {
+  throw new Error(`Finished screen does not expose a credible command count: ${commandMetric}`);
+}
+await playtest.getByRole('button', { name: '航路記録をコピー' }).click();
+await playtest.getByText('航路記録をコピーしました').waitFor();
+const reportDownload = playtest.waitForEvent('download');
+await playtest.getByRole('button', { name: 'JSONを保存' }).click();
+const download = await reportDownload;
+if (!download.suggestedFilename().startsWith('code-monsters-playtest-')) {
+  throw new Error(`Playtest report has an unexpected filename: ${download.suggestedFilename()}`);
+}
+const reportPath = await download.path();
+if (!reportPath) throw new Error('Playtest report download did not produce a local file');
+const report = JSON.parse(await readFile(reportPath, 'utf8'));
+if (
+  report.schemaVersion !== 1 ||
+  report.commandLogVersion !== 1 ||
+  report.run.commandCount !== report.commandLog.length ||
+  report.commandLog.at(-1)?.kind !== 'finish-run'
+) {
+  throw new Error(`Downloaded playtest report has an invalid contract: ${JSON.stringify(report.run)}`);
+}
+if (JSON.stringify(report).includes('"frames"')) {
+  throw new Error('Downloaded playtest report contains heavyweight replay frames');
+}
+await assertFitsViewport(playtest, 'Desktop finished screen', true);
+await playtest.screenshot({ path: '/tmp/code-monsters-playtest-report-desktop.png', fullPage: true });
+
+await playtest.setViewportSize({ width: 390, height: 844 });
+await assertFitsViewport(playtest, 'Mobile finished screen', true);
+const mobileLedgerLayout = await playtest.locator('.playtest-ledger').evaluate((ledger) => ({
+  viewportWidth: window.innerWidth,
+  left: ledger.getBoundingClientRect().left,
+  right: ledger.getBoundingClientRect().right,
+  scrollWidth: ledger.scrollWidth,
+  clientWidth: ledger.clientWidth,
+}));
+if (
+  mobileLedgerLayout.left < -1 ||
+  mobileLedgerLayout.right > mobileLedgerLayout.viewportWidth + 1 ||
+  mobileLedgerLayout.scrollWidth > mobileLedgerLayout.clientWidth + 1
+) {
+  throw new Error(`Mobile playtest ledger is clipped: ${JSON.stringify(mobileLedgerLayout)}`);
+}
+await playtest.locator('.playtest-ledger').scrollIntoViewIfNeeded();
+await playtest.screenshot({ path: '/tmp/code-monsters-playtest-report-mobile.png' });
+
 await browser.close();
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
@@ -950,6 +1037,8 @@ console.log(
       '/tmp/code-monsters-workshop-mobile.png',
       '/tmp/code-monsters-battle-mobile.png',
       '/tmp/code-monsters-result-mobile.png',
+      '/tmp/code-monsters-playtest-report-desktop.png',
+      '/tmp/code-monsters-playtest-report-mobile.png',
     ],
   }),
 );
