@@ -29,6 +29,8 @@ pnpm test:browser
 
 - `docs/game-system-spec.md`: 合意済みゲーム仕様
 - `docs/architecture.md`: データ駆動コアとUnity移行方針
+- `docs/assets/image-asset-workflow.md`: AI、Pixel Forge、Unityをつなぐ画像アセット制作手順
+- `docs/screens/README.md`: 画面一覧、画面遷移、画面別仕様の索引
 - `src/game/game.json`: コンテンツと調整値の単一ソース
 - `src/core/`: UI非依存のラン・配合・ガンビット・戦闘ロジック
 - `src/App.tsx`: カジュアルモードを操作するWEB UI

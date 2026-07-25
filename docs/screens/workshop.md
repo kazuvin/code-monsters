@@ -1,0 +1,140 @@
+# 育成・編成
+
+## ID
+
+`workshop`
+
+## 目的
+
+ショップ、編成、装備、配合、ガンビットを一つの準備画面へ集約し、次の戦闘へ向けた判断を行う。Run中でもっとも情報量と操作量が多い主要画面である。
+
+現在のReact実装は `WorkshopScreen` が担当する。
+
+## 入場と退出
+
+- 入場: 初期ドラフト完了後、通常サイクル開始時、イベント結果確認後
+- 退出: 主力3体を編成して「戦闘を開始する」を実行すると `battle` へ進む
+
+## 640x360レイアウト
+
+- 上部: RunHeader、cycle rail、図鑑入口、cycle・win・loss・coin
+- 左領域: 主力3体と控え4体
+- 中央領域: ショップ、装備、更新、棚固定
+- 下部または右下: 次戦情報と戦闘開始
+- Overlay: 配合、モンスター詳細、図鑑、確認、誕生演出
+
+主画面へ全機能を同時に露出しない。選択と比較に必要な状態は残し、配合、詳細、図鑑は子サーフェスとして重ねる。
+
+## 必須表示
+
+- cycle、win、loss、coin、12cycle進行
+- active 3枠とbench 4枠
+- 各個体の名前、系統、属性、白星、色星、level、equipment
+- モンスターショップ3枠
+- 装備ショップ2枠
+- 商品価格と購入可否
+- 更新cost、無料更新数、棚固定状態、⭐2出現率
+- 配合可能level
+- 主力3体が揃っているか
+- 次の非同期対戦へ進む操作
+
+## 操作
+
+- モンスター購入、装備購入
+- ショップ更新、棚固定
+- active・bench間と各slot間の移動
+- モンスター詳細を開く
+- 装備、売却
+- ガンビット3ルールを編集
+- 配合を開く
+- モンスター図鑑を開く
+- 戦闘を開始する
+
+## 状態
+
+- roster 3〜7体
+- active不足
+- roster上限
+- coin不足
+- shop frozen
+- 無料更新あり
+- notice表示
+- monster選択・drag中・drop target
+- 配合可能・不可能
+- 図鑑の未確認・輪郭確認・解放
+
+## 子サーフェス
+
+### 配合ラボ
+
+親2体、成立候補、子の能力、継承率、固有スキル、継承スキル候補を表示する。複数候補が成立するときは結果を選べるようにする。
+
+### 配合確認
+
+消費する親、誕生する子、解除される装備、獲得coin、継承スキルを確定前に表示する。
+
+### 誕生演出
+
+子の名前、白星、色星、level、能力、スキルを段階表示し、完了後に育成画面へ戻す。
+
+### モンスター詳細
+
+profile、gambit、特殊配合のtabを持つ。能力の最終値と成長・個体値・装備内訳を表示する。
+
+### モンスター図鑑
+
+全45種の発見状態、系統filter、詳細、特殊配合を表示する。発見状態はランをまたいで保持する。
+
+### 特殊配合レシピ
+
+作るrecipeと親として使うrecipeを区別し、未発見情報を仕様どおり隠す。
+
+## アセット計画
+
+- `workshop` visual master
+- workbench背景
+- panel、card、slot、tabの9-slice
+- active・bench slot
+- shop coin、reroll、freeze、lock icon
+- equipment icon
+- inspector tab
+- dialog frame
+- recipe connector
+- catalog index card
+- notice strip
+- 64x64 monster sprite
+
+商品名、価格、能力、ガンビット、図鑑番号を画像へ焼き込まない。
+
+## Unity component候補
+
+- `WorkshopScreenPresenter`
+- `RunHeaderView`
+- `PartyBoard`
+- `RosterCard`
+- `ShopPanel`
+- `ShopOfferCard`
+- `EquipmentOfferCard`
+- `MonsterInspectorModal`
+- `GambitEditor`
+- `BreedingLabModal`
+- `BreedingConfirmationModal`
+- `BreedingRevealModal`
+- `MonsterCatalogModal`
+- `SpecialRecipeView`
+
+## 高密度確認
+
+- active 3体、bench 4体の7体所持
+- 長い日本語名、色星2、装備あり
+- shop商品5枠がすべて埋まる
+- 詳細で7能力と内訳を表示
+- gambit 3ルールの条件、行動、対象を表示
+- 配合候補が複数成立
+- 図鑑45種と詳細を表示
+
+## 未決事項
+
+- Unity版でdragを維持するか、選択後に移動先を選ぶ操作も用意するか
+- 配合をfull-screen child viewにするかmodalにするか
+- 640x360で図鑑一覧と詳細を同時表示する密度
