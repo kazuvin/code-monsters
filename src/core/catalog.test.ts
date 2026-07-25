@@ -13,6 +13,7 @@ describe('monster catalog discovery', () => {
     const entries = monsterCatalogEntries(GAME_DATA, new Set());
 
     expect(entries).toHaveLength(45);
+    expect(entries.every((entry) => entry.details?.kind !== 'oddity')).toBe(true);
     expect(entries.every((entry) => entry.state === 'locked')).toBe(true);
     expect(entries.every((entry) => entry.details === undefined)).toBe(true);
   });

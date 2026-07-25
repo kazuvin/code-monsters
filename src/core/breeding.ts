@@ -18,6 +18,7 @@ export function listBreedingCandidates(
   const firstDefinition = definitionFor(data, first);
   const secondDefinition = definitionFor(data, second);
   const candidates: BreedingCandidate[] = [];
+  if (!firstDefinition.breedable || !secondDefinition.breedable) return candidates;
   const averagedWhiteStars = Math.min(
     5,
     Math.ceil((effectiveStarsFor(data, first) + effectiveStarsFor(data, second)) / 2),
@@ -31,6 +32,7 @@ export function listBreedingCandidates(
   for (const pair of genericPairs) {
     const definition = data.monsters.find(
       (entry) =>
+        entry.kind === 'standard' &&
         entry.lineageId === pair.lineageId &&
         entry.attributeId === pair.attributeId &&
         entry.whiteStars === resultWhiteStars,

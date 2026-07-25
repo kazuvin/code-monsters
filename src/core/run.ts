@@ -1,22 +1,26 @@
 import { breedMonsters, listBreedingCandidates } from './breeding';
-import { definitionFor, gainMonsterXp, setMonsterGambit } from './monster';
+import { definitionFor, farewellCoinsFor, gainMonsterXp, setMonsterGambit, skillIdsFor } from './monster';
 import { deriveSeed, createSeededRandom } from './rng';
 import { createShop } from './shop';
 import type {
   BattleResult,
+  BattleRunRewards,
   BreedingCandidate,
   CasualRunState,
   CommandResult,
+  EggHatchResult,
   GameData,
   GambitRule,
+  MonsterInstance,
   RunCommandPayload,
+  WhiteStars,
 } from './types';
 import { createMonster } from './monster';
 
 const draftChoicesFor = (data: GameData, seed: number, round: number) => {
   const random = createSeededRandom(deriveSeed(seed, round + 1));
   return random
-    .shuffle(data.monsters.filter((monster) => monster.whiteStars === 1))
+    .shuffle(data.monsters.filter((monster) => monster.kind === 'standard' && monster.whiteStars === 1))
     .slice(0, 3)
     .map((monster) => monster.id);
 };
@@ -39,7 +43,7 @@ const commandUpdate = (run: CasualRunState, index: number, command: RunCommandPa
 
 export function createCasualRun(data: GameData, seed: number): CasualRunState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     mode: 'casual',
     contentVersion: data.rules.contentVersion,
     commandLogVersion: 1,
@@ -141,7 +145,9 @@ export function buyMonster(data: GameData, run: CasualRunState, offerId: string)
   if (!definition) return failure(run, 'モンスターデータが見つかりません');
   if (run.coins < definition.price) return failure(run, 'コインが足りません');
   const commandIndex = run.commandIndex + 1;
-  const monster = createMonster(data, definition.id, `monster-${commandIndex}`);
+  const monster = createMonster(data, definition.id, `monster-${commandIndex}`, {
+    journeySeed: deriveSeed(run.seed, run.cycle * 10_000 + commandIndex),
+  });
   const monsters = [...run.shop.monsters];
   monsters[offerIndex] = null;
   return success({
@@ -194,7 +200,7 @@ export function sellMonster(data: GameData, run: CasualRunState, monsterId: stri
   const definition = data.monsters.find((entry) => entry.id === monster.definitionId);
   if (!definition) return failure(run, 'モンスターデータが見つかりません');
   const commandIndex = run.commandIndex + 1;
-  const coinsGained = definition.sellPrice + monster.colorStars;
+  const coinsGained = farewellCoinsFor(data, monster);
   return success({
     ...run,
     ...commandUpdate(run, commandIndex, {
@@ -345,6 +351,9 @@ export function breedInRun(
   const first = run.roster.find((monster) => monster.id === firstId);
   const second = run.roster.find((monster) => monster.id === secondId);
   if (!first || !second) return failure(run, '親モンスターが見つかりません');
+  if (!definitionFor(data, first).breedable || !definitionFor(data, second).breedable) {
+    return failure(run, '奇獣は配合の親にできません');
+  }
   if (first.level < data.rules.breeding.minimumLevel || second.level < data.rules.breeding.minimumLevel) {
     return failure(run, `配合にはレベル${data.rules.breeding.minimumLevel}が必要です`);
   }
@@ -388,11 +397,35 @@ const xpForCycle = (data: GameData, cycle: number, won: boolean) => {
   return (data.rules.activeXpByCycleBand[band] ?? 4) + (won ? data.rules.battleWinXp : 0);
 };
 
+const battleRunRewardsFor = (data: GameData, run: CasualRunState, activeXp: number): BattleRunRewards => {
+  let coins = 0;
+  let activeXpBonus = 0;
+  for (const monsterId of run.activeIds) {
+    const monster = run.roster.find((entry) => entry.id === monsterId);
+    if (!monster) continue;
+    for (const skillId of new Set(skillIdsFor(data, monster))) {
+      const reward = data.skills.find((skill) => skill.id === skillId)?.postBattleReward;
+      if (!reward) continue;
+      if (reward.kind === 'coins') coins += reward.amount;
+      if (reward.kind === 'active-xp') activeXpBonus += reward.amount;
+    }
+  }
+  const appliedActiveXpBonus = Math.min(activeXp, activeXpBonus);
+  return {
+    coins,
+    xpByMonsterId: Object.fromEntries(
+      run.activeIds.flatMap((monsterId) => (appliedActiveXpBonus > 0 ? [[monsterId, appliedActiveXpBonus]] : [])),
+    ),
+  };
+};
+
 export function applyBattleResult(data: GameData, run: CasualRunState, result: BattleResult): CasualRunState {
   if (run.phase !== 'prepare') return run;
   const won = result.winner === 'player';
   const activeXp = xpForCycle(data, run.cycle, won);
   const benchXp = Math.floor(activeXp * data.rules.benchXpRate);
+  const rewards = battleRunRewardsFor(data, run, activeXp);
+  const rewardXp = Object.values(rewards.xpByMonsterId).reduce((total, amount) => total + amount, 0);
   const commandIndex = run.commandIndex + 1;
   return {
     ...run,
@@ -402,17 +435,59 @@ export function applyBattleResult(data: GameData, run: CasualRunState, result: B
       durationSeconds: result.durationSeconds,
       playerDamage: result.damageByTeam.player,
       enemyDamage: result.damageByTeam.enemy,
+      rewardCoins: rewards.coins,
+      rewardXp,
     }),
     phase: 'result',
     completedCycles: run.completedCycles + 1,
     wins: run.wins + (won ? 1 : 0),
     losses: run.losses + (result.winner === 'enemy' ? 1 : 0),
+    coins: run.coins + rewards.coins,
     roster: run.roster.map((monster) =>
-      gainMonsterXp(data, monster, run.activeIds.includes(monster.id) ? activeXp : benchXp),
+      gainMonsterXp(
+        data,
+        { ...monster, cyclesHeld: monster.cyclesHeld + 1 },
+        (run.activeIds.includes(monster.id) ? activeXp : benchXp) + (rewards.xpByMonsterId[monster.id] ?? 0),
+      ),
     ),
     lastBattle: result,
+    lastBattleRewards: rewards,
+    lastHatches: undefined,
   };
 }
+
+const hatchMonster = (
+  data: GameData,
+  egg: MonsterInstance,
+): { monster: MonsterInstance; hatch: EggHatchResult } | undefined => {
+  const eggDefinition = definitionFor(data, egg);
+  const hatchRule = eggDefinition.hatch;
+  if (!hatchRule || egg.cyclesHeld < hatchRule.afterHeldCycles) return undefined;
+  const random = createSeededRandom(egg.journeySeed);
+  const upgraded = random.next() < hatchRule.upgradeChance;
+  const targetWhiteStars = Math.min(
+    hatchRule.maximumWhiteStars,
+    eggDefinition.whiteStars + (upgraded ? 1 : 0),
+  ) as WhiteStars;
+  const candidates = data.monsters.filter(
+    (monster) => monster.kind === 'standard' && monster.whiteStars === targetWhiteStars,
+  );
+  const resultDefinition = random.pick(candidates);
+  return {
+    monster: createMonster(data, resultDefinition.id, egg.id, {
+      xp: egg.xp,
+      equipmentId: egg.equipmentId,
+      journeySeed: egg.journeySeed,
+    }),
+    hatch: {
+      eggId: egg.id,
+      eggDefinitionId: eggDefinition.id,
+      resultDefinitionId: resultDefinition.id,
+      fromWhiteStars: eggDefinition.whiteStars,
+      toWhiteStars: resultDefinition.whiteStars,
+    },
+  };
+};
 
 const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
   const commandIndex = run.commandIndex + 1;
@@ -427,15 +502,25 @@ const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
         .slice(0, 3)
         .map((event) => event.id)
     : [];
+  const hatches: EggHatchResult[] = [];
+  const roster = run.roster.map((monster) => {
+    const result = hatchMonster(data, monster);
+    if (!result) return monster;
+    hatches.push(result.hatch);
+    return result.monster;
+  });
   return {
     ...run,
-    ...commandUpdate(run, commandIndex, { kind: 'continue-cycle', nextCycle }),
+    ...commandUpdate(run, commandIndex, { kind: 'continue-cycle', nextCycle, hatches }),
     phase: eventCycle ? 'event' : 'prepare',
     cycle: nextCycle,
     coins: run.coins + data.rules.cycleIncome,
+    roster,
     shop: retainedShop,
     eventChoices,
     eventResolution: undefined,
+    lastBattleRewards: undefined,
+    lastHatches: hatches,
   };
 };
 

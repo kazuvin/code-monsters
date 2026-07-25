@@ -7,18 +7,27 @@ export function createShop(
   luckyUpgradeChance = data.rules.shop.luckyUpgradeChance,
 ): ShopState {
   const random = createSeededRandom(seed);
-  const rankOne = data.monsters.filter((monster) => monster.whiteStars === 1);
+  const rankOne = data.monsters.filter((monster) => monster.kind === 'standard' && monster.whiteStars === 1);
+  const oddities = data.monsters.filter((monster) => monster.kind === 'oddity' && monster.whiteStars === 1);
   const counts = new Map<string, number>();
   const monsters = Array.from({ length: data.rules.shop.monsterSlots }, (_, index) => {
-    let definition = random.pick(rankOne);
+    const pool = oddities.length > 0 && random.next() < data.rules.shop.oddityOfferChance ? oddities : rankOne;
+    let definition = random.pick(pool);
     for (let attempt = 0; attempt < 20 && (counts.get(definition.id) ?? 0) >= 2; attempt += 1) {
-      definition = random.pick(rankOne);
+      definition = random.pick(pool);
     }
-    const lucky = random.next() < Math.min(0.5, luckyUpgradeChance);
-    if (lucky) {
-      definition =
-        data.monsters.find((monster) => monster.archetypeId === definition.archetypeId && monster.whiteStars === 2) ??
-        definition;
+    let lucky = false;
+    if (random.next() < Math.min(0.5, luckyUpgradeChance)) {
+      const upgraded = data.monsters.find(
+        (monster) =>
+          monster.archetypeId === definition.archetypeId &&
+          monster.kind === definition.kind &&
+          monster.whiteStars === definition.whiteStars + 1,
+      );
+      if (upgraded) {
+        definition = upgraded;
+        lucky = true;
+      }
     }
     counts.set(definition.id, (counts.get(definition.id) ?? 0) + 1);
     return {

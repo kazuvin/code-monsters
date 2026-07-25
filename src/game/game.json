@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "rules": {
-    "contentVersion": "casual-prototype-3",
+    "contentVersion": "casual-prototype-4",
     "maxCycles": 12,
     "maxLosses": 5,
     "rosterLimit": 7,
@@ -15,11 +15,16 @@
     "activeXpByCycleBand": [4, 5, 6, 7],
     "battleWinXp": 1,
     "benchXpRate": 0.5,
+    "farewell": {
+      "levelCoinPerLevel": 1,
+      "colorStarCoinBonus": 1
+    },
     "shop": {
       "monsterSlots": 3,
       "equipmentSlots": 2,
       "rerollCost": 1,
-      "luckyUpgradeChance": 0.02
+      "luckyUpgradeChance": 0.02,
+      "oddityOfferChance": 0.12
     },
     "breeding": {
       "minimumLevel": 3,
@@ -496,7 +501,141 @@
       ]
     }
   ],
+  "oddities": [
+    {
+      "id": "buried-mole-1",
+      "archetypeId": "buried-mole",
+      "kind": "oddity",
+      "breedable": false,
+      "lineageId": "spirit",
+      "attributeId": "dark",
+      "name": "埋蔵モグラ",
+      "whiteStars": 1,
+      "glyph": "掘",
+      "appearance": { "body": "🐹", "attire": "⛏", "form": "whelp" },
+      "baseStats": { "maxHp": 82, "maxMp": 24, "attack": 19, "defense": 27, "speed": 15, "wisdom": 18, "crit": 4 },
+      "growthPerLevel": { "maxHp": 7, "maxMp": 2, "attack": 2, "defense": 3, "speed": 1, "wisdom": 2, "crit": 0 },
+      "intrinsicSkillIds": ["tail-swipe", "scale-wall"],
+      "defaultSkillId": "spirit-spark",
+      "traitId": "buried-treasury",
+      "price": 3,
+      "sellPrice": 1
+    },
+    {
+      "id": "coin-crow-1",
+      "archetypeId": "coin-crow",
+      "kind": "oddity",
+      "breedable": false,
+      "lineageId": "demon",
+      "attributeId": "dark",
+      "name": "銭羽ガラス",
+      "whiteStars": 1,
+      "glyph": "銭",
+      "appearance": { "body": "🐦‍⬛", "attire": "¤", "form": "scout" },
+      "baseStats": { "maxHp": 74, "maxMp": 31, "attack": 22, "defense": 17, "speed": 28, "wisdom": 20, "crit": 9 },
+      "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 2, "defense": 2, "speed": 3, "wisdom": 2, "crit": 1 },
+      "intrinsicSkillIds": ["coin-snatch", "night-claw"],
+      "defaultSkillId": "quick-flare",
+      "traitId": "impish-opening",
+      "price": 3,
+      "sellPrice": 1
+    },
+    {
+      "id": "study-owl-1",
+      "archetypeId": "study-owl",
+      "kind": "oddity",
+      "breedable": false,
+      "lineageId": "spirit",
+      "attributeId": "light",
+      "name": "学灯フクロウ",
+      "whiteStars": 1,
+      "glyph": "学",
+      "appearance": { "body": "🦉", "attire": "✎", "form": "winged" },
+      "baseStats": { "maxHp": 76, "maxMp": 38, "attack": 16, "defense": 19, "speed": 22, "wisdom": 29, "crit": 4 },
+      "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 1, "defense": 2, "speed": 2, "wisdom": 4, "crit": 0 },
+      "intrinsicSkillIds": ["study-lantern", "mend"],
+      "defaultSkillId": "spirit-spark",
+      "traitId": "morning-dew",
+      "price": 3,
+      "sellPrice": 1
+    },
+    {
+      "id": "mystery-egg-1",
+      "archetypeId": "mystery-egg",
+      "kind": "oddity",
+      "breedable": false,
+      "lineageId": "spirit",
+      "attributeId": "light",
+      "name": "まだら卵",
+      "whiteStars": 1,
+      "glyph": "卵",
+      "appearance": { "body": "🥚", "attire": "?", "form": "whelp" },
+      "baseStats": { "maxHp": 98, "maxMp": 18, "attack": 10, "defense": 32, "speed": 10, "wisdom": 12, "crit": 0 },
+      "growthPerLevel": { "maxHp": 8, "maxMp": 1, "attack": 1, "defense": 3, "speed": 1, "wisdom": 1, "crit": 0 },
+      "intrinsicSkillIds": ["scale-wall", "aegis-dust"],
+      "defaultSkillId": "tail-swipe",
+      "traitId": "waiting-shell",
+      "price": 3,
+      "sellPrice": 1,
+      "hatch": {
+        "afterHeldCycles": 1,
+        "upgradeChance": 0.1,
+        "maximumWhiteStars": 2
+      }
+    },
+    {
+      "id": "mystery-egg-2",
+      "archetypeId": "mystery-egg",
+      "kind": "oddity",
+      "breedable": false,
+      "lineageId": "spirit",
+      "attributeId": "light",
+      "name": "星殻の卵",
+      "whiteStars": 2,
+      "glyph": "殻",
+      "appearance": { "body": "🥚", "attire": "✦", "form": "armored" },
+      "baseStats": { "maxHp": 124, "maxMp": 23, "attack": 13, "defense": 40, "speed": 13, "wisdom": 15, "crit": 0 },
+      "growthPerLevel": { "maxHp": 9, "maxMp": 1, "attack": 1, "defense": 4, "speed": 1, "wisdom": 1, "crit": 0 },
+      "intrinsicSkillIds": ["scale-wall", "aegis-dust"],
+      "defaultSkillId": "tail-swipe",
+      "traitId": "waiting-shell",
+      "price": 6,
+      "sellPrice": 3,
+      "hatch": {
+        "afterHeldCycles": 1,
+        "upgradeChance": 0.1,
+        "maximumWhiteStars": 3
+      }
+    }
+  ],
   "skills": [
+    {
+      "id": "coin-snatch",
+      "name": "銭さらい",
+      "description": "主力として戦闘を完了すると、戦闘終了時に1コインを拾う。1戦につき1回。",
+      "mpCost": 2,
+      "targetScope": "single-enemy",
+      "effects": [{ "kind": "damage", "scaling": "physical", "power": 72, "target": "action-target", "canCrit": true }],
+      "postBattleReward": { "kind": "coins", "amount": 1 }
+    },
+    {
+      "id": "study-lantern",
+      "name": "学灯の導き",
+      "description": "主力として戦闘を完了すると、主力全員が戦闘終了時に追加で経験値1を得る。",
+      "mpCost": 4,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 70, "target": "action-target" },
+        {
+          "kind": "status",
+          "statusId": "wisdom-up",
+          "amount": 6,
+          "durationSeconds": 6,
+          "target": "all-allies"
+        }
+      ],
+      "postBattleReward": { "kind": "active-xp", "amount": 1 }
+    },
     {
       "id": "tail-swipe",
       "name": "テイルスイープ",
@@ -879,6 +1018,45 @@
     }
   ],
   "traits": [
+    {
+      "id": "buried-treasury",
+      "name": "埋蔵勘",
+      "stages": [
+        {
+          "description": "戦闘を1回終えるたび、別れでもらえるコインが1枚増える。",
+          "battleStartEffects": [],
+          "farewellCoinsPerHeldCycle": 1
+        },
+        {
+          "description": "戦闘を1回終えるたび、別れでもらえるコインが1枚増える。",
+          "battleStartEffects": [],
+          "farewellCoinsPerHeldCycle": 1
+        },
+        {
+          "description": "戦闘を1回終えるたび、別れでもらえるコインが1枚増える。",
+          "battleStartEffects": [],
+          "farewellCoinsPerHeldCycle": 1
+        }
+      ]
+    },
+    {
+      "id": "waiting-shell",
+      "name": "孵化待ち",
+      "stages": [
+        {
+          "description": "1戦保持すると次のサイクル開始時に孵化する。10%で一段階上の白星になる。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 18, "target": "self" }]
+        },
+        {
+          "description": "1戦保持すると次のサイクル開始時に孵化する。10%で一段階上の白星になる。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 18, "target": "self" }]
+        },
+        {
+          "description": "1戦保持すると次のサイクル開始時に孵化する。10%で一段階上の白星になる。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 18, "target": "self" }]
+        }
+      ]
+    },
     {
       "id": "sunscale",
       "name": "陽鱗",

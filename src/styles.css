@@ -678,6 +678,35 @@ button.definition-card:active,
   color: var(--pink);
 }
 
+.hatch-notice {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 7px 9px;
+  border: 1px solid var(--gold);
+  border-left: 5px solid var(--gold);
+  background: linear-gradient(90deg, rgba(242, 217, 139, 0.14), transparent 60%), var(--deck);
+}
+
+.hatch-notice > span {
+  color: var(--gold);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}
+
+.hatch-notice > strong {
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+}
+
+.hatch-notice > small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
 .workbench-layout {
   display: grid;
   min-height: 0;
@@ -1852,6 +1881,7 @@ button.definition-card:active,
 }
 
 .trait-block,
+.farewell-value,
 .skill-list,
 .equipment-block {
   margin-top: 10px;
@@ -1867,6 +1897,7 @@ button.definition-card:active,
 }
 
 .trait-block > span,
+.farewell-value > span,
 .skill-list > span,
 .equipment-block > span {
   color: var(--monster-color);
@@ -1885,6 +1916,27 @@ button.definition-card:active,
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   font-size: 9px;
   line-height: 1.5;
+}
+
+.farewell-value h3 {
+  margin: 3px 0;
+  color: var(--gold);
+  font-size: 12px;
+}
+
+.farewell-value p,
+.farewell-value small {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.farewell-value small {
+  display: block;
+  margin-top: 4px;
+  color: var(--mint);
 }
 
 .skill-list > .skill-card-grid {
@@ -4133,7 +4185,7 @@ button.definition-card:active,
   }
 
   .battle-report-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .draft-screen,
@@ -6101,6 +6153,11 @@ button.effect-skill-card {
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   font-size: 9px;
   line-height: 1.35;
+}
+
+.skill-effect-fact.is-journey-reward {
+  border-left-color: var(--mint);
+  color: var(--mint);
 }
 
 .effect-skill-card > p {

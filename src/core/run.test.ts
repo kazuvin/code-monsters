@@ -10,6 +10,7 @@ import {
   continueRun,
   createCasualRun,
   moveMonsterToPartySlot,
+  sellMonster,
   skipEvent,
 } from './run';
 
@@ -25,7 +26,7 @@ describe('casual run', () => {
   it('starts with three free monsters and cycle-one income', () => {
     const run = finishDraft();
 
-    expect(run.schemaVersion).toBe(3);
+    expect(run.schemaVersion).toBe(4);
     expect(run.contentVersion).toBe(GAME_DATA.rules.contentVersion);
     expect(run.commandLogVersion).toBe(1);
     expect(run.phase).toBe('prepare');
@@ -67,6 +68,109 @@ describe('casual run', () => {
     const rejected = buyMonster(GAME_DATA, bought.state, 'missing-offer');
     expect(rejected.ok).toBe(false);
     expect(rejected.state.commandLog).toEqual(bought.state.commandLog);
+  });
+
+  it('increases farewell coins with white stars, level, and color stars', () => {
+    const run = finishDraft();
+    const veteran = createMonster(GAME_DATA, 'light-dragon-3', 'farewell-veteran', {
+      colorStars: 2,
+      xp: 18,
+    });
+    const withVeteran = { ...run, roster: [...run.roster, veteran] };
+
+    const result = sellMonster(GAME_DATA, withVeteran, veteran.id);
+
+    expect(result.ok).toBe(true);
+    expect(result.state.coins - run.coins).toBe(10);
+    expect(result.state.commandLog.at(-1)).toMatchObject({
+      kind: 'sell-monster',
+      monsterId: veteran.id,
+      coinsGained: 10,
+    });
+  });
+
+  it('raises the buried mole farewell value linearly for every held battle', () => {
+    const run = finishDraft();
+    const values = [0, 1, 3, 6].map((cyclesHeld) => {
+      const mole = createMonster(GAME_DATA, 'buried-mole-1', `buried-mole-${cyclesHeld}`, {
+        cyclesHeld,
+      });
+      const result = sellMonster(GAME_DATA, { ...run, roster: [...run.roster, mole] }, mole.id);
+      expect(result.ok).toBe(true);
+      return result.state.coins - run.coins;
+    });
+
+    expect(values).toEqual([1, 2, 4, 7]);
+  });
+
+  it('applies coin and active experience skills once after battle and advances held cycles', () => {
+    const run = finishDraft();
+    const coinMonster = createMonster(GAME_DATA, 'coin-crow-1', 'coin-crow');
+    const xpMonster = createMonster(GAME_DATA, 'study-owl-1', 'study-owl');
+    const fighter = createMonster(GAME_DATA, 'fire-dragon-1', 'fighter');
+    const prepared = {
+      ...run,
+      roster: [coinMonster, xpMonster, fighter],
+      activeIds: [coinMonster.id, xpMonster.id, fighter.id],
+    };
+
+    const result = applyBattleResult(GAME_DATA, prepared, {
+      winner: 'player',
+      durationSeconds: 12,
+      frames: [],
+      damageByTeam: { player: 1, enemy: 0 },
+      monsterReports: [],
+    });
+
+    expect(result.coins).toBe(prepared.coins + 1);
+    expect(result.lastBattleRewards).toEqual({
+      coins: 1,
+      xpByMonsterId: {
+        [coinMonster.id]: 1,
+        [xpMonster.id]: 1,
+        [fighter.id]: 1,
+      },
+    });
+    expect(result.roster.every((monster) => monster.cyclesHeld === 1)).toBe(true);
+    expect(result.roster.map((monster) => monster.xp)).toEqual([6, 6, 6]);
+  });
+
+  it('hatches eggs deterministically after one held battle within their rank cap', () => {
+    const run = finishDraft();
+    const rankOneEgg = createMonster(GAME_DATA, 'mystery-egg-1', 'rank-one-egg', {
+      cyclesHeld: 1,
+      journeySeed: 7,
+    });
+    const rankTwoEgg = createMonster(GAME_DATA, 'mystery-egg-2', 'rank-two-egg', {
+      cyclesHeld: 1,
+      journeySeed: 7,
+    });
+    const prepared = {
+      ...run,
+      phase: 'result' as const,
+      roster: [run.roster[0] as (typeof run.roster)[number], rankOneEgg, rankTwoEgg],
+      activeIds: [run.roster[0]?.id as string],
+      completedCycles: 1,
+    };
+
+    const first = continueRun(GAME_DATA, prepared);
+    const second = continueRun(GAME_DATA, prepared);
+    const rankOneResult = first.roster.find((monster) => monster.id === rankOneEgg.id);
+    const rankTwoResult = first.roster.find((monster) => monster.id === rankTwoEgg.id);
+
+    expect(first).toEqual(second);
+    expect(rankOneResult?.definitionId).not.toBe(rankOneEgg.definitionId);
+    expect(rankTwoResult?.definitionId).not.toBe(rankTwoEgg.definitionId);
+    expect(
+      GAME_DATA.monsters.find((monster) => monster.id === rankOneResult?.definitionId)?.whiteStars,
+    ).toBeLessThanOrEqual(2);
+    expect(
+      GAME_DATA.monsters.find((monster) => monster.id === rankTwoResult?.definitionId)?.whiteStars,
+    ).toBeLessThanOrEqual(3);
+    expect(first.lastHatches).toEqual([
+      expect.objectContaining({ eggId: rankOneEgg.id, fromWhiteStars: 1 }),
+      expect.objectContaining({ eggId: rankTwoEgg.id, fromWhiteStars: 2 }),
+    ]);
   });
 
   it('ends immediately on the fifth loss', () => {

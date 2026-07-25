@@ -104,7 +104,7 @@ const assertReadableMonsterCards = async (page, label, cardSelector, nameSelecto
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
 await desktop.addInitScript(() => {
-  window.localStorage.setItem('code-monsters:recipe-discovery:v2', JSON.stringify(['fire-spirit-3']));
+  window.localStorage.setItem('code-monsters:recipe-discovery:v3', JSON.stringify(['fire-spirit-3']));
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
@@ -213,14 +213,18 @@ if ((await desktop.locator('.prospect-dialog .effect-skill-card').count()) !== 3
 if ((await desktop.locator('.prospect-dialog .skill-effect-fact').count()) < 3) {
   throw new Error('Monster detail skill cards do not expose concrete effect values');
 }
+if ((await desktop.locator('.prospect-dialog .farewell-value').count()) !== 1) {
+  throw new Error('Monster detail does not expose the common farewell coin value');
+}
 await desktop.screenshot({ path: '/tmp/code-monsters-prospect-desktop.png', fullPage: true });
 await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
 
 await desktop.locator('.equipment-offers article footer button').first().click();
 const coinsBefore = Number((await desktop.locator('.coin-metric b').textContent())?.trim());
+const firstOfferPrice = Number((await desktop.locator('.shop-monsters .buy-button b').first().textContent())?.trim());
 await desktop.locator('.shop-monsters .buy-button').first().click();
 const coinsAfter = Number((await desktop.locator('.coin-metric b').textContent())?.trim());
-if (coinsAfter !== coinsBefore - 3) throw new Error('Buying a rank-one monster did not spend three coins');
+if (coinsAfter !== coinsBefore - firstOfferPrice) throw new Error('Buying a monster did not spend its displayed price');
 if ((await desktop.locator('.team-panel .roster-card').count()) !== 4) {
   throw new Error('Bought monster did not enter the roster');
 }
@@ -389,7 +393,10 @@ if (
 const singleTargetImpact = desktop.locator('.battle-screen.is-impact-single .battlefield');
 await singleTargetImpact.waitFor({ timeout: 5000 });
 const singleTargetImpactAnimation = await singleTargetImpact.evaluate((field) => getComputedStyle(field).animationName);
-if (!singleTargetImpactAnimation.includes('arena-shake')) {
+if (
+  !singleTargetImpactAnimation.includes('arena-shake') &&
+  !singleTargetImpactAnimation.includes('critical-arena-kick')
+) {
   throw new Error(`Single-target damage does not shake the battlefield: ${singleTargetImpactAnimation}`);
 }
 const actingSkillCallout = desktop.locator('.battle-sprite.is-acting .skill-callout');
@@ -498,8 +505,8 @@ await desktop.getByRole('heading', { name: '戦闘報告' }).waitFor();
 const revealRewards = desktop.getByRole('button', { name: '報酬をすべて表示' });
 if ((await revealRewards.count()) === 1) await revealRewards.click();
 await desktop.locator('.result-screen[data-reveal-complete="true"]').waitFor();
-if ((await desktop.locator('.battle-report-metric').count()) !== 4) {
-  throw new Error('Battle result does not show the four report metrics');
+if ((await desktop.locator('.battle-report-metric').count()) !== 5) {
+  throw new Error('Battle result does not show combat and journey reward metrics');
 }
 if ((await desktop.locator('.result-monster-card').count()) !== 4) {
   throw new Error('Battle result does not show active and bench XP');
@@ -827,6 +834,9 @@ await mobileActiveCard.click();
 await mobile.locator('dialog[open]').waitFor();
 if ((await mobile.locator('.monster-dialog .stat-grid span').count()) !== 7) {
   throw new Error('Monster detail dialog does not show all seven stats');
+}
+if ((await mobile.locator('.monster-dialog .farewell-value').count()) !== 1) {
+  throw new Error('Mobile monster detail does not show the farewell coin value');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-stat-breakdown-mobile.png' });
 await mobile.getByRole('button', { name: 'ガンビット' }).click();

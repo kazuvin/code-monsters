@@ -10,12 +10,14 @@ const scaleStats = (stats: StatBlock, multiplier: number): StatBlock =>
 
 const fileData = rawGameData as RawGameData;
 
-const monsters: MonsterDefinition[] = fileData.archetypes.flatMap((archetype) =>
+const catalogMonsters: MonsterDefinition[] = fileData.archetypes.flatMap((archetype) =>
   archetype.forms.map((form, index) => {
     const whiteStars = (index + 1) as WhiteStars;
     return {
       id: `${archetype.attributeId}-${archetype.lineageId}-${whiteStars}`,
       archetypeId: archetype.id,
+      kind: 'standard' as const,
+      breedable: true,
       lineageId: archetype.lineageId,
       attributeId: archetype.attributeId,
       name: form.name,
@@ -32,6 +34,8 @@ const monsters: MonsterDefinition[] = fileData.archetypes.flatMap((archetype) =>
     };
   }),
 );
+
+const monsters: MonsterDefinition[] = [...catalogMonsters, ...fileData.oddities];
 
 export const GAME_DATA: GameData = { ...fileData, monsters };
 
@@ -68,7 +72,10 @@ export function validateGameData(data: GameData): string[] {
 
   if (data.lineages.length !== 3) errors.push('Validation catalog must contain exactly 3 lineages');
   if (data.attributes.length !== 3) errors.push('Validation catalog must contain exactly 3 attributes');
-  if (data.monsters.length !== 45) errors.push('Validation catalog must expand to exactly 45 monsters');
+  const standardMonsters = data.monsters.filter((monster) => monster.kind === 'standard');
+  const oddities = data.monsters.filter((monster) => monster.kind === 'oddity');
+  if (standardMonsters.length !== 45) errors.push('Validation catalog must expand to exactly 45 monsters');
+  if (oddities.some((monster) => monster.breedable)) errors.push('Oddity monsters must not be breedable');
   if (data.rules.levelThresholds.length !== data.rules.maxLevel) {
     errors.push('levelThresholds must contain one cumulative value per level');
   }
@@ -117,9 +124,32 @@ export function validateGameData(data: GameData): string[] {
       errors.push(`${recipe.id} references unknown result "${recipe.resultDefinitionId}"`);
     }
   }
+  for (const oddity of oddities) {
+    const skillIdsForOddity = [...oddity.intrinsicSkillIds, oddity.defaultSkillId];
+    if (new Set(skillIdsForOddity).size !== 3) errors.push(`${oddity.id} must have three different skills`);
+    for (const skillId of skillIdsForOddity) {
+      if (!skillIds.has(skillId)) errors.push(`${oddity.id} references unknown skill "${skillId}"`);
+    }
+    if (!traitIds.has(oddity.traitId)) errors.push(`${oddity.id} references unknown trait "${oddity.traitId}"`);
+    if (oddity.hatch) {
+      if (oddity.hatch.afterHeldCycles < 1) errors.push(`${oddity.id} must be held for at least one cycle`);
+      if (oddity.hatch.maximumWhiteStars < oddity.whiteStars) {
+        errors.push(`${oddity.id} hatch maximum cannot be below its egg rank`);
+      }
+      if (oddity.hatch.maximumWhiteStars > Math.min(5, oddity.whiteStars + 1)) {
+        errors.push(`${oddity.id} hatch maximum can be at most one rank above its egg rank`);
+      }
+      if (oddity.hatch.upgradeChance < 0 || oddity.hatch.upgradeChance > 1) {
+        errors.push(`${oddity.id} has an invalid hatch upgrade chance`);
+      }
+    }
+  }
   for (const skill of data.skills) {
     if (skill.mpCost < 0) errors.push(`${skill.id} has a negative MP cost`);
     if (skill.effects.length === 0) errors.push(`${skill.id} needs at least one effect`);
+    if (skill.postBattleReward && skill.postBattleReward.amount <= 0) {
+      errors.push(`${skill.id} needs a positive post-battle reward`);
+    }
   }
   for (const trait of data.traits) {
     if (trait.stages.length !== 3) errors.push(`${trait.id} needs exactly three color-star stages`);

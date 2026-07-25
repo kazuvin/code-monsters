@@ -5,6 +5,7 @@ export type AttributeId = 'light' | 'dark' | 'fire';
 export type WhiteStars = 1 | 2 | 3 | 4 | 5;
 export type ColorStars = 0 | 1 | 2;
 export type StatId = 'maxHp' | 'maxMp' | 'attack' | 'defense' | 'speed' | 'wisdom' | 'crit';
+export type MonsterKind = 'standard' | 'oddity';
 
 export type StatBlock = Record<StatId, number>;
 
@@ -75,11 +76,13 @@ export type SkillDefinition = {
   mpCost: number;
   targetScope: 'single-enemy' | 'single-ally' | 'self' | 'all-enemies' | 'all-allies';
   effects: EffectDefinition[];
+  postBattleReward?: { kind: 'coins' | 'active-xp'; amount: number };
 };
 
 export type TraitStageDefinition = {
   description: string;
   battleStartEffects: EffectDefinition[];
+  farewellCoinsPerHeldCycle?: number;
 };
 
 export type TraitDefinition = {
@@ -136,6 +139,8 @@ export type MonsterArchetypeDefinition = {
 export type MonsterDefinition = {
   id: string;
   archetypeId: string;
+  kind: MonsterKind;
+  breedable: boolean;
   lineageId: LineageId;
   attributeId: AttributeId;
   name: string;
@@ -149,6 +154,11 @@ export type MonsterDefinition = {
   traitId: string;
   price: number;
   sellPrice: number;
+  hatch?: {
+    afterHeldCycles: number;
+    upgradeChance: number;
+    maximumWhiteStars: WhiteStars;
+  };
 };
 
 export type EquipmentDefinition = {
@@ -207,11 +217,16 @@ export type GameRules = {
   activeXpByCycleBand: [number, number, number, number];
   battleWinXp: number;
   benchXpRate: number;
+  farewell: {
+    levelCoinPerLevel: number;
+    colorStarCoinBonus: number;
+  };
   shop: {
     monsterSlots: number;
     equipmentSlots: number;
     rerollCost: number;
     luckyUpgradeChance: number;
+    oddityOfferChance: number;
   };
   breeding: {
     minimumLevel: number;
@@ -242,6 +257,7 @@ export type RawGameData = {
   attributes: AttributeDefinition[];
   rankStatMultipliers: [number, number, number, number, number];
   archetypes: MonsterArchetypeDefinition[];
+  oddities: MonsterDefinition[];
   skills: SkillDefinition[];
   traits: TraitDefinition[];
   equipment: EquipmentDefinition[];
@@ -259,6 +275,8 @@ export type MonsterInstance = {
   colorStars: ColorStars;
   level: number;
   xp: number;
+  cyclesHeld: number;
+  journeySeed: number;
   inheritedStats: StatBlock;
   inheritedSkillId?: string;
   gambits: [GambitRule, GambitRule, GambitRule];
@@ -294,6 +312,19 @@ export type ShopState = {
 };
 
 export type RunPhase = 'draft' | 'event' | 'event-result' | 'prepare' | 'result' | 'finished';
+
+export type EggHatchResult = {
+  eggId: string;
+  eggDefinitionId: string;
+  resultDefinitionId: string;
+  fromWhiteStars: WhiteStars;
+  toWhiteStars: WhiteStars;
+};
+
+export type BattleRunRewards = {
+  coins: number;
+  xpByMonsterId: Record<string, number>;
+};
 
 type RunCommandBase = {
   schemaVersion: 1;
@@ -340,8 +371,10 @@ export type RunCommandPayload =
       durationSeconds: number;
       playerDamage: number;
       enemyDamage: number;
+      rewardCoins: number;
+      rewardXp: number;
     }
-  | { kind: 'continue-cycle'; nextCycle: number }
+  | { kind: 'continue-cycle'; nextCycle: number; hatches: EggHatchResult[] }
   | { kind: 'finish-run'; reason: 'max-losses' | 'max-cycles' }
   | { kind: 'choose-event'; eventId: string; targetMonsterId?: string; tone: EventResolution['tone'] }
   | { kind: 'skip-event' }
@@ -350,7 +383,7 @@ export type RunCommandPayload =
 export type RunCommand = RunCommandBase & RunCommandPayload;
 
 export type CasualRunState = {
-  schemaVersion: 3;
+  schemaVersion: 4;
   mode: 'casual';
   contentVersion: string;
   commandLogVersion: 1;
@@ -374,6 +407,8 @@ export type CasualRunState = {
   freeRerolls: number;
   eventResolution?: EventResolution;
   lastBattle?: BattleResult;
+  lastBattleRewards?: BattleRunRewards;
+  lastHatches?: EggHatchResult[];
 };
 
 export type TimedStatus = {

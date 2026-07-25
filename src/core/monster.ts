@@ -67,6 +67,8 @@ export function createMonster(
     inheritedSkillId?: string;
     gambits?: [GambitRule, GambitRule, GambitRule];
     equipmentId?: string;
+    cyclesHeld?: number;
+    journeySeed?: number;
   } = {},
 ): MonsterInstance {
   const definition = data.monsters.find((entry) => entry.id === definitionId);
@@ -78,12 +80,41 @@ export function createMonster(
     colorStars: options.colorStars ?? 0,
     level: levelForXp(data, xp),
     xp,
+    cyclesHeld: Math.max(0, Math.floor(options.cyclesHeld ?? 0)),
+    journeySeed: Math.floor(options.journeySeed ?? 0),
     inheritedStats: { ...(options.inheritedStats ?? EMPTY_STATS) },
     inheritedSkillId: options.inheritedSkillId,
     gambits: options.gambits ?? defaultGambitsFor(definition),
     equipmentId: options.equipmentId,
   };
 }
+
+export type FarewellCoinBreakdown = {
+  whiteStars: number;
+  level: number;
+  colorStars: number;
+  trait: number;
+  total: number;
+};
+
+export function farewellCoinBreakdownFor(data: GameData, monster: MonsterInstance): FarewellCoinBreakdown {
+  const definition = definitionFor(data, monster);
+  const trait = data.traits.find((entry) => entry.id === definition.traitId);
+  const traitRate = trait?.stages[monster.colorStars].farewellCoinsPerHeldCycle ?? 0;
+  const breakdown = {
+    whiteStars: definition.sellPrice,
+    level: Math.max(0, monster.level - 1) * data.rules.farewell.levelCoinPerLevel,
+    colorStars: monster.colorStars * data.rules.farewell.colorStarCoinBonus,
+    trait: monster.cyclesHeld * traitRate,
+  };
+  return {
+    ...breakdown,
+    total: breakdown.whiteStars + breakdown.level + breakdown.colorStars + breakdown.trait,
+  };
+}
+
+export const farewellCoinsFor = (data: GameData, monster: MonsterInstance) =>
+  farewellCoinBreakdownFor(data, monster).total;
 
 export const gainMonsterXp = (data: GameData, monster: MonsterInstance, amount: number): MonsterInstance => {
   const maximumXp = data.rules.levelThresholds[data.rules.maxLevel - 1] ?? monster.xp;

@@ -19,6 +19,7 @@ import { createGhostTeam } from './core/ghost';
 import {
   createMonster,
   definitionFor,
+  farewellCoinBreakdownFor,
   permanentStatsFor,
   skillIdsFor,
   statBreakdownFor,
@@ -68,6 +69,8 @@ import type {
   TargetRule,
 } from './core/types';
 import { GAME_DATA } from './game/game-data';
+
+const CATALOG_MONSTER_COUNT = GAME_DATA.monsters.filter((monster) => monster.kind === 'standard').length;
 
 type InspectorTab = 'profile' | 'gambit' | 'recipes';
 type CatalogDetailTab = 'profile' | 'recipes';
@@ -371,12 +374,21 @@ const skillTagsFor = (skill: SkillDefinition) => {
   } else {
     tags.unshift('補助');
   }
+  if (skill.postBattleReward) tags.push('旅路報酬');
   return tags;
 };
 
 const skillSummaryText = (skill?: SkillDefinition) =>
   skill
-    ? `${skillTagsFor(skill).join(' / ')}。${skill.effects.map(effectFactFor).join('。')}。`
+    ? `${skillTagsFor(skill).join(' / ')}。${skill.effects.map(effectFactFor).join('。')}。${
+        skill.postBattleReward
+          ? `戦闘終了時に${
+              skill.postBattleReward.kind === 'coins'
+                ? `${skill.postBattleReward.amount}コイン`
+                : `主力全員が経験値${skill.postBattleReward.amount}`
+            }を得る。`
+          : ''
+      }`
     : '攻撃力を使って敵1体へ物理ダメージ。MPがなくても実行します。';
 
 function SkillEffectCard({
@@ -408,6 +420,14 @@ function SkillEffectCard({
             {effectFactFor(effect)}
           </li>
         ))}
+        {skill.postBattleReward && (
+          <li className="skill-effect-fact is-journey-reward">
+            戦闘終了時 ·{' '}
+            {skill.postBattleReward.kind === 'coins'
+              ? `コイン +${skill.postBattleReward.amount}`
+              : `主力全員 EXP +${skill.postBattleReward.amount}`}
+          </li>
+        )}
       </ul>
       <p>{skill.description}</p>
     </>
@@ -481,6 +501,7 @@ function MonsterDetailCard({
 }) {
   const definition = definitionFor(GAME_DATA, monster);
   const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
+  const farewell = farewellCoinBreakdownFor(GAME_DATA, monster);
   const progress = xpProgressFor(monster);
   return (
     <div className="monster-detail-card">
@@ -504,6 +525,20 @@ function MonsterDetailCard({
         <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
         <h3>{trait?.name}</h3>
         <p>{trait?.stages[monster.colorStars].description}</p>
+      </section>
+      <section className="farewell-value detail-card">
+        <span>FAREWELL VALUE</span>
+        <h3>別れで {farewell.total} コイン</h3>
+        <p>
+          白星 {farewell.whiteStars} + レベル {farewell.level} + 色星 {farewell.colorStars}
+          {farewell.trait > 0 ? ` + 特性 ${farewell.trait}` : ''}
+        </p>
+        {definition.hatch && (
+          <small>
+            あと{Math.max(0, definition.hatch.afterHeldCycles - monster.cyclesHeld)}戦で孵化 · 最大
+            {starText(definition.hatch.maximumWhiteStars)}
+          </small>
+        )}
       </section>
       <section className="skill-list">
         <span>SKILL CARDS</span>
@@ -635,7 +670,7 @@ function RunHeader({
               <span>FIELD NOTES</span>
               <i>モンスター図鑑</i>
               <b>
-                {discoveredCount ?? 0}/{GAME_DATA.monsters.length}
+                {discoveredCount ?? 0}/{CATALOG_MONSTER_COUNT}
               </b>
             </button>
           )}
@@ -1029,7 +1064,8 @@ function ShopView({
           <span className="section-index">MONSTER EXCHANGE</span>
           <h2>旅商人の棚</h2>
           <small className="shop-luck-readout">
-            ⭐2 出現率 {Math.round((GAME_DATA.rules.shop.luckyUpgradeChance + run.shopLuckBonus) * 100)}%
+            ⭐2 出現率 {Math.round((GAME_DATA.rules.shop.luckyUpgradeChance + run.shopLuckBonus) * 100)}% · 奇獣
+            {Math.round(GAME_DATA.rules.shop.oddityOfferChance * 100)}%
           </small>
         </div>
         <div className="shop-actions">
@@ -1060,7 +1096,13 @@ function ShopView({
               key={offer.id}
               data={GAME_DATA}
               definition={definition}
-              eyebrow={offer.lucky ? 'LUCKY RANK UP' : `${attributeName(GAME_DATA, definition)}の気配`}
+              eyebrow={
+                offer.lucky
+                  ? 'LUCKY RANK UP'
+                  : definition.kind === 'oddity'
+                    ? 'ODDITY / 旅の奇獣'
+                    : `${attributeName(GAME_DATA, definition)}の気配`
+              }
               onClick={() => setPreviewDefinitionId(definition.id)}
               footer={
                 <div className="shop-card-footer">
@@ -1529,7 +1571,7 @@ function BreedingView({
               <h3>親を2体選択</h3>
               {run.roster.map((monster) => {
                 const definition = definitionFor(GAME_DATA, monster);
-                const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel;
+                const eligible = definition.breedable && monster.level >= GAME_DATA.rules.breeding.minimumLevel;
                 return (
                   <button
                     type="button"
@@ -1560,7 +1602,9 @@ function BreedingView({
                           : parentIds.includes(monster.id)
                             ? '選択中'
                             : '選ぶ'
-                        : 'Lv.3必要'}
+                        : definition.breedable
+                          ? 'Lv.3必要'
+                          : '奇獣は配合不可'}
                     </b>
                   </button>
                 );
@@ -2233,17 +2277,15 @@ function MonsterCatalogDialog({
             <h2>モンスター図鑑</h2>
             <p>仲間にした種だけ、生態記録と戦闘能力を閲覧できます。</p>
           </div>
-          <div className="catalog-progress" aria-label={`${GAME_DATA.monsters.length}種中${discoveredCount}種発見`}>
+          <div className="catalog-progress" aria-label={`${CATALOG_MONSTER_COUNT}種中${discoveredCount}種発見`}>
             <small>RECORDED</small>
             <strong>
               {String(discoveredCount).padStart(2, '0')}
               <i>/</i>
-              {GAME_DATA.monsters.length}
+              {CATALOG_MONSTER_COUNT}
             </strong>
             <span
-              style={
-                { '--catalog-progress': `${(discoveredCount / GAME_DATA.monsters.length) * 100}%` } as CSSProperties
-              }
+              style={{ '--catalog-progress': `${(discoveredCount / CATALOG_MONSTER_COUNT) * 100}%` } as CSSProperties}
             />
           </div>
         </header>
@@ -2323,6 +2365,7 @@ function Inspector({
   const definition = definitionFor(GAME_DATA, monster);
   const equipped = GAME_DATA.equipment.find((entry) => entry.id === monster.equipmentId);
   const active = run.activeIds.includes(monster.id);
+  const farewell = farewellCoinBreakdownFor(GAME_DATA, monster);
   return (
     <dialog
       ref={dialogRef}
@@ -2356,9 +2399,11 @@ function Inspector({
           <button type="button" className={tab === 'gambit' ? 'is-active' : ''} onClick={() => setTab('gambit')}>
             ガンビット
           </button>
-          <button type="button" className={tab === 'recipes' ? 'is-active' : ''} onClick={() => setTab('recipes')}>
-            特殊配合
-          </button>
+          {definition.breedable && (
+            <button type="button" className={tab === 'recipes' ? 'is-active' : ''} onClick={() => setTab('recipes')}>
+              特殊配合
+            </button>
+          )}
         </nav>
         <div className="inspector-tab-panel">
           {tab === 'profile' && (
@@ -2425,9 +2470,14 @@ function Inspector({
                 <button
                   type="button"
                   className="text-button is-danger"
-                  onClick={() => onCommand(sellMonster(GAME_DATA, run, monster.id), `${definition.name}と別れました`)}
+                  onClick={() =>
+                    onCommand(
+                      sellMonster(GAME_DATA, run, monster.id),
+                      `${definition.name}と別れ、${farewell.total}コインを受け取りました`,
+                    )
+                  }
                 >
-                  別れる
+                  別れる +{farewell.total}
                 </button>
               </div>
             </div>
@@ -2479,6 +2529,19 @@ function WorkshopScreen({
   return (
     <main className="run-screen">
       <RunHeader run={run} discoveredCount={discoveredMonsterIds.size} onOpenCatalog={() => setCatalogOpen(true)} />
+      {run.lastHatches && run.lastHatches.length > 0 && (
+        <section className="hatch-notice" aria-live="polite">
+          <span>HATCH REPORT</span>
+          <strong>
+            {run.lastHatches
+              .map((hatch) => `${definitionById(GAME_DATA, hatch.resultDefinitionId).name}が孵化`)
+              .join(' / ')}
+          </strong>
+          <small>
+            {run.lastHatches.map((hatch) => `⭐${hatch.fromWhiteStars}卵 → ⭐${hatch.toWhiteStars}`).join(' · ')}
+          </small>
+        </section>
+      )}
       {notice && (
         <button type="button" className="notice-strip" onClick={() => setNotice('')}>
           {notice} <span>×</span>
@@ -3229,11 +3292,13 @@ function ResultScreen({
     const before = beforeById.get(monster.id);
     return before ? monster.level > before.level : false;
   }).length;
+  const journeyCoins = run.lastBattleRewards?.coins ?? 0;
   const reportMetrics = [
     ['TIME', `${result?.durationSeconds.toFixed(1) ?? '0.0'}s`, '戦闘時間'],
     ['DAMAGE', String(result?.damageByTeam.player ?? 0), '与ダメージ'],
     ['RECEIVED', String(result?.damageByTeam.enemy ?? 0), '被ダメージ'],
     ['SURVIVORS', `${survivors}/3`, '生存'],
+    ['COIN', `+${journeyCoins}`, journeyCoins > 0 ? '旅路スキル' : '追加報酬なし'],
   ] as const;
   return (
     <main

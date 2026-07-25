@@ -23,7 +23,7 @@
 情報量が多いため、全内容を一度に縮小して押し込まない。固定画面内でsection切替またはscrollを使う。
 
 - Hero: win、loss、draw、cycle
-- Combat data: time、damage、received、survivors
+- Combat data: time、damage、received、survivors、旅路skill coin
 - Combat ledger: monster別貢献
 - Growth: active・benchのXP、level up、能力上昇
 - Footer: 続行
@@ -36,6 +36,7 @@
 - player・enemyのmonster別report
 - damage、heal、shield、buff、debuff、action
 - active 100%、bench 50%のXP
+- 旅路skillによるcoin・追加XP
 - level変化、次levelまで、能力上昇
 - reveal完了前後の続行可否
 
