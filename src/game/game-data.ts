@@ -1,9 +1,10 @@
 import rawGameData from './game.json';
-import type { GameData, MonsterDefinition, RawGameData, StatBlock, StatId, WhiteStars } from '../core/types';
+import type { GameData, MonsterDefinition, Rarity, RawGameData, StatBlock, StatId, WhiteStars } from '../core/types';
 
 const STAT_IDS: StatId[] = ['maxHp', 'maxMp', 'attack', 'defense', 'speed', 'wisdom', 'crit'];
 const PRICES = [3, 6, 10, 15, 21] as const;
 const SELL_PRICES = [1, 3, 5, 7, 10] as const;
+const RARITIES: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 
 const scaleStats = (stats: StatBlock, multiplier: number): StatBlock =>
   Object.fromEntries(STAT_IDS.map((statId) => [statId, Math.round(stats[statId] * multiplier)])) as StatBlock;
@@ -99,6 +100,14 @@ export function validateGameData(data: GameData): string[] {
   }
   if (data.rules.breeding.minimumResultWhiteStars < 1 || data.rules.breeding.minimumResultWhiteStars > 5) {
     errors.push('breeding.minimumResultWhiteStars must be between 1 and 5');
+  }
+  const equipmentRarityWeights = data.rules.shop.equipmentRarityWeights;
+  if (
+    !equipmentRarityWeights ||
+    RARITIES.some((rarity) => !Number.isFinite(equipmentRarityWeights[rarity]) || equipmentRarityWeights[rarity] < 0) ||
+    RARITIES.reduce((total, rarity) => total + equipmentRarityWeights[rarity], 0) !== 100
+  ) {
+    errors.push('shop.equipmentRarityWeights must define non-negative percentages totaling 100');
   }
 
   const skillIds = new Set(data.skills.map((entry) => entry.id));
@@ -200,6 +209,7 @@ export function validateGameData(data: GameData): string[] {
     }
   }
   for (const skill of data.skills) {
+    if (!RARITIES.includes(skill.rarity)) errors.push(`${skill.id} has an invalid rarity`);
     if (skill.mpCost < 0) errors.push(`${skill.id} has a negative MP cost`);
     if (skill.effects.length === 0) errors.push(`${skill.id} needs at least one effect`);
     if (skill.runReward?.amountsByColorStars.some((amount) => amount <= 0)) {
@@ -211,6 +221,9 @@ export function validateGameData(data: GameData): string[] {
     ) {
       errors.push(`${skill.id} needs a positive run-reward trigger cap`);
     }
+  }
+  for (const equipment of data.equipment) {
+    if (!RARITIES.includes(equipment.rarity)) errors.push(`${equipment.id} has an invalid rarity`);
   }
   for (const trait of data.traits) {
     if (trait.stages.length !== 3) errors.push(`${trait.id} needs exactly three color-star stages`);

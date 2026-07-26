@@ -4,9 +4,11 @@ import type {
   LineageId,
   MonsterDefinition,
   MonsterInstance,
+  SkillDefinition,
   SpecialRecipeDefinition,
   WhiteStars,
 } from './types';
+import { skillIdsFor } from './monster';
 
 export type MonsterCatalogEntry = {
   id: string;
@@ -40,18 +42,121 @@ export function mergeDiscoveredMonsterIds(
   return next;
 }
 
-export function monsterCatalogEntries(data: GameData, discoveredIds: ReadonlySet<string>): MonsterCatalogEntry[] {
+export function monsterCatalogEntries(
+  data: GameData,
+  discoveredIds: ReadonlySet<string>,
+  revealAll = false,
+): MonsterCatalogEntry[] {
   return data.monsters.map((definition, index) => ({
     id: definition.id,
     index: index + 1,
-    state: discoveredIds.has(definition.id) ? 'unlocked' : 'locked',
+    state: revealAll || discoveredIds.has(definition.id) ? 'unlocked' : 'locked',
     silhouette: {
       lineageId: definition.lineageId,
       attributeId: definition.attributeId,
       whiteStars: definition.whiteStars,
       glyph: definition.glyph,
     },
-    details: discoveredIds.has(definition.id) ? definition : undefined,
+    details: revealAll || discoveredIds.has(definition.id) ? definition : undefined,
+  }));
+}
+
+export type SkillCatalogEntry = {
+  id: string;
+  index: number;
+  state: 'locked' | 'unlocked';
+  details?: SkillDefinition;
+};
+
+export function normalizeDiscoveredSkillIds(data: GameData, stored: unknown): Set<string> {
+  if (!Array.isArray(stored)) return new Set();
+  const skillIds = new Set(data.skills.map((skill) => skill.id));
+  return new Set(stored.filter((id): id is string => typeof id === 'string' && skillIds.has(id)));
+}
+
+export function mergeDiscoveredSkillIds(
+  data: GameData,
+  discoveredIds: ReadonlySet<string>,
+  roster: readonly MonsterInstance[],
+): Set<string> {
+  const next = normalizeDiscoveredSkillIds(data, [...discoveredIds]);
+  for (const monster of roster) {
+    for (const skillId of skillIdsFor(data, monster)) next.add(skillId);
+  }
+  return next;
+}
+
+export function mergeSkillsFromDiscoveredMonsters(
+  data: GameData,
+  discoveredSkillIds: ReadonlySet<string>,
+  discoveredMonsterIds: ReadonlySet<string>,
+): Set<string> {
+  const next = normalizeDiscoveredSkillIds(data, [...discoveredSkillIds]);
+  for (const definition of data.monsters) {
+    if (!discoveredMonsterIds.has(definition.id)) continue;
+    for (const skillId of [...definition.intrinsicSkillIds, definition.defaultSkillId]) next.add(skillId);
+  }
+  return next;
+}
+
+export function skillCatalogEntries(
+  data: GameData,
+  discoveredIds: ReadonlySet<string>,
+  revealAll = false,
+): SkillCatalogEntry[] {
+  return data.skills.map((definition, index) => ({
+    id: definition.id,
+    index: index + 1,
+    state: revealAll || discoveredIds.has(definition.id) ? 'unlocked' : 'locked',
+    details: revealAll || discoveredIds.has(definition.id) ? definition : undefined,
+  }));
+}
+
+export type SkillHolderRelations = {
+  intrinsic: MonsterDefinition[];
+  default: MonsterDefinition[];
+};
+
+export function skillHolderRelationsFor(data: GameData, skillId: string): SkillHolderRelations {
+  return {
+    intrinsic: data.monsters.filter((monster) => monster.intrinsicSkillIds.includes(skillId)),
+    default: data.monsters.filter((monster) => monster.defaultSkillId === skillId),
+  };
+}
+
+export type EventCatalogEntry = {
+  id: string;
+  index: number;
+  state: 'locked' | 'unlocked';
+  details?: GameData['events'][number];
+};
+
+export function normalizeDiscoveredEventIds(data: GameData, stored: unknown): Set<string> {
+  if (!Array.isArray(stored)) return new Set();
+  const eventIds = new Set(data.events.map((event) => event.id));
+  return new Set(stored.filter((id): id is string => typeof id === 'string' && eventIds.has(id)));
+}
+
+export function mergeDiscoveredEventIds(
+  data: GameData,
+  discoveredIds: ReadonlySet<string>,
+  eventId?: string,
+): Set<string> {
+  const next = normalizeDiscoveredEventIds(data, [...discoveredIds]);
+  if (eventId && data.events.some((event) => event.id === eventId)) next.add(eventId);
+  return next;
+}
+
+export function eventCatalogEntries(
+  data: GameData,
+  discoveredIds: ReadonlySet<string>,
+  revealAll = false,
+): EventCatalogEntry[] {
+  return data.events.map((definition, index) => ({
+    id: definition.id,
+    index: index + 1,
+    state: revealAll || discoveredIds.has(definition.id) ? 'unlocked' : 'locked',
+    details: revealAll || discoveredIds.has(definition.id) ? definition : undefined,
   }));
 }
 

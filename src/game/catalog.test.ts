@@ -80,6 +80,20 @@ describe('DQM run game data', () => {
     expect(GAME_DATA.specialRecipes.length).toBeGreaterThanOrEqual(9);
   });
 
+  it('assigns every skill and equipment item to one of all four rarity tiers without adding event rarity', () => {
+    const rarities = ['common', 'rare', 'epic', 'legendary'];
+
+    expect([...new Set(GAME_DATA.skills.map((skill) => skill.rarity))].sort()).toEqual([...rarities].sort());
+    expect([...new Set(GAME_DATA.equipment.map((equipment) => equipment.rarity))].sort()).toEqual([...rarities].sort());
+    expect(GAME_DATA.events.every((event) => !('rarity' in event))).toBe(true);
+    expect(GAME_DATA.rules.shop.equipmentRarityWeights).toEqual({
+      common: 55,
+      rare: 28,
+      epic: 13,
+      legendary: 4,
+    });
+  });
+
   it('rejects an invalid minimum breeding rank', () => {
     const invalid = structuredClone(GAME_DATA);
     invalid.rules.breeding.minimumResultWhiteStars = 0 as typeof invalid.rules.breeding.minimumResultWhiteStars;

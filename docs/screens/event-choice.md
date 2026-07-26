@@ -26,6 +26,7 @@
 - 現在cycle
 - 候補3件
 - event名、glyph、説明
+- 全イベントがレアリティなし・同じ抽選重みであること
 - risk routeかどうか
 - coin costと利用可否
 - 対象が必要な場合のroster

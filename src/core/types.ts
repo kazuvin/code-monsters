@@ -4,6 +4,7 @@ export type LineageId = 'dragon' | 'demon' | 'spirit';
 export type AttributeId = 'light' | 'dark' | 'fire';
 export type WhiteStars = 1 | 2 | 3 | 4 | 5;
 export type ColorStars = 0 | 1 | 2;
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type StatId = 'maxHp' | 'maxMp' | 'attack' | 'defense' | 'speed' | 'wisdom' | 'crit';
 export type ShopAvailability = 'common' | 'rare' | 'upgrade-only';
 
@@ -71,6 +72,7 @@ export type EffectDefinition =
 
 export type SkillDefinition = {
   id: string;
+  rarity: Rarity;
   name: string;
   description: string;
   mpCost: number;
@@ -201,6 +203,7 @@ export type MonsterDefinition = {
 
 export type EquipmentDefinition = {
   id: string;
+  rarity: Rarity;
   name: string;
   description: string;
   glyph: string;
@@ -265,6 +268,7 @@ export type GameRules = {
     rerollCost: number;
     luckyUpgradeChance: number;
     rareOfferChance: number;
+    equipmentRarityWeights: Record<Rarity, number>;
   };
   breeding: {
     minimumLevel: number;
@@ -324,7 +328,7 @@ export type MonsterInstance = {
   equipmentId?: string;
 };
 
-export type BreedingCandidateKind = 'generic' | 'same-name' | 'special';
+export type BreedingCandidateKind = 'generic' | 'egg-upgrade' | 'same-name' | 'special';
 
 export type BreedingCandidate = {
   id: string;

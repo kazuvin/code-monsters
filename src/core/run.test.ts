@@ -4,6 +4,7 @@ import { createMonster } from './monster';
 import type { MonsterBattleReport } from './types';
 import {
   applyBattleResult,
+  breedInRun,
   buyMonster,
   chooseEvent,
   chooseDraftMonster,
@@ -323,6 +324,55 @@ describe('casual run', () => {
     ]);
   });
 
+  it('hatches each egg directly into a base-catalog monster with a fifty-percent rank-up chance', () => {
+    const run = finishDraft();
+    const hatchResults = (definitionId: 'mystery-egg-1' | 'mystery-egg-2') =>
+      [1, 8192].map((journeySeed, index) => {
+        const egg = createMonster(GAME_DATA, definitionId, `egg-${index}`, {
+          cyclesHeld: 1,
+          journeySeed,
+        });
+        const prepared = {
+          ...run,
+          phase: 'result' as const,
+          roster: [run.roster[0] as (typeof run.roster)[number], egg],
+          activeIds: [run.roster[0]?.id as string],
+          completedCycles: 1,
+        };
+        const result = continueRun(GAME_DATA, prepared);
+        const hatched = result.roster.find((monster) => monster.id === egg.id);
+        if (!hatched) throw new Error('Expected the egg to hatch');
+        return GAME_DATA.monsters.find((monster) => monster.id === hatched.definitionId);
+      });
+
+    const rankOneResults = hatchResults('mystery-egg-1');
+    const rankTwoResults = hatchResults('mystery-egg-2');
+
+    expect(GAME_DATA.monsters.find((monster) => monster.id === 'mystery-egg-1')?.hatch?.upgradeChance).toBe(0.5);
+    expect(GAME_DATA.monsters.find((monster) => monster.id === 'mystery-egg-2')?.hatch?.upgradeChance).toBe(0.5);
+    expect([...new Set(rankOneResults.map((definition) => definition?.whiteStars))].sort()).toEqual([1, 2]);
+    expect([...new Set(rankTwoResults.map((definition) => definition?.whiteStars))].sort()).toEqual([2, 3]);
+    expect([...rankOneResults, ...rankTwoResults].every((definition) => definition && !definition.hatch)).toBe(true);
+  });
+
+  it('allows two level-one rank-one eggs to breed into the rank-two egg', () => {
+    const run = finishDraft();
+    const first = createMonster(GAME_DATA, 'mystery-egg-1', 'first-egg');
+    const second = createMonster(GAME_DATA, 'mystery-egg-1', 'second-egg');
+    const prepared = {
+      ...run,
+      roster: [...run.roster, first, second],
+    };
+    const candidate = GAME_DATA.monsters.find((monster) => monster.id === 'mystery-egg-2');
+    if (!candidate) throw new Error('Expected a rank-two egg definition');
+
+    const result = breedInRun(GAME_DATA, prepared, first.id, second.id, 'egg-upgrade:mystery-egg-2:0');
+
+    expect(result.ok).toBe(true);
+    expect(result.state.roster).toContainEqual(expect.objectContaining({ definitionId: candidate.id, level: 1 }));
+    expect(result.state.roster.some((monster) => monster.id === first.id || monster.id === second.id)).toBe(false);
+  });
+
   it('ends immediately on the fifth loss', () => {
     let run = finishDraft();
     for (let index = 0; index < 5; index += 1) {
@@ -434,5 +484,24 @@ describe('casual run', () => {
     expect(first.phase).toBe('event-result');
     expect(first.coins === 7 || first.coins === 17).toBe(true);
     expect(first.eventResolution?.tone === 'gain' || first.eventResolution?.tone === 'loss').toBe(true);
+  });
+
+  it('uses equipment rarity weights for event equipment gifts', () => {
+    const legendaryOnly = structuredClone(GAME_DATA);
+    legendaryOnly.rules.shop.equipmentRarityWeights = {
+      common: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 1,
+    };
+    const base = finishDraft();
+    const result = chooseEvent(
+      legendaryOnly,
+      { ...base, phase: 'event', eventChoices: ['relic-cache'] },
+      'relic-cache',
+    );
+    const equipment = legendaryOnly.equipment.find((entry) => entry.id === result.equipmentInventory[0]);
+
+    expect(equipment?.rarity).toBe('legendary');
   });
 });

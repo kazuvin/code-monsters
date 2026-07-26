@@ -1,7 +1,7 @@
 import { breedMonsters, listBreedingCandidates } from './breeding';
 import { definitionFor, farewellCoinsFor, gainMonsterXp, setMonsterGambit, skillIdsFor } from './monster';
 import { deriveSeed, createSeededRandom } from './rng';
-import { createShop } from './shop';
+import { createShop, pickEquipmentByRarity } from './shop';
 import type {
   BattleResult,
   BattleRunRewards,
@@ -351,11 +351,14 @@ export function breedInRun(
   const first = run.roster.find((monster) => monster.id === firstId);
   const second = run.roster.find((monster) => monster.id === secondId);
   if (!first || !second) return failure(run, '親モンスターが見つかりません');
-  if (first.level < data.rules.breeding.minimumLevel || second.level < data.rules.breeding.minimumLevel) {
-    return failure(run, `配合にはレベル${data.rules.breeding.minimumLevel}が必要です`);
-  }
   const candidate = listBreedingCandidates(data, first, second).find((entry) => entry.id === candidateId);
   if (!candidate) return failure(run, '配合先候補が見つかりません');
+  if (
+    candidate.kind !== 'egg-upgrade' &&
+    (first.level < data.rules.breeding.minimumLevel || second.level < data.rules.breeding.minimumLevel)
+  ) {
+    return failure(run, `配合にはレベル${data.rules.breeding.minimumLevel}が必要です`);
+  }
   const commandIndex = run.commandIndex + 1;
   let child;
   try {
@@ -673,7 +676,7 @@ export function chooseEvent(
         deriveSeed(run.seed, run.commandIndex * 109 + run.cycle * 1019 + data.events.indexOf(event)),
       );
       const available = data.equipment.filter((equipment) => !run.equipmentInventory.includes(equipment.id));
-      const equipment = available.length > 0 ? random.pick(available) : random.pick(data.equipment);
+      const equipment = pickEquipmentByRarity(data, random, available.length > 0 ? available : data.equipment);
       if (run.equipmentInventory.length >= 6) {
         return finish({ ...run, coins: run.coins + 3 }, '装備庫が満杯だったため、代わりに3コインを受け取った。');
       }
@@ -749,5 +752,9 @@ export const breedingCandidatesForRun = (
 ): BreedingCandidate[] => {
   const first = run.roster.find((monster) => monster.id === firstId);
   const second = run.roster.find((monster) => monster.id === secondId);
-  return first && second ? listBreedingCandidates(data, first, second) : [];
+  if (!first || !second) return [];
+  const candidates = listBreedingCandidates(data, first, second);
+  const bothMeetMinimum =
+    first.level >= data.rules.breeding.minimumLevel && second.level >= data.rules.breeding.minimumLevel;
+  return bothMeetMinimum ? candidates : candidates.filter((candidate) => candidate.kind === 'egg-upgrade');
 };

@@ -9,11 +9,21 @@ import {
 import { simulateBattle } from './core/battle';
 import { breedMonsters, inheritanceSkillChoices, listBreedingCandidates } from './core/breeding';
 import {
+  eventCatalogEntries,
+  mergeDiscoveredEventIds,
   mergeDiscoveredMonsterIds,
+  mergeDiscoveredSkillIds,
+  mergeSkillsFromDiscoveredMonsters,
   monsterCatalogEntries,
+  normalizeDiscoveredEventIds,
   normalizeDiscoveredMonsterIds,
+  normalizeDiscoveredSkillIds,
+  skillCatalogEntries,
+  skillHolderRelationsFor,
   specialRecipeRelationsFor,
+  type EventCatalogEntry,
   type MonsterCatalogEntry,
+  type SkillCatalogEntry,
 } from './core/catalog';
 import { createGhostTeam } from './core/ghost';
 import {
@@ -66,6 +76,7 @@ import type {
   MonsterDefinition,
   MonsterBattleReport,
   MonsterInstance,
+  Rarity,
   SkillDefinition,
   StatBlock,
   StatId,
@@ -75,9 +86,18 @@ import type {
 import { GAME_DATA } from './game/game-data';
 
 const CATALOG_MONSTER_COUNT = GAME_DATA.monsters.length;
+const CATALOG_SKILL_COUNT = GAME_DATA.skills.length;
+const CATALOG_EVENT_COUNT = GAME_DATA.events.length;
+const RARITY_LABELS: Record<Rarity, string> = {
+  common: 'コモン',
+  rare: 'レア',
+  epic: 'エピック',
+  legendary: 'レジェンダリー',
+};
 
 type InspectorTab = 'profile' | 'gambit' | 'recipes';
 type CatalogDetailTab = 'profile' | 'recipes';
+type CatalogSection = 'monsters' | 'skills' | 'events';
 type ReplaySpeed = 1 | 2 | 4;
 type BattleFeedback = {
   label: string;
@@ -100,6 +120,8 @@ const query = new URLSearchParams(window.location.search);
 const requestedSeed = Number(query.get('seed'));
 const INITIAL_SEED = Number.isInteger(requestedSeed) && requestedSeed > 0 ? requestedSeed : 7261;
 const RECIPE_DISCOVERY_STORAGE_KEY = `code-monsters:recipe-discovery:v${GAME_DATA.schemaVersion}`;
+const SKILL_DISCOVERY_STORAGE_KEY = `code-monsters:skill-discovery:v${GAME_DATA.schemaVersion}`;
+const EVENT_DISCOVERY_STORAGE_KEY = `code-monsters:event-discovery:v${GAME_DATA.schemaVersion}`;
 
 const loadDiscoveredMonsterIds = () => {
   try {
@@ -113,6 +135,36 @@ const loadDiscoveredMonsterIds = () => {
 const saveDiscoveredMonsterIds = (ids: ReadonlySet<string>) => {
   try {
     window.localStorage.setItem(RECIPE_DISCOVERY_STORAGE_KEY, JSON.stringify([...ids].sort()));
+  } catch {
+    // Discovery still works for the current run when storage is unavailable.
+  }
+};
+
+const loadDiscoveredSkillIds = () => {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SKILL_DISCOVERY_STORAGE_KEY) ?? '[]');
+    return mergeSkillsFromDiscoveredMonsters(
+      GAME_DATA,
+      normalizeDiscoveredSkillIds(GAME_DATA, saved),
+      loadDiscoveredMonsterIds(),
+    );
+  } catch {
+    return new Set<string>();
+  }
+};
+
+const loadDiscoveredEventIds = () => {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(EVENT_DISCOVERY_STORAGE_KEY) ?? '[]');
+    return normalizeDiscoveredEventIds(GAME_DATA, saved);
+  } catch {
+    return new Set<string>();
+  }
+};
+
+const saveDiscoveryIds = (storageKey: string, ids: ReadonlySet<string>) => {
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify([...ids].sort()));
   } catch {
     // Discovery still works for the current run when storage is unavailable.
   }
@@ -425,6 +477,7 @@ function SkillEffectCard({
     <>
       <header>
         <span>{badge}</span>
+        <em className={`rarity-badge is-${skill.rarity}`}>{RARITY_LABELS[skill.rarity]}</em>
         <b>MP {skill.mpCost}</b>
       </header>
       <strong>{skill.name}</strong>
@@ -450,7 +503,7 @@ function SkillEffectCard({
     return (
       <button
         type="button"
-        className={`effect-skill-card effect-skill-choice${selected ? ' is-selected' : ''}`}
+        className={`effect-skill-card effect-skill-choice is-rarity-${skill.rarity}${selected ? ' is-selected' : ''}`}
         aria-pressed={selected}
         onClick={onSelect}
       >
@@ -458,7 +511,7 @@ function SkillEffectCard({
       </button>
     );
   }
-  return <article className="effect-skill-card">{content}</article>;
+  return <article className={`effect-skill-card is-rarity-${skill.rarity}`}>{content}</article>;
 }
 
 function BreedingStatLedger({ monster }: { monster: MonsterInstance }) {
@@ -779,7 +832,7 @@ function RunHeader({
           {onOpenCatalog && (
             <button type="button" className="catalog-open-button" onClick={onOpenCatalog}>
               <span>FIELD NOTES</span>
-              <i>モンスター図鑑</i>
+              <i>図鑑</i>
               <b>
                 {discoveredCount ?? 0}/{CATALOG_MONSTER_COUNT}
               </b>
@@ -818,6 +871,17 @@ function RunHeader({
         })}
       </div>
     </>
+  );
+}
+
+function DeveloperModeSwitch({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) {
+  return (
+    <label className={`developer-mode-switch${enabled ? ' is-enabled' : ''}`}>
+      <input type="checkbox" checked={enabled} onChange={(event) => onChange(event.currentTarget.checked)} />
+      <span>DEV</span>
+      <strong>{enabled ? '図鑑全開放' : '開発者モード'}</strong>
+      <i aria-hidden="true" />
+    </label>
   );
 }
 
@@ -1252,6 +1316,11 @@ function ShopView({
         <div>
           <span className="section-index">EQUIPMENT</span>
           <h3>装備棚</h3>
+          <small className="equipment-rarity-readout">
+            C {GAME_DATA.rules.shop.equipmentRarityWeights.common}% · R{' '}
+            {GAME_DATA.rules.shop.equipmentRarityWeights.rare}% · E {GAME_DATA.rules.shop.equipmentRarityWeights.epic}%
+            · L {GAME_DATA.rules.shop.equipmentRarityWeights.legendary}%
+          </small>
         </div>
         <div className="equipment-offers">
           {run.shop.equipment.map((offer, index) => {
@@ -1264,10 +1333,10 @@ function ShopView({
             const equipment = GAME_DATA.equipment.find((entry) => entry.id === offer.equipmentId);
             if (!equipment) return null;
             return (
-              <article className="equipment-offer" key={offer.id}>
+              <article className={`equipment-offer is-rarity-${equipment.rarity}`} key={offer.id}>
                 <header>
                   <span className="equipment-glyph">{equipment.glyph}</span>
-                  <small>EQUIPMENT</small>
+                  <small>{RARITY_LABELS[equipment.rarity]} / EQUIPMENT</small>
                 </header>
                 <div className="equipment-copy">
                   <strong>{equipment.name}</strong>
@@ -1687,7 +1756,7 @@ function EggHatchRevealSequence({
             <strong>
               {'★'.repeat(hatch.fromWhiteStars)} <i>→</i> {'★'.repeat(hatch.toWhiteStars)}
             </strong>
-            <small>{rankUp ? '10%の昇格を引き当てました' : '卵と同じ白星で孵化しました'}</small>
+            <small>{rankUp ? '50%の昇格を引き当てました' : '卵と同じ白星で孵化しました'}</small>
           </div>
           <button type="button" className="primary-button" disabled={stage < 3} onClick={continueReveal}>
             {finalHatch ? '旅へ戻る' : '次の卵を孵す'}
@@ -1797,7 +1866,16 @@ function BreedingView({
               <h3>親を2体選択</h3>
               {run.roster.map((monster) => {
                 const definition = definitionFor(GAME_DATA, monster);
-                const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel;
+                const eggBreedingEligible = Boolean(
+                  definition.hatch &&
+                    GAME_DATA.monsters.some(
+                      (entry) =>
+                        entry.archetypeId === definition.archetypeId &&
+                        entry.whiteStars === definition.whiteStars + 1 &&
+                        Boolean(entry.hatch),
+                    ),
+                );
+                const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel || eggBreedingEligible;
                 return (
                   <button
                     type="button"
@@ -1823,11 +1901,15 @@ function BreedingView({
                     </span>
                     <b>
                       {eligible
-                        ? rankUp && parentIds.includes(monster.id)
-                          ? '位階上昇の核'
-                          : parentIds.includes(monster.id)
-                            ? '選択中'
-                            : '選ぶ'
+                        ? eggBreedingEligible && monster.level < GAME_DATA.rules.breeding.minimumLevel
+                          ? parentIds.includes(monster.id)
+                            ? '卵配合に選択中'
+                            : '卵配合可'
+                          : rankUp && parentIds.includes(monster.id)
+                            ? '位階上昇の核'
+                            : parentIds.includes(monster.id)
+                              ? '選択中'
+                              : '選ぶ'
                         : 'Lv.3必要'}
                     </b>
                   </button>
@@ -1859,9 +1941,11 @@ function BreedingView({
                         eyebrow={
                           entry.kind === 'special'
                             ? 'SPECIAL RECIPE'
-                            : entry.kind === 'same-name'
-                              ? 'COLOR STAR'
-                              : 'RANK BREED'
+                            : entry.kind === 'egg-upgrade'
+                              ? 'EGG FUSION'
+                              : entry.kind === 'same-name'
+                                ? 'COLOR STAR'
+                                : 'RANK BREED'
                         }
                         selected={candidateId === entry.id}
                         onClick={() => setCandidateId(entry.id)}
@@ -2459,25 +2543,274 @@ function MonsterCatalogDetail({
   );
 }
 
-function MonsterCatalogDialog({
+function CatalogLockedProfile({
+  recordNumber,
+  noun,
+  description,
+}: {
+  recordNumber: string;
+  noun: string;
+  description: string;
+}) {
+  return (
+    <div className="catalog-profile is-locked">
+      <div className="catalog-locked-mark" aria-hidden="true">
+        ?
+      </div>
+      <span className="section-index">FIELD RECORD NO.{recordNumber}</span>
+      <h3>未確認{noun}</h3>
+      <p>{description}</p>
+      <small>記録を獲得するまで詳細情報は伏せられています。</small>
+    </div>
+  );
+}
+
+function SkillCatalogCard({
+  entry,
+  selected,
+  onSelect,
+}: {
+  entry: SkillCatalogEntry;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const recordNumber = String(entry.index).padStart(2, '0');
+  return (
+    <button
+      type="button"
+      className={`catalog-card catalog-text-card is-${entry.state}${selected ? ' is-selected' : ''}`}
+      data-skill-catalog-id={entry.id}
+      onClick={onSelect}
+      aria-label={
+        entry.details ? `スキル図鑑 No.${recordNumber} ${entry.details.name}` : `スキル図鑑 No.${recordNumber} 未確認`
+      }
+      aria-pressed={selected}
+    >
+      <span className="catalog-card-number">SKILL NO.{recordNumber}</span>
+      <span className="catalog-record-glyph">{entry.details ? '技' : '?'}</span>
+      <span className="catalog-card-copy">
+        <strong>{entry.details?.name ?? '未確認スキル'}</strong>
+        <small>
+          {entry.details ? `${RARITY_LABELS[entry.details.rarity]} · MP ${entry.details.mpCost}` : '記録なし'}
+        </small>
+      </span>
+      <i>{entry.details ? '記録済み' : '未解放'}</i>
+    </button>
+  );
+}
+
+function SkillHolderCard({
+  definition,
+  slot,
+  discovered,
+}: {
+  definition: MonsterDefinition;
+  slot: '固有' | '基本継承';
+  discovered: boolean;
+}) {
+  return (
+    <div className={`catalog-holder${discovered ? '' : ' is-locked'}`} style={monsterStyle(GAME_DATA, definition)}>
+      <MonsterSigil data={GAME_DATA} definition={definition} size="small" obscured={!discovered} />
+      <span>
+        <strong>{discovered ? definition.name : '???'}</strong>
+        <small>
+          {slot} · {discovered ? starText(definition.whiteStars) : '未発見'}
+        </small>
+      </span>
+    </div>
+  );
+}
+
+function SkillCatalogDetail({
+  entry,
+  discoveredMonsterIds,
+  revealAll,
+}: {
+  entry: SkillCatalogEntry;
+  discoveredMonsterIds: ReadonlySet<string>;
+  revealAll: boolean;
+}) {
+  const recordNumber = String(entry.index).padStart(2, '0');
+  if (!entry.details) {
+    return (
+      <section className="catalog-detail is-locked">
+        <CatalogLockedProfile
+          recordNumber={recordNumber}
+          noun="スキル"
+          description="仲間が実際に所持すると、効果と所持モンスターの記録が開きます。"
+        />
+      </section>
+    );
+  }
+  const relations = skillHolderRelationsFor(GAME_DATA, entry.id);
+  return (
+    <section className="catalog-detail catalog-skill-detail">
+      <div className="catalog-detail-tab-panel">
+        <header className="catalog-text-identity">
+          <span className="catalog-record-glyph">技</span>
+          <div>
+            <span className="section-index">SKILL RECORD NO.{recordNumber} / CONFIRMED</span>
+            <h3>{entry.details.name}</h3>
+            <p>
+              {RARITY_LABELS[entry.details.rarity]} · 消費MP {entry.details.mpCost}
+            </p>
+          </div>
+        </header>
+        <SkillEffectCard skill={entry.details} badge="図鑑記録" />
+        <section className="catalog-holders">
+          <header>
+            <span>HOLDERS / 基本所持モンスター</span>
+            <strong>{relations.intrinsic.length + relations.default.length}種</strong>
+          </header>
+          <div>
+            {relations.intrinsic.map((definition) => (
+              <SkillHolderCard
+                key={`intrinsic-${definition.id}`}
+                definition={definition}
+                slot="固有"
+                discovered={revealAll || discoveredMonsterIds.has(definition.id)}
+              />
+            ))}
+            {relations.default.map((definition) => (
+              <SkillHolderCard
+                key={`default-${definition.id}`}
+                definition={definition}
+                slot="基本継承"
+                discovered={revealAll || discoveredMonsterIds.has(definition.id)}
+              />
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function EventCatalogCard({
+  entry,
+  selected,
+  onSelect,
+}: {
+  entry: EventCatalogEntry;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const recordNumber = String(entry.index).padStart(2, '0');
+  return (
+    <button
+      type="button"
+      className={`catalog-card catalog-text-card is-${entry.state}${selected ? ' is-selected' : ''}`}
+      data-event-catalog-id={entry.id}
+      onClick={onSelect}
+      aria-label={
+        entry.details
+          ? `イベント図鑑 No.${recordNumber} ${entry.details.name}`
+          : `イベント図鑑 No.${recordNumber} 未確認`
+      }
+      aria-pressed={selected}
+    >
+      <span className="catalog-card-number">EVENT NO.{recordNumber}</span>
+      <span className="catalog-record-glyph">{entry.details?.glyph ?? '?'}</span>
+      <span className="catalog-card-copy">
+        <strong>{entry.details?.name ?? '未確認イベント'}</strong>
+        <small>{entry.details ? '旅路記録' : '記録なし'}</small>
+      </span>
+      <i>{entry.details ? '体験済み' : '未解放'}</i>
+    </button>
+  );
+}
+
+function EventCatalogDetail({ entry }: { entry: EventCatalogEntry }) {
+  const recordNumber = String(entry.index).padStart(2, '0');
+  if (!entry.details) {
+    return (
+      <section className="catalog-detail is-locked">
+        <CatalogLockedProfile
+          recordNumber={recordNumber}
+          noun="イベント"
+          description="旅路でこのイベントを選び、結果を確認すると記録が開きます。"
+        />
+      </section>
+    );
+  }
+  return (
+    <section className="catalog-detail catalog-event-detail">
+      <div className="catalog-detail-tab-panel">
+        <header className="catalog-text-identity">
+          <span className="catalog-record-glyph">{entry.details.glyph}</span>
+          <div>
+            <span className="section-index">EVENT RECORD NO.{recordNumber} / EXPERIENCED</span>
+            <h3>{entry.details.name}</h3>
+            <p>すべてのイベントは同じ重みで候補に選ばれます。</p>
+          </div>
+        </header>
+        <section className="catalog-event-copy">
+          <span>ROUTE EFFECT</span>
+          <p>{entry.details.description}</p>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function FieldCatalogDialog({
   open,
   discoveredMonsterIds,
+  discoveredSkillIds,
+  discoveredEventIds,
+  developerMode,
   onClose,
 }: {
   open: boolean;
   discoveredMonsterIds: ReadonlySet<string>;
+  discoveredSkillIds: ReadonlySet<string>;
+  discoveredEventIds: ReadonlySet<string>;
+  developerMode: boolean;
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [section, setSection] = useState<CatalogSection>('monsters');
   const [filter, setFilter] = useState<CatalogFilter>('all');
-  const [selectedId, setSelectedId] = useState<string>();
-  const entries = monsterCatalogEntries(GAME_DATA, discoveredMonsterIds);
-  const filteredEntries = filter === 'all' ? entries : entries.filter((entry) => entry.silhouette.lineageId === filter);
-  const selectedEntry =
-    filteredEntries.find((entry) => entry.id === selectedId) ??
+  const [selectedMonsterId, setSelectedMonsterId] = useState<string>();
+  const [selectedSkillId, setSelectedSkillId] = useState<string>();
+  const [selectedEventId, setSelectedEventId] = useState<string>();
+  const monsterEntries = monsterCatalogEntries(GAME_DATA, discoveredMonsterIds, developerMode);
+  const skillEntries = skillCatalogEntries(GAME_DATA, discoveredSkillIds, developerMode);
+  const eventEntries = eventCatalogEntries(GAME_DATA, discoveredEventIds, developerMode);
+  const filteredEntries =
+    filter === 'all' ? monsterEntries : monsterEntries.filter((entry) => entry.silhouette.lineageId === filter);
+  const selectedMonsterEntry =
+    filteredEntries.find((entry) => entry.id === selectedMonsterId) ??
     filteredEntries.find((entry) => entry.state === 'unlocked') ??
     filteredEntries[0];
-  const discoveredCount = entries.filter((entry) => entry.state === 'unlocked').length;
+  const selectedSkillEntry =
+    skillEntries.find((entry) => entry.id === selectedSkillId) ??
+    skillEntries.find((entry) => entry.state === 'unlocked') ??
+    skillEntries[0];
+  const selectedEventEntry =
+    eventEntries.find((entry) => entry.id === selectedEventId) ??
+    eventEntries.find((entry) => entry.state === 'unlocked') ??
+    eventEntries[0];
+  const sectionMeta = {
+    monsters: {
+      title: 'モンスター図鑑',
+      description: '仲間にした種だけ、生態記録と戦闘能力を閲覧できます。',
+      discovered: developerMode ? CATALOG_MONSTER_COUNT : discoveredMonsterIds.size,
+      total: CATALOG_MONSTER_COUNT,
+    },
+    skills: {
+      title: 'スキル図鑑',
+      description: '仲間が実際に所持したスキルの効果と、基本所持モンスターを記録します。',
+      discovered: developerMode ? CATALOG_SKILL_COUNT : discoveredSkillIds.size,
+      total: CATALOG_SKILL_COUNT,
+    },
+    events: {
+      title: 'イベント図鑑',
+      description: '旅路で選び、結果を確認したイベントを記録します。',
+      discovered: developerMode ? CATALOG_EVENT_COUNT : discoveredEventIds.size,
+      total: CATALOG_EVENT_COUNT,
+    },
+  }[section];
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -2494,7 +2827,7 @@ function MonsterCatalogDialog({
       onClick={(event) => {
         if (event.target === event.currentTarget) event.currentTarget.close();
       }}
-      aria-label="モンスター図鑑"
+      aria-label={sectionMeta.title}
     >
       <section className="catalog-archive panel">
         <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
@@ -2503,61 +2836,137 @@ function MonsterCatalogDialog({
         <header className="catalog-archive-heading">
           <div>
             <span>CODE MONSTERS // FIELD ARCHIVE</span>
-            <h2>モンスター図鑑</h2>
-            <p>仲間にした種だけ、生態記録と戦闘能力を閲覧できます。</p>
+            <h2>{sectionMeta.title}</h2>
+            <p>{developerMode ? `DEV OVERRIDE：全${sectionMeta.total}件を一時表示中。` : sectionMeta.description}</p>
           </div>
-          <div className="catalog-progress" aria-label={`${CATALOG_MONSTER_COUNT}種中${discoveredCount}種発見`}>
-            <small>RECORDED</small>
+          <div className="catalog-progress" aria-label={`${sectionMeta.total}件中${sectionMeta.discovered}件発見`}>
+            <small>{developerMode ? 'DEV VIEW' : 'RECORDED'}</small>
             <strong>
-              {String(discoveredCount).padStart(2, '0')}
+              {String(sectionMeta.discovered).padStart(2, '0')}
               <i>/</i>
-              {CATALOG_MONSTER_COUNT}
+              {sectionMeta.total}
             </strong>
             <span
-              style={{ '--catalog-progress': `${(discoveredCount / CATALOG_MONSTER_COUNT) * 100}%` } as CSSProperties}
+              style={
+                {
+                  '--catalog-progress': `${(sectionMeta.discovered / sectionMeta.total) * 100}%`,
+                } as CSSProperties
+              }
             />
           </div>
         </header>
-        <nav className="catalog-filters" aria-label="図鑑の系統絞り込み">
+        <nav className="catalog-section-tabs" aria-label="図鑑の種類">
           <button
             type="button"
-            className={filter === 'all' ? 'is-active' : ''}
-            aria-pressed={filter === 'all'}
-            onClick={() => setFilter('all')}
+            className={section === 'monsters' ? 'is-active' : ''}
+            onClick={() => setSection('monsters')}
           >
-            すべて <b>{CATALOG_MONSTER_COUNT}</b>
+            モンスター <b>{developerMode ? CATALOG_MONSTER_COUNT : discoveredMonsterIds.size}</b>
           </button>
-          {GAME_DATA.lineages.map((lineage) => (
-            <button
-              type="button"
-              key={lineage.id}
-              className={filter === lineage.id ? 'is-active' : ''}
-              aria-pressed={filter === lineage.id}
-              onClick={() => setFilter(lineage.id)}
-            >
-              {lineage.mark} {lineage.name} <b>15</b>
-            </button>
-          ))}
+          <button
+            type="button"
+            className={section === 'skills' ? 'is-active' : ''}
+            onClick={() => setSection('skills')}
+          >
+            スキル <b>{developerMode ? CATALOG_SKILL_COUNT : discoveredSkillIds.size}</b>
+          </button>
+          <button
+            type="button"
+            className={section === 'events' ? 'is-active' : ''}
+            onClick={() => setSection('events')}
+          >
+            イベント <b>{developerMode ? CATALOG_EVENT_COUNT : discoveredEventIds.size}</b>
+          </button>
         </nav>
-        <div className="catalog-body">
-          <div className="catalog-index" aria-label="モンスター標本一覧">
-            {filteredEntries.map((entry) => (
-              <MonsterCatalogCard
-                key={entry.id}
-                entry={entry}
-                selected={selectedEntry?.id === entry.id}
-                onSelect={() => setSelectedId(entry.id)}
-              />
-            ))}
-          </div>
-          {selectedEntry && (
-            <MonsterCatalogDetail
-              key={selectedEntry.id}
-              entry={selectedEntry}
-              discoveredMonsterIds={discoveredMonsterIds}
-            />
-          )}
-        </div>
+        {section === 'monsters' && (
+          <>
+            <nav className="catalog-filters" aria-label="図鑑の系統絞り込み">
+              <button
+                type="button"
+                className={filter === 'all' ? 'is-active' : ''}
+                aria-pressed={filter === 'all'}
+                onClick={() => setFilter('all')}
+              >
+                すべて <b>{CATALOG_MONSTER_COUNT}</b>
+              </button>
+              {GAME_DATA.lineages.map((lineage) => (
+                <button
+                  type="button"
+                  key={lineage.id}
+                  className={filter === lineage.id ? 'is-active' : ''}
+                  aria-pressed={filter === lineage.id}
+                  onClick={() => setFilter(lineage.id)}
+                >
+                  {lineage.mark} {lineage.name} <b>15</b>
+                </button>
+              ))}
+            </nav>
+            <div className="catalog-body">
+              <div className="catalog-index" aria-label="モンスター標本一覧">
+                {filteredEntries.map((entry) => (
+                  <MonsterCatalogCard
+                    key={entry.id}
+                    entry={entry}
+                    selected={selectedMonsterEntry?.id === entry.id}
+                    onSelect={() => setSelectedMonsterId(entry.id)}
+                  />
+                ))}
+              </div>
+              {selectedMonsterEntry && (
+                <MonsterCatalogDetail
+                  key={selectedMonsterEntry.id}
+                  entry={selectedMonsterEntry}
+                  discoveredMonsterIds={
+                    developerMode ? new Set(GAME_DATA.monsters.map((monster) => monster.id)) : discoveredMonsterIds
+                  }
+                />
+              )}
+            </div>
+          </>
+        )}
+        {section === 'skills' && (
+          <>
+            <div className="catalog-context-bar">所持した時点で解放 · 所持者欄の未発見モンスターは伏せて表示</div>
+            <div className="catalog-body">
+              <div className="catalog-index catalog-text-index" aria-label="スキル記録一覧">
+                {skillEntries.map((entry) => (
+                  <SkillCatalogCard
+                    key={entry.id}
+                    entry={entry}
+                    selected={selectedSkillEntry?.id === entry.id}
+                    onSelect={() => setSelectedSkillId(entry.id)}
+                  />
+                ))}
+              </div>
+              {selectedSkillEntry && (
+                <SkillCatalogDetail
+                  key={selectedSkillEntry.id}
+                  entry={selectedSkillEntry}
+                  discoveredMonsterIds={discoveredMonsterIds}
+                  revealAll={developerMode}
+                />
+              )}
+            </div>
+          </>
+        )}
+        {section === 'events' && (
+          <>
+            <div className="catalog-context-bar">選択して結果を確認した時点で解放 · レアリティなし・全候補同率</div>
+            <div className="catalog-body">
+              <div className="catalog-index catalog-text-index" aria-label="イベント記録一覧">
+                {eventEntries.map((entry) => (
+                  <EventCatalogCard
+                    key={entry.id}
+                    entry={entry}
+                    selected={selectedEventEntry?.id === entry.id}
+                    onSelect={() => setSelectedEventId(entry.id)}
+                  />
+                ))}
+              </div>
+              {selectedEventEntry && <EventCatalogDetail key={selectedEventEntry.id} entry={selectedEventEntry} />}
+            </div>
+          </>
+        )}
       </section>
     </dialog>
   );
@@ -2722,11 +3131,17 @@ function Inspector({
 function WorkshopScreen({
   run,
   discoveredMonsterIds,
+  discoveredSkillIds,
+  discoveredEventIds,
+  developerMode,
   setRun,
   onStartBattle,
 }: {
   run: CasualRunState;
   discoveredMonsterIds: ReadonlySet<string>;
+  discoveredSkillIds: ReadonlySet<string>;
+  discoveredEventIds: ReadonlySet<string>;
+  developerMode: boolean;
   setRun: (run: CasualRunState) => void;
   onStartBattle: () => void;
 }) {
@@ -2830,9 +3245,12 @@ function WorkshopScreen({
         onChange={setRun}
         onClose={() => setInspectedId(undefined)}
       />
-      <MonsterCatalogDialog
+      <FieldCatalogDialog
         open={catalogOpen}
         discoveredMonsterIds={discoveredMonsterIds}
+        discoveredSkillIds={discoveredSkillIds}
+        discoveredEventIds={discoveredEventIds}
+        developerMode={developerMode}
         onClose={() => setCatalogOpen(false)}
       />
       <footer className="battle-launcher">
@@ -2863,7 +3281,7 @@ function EventScreen({
       <section className="event-stage">
         <span className="section-index">ROUTE EVENT / CYCLE {run.cycle}</span>
         <h2>旅路が枝分かれした</h2>
-        <p>このサイクルで受ける支援をひとつ選びます。</p>
+        <p>このサイクルで受ける支援をひとつ選びます。候補にレアリティや強さの序列はありません。</p>
         <div className="event-grid">
           {run.eventChoices.map((eventId) => {
             const event = GAME_DATA.events.find((entry) => entry.id === eventId);
@@ -3808,6 +4226,9 @@ export function App() {
   const [lastBattleEnemy, setLastBattleEnemy] = useState<MonsterInstance[]>([]);
   const [pendingHatches, setPendingHatches] = useState<EggHatchResult[]>();
   const [discoveredMonsterIds, setDiscoveredMonsterIds] = useState(() => new Set<string>(loadDiscoveredMonsterIds()));
+  const [discoveredSkillIds, setDiscoveredSkillIds] = useState(() => new Set<string>(loadDiscoveredSkillIds()));
+  const [discoveredEventIds, setDiscoveredEventIds] = useState(() => new Set<string>(loadDiscoveredEventIds()));
+  const [developerMode, setDeveloperMode] = useState(false);
 
   useEffect(() => {
     setDiscoveredMonsterIds((current) => {
@@ -3817,6 +4238,26 @@ export function App() {
       return next;
     });
   }, [run.roster]);
+
+  useEffect(() => {
+    setDiscoveredSkillIds((current) => {
+      const next = mergeDiscoveredSkillIds(GAME_DATA, current, run.roster);
+      if (next.size === current.size) return current;
+      saveDiscoveryIds(SKILL_DISCOVERY_STORAGE_KEY, next);
+      return next;
+    });
+  }, [run.roster]);
+
+  useEffect(() => {
+    const eventId = run.eventResolution?.eventId;
+    if (!eventId) return;
+    setDiscoveredEventIds((current) => {
+      const next = mergeDiscoveredEventIds(GAME_DATA, current, eventId);
+      if (next.size === current.size) return current;
+      saveDiscoveryIds(EVENT_DISCOVERY_STORAGE_KEY, next);
+      return next;
+    });
+  }, [run.eventResolution?.eventId]);
 
   const startBattle = () => {
     const player = run.activeIds
@@ -3867,6 +4308,9 @@ export function App() {
       <WorkshopScreen
         run={run}
         discoveredMonsterIds={discoveredMonsterIds}
+        discoveredSkillIds={discoveredSkillIds}
+        discoveredEventIds={discoveredEventIds}
+        developerMode={developerMode}
         setRun={setRun}
         onStartBattle={startBattle}
       />
@@ -3892,6 +4336,7 @@ export function App() {
   }
   return (
     <>
+      <DeveloperModeSwitch enabled={developerMode} onChange={setDeveloperMode} />
       {screen}
       {pendingHatches && (
         <EggHatchRevealSequence hatches={pendingHatches} onComplete={() => setPendingHatches(undefined)} />

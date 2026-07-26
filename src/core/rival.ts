@@ -90,7 +90,7 @@ const bestBreedingPlan = (data: GameData, run: CasualRunState) => {
         second,
         candidate,
         score:
-          ({ special: 400, 'same-name': 320, generic: 200 }[candidate.kind] ?? 0) +
+          ({ special: 400, 'egg-upgrade': 360, 'same-name': 320, generic: 200 }[candidate.kind] ?? 0) +
           (data.monsters.find((monster) => monster.id === candidate.definitionId)?.whiteStars ?? 1) * 45 +
           candidate.colorStars * 30,
       })),
@@ -104,9 +104,9 @@ type BreedingPreference = 'rank' | 'color' | 'discovery';
 const breedOnce = (data: GameData, run: CasualRunState, audit: RivalAudit, preference: BreedingPreference) => {
   const plans = bestBreedingPlan(data, run);
   const preferenceScore: Record<BreedingPreference, Record<string, number>> = {
-    rank: { special: 650, generic: 520, 'same-name': 180 },
-    color: { special: 620, generic: 240, 'same-name': 560 },
-    discovery: { special: 800, generic: 440, 'same-name': 300 },
+    rank: { special: 650, 'egg-upgrade': 620, generic: 520, 'same-name': 180 },
+    color: { special: 620, 'egg-upgrade': 180, generic: 240, 'same-name': 560 },
+    discovery: { special: 800, 'egg-upgrade': 500, generic: 440, 'same-name': 300 },
   };
   const plan = plans?.sort(
     (left, right) =>

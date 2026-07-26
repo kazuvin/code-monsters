@@ -16,7 +16,7 @@
     "test:watch": "vitest",
     "test:browser": "node scripts/browser-smoke.mjs",
     "balance:simulate": "node --import tsx scripts/simulate-runs.ts --runs 1000",
-    "balance:check": "node --import tsx scripts/simulate-runs.ts --runs 100 --check --no-write",
+    "balance:check": "node --import tsx scripts/simulate-runs.ts --runs 200 --check --no-write",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json",
     "verify": "pnpm format:check && pnpm test && pnpm typecheck:scripts && pnpm balance:check && pnpm build"
   },

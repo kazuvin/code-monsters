@@ -105,6 +105,8 @@ const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 },
 watchErrors(desktop);
 await desktop.addInitScript(() => {
   window.localStorage.setItem('code-monsters:recipe-discovery:v4', JSON.stringify(['fire-spirit-3', 'buried-mole-1']));
+  window.localStorage.setItem('code-monsters:skill-discovery:v4', JSON.stringify(['tail-swipe']));
+  window.localStorage.setItem('code-monsters:event-discovery:v4', JSON.stringify(['merchant-gift']));
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
@@ -145,6 +147,18 @@ if ((await desktop.locator('.shop-monsters .definition-card, .shop-monsters .sol
 if ((await desktop.locator('.equipment-offers > *').count()) !== 2) {
   throw new Error('Equipment shop does not have two slots');
 }
+if (!(await desktop.locator('.equipment-rarity-readout').innerText()).includes('C 55% · R 28% · E 13% · L 4%')) {
+  throw new Error('Equipment shop does not expose all rarity rates');
+}
+if (
+  (await desktop
+    .locator('.equipment-offer header > small')
+    .evaluateAll((labels) =>
+      labels.every((label) => /コモン|レア|エピック|レジェンダリー/.test(label.textContent ?? '')),
+    )) !== true
+) {
+  throw new Error('Equipment offers do not display their rarity');
+}
 if ((await desktop.locator('.shop-monsters .card-detail-button').count()) !== 3) {
   throw new Error('Shop monsters do not expose a detail action');
 }
@@ -155,7 +169,7 @@ await assertReadableMonsterCards(
   '.shop-monsters .definition-card',
   '.monster-card-copy > strong',
 );
-await desktop.getByRole('button', { name: /モンスター図鑑/ }).click();
+await desktop.getByRole('button', { name: /図鑑/ }).click();
 await desktop.locator('.catalog-dialog[open]').waitFor();
 if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 52) {
   throw new Error('Monster catalog does not show all 45 lineage-grid and seven standalone records');
@@ -226,7 +240,77 @@ if (!(await desktop.locator('.catalog-detail.is-unlocked .growth-scan-reading').
   throw new Error('Catalog growth scan does not expose the selected level reading');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-desktop.png', fullPage: true });
+await desktop
+  .locator('.catalog-section-tabs')
+  .getByRole('button', { name: /スキル/ })
+  .click();
+if ((await desktop.locator('.catalog-text-index .catalog-card').count()) !== 39) {
+  throw new Error('Skill catalog does not show all skill records');
+}
+await desktop.locator('[data-skill-catalog-id="tail-swipe"]').click();
+if ((await desktop.locator('.catalog-skill-detail .effect-skill-card').count()) !== 1) {
+  throw new Error('Discovered skill does not expose its complete effect record');
+}
+if ((await desktop.locator('.catalog-skill-detail .rarity-badge').innerText()) !== 'コモン') {
+  throw new Error('Skill catalog does not show the selected skill rarity');
+}
+if ((await desktop.locator('.catalog-skill-detail .catalog-holder').count()) === 0) {
+  throw new Error('Skill catalog does not show base monster holders');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-skill-catalog-desktop.png', fullPage: true });
+await desktop
+  .locator('.catalog-section-tabs')
+  .getByRole('button', { name: /イベント/ })
+  .click();
+if ((await desktop.locator('.catalog-text-index .catalog-card').count()) !== 9) {
+  throw new Error('Event catalog does not show all event records');
+}
+await desktop.locator('[data-event-catalog-id="merchant-gift"]').click();
+if (!(await desktop.locator('.catalog-event-copy').innerText()).includes('コインを5枚受け取る')) {
+  throw new Error('Experienced event does not expose its route effect');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-event-catalog-desktop.png', fullPage: true });
 await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
+const discoveryBeforeDeveloperMode = await desktop.evaluate(() => ({
+  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v4'),
+  skills: window.localStorage.getItem('code-monsters:skill-discovery:v4'),
+  events: window.localStorage.getItem('code-monsters:event-discovery:v4'),
+}));
+await desktop.locator('.developer-mode-switch').click();
+await desktop.getByRole('button', { name: /図鑑/ }).click();
+await desktop.locator('.catalog-dialog[open]').waitFor();
+await desktop
+  .locator('.catalog-section-tabs')
+  .getByRole('button', { name: /モンスター/ })
+  .click();
+if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 52) {
+  throw new Error('Developer mode does not reveal every monster catalog record');
+}
+await desktop
+  .locator('.catalog-section-tabs')
+  .getByRole('button', { name: /スキル/ })
+  .click();
+if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 39) {
+  throw new Error('Developer mode does not reveal every skill catalog record');
+}
+await desktop
+  .locator('.catalog-section-tabs')
+  .getByRole('button', { name: /イベント/ })
+  .click();
+if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 9) {
+  throw new Error('Developer mode does not reveal every event catalog record');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-developer-catalog-desktop.png', fullPage: true });
+await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
+await desktop.locator('.developer-mode-switch').click();
+const discoveryAfterDeveloperMode = await desktop.evaluate(() => ({
+  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v4'),
+  skills: window.localStorage.getItem('code-monsters:skill-discovery:v4'),
+  events: window.localStorage.getItem('code-monsters:event-discovery:v4'),
+}));
+if (JSON.stringify(discoveryAfterDeveloperMode) !== JSON.stringify(discoveryBeforeDeveloperMode)) {
+  throw new Error('Developer mode mutated persistent catalog discovery');
+}
 await desktop.locator('.shop-monsters .definition-card-main').first().click();
 await desktop.locator('.prospect-dialog[open]').waitFor();
 if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
@@ -832,7 +916,7 @@ await assertReadableMonsterCards(
 );
 await assertFitsViewport(mobile, 'Mobile workshop');
 
-await mobile.getByRole('button', { name: /モンスター図鑑/ }).click();
+await mobile.getByRole('button', { name: /図鑑/ }).click();
 await mobile.locator('.catalog-dialog[open]').waitFor();
 if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 52) {
   throw new Error('Mobile monster catalog does not show all 45 lineage-grid and seven standalone records');
@@ -1074,6 +1158,18 @@ for (let egg = 0; egg < 2; egg += 1) {
     .locator('.buy-button')
     .click();
 }
+await hatchPage.locator('.workshop-tabs').getByRole('button', { name: /配合/ }).click();
+await hatchPage.locator('.breeding-lab-dialog[open]').waitFor();
+const eggParentChoices = hatchPage.locator('.breeding-lab-dialog .parent-choice').filter({ hasText: 'まだら卵' });
+if ((await eggParentChoices.count()) !== 2) {
+  throw new Error('Level-one eggs are not available as egg-breeding parents');
+}
+await eggParentChoices.nth(0).click();
+await eggParentChoices.nth(1).click();
+if ((await hatchPage.locator('.breeding-candidate').filter({ hasText: '星殻の卵' }).count()) !== 1) {
+  throw new Error('Two rank-one eggs do not expose the rank-two egg breeding route');
+}
+await hatchPage.getByRole('button', { name: '配合ラボを閉じる' }).click();
 const ownedEgg = hatchPage.locator('.team-zone.is-bench .roster-card').filter({ hasText: 'まだら卵' }).first();
 await ownedEgg.click();
 if ((await hatchPage.locator('.monster-dialog .inspector-tabs button').count()) !== 3) {
@@ -1119,6 +1215,9 @@ console.log(
       '/tmp/code-monsters-casual-desktop.png',
       '/tmp/code-monsters-prospect-desktop.png',
       '/tmp/code-monsters-catalog-desktop.png',
+      '/tmp/code-monsters-skill-catalog-desktop.png',
+      '/tmp/code-monsters-event-catalog-desktop.png',
+      '/tmp/code-monsters-developer-catalog-desktop.png',
       '/tmp/code-monsters-catalog-recipes-desktop.png',
       '/tmp/code-monsters-catalog-standalone-desktop.png',
       '/tmp/code-monsters-stat-breakdown-desktop.png',

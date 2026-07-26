@@ -61,7 +61,7 @@ Run Finished
 | モンスター詳細 | Workshop |
 | ガンビット編集 | Workshopのモンスター詳細 |
 | 特殊配合レシピ | Workshopのモンスター詳細・配合 |
-| モンスター図鑑 | Workshop |
+| モンスター・スキル・イベント図鑑 | Workshop |
 | notice strip | Workshop |
 | 再生、一時停止、速度、skip | Battle |
 

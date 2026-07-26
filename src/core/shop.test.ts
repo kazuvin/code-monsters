@@ -10,18 +10,27 @@ describe('rare shop offers', () => {
     expect(offerIds).toContain('study-owl-1');
   });
 
-  it('only promotes the mystery egg to its defined rank-two form', () => {
+  it('does not stock the rank-two egg through lucky shop promotion', () => {
     const offers = createShop(GAME_DATA, 1, 1).monsters.filter((offer): offer is NonNullable<typeof offer> =>
       Boolean(offer),
     );
-    const egg = offers.find((offer) => offer.definitionId === 'mystery-egg-2');
 
-    expect(egg).toMatchObject({ definitionId: 'mystery-egg-2', lucky: true });
-    const standaloneIds = new Set(GAME_DATA.standaloneMonsters.map((monster) => monster.id));
-    expect(
-      offers
-        .filter((offer) => offer.lucky && standaloneIds.has(offer.definitionId))
-        .every((offer) => offer.definitionId === 'mystery-egg-2'),
-    ).toBe(true);
+    expect(offers.every((offer) => offer.definitionId !== 'mystery-egg-2')).toBe(true);
+  });
+
+  it('uses the configured rarity weights when stocking equipment', () => {
+    const legendaryOnly = structuredClone(GAME_DATA);
+    legendaryOnly.rules.shop.equipmentSlots = 1;
+    legendaryOnly.rules.shop.equipmentRarityWeights = {
+      common: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 1,
+    };
+
+    const offer = createShop(legendaryOnly, 42).equipment[0];
+    const equipment = legendaryOnly.equipment.find((entry) => entry.id === offer?.equipmentId);
+
+    expect(equipment?.rarity).toBe('legendary');
   });
 });
