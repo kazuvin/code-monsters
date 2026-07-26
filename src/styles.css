@@ -45,7 +45,8 @@ body {
 }
 
 button,
-select {
+select,
+input {
   font: inherit;
 }
 
@@ -54,9 +55,519 @@ button {
 }
 
 button:focus-visible,
-select:focus-visible {
+select:focus-visible,
+input:focus-visible {
   outline: 3px solid var(--mint);
   outline-offset: 2px;
+}
+
+.mode-select-screen,
+.online-connection-screen,
+.online-finished-screen {
+  position: relative;
+  isolation: isolate;
+  width: min(1160px, 100%);
+  height: 100dvh;
+  min-height: 0;
+  margin: 0 auto;
+  overflow: auto;
+  padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.mode-select-screen::before,
+.online-connection-screen::before,
+.online-finished-screen::before {
+  position: absolute;
+  z-index: -1;
+  top: -360px;
+  left: 50%;
+  width: 720px;
+  height: 720px;
+  border: 42px solid rgba(48, 58, 86, 0.68);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 7px rgba(124, 224, 189, 0.28),
+    0 0 0 52px rgba(241, 123, 157, 0.12);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.mode-select-mast {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 2px solid var(--line-soft);
+}
+
+.mode-select-mast > span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.mode-select-intro {
+  max-width: 730px;
+  padding: clamp(22px, 5vh, 48px) 0 18px;
+}
+
+.mode-select-intro h2 {
+  margin: 5px 0 8px;
+  color: var(--paper);
+  font-size: clamp(30px, 5vw, 54px);
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+.mode-select-intro p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.mode-ledger {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(360px, 1.18fr);
+  gap: clamp(14px, 2.5vw, 28px);
+  padding-bottom: 20px;
+}
+
+.mode-route {
+  display: flex;
+  min-height: 430px;
+  flex-direction: column;
+  padding: clamp(18px, 2.4vw, 28px);
+}
+
+.mode-route.is-pair {
+  border-color: var(--mint);
+  background: linear-gradient(135deg, rgba(124, 224, 189, 0.08), transparent 44%), rgba(27, 32, 48, 0.98);
+}
+
+.mode-route.is-pair::before {
+  width: 86px;
+  background: var(--mint);
+}
+
+.mode-route > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.mode-route > header b {
+  padding: 4px 8px;
+  background: var(--line-soft);
+  color: var(--paper);
+  font-size: 11px;
+}
+
+.mode-route-mark,
+.paired-seals {
+  display: flex;
+  min-height: 94px;
+  align-items: center;
+  justify-content: center;
+  margin: 18px 0 10px;
+}
+
+.mode-route-mark span,
+.paired-seals span {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border: 3px double var(--gold);
+  border-radius: 50%;
+  background: var(--void);
+  color: var(--gold);
+  font-size: 28px;
+  box-shadow: 5px 5px 0 var(--void-deep);
+}
+
+.paired-seals span:last-child {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.paired-seals i {
+  position: relative;
+  width: clamp(34px, 6vw, 78px);
+  height: 2px;
+  background: var(--mint);
+}
+
+.paired-seals i::before,
+.paired-seals i::after {
+  position: absolute;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--mint);
+  background: var(--panel);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.paired-seals i::before {
+  left: -2px;
+}
+
+.paired-seals i::after {
+  right: -2px;
+}
+
+.mode-route h3 {
+  margin: 5px 0 6px;
+  color: var(--paper);
+  font-size: clamp(23px, 3vw, 34px);
+  letter-spacing: -0.04em;
+}
+
+.mode-route > p {
+  min-height: 44px;
+  margin: 0;
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.mode-route ul {
+  display: grid;
+  gap: 5px;
+  margin: 14px 0 18px;
+  padding: 0;
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 11px;
+  list-style: none;
+}
+
+.mode-route li::before {
+  margin-right: 7px;
+  color: var(--mint);
+  content: "◆";
+}
+
+.mode-route > button {
+  min-height: 46px;
+  margin-top: auto;
+}
+
+.invite-entry {
+  display: grid;
+  gap: 5px;
+  margin-top: 13px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.invite-entry label,
+.invite-entry small {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 9px;
+}
+
+.invite-entry > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.invite-entry input {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  background: var(--void);
+  color: var(--paper);
+  font-size: 11px;
+}
+
+.online-connection-screen,
+.online-finished-screen {
+  display: grid;
+  place-items: center;
+}
+
+.online-connection-ledger,
+.online-finished-ledger {
+  width: min(620px, 100%);
+  padding: clamp(24px, 5vw, 48px);
+  text-align: center;
+}
+
+.online-connection-ledger h1,
+.online-finished-ledger h1 {
+  margin: 8px 0;
+  color: var(--paper);
+  font-size: clamp(28px, 5vw, 46px);
+  letter-spacing: -0.05em;
+}
+
+.online-connection-ledger > p,
+.online-finished-ledger > p {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.connection-pulse {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.connection-pulse i {
+  width: 9px;
+  height: 9px;
+  background: var(--mint);
+  animation: connection-pulse 1.2s steps(2, end) infinite;
+}
+
+.connection-pulse i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.connection-pulse i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes connection-pulse {
+  50% {
+    opacity: 0.2;
+    transform: translateY(-4px);
+  }
+}
+
+.online-finished-ledger dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 26px 0;
+  border: 2px solid var(--line);
+}
+
+.online-finished-ledger dl div {
+  padding: 10px 5px;
+  border-right: 1px solid var(--line);
+}
+
+.online-finished-ledger dl div:last-child {
+  border-right: 0;
+}
+
+.online-finished-ledger dt {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.online-finished-ledger dd {
+  overflow: hidden;
+  margin: 3px 0 0;
+  color: var(--gold);
+  font-size: 18px;
+  text-overflow: ellipsis;
+}
+
+#root:has(> .online-room-bar) {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+#root:has(> .online-room-bar)
+  > :is(
+    .draft-screen,
+    .run-screen,
+    .event-screen,
+    .battle-screen,
+    .result-screen,
+    .finished-screen,
+    .online-connection-screen,
+    .online-finished-screen
+  ) {
+  height: calc(100dvh - 56px);
+  flex: 1 1 auto;
+}
+
+.online-room-bar {
+  z-index: 80;
+  display: grid;
+  width: min(1440px, 100%);
+  min-height: 56px;
+  flex: 0 0 56px;
+  grid-template-columns: auto minmax(190px, 1fr) auto auto;
+  order: -1;
+  align-items: center;
+  gap: 10px;
+  margin: 0 auto;
+  padding: max(5px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 5px
+    max(10px, env(safe-area-inset-left));
+  border-bottom: 2px solid var(--mint);
+  background: linear-gradient(90deg, rgba(124, 224, 189, 0.1), transparent 38%), var(--void-deep);
+  box-shadow: 0 4px 0 rgba(9, 10, 16, 0.85);
+}
+
+.online-room-seals {
+  display: flex;
+  align-items: center;
+}
+
+.online-room-seals span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  color: var(--gold);
+  font-size: 11px;
+}
+
+.online-room-seals span:last-child {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.online-room-seals i {
+  width: 16px;
+  height: 2px;
+  background: var(--mint);
+}
+
+.online-room-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.online-room-copy span {
+  overflow: hidden;
+  color: var(--mint);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-room-copy strong {
+  overflow: hidden;
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-room-bar.is-disconnected .online-room-copy strong {
+  color: var(--danger);
+}
+
+.online-room-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  background: var(--deck);
+}
+
+.online-room-score span {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.online-room-score b {
+  color: var(--paper);
+  font-size: 14px;
+}
+
+.online-room-score i {
+  color: var(--line);
+  font-style: normal;
+}
+
+.online-room-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.online-room-actions button {
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.online-room-actions button:first-child {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+@media (max-width: 720px) {
+  .mode-select-screen {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .mode-select-mast > span {
+    display: none;
+  }
+
+  .mode-select-intro {
+    padding: 20px 2px 12px;
+  }
+
+  .mode-select-intro h2 {
+    font-size: 31px;
+  }
+
+  .mode-ledger {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-route {
+    min-height: 390px;
+  }
+
+  .online-room-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .online-room-seals {
+    display: none;
+  }
+
+  .online-room-score {
+    display: none;
+  }
+
+  .online-room-actions button {
+    padding: 4px 6px;
+    font-size: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connection-pulse i {
+    animation: none;
+  }
 }
 
 button:disabled {

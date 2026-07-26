@@ -429,7 +429,7 @@ export type RunCommand = RunCommandBase & RunCommandPayload;
 
 export type CasualRunState = {
   schemaVersion: 4;
-  mode: 'casual';
+  mode: 'casual' | 'online';
   contentVersion: string;
   commandLogVersion: 1;
   commandLog: RunCommand[];

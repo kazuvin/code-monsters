@@ -12,9 +12,11 @@
     "format:check": "biome format .",
     "preview": "vite preview",
     "deploy": "wrangler deploy",
+    "types:worker": "wrangler types",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:browser": "node scripts/browser-smoke.mjs",
+    "test:browser:online": "node scripts/online-browser-smoke.mjs",
     "balance:simulate": "node --import tsx scripts/simulate-runs.ts --runs 1000",
     "balance:check": "node --import tsx scripts/simulate-runs.ts --runs 200 --check --no-write",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json",
@@ -23,6 +25,8 @@
   "dependencies": {
     "@fontsource/pixelify-sans": "latest",
     "@vitejs/plugin-react": "latest",
+    "partyserver": "^0.5.8",
+    "partysocket": "^1.3.0",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest",
@@ -30,6 +34,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
+    "@cloudflare/workers-types": "^5.20260726.1",
     "@types/node": "26.1.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
@@ -38,7 +43,7 @@
     "playwright-core": "^1.61.1",
     "tsx": "4.23.1",
     "vitest": "latest",
-    "wrangler": "latest"
+    "wrangler": "4.114.0"
   },
   "lint-staged": {
     "*.{js,mjs,cjs,ts,tsx,json,jsonc,css,html}": "biome format --write --no-errors-on-unmatched"

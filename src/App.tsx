@@ -40,6 +40,7 @@ import {
 } from './core/monster';
 import { createPlaytestReport, serializePlaytestReport } from './core/playtest-report';
 import { deriveSeed } from './core/rng';
+import type { OnlineSeat } from './core/online-match';
 import {
   applyBattleResult,
   breedInRun,
@@ -51,6 +52,7 @@ import {
   continueEvent,
   continueRun,
   createCasualRun,
+  createOnlineRun,
   equipItem,
   eventIsAvailable,
   eventRequiresTarget,
@@ -84,6 +86,9 @@ import type {
   TargetRule,
 } from './core/types';
 import { GAME_DATA } from './game/game-data';
+import type { RoomView } from './online/protocol';
+import type { OnlineConnectionStatus } from './online/use-online-room';
+import { useOnlineRoom } from './online/use-online-room';
 
 const CATALOG_MONSTER_COUNT = GAME_DATA.monsters.length;
 const CATALOG_SKILL_COUNT = GAME_DATA.skills.length;
@@ -119,6 +124,9 @@ const HP_TRANSITION_MS = 140;
 const query = new URLSearchParams(window.location.search);
 const requestedSeed = Number(query.get('seed'));
 const INITIAL_SEED = Number.isInteger(requestedSeed) && requestedSeed > 0 ? requestedSeed : 7261;
+type AppMode = 'select' | 'casual' | 'online';
+const INITIAL_ROOM_ID = query.get('room') ?? undefined;
+const INITIAL_MODE: AppMode = INITIAL_ROOM_ID ? 'online' : query.get('mode') === 'casual' ? 'casual' : 'select';
 const RECIPE_DISCOVERY_STORAGE_KEY = `code-monsters:recipe-discovery:v${GAME_DATA.schemaVersion}`;
 const SKILL_DISCOVERY_STORAGE_KEY = `code-monsters:skill-discovery:v${GAME_DATA.schemaVersion}`;
 const EVENT_DISCOVERY_STORAGE_KEY = `code-monsters:event-discovery:v${GAME_DATA.schemaVersion}`;
@@ -846,7 +854,11 @@ function RunHeader({
               WIN <b>{run.wins}</b>
             </span>
             <span>
-              LOSS <b>{run.losses}/5</b>
+              LOSS{' '}
+              <b>
+                {run.losses}
+                {run.mode === 'casual' ? '/5' : ''}
+              </b>
             </span>
             <span className="coin-metric">
               COIN <b>{run.coins}</b>
@@ -885,6 +897,258 @@ function DeveloperModeSwitch({ enabled, onChange }: { enabled: boolean; onChange
   );
 }
 
+const roomIdFromInvite = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  try {
+    const invitation = new URL(trimmed);
+    return invitation.searchParams.get('room') ?? undefined;
+  } catch {
+    return trimmed;
+  }
+};
+
+function ModeSelectScreen({
+  onCasual,
+  onCreateOnline,
+  onJoinOnline,
+}: {
+  onCasual: () => void;
+  onCreateOnline: () => void;
+  onJoinOnline: (roomId: string) => boolean;
+}) {
+  const [invite, setInvite] = useState('');
+  const [error, setError] = useState('');
+  const join = () => {
+    const roomId = roomIdFromInvite(invite);
+    if (!roomId || !onJoinOnline(roomId)) {
+      setError('招待URL、または8文字以上の対戦室IDを入力してください');
+    }
+  };
+  return (
+    <main className="mode-select-screen">
+      <header className="mode-select-mast">
+        <div className="brand-lockup">
+          <span>CODE MONSTERS // FIELD LAB</span>
+          <h1>血統航路</h1>
+        </div>
+        <span>USER TEST BUILD · {GAME_DATA.rules.contentVersion}</span>
+      </header>
+      <section className="mode-select-intro">
+        <span className="section-index">EXPEDITION LEDGER / 00</span>
+        <h2>検証する航路を選ぶ</h2>
+        <p>育成と自動戦闘はどちらも同じです。2人対戦では編成だけを同期し、戦闘結果を同時に受け取ります。</p>
+      </section>
+      <div className="mode-ledger">
+        <section className="mode-route panel is-solo">
+          <header>
+            <span>01 / LOCAL GHOST</span>
+            <b>ひとり</b>
+          </header>
+          <div className="mode-route-mark" aria-hidden="true">
+            <span>竜</span>
+          </div>
+          <h3>ひとりで検証</h3>
+          <p>12サイクルの育成と非同期ゴースト戦を、今まで通りすぐに試せます。</p>
+          <ul>
+            <li>ログイン不要</li>
+            <li>5敗で航路終了</li>
+            <li>ローカルで戦闘計算</li>
+          </ul>
+          <button type="button" className="secondary-button" onClick={onCasual}>
+            SOLO ROUTE / はじめる
+          </button>
+        </section>
+        <section className="mode-route panel is-pair">
+          <header>
+            <span>02 / LINKED EXPEDITION</span>
+            <b>ふたり</b>
+          </header>
+          <div className="paired-seals" aria-hidden="true">
+            <span>竜</span>
+            <i />
+            <span>精</span>
+          </div>
+          <h3>ふたりで航海</h3>
+          <p>招待URLを渡し、各サイクルの最終編成を提出。12戦の勝ち数で競います。</p>
+          <ul>
+            <li>WebSocketで待機</li>
+            <li>12戦固定・5敗終了なし</li>
+            <li>同点時はサドンデス</li>
+          </ul>
+          <button type="button" className="launch-button" onClick={onCreateOnline}>
+            <span>CREATE 1V1 ROOM</span>
+            対戦室を作る
+          </button>
+          <div className="invite-entry">
+            <label htmlFor="invite-room">招待を受け取った場合</label>
+            <div>
+              <input
+                id="invite-room"
+                value={invite}
+                placeholder="招待URL または ROOM ID"
+                onChange={(event) => {
+                  setInvite(event.currentTarget.value);
+                  setError('');
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') join();
+                }}
+              />
+              <button type="button" className="secondary-button" onClick={join}>
+                参加
+              </button>
+            </div>
+            <small aria-live="polite">{error || 'URLを開くだけでも参加できます'}</small>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function OnlineRoomBar({
+  room,
+  seat,
+  connection,
+  error,
+  copied,
+  onCopy,
+  onLeave,
+}: {
+  room?: RoomView;
+  seat?: OnlineSeat;
+  connection: OnlineConnectionStatus;
+  error?: string;
+  copied: boolean;
+  onCopy: () => void;
+  onLeave: () => void;
+}) {
+  const ownReady = seat ? room?.submittedSeats.includes(seat) : false;
+  const opponent = seat === 'a' ? 'b' : 'a';
+  const opponentReady = room?.submittedSeats.includes(opponent);
+  return (
+    <aside className={`online-room-bar is-${connection}`} aria-live="polite">
+      <div className="online-room-seals" aria-hidden="true">
+        <span>{seat === 'b' ? 'B' : 'A'}</span>
+        <i />
+        <span>{seat === 'b' ? 'A' : 'B'}</span>
+      </div>
+      <div className="online-room-copy">
+        <span>ONLINE 1V1 · {room?.roomId ? room.roomId.slice(0, 13).toUpperCase() : 'CONNECTING'}</span>
+        <strong>
+          {error ??
+            (connection !== 'connected'
+              ? '対戦室へ接続中…'
+              : !room?.connectedSeats.includes(opponent)
+                ? '相手の参加を待っています'
+                : ownReady
+                  ? opponentReady
+                    ? '戦闘結果を同期中'
+                    : '編成提出済み · 相手待ち'
+                  : opponentReady
+                    ? '相手は編成提出済み'
+                    : '2人とも育成中')}
+        </strong>
+      </div>
+      {room && (
+        <div className="online-room-score" aria-label="オンライン対戦スコア">
+          <span>
+            YOU <b>{seat === 'b' ? room.score.b : room.score.a}</b>
+          </span>
+          <i>—</i>
+          <span>
+            RIVAL <b>{seat === 'b' ? room.score.a : room.score.b}</b>
+          </span>
+        </div>
+      )}
+      <div className="online-room-actions">
+        <button type="button" onClick={onCopy}>
+          {copied ? 'コピー済み' : '招待URL'}
+        </button>
+        <button type="button" onClick={onLeave}>
+          退出
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function OnlineFinishedScreen({ room, seat, onLeave }: { room: RoomView; seat: OnlineSeat; onLeave: () => void }) {
+  const own = seat === 'a' ? room.score.a : room.score.b;
+  const rival = seat === 'a' ? room.score.b : room.score.a;
+  const title = own === rival ? '航路は引き分け' : own > rival ? '対戦航路を制覇' : '再検証の記録を保存';
+  return (
+    <main className="online-finished-screen">
+      <section className="online-finished-ledger panel">
+        <span className="section-index">ONLINE 1V1 / COMPLETE</span>
+        <div className="paired-seals is-finished" aria-hidden="true">
+          <span>{seat.toUpperCase()}</span>
+          <i />
+          <span>{seat === 'a' ? 'B' : 'A'}</span>
+        </div>
+        <h1>{title}</h1>
+        <p>
+          {own}勝 — {rival}勝 <small>（引き分け {room.score.draws}）</small>
+        </p>
+        <dl>
+          <div>
+            <dt>通常戦</dt>
+            <dd>{GAME_DATA.rules.maxCycles}</dd>
+          </div>
+          <div>
+            <dt>サドンデス</dt>
+            <dd>{room.suddenDeathRound}</dd>
+          </div>
+          <div>
+            <dt>ROOM</dt>
+            <dd>{room.roomId.slice(0, 13)}</dd>
+          </div>
+        </dl>
+        <button type="button" className="launch-button" onClick={onLeave}>
+          <span>RETURN TO LEDGER</span>
+          航路選択へ戻る
+        </button>
+      </section>
+    </main>
+  );
+}
+
+function OnlineConnectionScreen({
+  roomId,
+  connection,
+  error,
+}: {
+  roomId: string;
+  connection: OnlineConnectionStatus;
+  error?: string;
+}) {
+  return (
+    <main className="online-connection-screen">
+      <section className="online-connection-ledger panel">
+        <div className="paired-seals" aria-hidden="true">
+          <span>?</span>
+          <i />
+          <span>?</span>
+        </div>
+        <span className="section-index">ROOM / {roomId.slice(0, 13).toUpperCase()}</span>
+        <h1>{error ? '対戦室を確認してください' : '航路を接続しています'}</h1>
+        <p>
+          {error ??
+            (connection === 'disconnected'
+              ? '通信が途切れました。自動で再接続しています。'
+              : '席と育成seedを受け取り、2人だけの対戦室を準備しています。')}
+        </p>
+        <div className="connection-pulse" aria-label={connection}>
+          <i />
+          <i />
+          <i />
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (definitionId: string) => void }) {
   const [previewDefinitionId, setPreviewDefinitionId] = useState<string>();
   const previewMonster = previewDefinitionId
@@ -894,7 +1158,7 @@ function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (defini
     <main className="draft-screen">
       <div className="draft-mast">
         <div className="brand-lockup">
-          <span>CODE MONSTERS // CASUAL PROTOTYPE</span>
+          <span>CODE MONSTERS // {run.mode === 'online' ? 'ONLINE 1V1' : 'CASUAL PROTOTYPE'}</span>
           <h1>血統航路</h1>
         </div>
         <div className="bloodline-weave" aria-hidden="true">
@@ -3136,6 +3400,7 @@ function WorkshopScreen({
   developerMode,
   setRun,
   onStartBattle,
+  online,
 }: {
   run: CasualRunState;
   discoveredMonsterIds: ReadonlySet<string>;
@@ -3144,6 +3409,11 @@ function WorkshopScreen({
   developerMode: boolean;
   setRun: (run: CasualRunState) => void;
   onStartBattle: () => void;
+  online?: {
+    connected: boolean;
+    ownReady: boolean;
+    opponentReady: boolean;
+  };
 }) {
   const [breedingOpen, setBreedingOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -3255,12 +3525,29 @@ function WorkshopScreen({
       />
       <footer className="battle-launcher">
         <div>
-          <span>NEXT / ASYNC GHOST #{run.cycle.toString().padStart(2, '0')}</span>
-          <strong>{run.activeIds.length === 3 ? '編成準備完了' : `主力をあと${3 - run.activeIds.length}体選択`}</strong>
+          <span>
+            {online ? 'NEXT / ONLINE RIVAL' : 'NEXT / ASYNC GHOST'} #{run.cycle.toString().padStart(2, '0')}
+          </span>
+          <strong>
+            {run.activeIds.length !== 3
+              ? `主力をあと${3 - run.activeIds.length}体選択`
+              : online?.ownReady
+                ? online.opponentReady
+                  ? '両者の編成を受理しました'
+                  : '編成提出済み · 相手を待機中'
+                : online?.opponentReady
+                  ? '相手は提出済み · あなたの編成待ち'
+                  : '編成準備完了'}
+          </strong>
         </div>
-        <button type="button" className="launch-button" disabled={run.activeIds.length !== 3} onClick={onStartBattle}>
+        <button
+          type="button"
+          className="launch-button"
+          disabled={run.activeIds.length !== 3 || (online ? !online.connected : false)}
+          onClick={onStartBattle}
+        >
           <span>ATB 3 × 3</span>
-          戦闘を開始する
+          {online ? (online.ownReady ? '編成を更新する' : '編成を提出する') : '戦闘を開始する'}
         </button>
       </footer>
     </main>
@@ -3910,11 +4197,19 @@ function ResultScreen({
   beforeRoster,
   enemy,
   onContinue,
+  continueLabel,
+  continueEyebrow,
+  continueDisabled = false,
+  continueStatus,
 }: {
   run: CasualRunState;
   beforeRoster: MonsterInstance[];
   enemy: MonsterInstance[];
   onContinue: () => void;
+  continueLabel?: string;
+  continueEyebrow?: string;
+  continueDisabled?: boolean;
+  continueStatus?: string;
 }) {
   const result = run.lastBattle;
   const won = result?.winner === 'player';
@@ -4064,10 +4359,21 @@ function ResultScreen({
           </div>
         </section>
         <footer className="result-actions">
-          <p>{revealStage >= 3 ? '戦果の記録が完了しました。' : '戦果を記録しています…'}</p>
-          <button type="button" className="launch-button" disabled={revealStage < 3} onClick={onContinue}>
-            <span>{run.completedCycles >= 12 || run.losses >= 5 ? 'RUN COMPLETE' : `NEXT CYCLE ${run.cycle + 1}`}</span>
-            {run.completedCycles >= 12 || run.losses >= 5 ? '最終結果へ' : '旅を続ける'}
+          <p>{continueStatus ?? (revealStage >= 3 ? '戦果の記録が完了しました。' : '戦果を記録しています…')}</p>
+          <button
+            type="button"
+            className="launch-button"
+            disabled={revealStage < 3 || continueDisabled}
+            onClick={onContinue}
+          >
+            <span>
+              {continueEyebrow ??
+                (run.completedCycles >= 12 || (run.mode === 'casual' && run.losses >= 5)
+                  ? 'RUN COMPLETE'
+                  : `NEXT CYCLE ${run.cycle + 1}`)}
+            </span>
+            {continueLabel ??
+              (run.completedCycles >= 12 || (run.mode === 'casual' && run.losses >= 5) ? '最終結果へ' : '旅を続ける')}
           </button>
         </footer>
       </section>
@@ -4218,7 +4524,10 @@ function FinishedScreen({
 }
 
 export function App() {
+  const [mode, setMode] = useState<AppMode>(INITIAL_MODE);
+  const [roomId, setRoomId] = useState<string | undefined>(INITIAL_ROOM_ID);
   const [run, setRun] = useState(() => createCasualRun(GAME_DATA, INITIAL_SEED));
+  const [onlineRunReady, setOnlineRunReady] = useState(false);
   const [runStartedAt, setRunStartedAt] = useState(() => new Date().toISOString());
   const [runCompletedAt, setRunCompletedAt] = useState<string>();
   const [battle, setBattle] = useState<BattleViewState>();
@@ -4229,6 +4538,130 @@ export function App() {
   const [discoveredSkillIds, setDiscoveredSkillIds] = useState(() => new Set<string>(loadDiscoveredSkillIds()));
   const [discoveredEventIds, setDiscoveredEventIds] = useState(() => new Set<string>(loadDiscoveredEventIds()));
   const [developerMode, setDeveloperMode] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const handledOnlineBattle = useRef(0);
+  const online = useOnlineRoom(mode === 'online' ? roomId : undefined);
+
+  const updateLocation = (nextMode: AppMode, nextRoomId?: string) => {
+    const url = new URL(window.location.href);
+    if (nextMode === 'select') url.searchParams.delete('mode');
+    else url.searchParams.set('mode', nextMode);
+    if (nextRoomId) url.searchParams.set('room', nextRoomId);
+    else url.searchParams.delete('room');
+    window.history.replaceState({}, '', url);
+  };
+
+  const openCasual = () => {
+    const startedAt = new Date().toISOString();
+    setMode('casual');
+    setRoomId(undefined);
+    setOnlineRunReady(false);
+    setRunStartedAt(startedAt);
+    setRunCompletedAt(undefined);
+    setPendingHatches(undefined);
+    setBattle(undefined);
+    setRun(createCasualRun(GAME_DATA, INITIAL_SEED));
+    updateLocation('casual');
+  };
+
+  const openOnline = (nextRoomId: string) => {
+    if (!/^[a-z0-9][a-z0-9-]{7,63}$/.test(nextRoomId)) return false;
+    setMode('online');
+    setRoomId(nextRoomId);
+    setOnlineRunReady(false);
+    setBattle(undefined);
+    handledOnlineBattle.current = 0;
+    setRunStartedAt(new Date().toISOString());
+    setRunCompletedAt(undefined);
+    updateLocation('online', nextRoomId);
+    return true;
+  };
+
+  const leaveOnline = () => {
+    setMode('select');
+    setRoomId(undefined);
+    setOnlineRunReady(false);
+    setBattle(undefined);
+    setPendingHatches(undefined);
+    updateLocation('select');
+  };
+
+  useEffect(() => {
+    if (mode !== 'online' || !roomId || !online.seat || online.runSeed === undefined || onlineRunReady) return;
+    const storageKey = `code-monsters:online-run:${roomId}:${online.seat}`;
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(storageKey) ?? 'null') as CasualRunState | null;
+      if (
+        saved?.mode === 'online' &&
+        saved.contentVersion === GAME_DATA.rules.contentVersion &&
+        saved.schemaVersion === 4
+      ) {
+        setRun(saved);
+      } else {
+        setRun(createOnlineRun(GAME_DATA, online.runSeed));
+      }
+    } catch {
+      setRun(createOnlineRun(GAME_DATA, online.runSeed));
+    }
+    setOnlineRunReady(true);
+  }, [mode, online.runSeed, online.seat, onlineRunReady, roomId]);
+
+  useEffect(() => {
+    if (mode !== 'online' || !roomId || !online.seat || !onlineRunReady) return;
+    try {
+      window.localStorage.setItem(`code-monsters:online-run:${roomId}:${online.seat}`, JSON.stringify(run));
+    } catch {
+      // The connected session remains playable when local persistence is unavailable.
+    }
+  }, [mode, online.seat, onlineRunReady, roomId, run]);
+
+  useEffect(() => {
+    const incoming = online.battle;
+    if (mode !== 'online' || !incoming || incoming.battleNumber <= handledOnlineBattle.current) return;
+    if (incoming.suddenDeathRound === 0 && run.phase === 'result' && incoming.cycle === run.cycle) {
+      handledOnlineBattle.current = incoming.battleNumber;
+      online.consumeBattle();
+      return;
+    }
+    if (incoming.suddenDeathRound === 0 && (run.phase !== 'prepare' || incoming.cycle !== run.cycle)) return;
+    if (incoming.suddenDeathRound > 0 && run.phase !== 'result') return;
+
+    handledOnlineBattle.current = incoming.battleNumber;
+    const beforeRoster = run.roster;
+    setRun(
+      incoming.suddenDeathRound > 0
+        ? {
+            ...run,
+            lastBattle: incoming.result,
+            lastBattleRewards: { coins: 0, xpByMonsterId: {} },
+          }
+        : applyBattleResult(GAME_DATA, run, incoming.result),
+    );
+    setBattle({
+      result: incoming.result,
+      enemy: incoming.opponent,
+      beforeRoster,
+      frameIndex: 0,
+      playing: true,
+      speed: 1,
+    });
+    online.consumeBattle();
+  }, [mode, online.battle, online.consumeBattle, run]);
+
+  useEffect(() => {
+    if (
+      mode !== 'online' ||
+      !onlineRunReady ||
+      run.phase !== 'result' ||
+      online.room?.phase !== 'preparing' ||
+      online.room.cycle !== run.cycle + 1
+    ) {
+      return;
+    }
+    const next = continueRun(GAME_DATA, run);
+    if (next.lastHatches && next.lastHatches.length > 0) setPendingHatches(next.lastHatches);
+    setRun(next);
+  }, [mode, online.room?.cycle, online.room?.phase, onlineRunReady, run]);
 
   useEffect(() => {
     setDiscoveredMonsterIds((current) => {
@@ -4264,6 +4697,13 @@ export function App() {
       .map((id) => run.roster.find((monster) => monster.id === id))
       .filter((monster): monster is MonsterInstance => Boolean(monster));
     if (player.length !== GAME_DATA.rules.activeLimit) return;
+    if (mode === 'online') {
+      online.submitBuild(run.cycle, {
+        contentVersion: GAME_DATA.rules.contentVersion,
+        active: player,
+      });
+      return;
+    }
     const battleSeed = deriveSeed(run.seed, run.cycle * 10_000 + run.commandIndex);
     const enemy = createGhostTeam(GAME_DATA, run.cycle, battleSeed);
     const result = simulateBattle(GAME_DATA, { player, enemy, seed: battleSeed });
@@ -4271,6 +4711,10 @@ export function App() {
     setBattle({ result, enemy, beforeRoster: run.roster, frameIndex: 0, playing: true, speed: 1 });
   };
   const continueAfterBattle = () => {
+    if (mode === 'online') {
+      if (online.room) online.continueMatch(online.room.battleNumber);
+      return;
+    }
     const next = continueRun(GAME_DATA, run);
     if (next.phase === 'finished') setRunCompletedAt(new Date().toISOString());
     if (next.lastHatches && next.lastHatches.length > 0) setPendingHatches(next.lastHatches);
@@ -4284,8 +4728,34 @@ export function App() {
     setRun(createCasualRun(GAME_DATA, deriveSeed(run.seed, run.commandIndex + 71)));
   };
 
+  const copyInvitation = async () => {
+    if (!roomId) return;
+    const invitation = new URL(window.location.href);
+    invitation.searchParams.set('mode', 'online');
+    invitation.searchParams.set('room', roomId);
+    try {
+      await navigator.clipboard.writeText(invitation.toString());
+      setInviteCopied(true);
+      window.setTimeout(() => setInviteCopied(false), 2400);
+    } catch {
+      setInviteCopied(false);
+    }
+  };
+
   let screen;
-  if (battle) {
+  if (mode === 'select') {
+    screen = (
+      <ModeSelectScreen
+        onCasual={openCasual}
+        onCreateOnline={() => openOnline(`route-${crypto.randomUUID()}`)}
+        onJoinOnline={openOnline}
+      />
+    );
+  } else if (mode === 'online' && online.room?.phase === 'finished' && online.seat && !battle) {
+    screen = <OnlineFinishedScreen room={online.room} seat={online.seat} onLeave={leaveOnline} />;
+  } else if (mode === 'online' && roomId && !onlineRunReady) {
+    screen = <OnlineConnectionScreen roomId={roomId} connection={online.connection} error={online.error} />;
+  } else if (battle) {
     screen = (
       <BattleScreen
         battle={battle}
@@ -4313,6 +4783,15 @@ export function App() {
         developerMode={developerMode}
         setRun={setRun}
         onStartBattle={startBattle}
+        online={
+          mode === 'online' && online.seat
+            ? {
+                connected: online.connection === 'connected',
+                ownReady: online.room?.submittedSeats.includes(online.seat) ?? false,
+                opponentReady: online.room?.submittedSeats.includes(online.seat === 'a' ? 'b' : 'a') ?? false,
+              }
+            : undefined
+        }
       />
     );
   } else if (run.phase === 'result') {
@@ -4322,6 +4801,38 @@ export function App() {
         beforeRoster={lastBattleRoster}
         enemy={lastBattleEnemy}
         onContinue={continueAfterBattle}
+        continueLabel={
+          mode === 'online'
+            ? online.seat && online.room?.continuedSeats.includes(online.seat)
+              ? '相手の確認を待つ'
+              : online.room?.suddenDeathRound
+                ? 'サドンデス結果を確定'
+                : run.completedCycles >= GAME_DATA.rules.maxCycles
+                  ? '対戦結果を確定'
+                  : '次の育成へ進む'
+            : undefined
+        }
+        continueEyebrow={
+          mode === 'online'
+            ? online.room?.suddenDeathRound
+              ? `SUDDEN DEATH ${online.room.suddenDeathRound}`
+              : `ONLINE SCORE ${online.seat === 'b' ? online.room?.score.b : online.room?.score.a} — ${
+                  online.seat === 'b' ? online.room?.score.a : online.room?.score.b
+                }`
+            : undefined
+        }
+        continueDisabled={
+          mode === 'online'
+            ? !online.seat ||
+              online.connection !== 'connected' ||
+              (online.room?.continuedSeats.includes(online.seat) ?? false)
+            : false
+        }
+        continueStatus={
+          mode === 'online' && online.seat && online.room?.continuedSeats.includes(online.seat)
+            ? '結果を確認しました。相手の確認を待っています。'
+            : undefined
+        }
       />
     );
   } else {
@@ -4336,8 +4847,19 @@ export function App() {
   }
   return (
     <>
-      <DeveloperModeSwitch enabled={developerMode} onChange={setDeveloperMode} />
+      {mode === 'casual' && <DeveloperModeSwitch enabled={developerMode} onChange={setDeveloperMode} />}
       {screen}
+      {mode === 'online' && roomId && (
+        <OnlineRoomBar
+          room={online.room}
+          seat={online.seat}
+          connection={online.connection}
+          error={online.error}
+          copied={inviteCopied}
+          onCopy={copyInvitation}
+          onLeave={leaveOnline}
+        />
+      )}
       {pendingHatches && (
         <EggHatchRevealSequence hatches={pendingHatches} onComplete={() => setPendingHatches(undefined)} />
       )}

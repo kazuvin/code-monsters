@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
 const target = new URL(requestedTarget);
 target.searchParams.set('seed', target.searchParams.get('seed') ?? '1');
+target.searchParams.set('mode', 'casual');
 
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',

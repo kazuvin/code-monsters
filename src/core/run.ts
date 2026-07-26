@@ -68,6 +68,10 @@ export function createCasualRun(data: GameData, seed: number): CasualRunState {
   };
 }
 
+export function createOnlineRun(data: GameData, seed: number): CasualRunState {
+  return { ...createCasualRun(data, seed), mode: 'online' };
+}
+
 export function chooseDraftMonster(data: GameData, run: CasualRunState, definitionId: string): CasualRunState {
   if (run.phase !== 'draft' || !run.draftChoices.includes(definitionId)) return run;
   const commandIndex = run.commandIndex + 1;
@@ -562,13 +566,14 @@ const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
 
 export function continueRun(data: GameData, run: CasualRunState): CasualRunState {
   if (run.phase !== 'result') return run;
-  if (run.losses >= data.rules.maxLosses || run.completedCycles >= data.rules.maxCycles) {
+  const reachedLossLimit = run.mode === 'casual' && run.losses >= data.rules.maxLosses;
+  if (reachedLossLimit || run.completedCycles >= data.rules.maxCycles) {
     const commandIndex = run.commandIndex + 1;
     return {
       ...run,
       ...commandUpdate(run, commandIndex, {
         kind: 'finish-run',
-        reason: run.losses >= data.rules.maxLosses ? 'max-losses' : 'max-cycles',
+        reason: reachedLossLimit ? 'max-losses' : 'max-cycles',
       }),
       phase: 'finished',
     };

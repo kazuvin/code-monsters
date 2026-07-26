@@ -11,6 +11,7 @@ import {
   continueEvent,
   continueRun,
   createCasualRun,
+  createOnlineRun,
   moveMonsterToPartySlot,
   sellMonster,
   skipEvent,
@@ -394,6 +395,29 @@ describe('casual run', () => {
       kind: 'finish-run',
       reason: 'max-losses',
     });
+  });
+
+  it('keeps an online run alive after five losses and ends only after cycle twelve', () => {
+    let run = createOnlineRun(GAME_DATA, 42);
+    while (run.phase === 'draft') {
+      run = chooseDraftMonster(GAME_DATA, run, run.draftChoices[0]);
+    }
+    for (let index = 0; index < 12; index += 1) {
+      run = applyBattleResult(GAME_DATA, run, {
+        winner: 'enemy',
+        durationSeconds: 12,
+        frames: [],
+        damageByTeam: { player: 0, enemy: 1 },
+        monsterReports: [],
+      });
+      run = continueRun(GAME_DATA, run);
+      if (run.phase === 'event') run = skipEvent(GAME_DATA, run);
+      if (index === 4) expect(run.phase).not.toBe('finished');
+    }
+
+    expect(run.mode).toBe('online');
+    expect(run.losses).toBe(12);
+    expect(run.phase).toBe('finished');
   });
 
   it('ends after exactly twelve completed cycles', () => {
