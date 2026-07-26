@@ -395,7 +395,7 @@ function DefinitionCard({
       style={monsterStyle(data, definition)}
     >
       {onClick ? (
-        <button className="definition-card-main" type="button" onClick={onClick}>
+        <button className="definition-card-main" type="button" aria-pressed={selected} onClick={onClick}>
           {content}
         </button>
       ) : (
@@ -1151,11 +1151,42 @@ function OnlineConnectionScreen({
 
 function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (definitionId: string) => void }) {
   const [previewDefinitionId, setPreviewDefinitionId] = useState<string>();
+  const [selectedDefinitionId, setSelectedDefinitionId] = useState<string>();
+  const [choosingDefinitionId, setChoosingDefinitionId] = useState<string>();
+  const chooseTimer = useRef<number | undefined>(undefined);
   const previewMonster = previewDefinitionId
     ? createMonster(GAME_DATA, previewDefinitionId, `draft-prospect-${run.draftRound}`)
     : undefined;
+
+  useEffect(() => {
+    setSelectedDefinitionId(undefined);
+    setChoosingDefinitionId(undefined);
+  }, [run.draftRound]);
+
+  useEffect(
+    () => () => {
+      if (chooseTimer.current !== undefined) window.clearTimeout(chooseTimer.current);
+    },
+    [],
+  );
+
+  const confirmStarter = (definitionId: string) => {
+    if (choosingDefinitionId) return;
+    if (selectedDefinitionId !== definitionId) {
+      setSelectedDefinitionId(definitionId);
+      return;
+    }
+    setChoosingDefinitionId(definitionId);
+    chooseTimer.current = window.setTimeout(() => onChoose(definitionId), 720);
+  };
+
   return (
-    <main className="draft-screen">
+    <main className={`draft-screen starter-sanctum${choosingDefinitionId ? ' is-bonding' : ''}`}>
+      <div className="starter-atmosphere" aria-hidden="true">
+        {Array.from({ length: 9 }, (_, index) => (
+          <i style={{ '--spark-index': index } as CSSProperties} key={`starter-spark-${index}`} />
+        ))}
+      </div>
       <div className="draft-mast">
         <div className="brand-lockup">
           <span>CODE MONSTERS // {run.mode === 'online' ? 'ONLINE 1V1' : 'CASUAL PROTOTYPE'}</span>
@@ -1168,9 +1199,11 @@ function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (defini
         </div>
       </div>
       <section className="draft-copy">
-        <span className="section-index">ENTRY {run.draftRound}/3</span>
-        <h2>旅のはじまりを選ぶ</h2>
-        <p>候補をタップして能力を確かめ、「迎える」で旅の仲間に。3回選ぶと最初のチームが完成します。</p>
+        <div className="starter-copy">
+          <span className="section-index">FIRST BOND · ENTRY {run.draftRound}/3</span>
+          <h2>{run.draftRound === 1 ? '最初の相棒を選ぼう' : '次の仲間を迎えよう'}</h2>
+          <p>気になる子を選んで、もう一度「この子に決める」。能力は決める前にいつでも確認できます。</p>
+        </div>
         <div className="draft-party-rail" aria-label={`選択済み ${run.roster.length}/3体`}>
           {Array.from({ length: 3 }, (_, index) => {
             const monster = run.roster[index];
@@ -1190,26 +1223,58 @@ function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (defini
           })}
         </div>
       </section>
-      <div className="draft-grid" key={run.draftRound}>
+      <div className="draft-grid starter-lineup" key={run.draftRound}>
         {run.draftChoices.map((definitionId, index) => {
           const definition = definitionById(GAME_DATA, definitionId);
           const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
+          const selected = selectedDefinitionId === definitionId;
+          const choosing = choosingDefinitionId === definitionId;
           return (
-            <div className="draft-choice" key={definitionId} style={{ '--draft-index': index } as CSSProperties}>
+            <div
+              className={`draft-choice starter-pedestal${selected ? ' is-chosen' : ''}${
+                choosing ? ' is-bonding' : ''
+              }${choosingDefinitionId && !choosing ? ' is-dismissed' : ''}`}
+              key={definitionId}
+              style={{ '--draft-index': index } as CSSProperties}
+            >
+              <span className="starter-choice-number" aria-hidden="true">
+                {String.fromCharCode(65 + index)}
+              </span>
               <DefinitionCard
                 data={GAME_DATA}
                 definition={definition}
                 eyebrow={`${lineageName(GAME_DATA, definition)} / ${attributeName(GAME_DATA, definition)}`}
-                onClick={() => setPreviewDefinitionId(definitionId)}
+                selected={selected}
+                onClick={() => !choosingDefinitionId && setSelectedDefinitionId(definitionId)}
                 footer={
-                  <>
-                    <span>{trait?.name} · タップで詳細</span>
-                    <button type="button" onClick={() => onChoose(definitionId)}>
-                      この仲間を迎える →
-                    </button>
-                  </>
+                  <div className="starter-card-footer">
+                    <span>
+                      <small>TRAIT</small>
+                      {trait?.name}
+                    </span>
+                    <div className="starter-card-actions">
+                      <button
+                        type="button"
+                        className="starter-detail-action"
+                        disabled={Boolean(choosingDefinitionId)}
+                        onClick={() => setPreviewDefinitionId(definitionId)}
+                      >
+                        能力を見る
+                      </button>
+                      <button
+                        type="button"
+                        className="starter-confirm-action"
+                        data-action-state={selected ? 'confirm' : 'focus'}
+                        disabled={Boolean(choosingDefinitionId)}
+                        onClick={() => confirmStarter(definitionId)}
+                      >
+                        {choosing ? '旅の契約中…' : selected ? 'この子に決める' : 'この子を選ぶ'}
+                      </button>
+                    </div>
+                  </div>
                 }
               />
+              <i className="starter-pedestal-base" aria-hidden="true" />
             </div>
           );
         })}
@@ -3562,26 +3627,62 @@ function EventScreen({
   onChoose: (eventId: string, targetMonsterId?: string) => void;
 }) {
   const [targets, setTargets] = useState<Record<string, string>>({});
+  const [resolvingEventId, setResolvingEventId] = useState<string>();
+  const resolveTimer = useRef<number | undefined>(undefined);
+
+  useEffect(
+    () => () => {
+      if (resolveTimer.current !== undefined) window.clearTimeout(resolveTimer.current);
+    },
+    [],
+  );
+
+  const resolveEvent = (eventId: string, targetMonsterId?: string) => {
+    if (resolvingEventId) return;
+    setResolvingEventId(eventId);
+    resolveTimer.current = window.setTimeout(() => onChoose(eventId, targetMonsterId), 680);
+  };
+
   return (
-    <main className="event-screen">
+    <main className={`event-screen route-event-screen${resolvingEventId ? ' is-resolving' : ''}`}>
       <RunHeader run={run} />
       <section className="event-stage">
-        <span className="section-index">ROUTE EVENT / CYCLE {run.cycle}</span>
-        <h2>旅路が枝分かれした</h2>
-        <p>このサイクルで受ける支援をひとつ選びます。候補にレアリティや強さの序列はありません。</p>
+        <div className="event-encounter-heading">
+          <div className="event-omen" aria-hidden="true">
+            <i />
+            <span>?</span>
+            <i />
+          </div>
+          <div>
+            <span className="section-index">UNEXPECTED ENCOUNTER · CYCLE {run.cycle}</span>
+            <h2>旅路が枝分かれした</h2>
+            <p>三つの記録からひとつを選ぶ。どの道も同じ確率で、選んだ結果だけが旅に刻まれます。</p>
+          </div>
+        </div>
         <div className="event-grid">
-          {run.eventChoices.map((eventId) => {
+          {run.eventChoices.map((eventId, index) => {
             const event = GAME_DATA.events.find((entry) => entry.id === eventId);
             if (!event) return null;
             const needsTarget = eventRequiresTarget(event);
             const targetId = targets[event.id] ?? run.activeIds[0] ?? run.roster[0]?.id;
             const available = eventIsAvailable(event, run);
             const risky = event.effect.kind.startsWith('gamble');
+            const resolving = resolvingEventId === event.id;
             return (
-              <article className={`event-choice-card${risky ? ' is-risk' : ''}`} key={event.id}>
+              <article
+                className={`event-choice-card${risky ? ' is-risk' : ''}${resolving ? ' is-resolving' : ''}${
+                  resolvingEventId && !resolving ? ' is-departing' : ''
+                }`}
+                data-event-state={resolving ? 'resolving' : available ? 'ready' : 'locked'}
+                key={event.id}
+                style={{ '--event-index': index } as CSSProperties}
+              >
+                <div className="event-card-aura" aria-hidden="true" />
                 <header>
                   <span>{event.glyph}</span>
-                  <small>{risky ? 'RISK ROUTE' : `ROUTE ${event.id.toUpperCase()}`}</small>
+                  <small>
+                    CHOICE {String.fromCharCode(65 + index)} · {risky ? 'RISK' : 'CERTAIN'}
+                  </small>
                 </header>
                 <strong>{event.name}</strong>
                 <p>{event.description}</p>
@@ -3596,6 +3697,7 @@ function EventScreen({
                             type="button"
                             className={targetId === monster.id ? 'is-selected' : ''}
                             key={monster.id}
+                            disabled={Boolean(resolvingEventId)}
                             onClick={() => setTargets((current) => ({ ...current, [event.id]: monster.id }))}
                           >
                             <MonsterSigil
@@ -3614,10 +3716,10 @@ function EventScreen({
                 <button
                   type="button"
                   className="event-commit"
-                  disabled={!available || (needsTarget && !targetId)}
-                  onClick={() => onChoose(event.id, needsTarget ? targetId : undefined)}
+                  disabled={Boolean(resolvingEventId) || !available || (needsTarget && !targetId)}
+                  onClick={() => resolveEvent(event.id, needsTarget ? targetId : undefined)}
                 >
-                  {available ? 'この道を選ぶ →' : 'コインが足りない'}
+                  {resolving ? '運命を刻んでいる…' : available ? 'この道を選ぶ' : 'コインが足りない'}
                 </button>
               </article>
             );
@@ -3634,15 +3736,29 @@ function EventResultScreen({ run, onContinue }: { run: CasualRunState; onContinu
   const target = resolution?.targetMonsterId
     ? run.roster.find((monster) => monster.id === resolution.targetMonsterId)
     : undefined;
+  const outcomeLabel =
+    resolution?.tone === 'loss' ? 'FATE DENIED' : resolution?.tone === 'risk' ? 'FATE TESTED' : 'REWARD CLAIMED';
   return (
     <main className={`event-screen event-result-screen is-${resolution?.tone ?? 'gain'}`}>
+      <div className="event-impact-burst" aria-hidden="true">
+        {Array.from({ length: 16 }, (_, index) => (
+          <i style={{ '--burst-index': index } as CSSProperties} key={`event-burst-${index}`} />
+        ))}
+      </div>
+      <div className="event-result-particles" aria-hidden="true">
+        {Array.from({ length: 12 }, (_, index) => (
+          <i style={{ '--result-particle': index } as CSSProperties} key={`event-particle-${index}`} />
+        ))}
+      </div>
       <RunHeader run={run} />
-      <section className="event-result-stage">
-        <span className="section-index">ROUTE RESOLVED / CYCLE {run.cycle}</span>
-        <div className="event-result-glyph" aria-hidden="true">
-          {event?.glyph ?? '路'}
+      <section className="event-result-stage" aria-live="polite">
+        <span className="section-index">ENCOUNTER RESOLVED · CYCLE {run.cycle}</span>
+        <div className="event-result-glyph-wrap" aria-hidden="true">
+          <i />
+          <div className="event-result-glyph">{event?.glyph ?? '路'}</div>
+          <i />
         </div>
-        <small>{resolution?.tone === 'loss' ? 'THE WAGER WAS LOST' : 'THE ROUTE IS RECORDED'}</small>
+        <div className="event-outcome-stamp">{outcomeLabel}</div>
         <h2>{resolution?.title ?? '旅路を記録した'}</h2>
         <p>{resolution?.text ?? '次の準備へ進みます。'}</p>
         {target && (

@@ -1,5 +1,12 @@
 import { chromium } from 'playwright-core';
 
+const chooseFirstStarter = async (page) => {
+  const action = page.locator('.starter-confirm-action').first();
+  if ((await action.getAttribute('data-action-state')) !== 'confirm') await action.click();
+  await action.click();
+  await page.waitForTimeout(760);
+};
+
 const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:8787';
 const roomId = `route-browser-${Date.now()}`;
 const target = new URL(requestedTarget);
@@ -29,7 +36,7 @@ const assertNoHorizontalOverflow = async (page, label) => {
 const finishDraft = async (page) => {
   await page.getByRole('heading', { name: '血統航路' }).waitFor();
   for (let round = 0; round < 3; round += 1) {
-    await page.locator('.draft-choice .monster-card-footer button').first().click();
+    await chooseFirstStarter(page);
   }
   await page.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 };

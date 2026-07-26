@@ -102,6 +102,13 @@ const assertReadableMonsterCards = async (page, label, cardSelector, nameSelecto
   }
 };
 
+const chooseFirstStarter = async (page) => {
+  const action = page.locator('.starter-confirm-action').first();
+  if ((await action.getAttribute('data-action-state')) !== 'confirm') await action.click();
+  await action.click();
+  await page.waitForTimeout(760);
+};
+
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
 await desktop.addInitScript(() => {
@@ -111,6 +118,12 @@ await desktop.addInitScript(() => {
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
+if ((await desktop.locator('.starter-sanctum .starter-pedestal').count()) !== 3) {
+  throw new Error('Initial draft does not present three starter pedestals');
+}
+if ((await desktop.locator('.starter-atmosphere').count()) !== 1) {
+  throw new Error('Initial draft is missing its starter reveal atmosphere');
+}
 if ((await desktop.locator('.white-stars').first().textContent()) !== '★') {
   throw new Error('White stars are not rendered with the shared text glyph');
 }
@@ -129,13 +142,20 @@ for (let round = 0; round < 3; round += 1) {
       '.monster-card-copy > strong',
     );
     await choices.first().locator('.definition-card-main').click();
+    if ((await desktop.locator('.starter-pedestal.is-chosen').count()) !== 1) {
+      throw new Error('Draft choice does not become the focused starter');
+    }
+    if ((await desktop.locator('.starter-confirm-action').first().getAttribute('data-action-state')) !== 'confirm') {
+      throw new Error('Focused starter does not expose a deliberate confirmation');
+    }
+    await desktop.locator('.starter-detail-action').first().click();
     await desktop.locator('.prospect-dialog[open]').waitFor();
     if ((await desktop.locator('.prospect-dialog .monster-detail-card').count()) !== 1) {
       throw new Error('Draft monster does not open the shared detail card');
     }
     await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
   }
-  await desktop.locator('.draft-choice .monster-card-footer button').first().click();
+  await chooseFirstStarter(desktop);
 }
 
 await desktop.getByRole('heading', { name: '旅商人の棚' }).waitFor();
@@ -674,9 +694,21 @@ for (const cycle of [2, 3]) {
     if ((await desktop.locator('.event-choice-card').count()) !== 3) {
       throw new Error('Route event does not offer exactly three distinct choices');
     }
+    if ((await desktop.locator('.event-omen').count()) !== 1) {
+      throw new Error('Route event is missing its encounter reveal');
+    }
+    await desktop.waitForTimeout(900);
     await desktop.screenshot({ path: '/tmp/code-monsters-event-desktop.png', fullPage: true });
     await desktop.locator('.event-commit:not(:disabled)').first().click();
+    await desktop.locator('.event-screen.is-resolving .event-choice-card.is-resolving').waitFor();
     await desktop.locator('.event-result-stage').waitFor();
+    if ((await desktop.locator('.event-impact-burst > i').count()) < 8) {
+      throw new Error('Event result is missing its impact burst');
+    }
+    if ((await desktop.locator('.event-outcome-stamp').count()) !== 1) {
+      throw new Error('Event result does not stamp the resolved outcome');
+    }
+    await desktop.waitForTimeout(1400);
     await desktop.screenshot({ path: '/tmp/code-monsters-event-result-desktop.png', fullPage: true });
     await desktop.getByRole('button', { name: '育成と編成へ進む' }).click();
   }
@@ -893,7 +925,8 @@ const mobile = await browser.newPage({
 });
 watchErrors(mobile);
 await mobile.goto(target.toString(), { waitUntil: 'networkidle' });
-await mobile.getByRole('heading', { name: '旅のはじまりを選ぶ' }).waitFor();
+await mobile.getByRole('heading', { name: '最初の相棒を選ぼう' }).waitFor();
+await mobile.waitForTimeout(1000);
 if ((await mobile.locator('.draft-grid .definition-card').count()) !== 3) {
   throw new Error('Mobile draft does not show three choices');
 }
@@ -904,7 +937,7 @@ await mobile.screenshot({ path: '/tmp/code-monsters-draft-mobile.png' });
 for (let round = 0; round < 3; round += 1) {
   const choices = mobile.locator('.draft-grid .definition-card');
   if ((await choices.count()) !== 3) throw new Error(`Mobile draft round ${round + 1} does not show three choices`);
-  await mobile.locator('.draft-choice .monster-card-footer button').first().click();
+  await chooseFirstStarter(mobile);
 }
 
 await mobile.getByRole('heading', { name: '旅商人の棚' }).waitFor();
@@ -1052,9 +1085,9 @@ const playtest = await browser.newPage({ viewport: { width: 1440, height: 1100 }
 watchErrors(playtest);
 await playtest.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: target.origin });
 await playtest.goto(target.toString(), { waitUntil: 'networkidle' });
-await playtest.getByRole('heading', { name: '旅のはじまりを選ぶ' }).waitFor();
+await playtest.getByRole('heading', { name: '最初の相棒を選ぼう' }).waitFor();
 for (let round = 0; round < 3; round += 1) {
-  await playtest.locator('.draft-choice .monster-card-footer button').first().click();
+  await chooseFirstStarter(playtest);
 }
 
 for (let battleNumber = 0; battleNumber < 12; battleNumber += 1) {
@@ -1145,7 +1178,7 @@ const hatchPage = await browser.newPage({
 watchErrors(hatchPage);
 await hatchPage.goto(hatchTarget.toString(), { waitUntil: 'networkidle' });
 for (let round = 0; round < 3; round += 1) {
-  await hatchPage.locator('.draft-choice .monster-card-footer button').first().click();
+  await chooseFirstStarter(hatchPage);
 }
 await hatchPage.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 if ((await hatchPage.locator('.shop-monsters .definition-card').filter({ hasText: 'まだら卵' }).count()) !== 2) {
