@@ -6,6 +6,7 @@ export type WhiteStars = 1 | 2 | 3 | 4 | 5;
 export type ColorStars = 0 | 1 | 2;
 export type StatId = 'maxHp' | 'maxMp' | 'attack' | 'defense' | 'speed' | 'wisdom' | 'crit';
 export type MonsterKind = 'standard' | 'oddity';
+export type BreedingMode = 'full' | 'same-name-only' | 'none';
 
 export type StatBlock = Record<StatId, number>;
 
@@ -76,7 +77,35 @@ export type SkillDefinition = {
   mpCost: number;
   targetScope: 'single-enemy' | 'single-ally' | 'self' | 'all-enemies' | 'all-allies';
   effects: EffectDefinition[];
-  postBattleReward?: { kind: 'coins' | 'active-xp'; amount: number };
+  runReward?:
+    | {
+        kind: 'coins-per-damage-action';
+        amountsByColorStars: [number, number, number];
+        maximumTriggersPerBattle: number;
+      }
+    | {
+        kind: 'xp-aura';
+        amountsByColorStars: [number, number, number];
+        activatesFromBenchAtColorStars: ColorStars;
+        targetsRosterAtColorStars: ColorStars;
+      };
+};
+
+export type ExperienceProfileDefinition = {
+  id: string;
+  name: string;
+  thresholds: number[];
+};
+
+export type StatGrowthProfileDefinition = {
+  id: string;
+  name: string;
+  incrementsByLevel: number[];
+};
+
+export type RoleTagDefinition = {
+  id: string;
+  label: string;
 };
 
 export type TraitStageDefinition = {
@@ -129,6 +158,7 @@ export type MonsterArchetypeDefinition = {
   attributeId: AttributeId;
   baseStats: StatBlock;
   growthPerLevel: StatBlock;
+  roleTagIds: string[];
   forms: [
     MonsterFormDefinition,
     MonsterFormDefinition,
@@ -142,7 +172,7 @@ export type MonsterDefinition = {
   id: string;
   archetypeId: string;
   kind: MonsterKind;
-  breedable: boolean;
+  breedingMode: BreedingMode;
   lineageId: LineageId;
   attributeId: AttributeId;
   name: string;
@@ -151,6 +181,9 @@ export type MonsterDefinition = {
   appearance: MonsterAppearance;
   baseStats: StatBlock;
   growthPerLevel: StatBlock;
+  experienceProfileId: string;
+  statGrowthProfileId: string;
+  roleTagIds: string[];
   intrinsicSkillIds: [string, string];
   defaultSkillId: string;
   traitId: string;
@@ -214,7 +247,7 @@ export type GameRules = {
   initialCoins: number;
   cycleIncome: number;
   breedingCoinBonus: number;
-  levelThresholds: number[];
+  experienceProfileIdsByWhiteStars: [string, string, string, string, string];
   maxLevel: number;
   activeXpByCycleBand: [number, number, number, number];
   battleWinXp: number;
@@ -258,6 +291,9 @@ export type RawGameData = {
   lineages: LineageDefinition[];
   attributes: AttributeDefinition[];
   rankStatMultipliers: [number, number, number, number, number];
+  experienceProfiles: ExperienceProfileDefinition[];
+  statGrowthProfiles: StatGrowthProfileDefinition[];
+  roleTags: RoleTagDefinition[];
   archetypes: MonsterArchetypeDefinition[];
   oddities: MonsterDefinition[];
   skills: SkillDefinition[];

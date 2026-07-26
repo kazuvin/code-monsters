@@ -351,8 +351,8 @@ export function breedInRun(
   const first = run.roster.find((monster) => monster.id === firstId);
   const second = run.roster.find((monster) => monster.id === secondId);
   if (!first || !second) return failure(run, '親モンスターが見つかりません');
-  if (!definitionFor(data, first).breedable || !definitionFor(data, second).breedable) {
-    return failure(run, '奇獣は配合の親にできません');
+  if (definitionFor(data, first).breedingMode === 'none' || definitionFor(data, second).breedingMode === 'none') {
+    return failure(run, 'このモンスターは配合の親にできません');
   }
   if (first.level < data.rules.breeding.minimumLevel || second.level < data.rules.breeding.minimumLevel) {
     return failure(run, `配合にはレベル${data.rules.breeding.minimumLevel}が必要です`);
@@ -397,24 +397,54 @@ const xpForCycle = (data: GameData, cycle: number, won: boolean) => {
   return (data.rules.activeXpByCycleBand[band] ?? 4) + (won ? data.rules.battleWinXp : 0);
 };
 
-const battleRunRewardsFor = (data: GameData, run: CasualRunState, activeXp: number): BattleRunRewards => {
+const battleRunRewardsFor = (
+  data: GameData,
+  run: CasualRunState,
+  result: BattleResult,
+  activeXp: number,
+  benchXp: number,
+): BattleRunRewards => {
   let coins = 0;
-  let activeXpBonus = 0;
-  for (const monsterId of run.activeIds) {
-    const monster = run.roster.find((entry) => entry.id === monsterId);
-    if (!monster) continue;
+  const rawXpByMonsterId: Record<string, number> = {};
+  const damagingSkillIds = new Set([
+    'normal-attack',
+    ...data.skills.filter((skill) => skill.effects.some((effect) => effect.kind === 'damage')).map((skill) => skill.id),
+  ]);
+  for (const monster of run.roster) {
+    const active = run.activeIds.includes(monster.id);
     for (const skillId of new Set(skillIdsFor(data, monster))) {
-      const reward = data.skills.find((skill) => skill.id === skillId)?.postBattleReward;
+      const reward = data.skills.find((skill) => skill.id === skillId)?.runReward;
       if (!reward) continue;
-      if (reward.kind === 'coins') coins += reward.amount;
-      if (reward.kind === 'active-xp') activeXpBonus += reward.amount;
+      if (reward.kind === 'coins-per-damage-action' && active) {
+        const report = result.monsterReports.find((entry) => entry.id === monster.id && entry.team === 'player');
+        const damageActions = report
+          ? Object.entries(report.skillUses).reduce(
+              (total, [usedSkillId, uses]) => total + (damagingSkillIds.has(usedSkillId) ? uses : 0),
+              0,
+            )
+          : 1;
+        const triggers = Math.min(reward.maximumTriggersPerBattle, damageActions);
+        coins += triggers * (reward.amountsByColorStars[monster.colorStars] ?? 0);
+      }
+      if (reward.kind === 'xp-aura') {
+        if (!active && monster.colorStars < reward.activatesFromBenchAtColorStars) continue;
+        const amount = reward.amountsByColorStars[monster.colorStars] ?? 0;
+        const targetIds =
+          monster.colorStars >= reward.targetsRosterAtColorStars ? run.roster.map((entry) => entry.id) : run.activeIds;
+        for (const targetId of targetIds) {
+          rawXpByMonsterId[targetId] = (rawXpByMonsterId[targetId] ?? 0) + amount;
+        }
+      }
     }
   }
-  const appliedActiveXpBonus = Math.min(activeXp, activeXpBonus);
   return {
     coins,
     xpByMonsterId: Object.fromEntries(
-      run.activeIds.flatMap((monsterId) => (appliedActiveXpBonus > 0 ? [[monsterId, appliedActiveXpBonus]] : [])),
+      Object.entries(rawXpByMonsterId).flatMap(([monsterId, amount]) => {
+        const baseXp = run.activeIds.includes(monsterId) ? activeXp : benchXp;
+        const applied = Math.min(baseXp, amount);
+        return applied > 0 ? [[monsterId, applied]] : [];
+      }),
     ),
   };
 };
@@ -424,7 +454,7 @@ export function applyBattleResult(data: GameData, run: CasualRunState, result: B
   const won = result.winner === 'player';
   const activeXp = xpForCycle(data, run.cycle, won);
   const benchXp = Math.floor(activeXp * data.rules.benchXpRate);
-  const rewards = battleRunRewardsFor(data, run, activeXp);
+  const rewards = battleRunRewardsFor(data, run, result, activeXp, benchXp);
   const rewardXp = Object.values(rewards.xpByMonsterId).reduce((total, amount) => total + amount, 0);
   const commandIndex = run.commandIndex + 1;
   return {

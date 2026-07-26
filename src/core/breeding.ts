@@ -18,7 +18,26 @@ export function listBreedingCandidates(
   const firstDefinition = definitionFor(data, first);
   const secondDefinition = definitionFor(data, second);
   const candidates: BreedingCandidate[] = [];
-  if (!firstDefinition.breedable || !secondDefinition.breedable) return candidates;
+  if (firstDefinition.breedingMode === 'none' || secondDefinition.breedingMode === 'none') return candidates;
+  if (firstDefinition.breedingMode === 'same-name-only' || secondDefinition.breedingMode === 'same-name-only') {
+    if (
+      firstDefinition.breedingMode === 'same-name-only' &&
+      secondDefinition.breedingMode === 'same-name-only' &&
+      first.definitionId === second.definitionId
+    ) {
+      const nextColor = Math.min(2, Math.max(first.colorStars, second.colorStars) + 1) as ColorStars;
+      if (nextColor > Math.max(first.colorStars, second.colorStars)) {
+        candidates.push({
+          id: candidateId('same-name', firstDefinition.id, nextColor),
+          kind: 'same-name',
+          definitionId: firstDefinition.id,
+          colorStars: nextColor,
+          label: `同名配合 → 色星${nextColor}`,
+        });
+      }
+    }
+    return candidates;
+  }
   const averagedWhiteStars = Math.min(
     5,
     Math.ceil((effectiveStarsFor(data, first) + effectiveStarsFor(data, second)) / 2),

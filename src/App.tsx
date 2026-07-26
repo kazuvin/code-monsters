@@ -19,10 +19,13 @@ import { createGhostTeam } from './core/ghost';
 import {
   createMonster,
   definitionFor,
+  experienceProfileFor,
+  experienceThresholdsFor,
   farewellCoinBreakdownFor,
   permanentStatsFor,
   skillIdsFor,
   statBreakdownFor,
+  statGrowthProfileFor,
   targetRulesForSkill,
 } from './core/monster';
 import { createPlaytestReport, serializePlaytestReport } from './core/playtest-report';
@@ -232,8 +235,9 @@ const attributeName = (data: GameData, definition: MonsterDefinition) =>
   data.attributes.find((attribute) => attribute.id === definition.attributeId)?.name ?? definition.attributeId;
 
 const xpProgressFor = (monster: MonsterInstance) => {
-  const currentThreshold = GAME_DATA.rules.levelThresholds[monster.level - 1] ?? 0;
-  const nextThreshold = GAME_DATA.rules.levelThresholds[monster.level];
+  const thresholds = experienceThresholdsFor(GAME_DATA, monster);
+  const currentThreshold = thresholds[monster.level - 1] ?? 0;
+  const nextThreshold = thresholds[monster.level];
   if (nextThreshold === undefined) {
     return {
       currentThreshold,
@@ -301,6 +305,11 @@ function DefinitionCard({
   onClick?: () => void;
   selected?: boolean;
 }) {
+  const experienceProfile = experienceProfileFor(data, definition);
+  const roleLabels = definition.roleTagIds.flatMap((tagId) => {
+    const tag = data.roleTags.find((entry) => entry.id === tagId);
+    return tag ? [tag.label] : [];
+  });
   const content = (
     <>
       <MonsterSigil data={data} definition={definition} colorStars={colorStars} />
@@ -311,6 +320,12 @@ function DefinitionCard({
         <small>
           {lineageName(data, definition)} × {attributeName(data, definition)}
         </small>
+        <span className="performance-tag-row" aria-label={`${experienceProfile.name}型、${roleLabels.join('、')}`}>
+          <i>{experienceProfile.name}</i>
+          {roleLabels.slice(0, 2).map((label) => (
+            <i key={label}>{label}</i>
+          ))}
+        </span>
       </div>
     </>
   );
@@ -360,6 +375,15 @@ const effectFactFor = (effect: EffectDefinition) => {
   }
 };
 
+const runRewardTextFor = (skill: SkillDefinition) => {
+  const reward = skill.runReward;
+  if (!reward) return undefined;
+  if (reward.kind === 'coins-per-damage-action') {
+    return `ダメージ行動ごとに色星0/1/2で${reward.amountsByColorStars.join('/')}コイン · 1戦${reward.maximumTriggersPerBattle}回まで`;
+  }
+  return `色星0は主力全員EXP +${reward.amountsByColorStars[0]} · 色星1で控え発動 · 色星2で全員対象`;
+};
+
 const skillTagsFor = (skill: SkillDefinition) => {
   const damage = skill.effects.find((effect) => effect.kind === 'damage');
   const healing = skill.effects.some((effect) => effect.kind === 'heal');
@@ -375,20 +399,14 @@ const skillTagsFor = (skill: SkillDefinition) => {
   } else {
     tags.unshift('補助');
   }
-  if (skill.postBattleReward) tags.push('旅路報酬');
+  if (skill.runReward) tags.push('旅路報酬');
   return tags;
 };
 
 const skillSummaryText = (skill?: SkillDefinition) =>
   skill
     ? `${skillTagsFor(skill).join(' / ')}。${skill.effects.map(effectFactFor).join('。')}。${
-        skill.postBattleReward
-          ? `戦闘終了時に${
-              skill.postBattleReward.kind === 'coins'
-                ? `${skill.postBattleReward.amount}コイン`
-                : `主力全員が経験値${skill.postBattleReward.amount}`
-            }を得る。`
-          : ''
+        skill.runReward ? `${runRewardTextFor(skill)}。` : ''
       }`
     : '攻撃力を使って敵1体へ物理ダメージ。MPがなくても実行します。';
 
@@ -421,13 +439,8 @@ function SkillEffectCard({
             {effectFactFor(effect)}
           </li>
         ))}
-        {skill.postBattleReward && (
-          <li className="skill-effect-fact is-journey-reward">
-            戦闘終了時 ·{' '}
-            {skill.postBattleReward.kind === 'coins'
-              ? `コイン +${skill.postBattleReward.amount}`
-              : `主力全員 EXP +${skill.postBattleReward.amount}`}
-          </li>
+        {skill.runReward && (
+          <li className="skill-effect-fact is-journey-reward">旅路効果 · {runRewardTextFor(skill)}</li>
         )}
       </ul>
       <p>{skill.description}</p>
@@ -452,6 +465,7 @@ function BreedingStatLedger({ monster }: { monster: MonsterInstance }) {
   const definition = definitionFor(GAME_DATA, monster);
   const breakdown = statBreakdownFor(GAME_DATA, monster);
   const growthMultiplier = GAME_DATA.rules.breeding.colorGrowthBonus[monster.colorStars];
+  const nextGrowthUnits = statGrowthProfileFor(GAME_DATA, definition).incrementsByLevel[0] ?? 1;
   return (
     <section className="breeding-stat-ledger" aria-label="誕生後の能力と配合継承値">
       <header>
@@ -464,7 +478,7 @@ function BreedingStatLedger({ monster }: { monster: MonsterInstance }) {
       <div className="breeding-stat-rows">
         {STAT_LABELS.map(([id]) => {
           const stat = breakdown[id];
-          const nextGrowth = Math.floor(definition.growthPerLevel[id] * growthMultiplier);
+          const nextGrowth = Math.floor(definition.growthPerLevel[id] * nextGrowthUnits * growthMultiplier);
           const suffix = id === 'crit' ? '%' : '';
           return (
             <div className="breeding-stat-row" data-stat-id={id} data-inherited-bonus={stat.individual} key={id}>
@@ -489,6 +503,101 @@ function BreedingStatLedger({ monster }: { monster: MonsterInstance }) {
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function GrowthProfilePanel({ definition, currentLevel }: { definition: MonsterDefinition; currentLevel?: number }) {
+  const experienceProfile = experienceProfileFor(GAME_DATA, definition);
+  const statProfile = statGrowthProfileFor(GAME_DATA, definition);
+  const [selectedLevel, setSelectedLevel] = useState(currentLevel && currentLevel > 1 ? currentLevel : 2);
+  useEffect(() => setSelectedLevel(currentLevel && currentLevel > 1 ? currentLevel : 2), [currentLevel, definition.id]);
+  const experienceDeltas = experienceProfile.thresholds
+    .slice(1)
+    .map((threshold, index) => threshold - (experienceProfile.thresholds[index] ?? 0));
+  const maximumExperienceDelta = Math.max(
+    ...GAME_DATA.experienceProfiles.flatMap((profile) =>
+      profile.thresholds.slice(1).map((threshold, index) => threshold - (profile.thresholds[index] ?? 0)),
+    ),
+  );
+  const maximumGrowthIncrement = Math.max(
+    ...GAME_DATA.statGrowthProfiles.flatMap((profile) => profile.incrementsByLevel),
+  );
+  const selectedIndex = Math.max(0, selectedLevel - 2);
+  const roleLabels = definition.roleTagIds.flatMap((tagId) => {
+    const tag = GAME_DATA.roleTags.find((entry) => entry.id === tagId);
+    return tag ? [tag.label] : [];
+  });
+  const rows = [
+    {
+      id: 'experience',
+      label: '必要EXP',
+      profileName: experienceProfile.name,
+      values: experienceDeltas,
+      maximum: maximumExperienceDelta,
+      valueLabel: (value: number) => `${value} EXP`,
+    },
+    {
+      id: 'stats',
+      label: '能力成長',
+      profileName: statProfile.name,
+      values: statProfile.incrementsByLevel,
+      maximum: maximumGrowthIncrement,
+      valueLabel: (value: number) => `×${value.toFixed(2)}`,
+    },
+  ] as const;
+  return (
+    <section className="growth-profile-panel" data-growth-profile={experienceProfile.id}>
+      <header>
+        <div>
+          <span>GROWTH SCAN</span>
+          <strong>
+            {experienceProfile.name}EXP / {statProfile.name}
+          </strong>
+        </div>
+        <div className="performance-tag-row">
+          {roleLabels.map((label) => (
+            <i key={label}>{label}</i>
+          ))}
+        </div>
+      </header>
+      <div className="growth-scan">
+        {rows.map((row) => (
+          <div className={`growth-scan-row is-${row.id}`} key={row.id}>
+            <span>
+              <b>{row.label}</b>
+              <small>{row.profileName}</small>
+            </span>
+            <div className="growth-scan-columns">
+              {row.values.map((value, index) => {
+                const level = index + 2;
+                return (
+                  <button
+                    type="button"
+                    className={`${selectedLevel === level ? 'is-selected' : ''}${
+                      currentLevel === level ? ' is-current' : ''
+                    }`}
+                    style={{ '--scan-bar': `${Math.max(8, (value / row.maximum) * 100)}%` } as CSSProperties}
+                    aria-label={`レベル${level}、${row.label}${row.valueLabel(value)}`}
+                    aria-pressed={selectedLevel === level}
+                    onClick={() => setSelectedLevel(level)}
+                    key={`${row.id}-${level}`}
+                  >
+                    <i />
+                    <small>Lv{level}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="growth-scan-reading" aria-live="polite">
+        <span>LV.{selectedLevel}</span>
+        次まで {experienceDeltas[selectedIndex]} EXP
+        <i>成長量 ×{(statProfile.incrementsByLevel[selectedIndex] ?? 0).toFixed(2)}</i>
+        {currentLevel ? <b>現在 Lv.{currentLevel}</b> : null}
+      </p>
     </section>
   );
 }
@@ -522,6 +631,7 @@ function MonsterDetailCard({
         <small>最終値 / 成長・個体値・装備</small>
       </div>
       <StatBreakdownGrid monster={monster} />
+      <GrowthProfilePanel definition={definition} currentLevel={monster.level} />
       <section className="trait-block detail-card">
         <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
         <h3>{trait?.name}</h3>
@@ -811,6 +921,8 @@ function RosterCard({
   onDragEnd: (x: number, y: number) => void;
 }) {
   const definition = definitionFor(GAME_DATA, monster);
+  const experienceProfile = experienceProfileFor(GAME_DATA, definition);
+  const primaryRole = GAME_DATA.roleTags.find((entry) => entry.id === definition.roleTagIds[0])?.label;
   const holdTimer = useRef<number | undefined>(undefined);
   const dragging = useRef(false);
   const pointerIsDown = useRef(false);
@@ -893,6 +1005,10 @@ function RosterCard({
         <i>
           Lv.{monster.level} · {starText(definition.whiteStars, monster.colorStars)}
         </i>
+        <em className="roster-growth-tag">
+          {experienceProfile.name}
+          {primaryRole ? ` · ${primaryRole}` : ''}
+        </em>
       </span>
     </button>
   );
@@ -1681,7 +1797,8 @@ function BreedingView({
               <h3>親を2体選択</h3>
               {run.roster.map((monster) => {
                 const definition = definitionFor(GAME_DATA, monster);
-                const eligible = definition.breedable && monster.level >= GAME_DATA.rules.breeding.minimumLevel;
+                const breedingAllowed = definition.breedingMode !== 'none';
+                const eligible = breedingAllowed && monster.level >= GAME_DATA.rules.breeding.minimumLevel;
                 return (
                   <button
                     type="button"
@@ -1711,10 +1828,12 @@ function BreedingView({
                           ? '位階上昇の核'
                           : parentIds.includes(monster.id)
                             ? '選択中'
-                            : '選ぶ'
-                        : definition.breedable
+                            : definition.breedingMode === 'same-name-only'
+                              ? '同名だけ'
+                              : '選ぶ'
+                        : breedingAllowed
                           ? 'Lv.3必要'
-                          : '奇獣は配合不可'}
+                          : '配合不可'}
                     </b>
                   </button>
                 );
@@ -2292,6 +2411,7 @@ function MonsterCatalogProfile({ entry }: { entry: MonsterCatalogEntry }) {
           </span>
         ))}
       </div>
+      <GrowthProfilePanel definition={definition} />
       <section className="catalog-trait">
         <span>TRAIT / 色星0</span>
         <strong>{trait?.name ?? '特性なし'}</strong>

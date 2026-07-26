@@ -2,15 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { GAME_DATA, validateGameData } from './game-data';
 
 describe('DQM run game data', () => {
-  it('keeps the validation catalog at 45 species and adds five oddity definitions', () => {
+  it('keeps the validation catalog at 45 species and adds six oddity definitions', () => {
     const catalogMonsters = GAME_DATA.monsters.filter((monster) => monster.kind === 'standard');
     const oddities = GAME_DATA.monsters.filter((monster) => monster.kind === 'oddity');
 
     expect(catalogMonsters).toHaveLength(45);
-    expect(oddities).toHaveLength(5);
-    expect(new Set(GAME_DATA.monsters.map((monster) => monster.id)).size).toBe(50);
-    expect(new Set(GAME_DATA.monsters.map((monster) => monster.name)).size).toBe(50);
-    expect(oddities.every((monster) => monster.breedable === false)).toBe(true);
+    expect(oddities).toHaveLength(6);
+    expect(new Set(GAME_DATA.monsters.map((monster) => monster.id)).size).toBe(51);
+    expect(new Set(GAME_DATA.monsters.map((monster) => monster.name)).size).toBe(51);
+    expect(GAME_DATA.monsters.find((monster) => monster.id === 'coin-crow-1')?.breedingMode).toBe('same-name-only');
+    expect(GAME_DATA.monsters.find((monster) => monster.id === 'study-owl-1')?.breedingMode).toBe('same-name-only');
+    expect(GAME_DATA.monsters.find((monster) => monster.id === 'slumbering-grove-1')?.roleTagIds).toContain(
+      'late-bloom',
+    );
   });
 
   it('contains every lineage, attribute, and white-star combination', () => {

@@ -157,8 +157,8 @@ await assertReadableMonsterCards(
 );
 await desktop.getByRole('button', { name: /モンスター図鑑/ }).click();
 await desktop.locator('.catalog-dialog[open]').waitFor();
-if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 50) {
-  throw new Error('Monster catalog does not show all 45 standard and five oddity records');
+if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 51) {
+  throw new Error('Monster catalog does not show all 45 standard and six oddity records');
 }
 if ((await desktop.locator('.catalog-card.is-unlocked').count()) < 3) {
   throw new Error('Monsters welcomed during the draft were not unlocked in the catalog');
@@ -211,6 +211,16 @@ if ((await desktop.locator('.catalog-detail.is-unlocked .catalog-stat-grid span'
 }
 if ((await desktop.locator('.catalog-detail.is-unlocked .effect-skill-card').count()) !== 3) {
   throw new Error('Discovered catalog record does not show all three skill effects');
+}
+if ((await desktop.locator('.catalog-detail.is-unlocked .growth-scan-row').count()) !== 2) {
+  throw new Error('Discovered catalog record does not show aligned experience and stat growth scans');
+}
+await desktop
+  .locator('.catalog-detail.is-unlocked .growth-scan-row.is-experience')
+  .getByRole('button', { name: /レベル10/ })
+  .click();
+if (!(await desktop.locator('.catalog-detail.is-unlocked .growth-scan-reading').innerText()).includes('LV.10')) {
+  throw new Error('Catalog growth scan does not expose the selected level reading');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-desktop.png', fullPage: true });
 await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
@@ -821,8 +831,8 @@ await assertFitsViewport(mobile, 'Mobile workshop');
 
 await mobile.getByRole('button', { name: /モンスター図鑑/ }).click();
 await mobile.locator('.catalog-dialog[open]').waitFor();
-if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 50) {
-  throw new Error('Mobile monster catalog does not show all 45 standard and five oddity records');
+if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 51) {
+  throw new Error('Mobile monster catalog does not show all 45 standard and six oddity records');
 }
 await assertReadableMonsterCards(
   mobile,
@@ -840,6 +850,10 @@ if ((await mobile.locator('[data-recipe-relation="used-by"] .recipe-card.is-spec
 }
 if ((await mobile.locator('.catalog-detail [data-recipe-focus="true"].is-locked').count()) !== 3) {
   throw new Error('Mobile catalog exposes an undiscovered monster in special breeding relations');
+}
+await mobile.locator('.catalog-card.is-unlocked').first().click();
+if ((await mobile.locator('.catalog-detail.is-unlocked .growth-scan-row').count()) !== 2) {
+  throw new Error('Mobile catalog does not show both growth scan rows');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png' });
 await mobile.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
@@ -1033,7 +1047,7 @@ await playtest.locator('.playtest-ledger').scrollIntoViewIfNeeded();
 await playtest.screenshot({ path: '/tmp/code-monsters-playtest-report-mobile.png' });
 
 const hatchTarget = new URL(target);
-hatchTarget.searchParams.set('seed', '242');
+hatchTarget.searchParams.set('seed', '325');
 const hatchPage = await browser.newPage({
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 1,
@@ -1047,7 +1061,7 @@ for (let round = 0; round < 3; round += 1) {
 }
 await hatchPage.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 if ((await hatchPage.locator('.shop-monsters .definition-card').filter({ hasText: 'まだら卵' }).count()) !== 2) {
-  throw new Error('Seed 242 no longer exposes the two-egg hatch smoke fixture');
+  throw new Error('Seed 325 no longer exposes the two-egg hatch smoke fixture');
 }
 for (let egg = 0; egg < 2; egg += 1) {
   await hatchPage

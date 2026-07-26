@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
 import { createMonster } from './monster';
+import type { MonsterBattleReport } from './types';
 import {
   applyBattleResult,
   buyMonster,
@@ -21,6 +22,47 @@ const finishDraft = () => {
   }
   return run;
 };
+
+const battleReportFor = (id: string, definitionId: string, skillUses: Record<string, number>): MonsterBattleReport => ({
+  id,
+  definitionId,
+  name: definitionId,
+  team: 'player',
+  actions: Object.values(skillUses).reduce((total, uses) => total + uses, 0),
+  normalAttacks: skillUses['normal-attack'] ?? 0,
+  fallbackActions: 0,
+  criticalHits: 0,
+  damageDealt: 0,
+  hpDamageDealt: 0,
+  damageTaken: 0,
+  shieldAbsorbed: 0,
+  healingDone: 0,
+  healingReceived: 0,
+  shieldingDone: 0,
+  shieldingReceived: 0,
+  buffApplications: 0,
+  debuffApplications: 0,
+  atbGranted: 0,
+  mpGranted: 0,
+  skillUses,
+  statusApplications: {},
+  skillBreakdown: Object.fromEntries(
+    Object.entries(skillUses).map(([skillId, uses]) => [
+      skillId,
+      {
+        uses,
+        damage: 0,
+        healing: 0,
+        shielding: 0,
+        buffs: 0,
+        debuffs: 0,
+        criticalHits: 0,
+        atb: 0,
+        mp: 0,
+      },
+    ]),
+  ),
+});
 
 describe('casual run', () => {
   it('starts with three free monsters and cycle-one income', () => {
@@ -103,15 +145,15 @@ describe('casual run', () => {
     expect(values).toEqual([1, 3, 7, 16, 28, 43]);
   });
 
-  it('applies coin and active experience skills once after battle and advances held cycles', () => {
+  it('rewards every damaging crow action, scales with color stars, and caps four actions per battle', () => {
     const run = finishDraft();
-    const coinMonster = createMonster(GAME_DATA, 'coin-crow-1', 'coin-crow');
-    const xpMonster = createMonster(GAME_DATA, 'study-owl-1', 'study-owl');
+    const plainCrow = createMonster(GAME_DATA, 'coin-crow-1', 'plain-crow');
+    const starredCrow = createMonster(GAME_DATA, 'coin-crow-1', 'starred-crow', { colorStars: 2 });
     const fighter = createMonster(GAME_DATA, 'fire-dragon-1', 'fighter');
     const prepared = {
       ...run,
-      roster: [coinMonster, xpMonster, fighter],
-      activeIds: [coinMonster.id, xpMonster.id, fighter.id],
+      roster: [plainCrow, starredCrow, fighter],
+      activeIds: [plainCrow.id, starredCrow.id, fighter.id],
     };
 
     const result = applyBattleResult(GAME_DATA, prepared, {
@@ -119,20 +161,88 @@ describe('casual run', () => {
       durationSeconds: 12,
       frames: [],
       damageByTeam: { player: 1, enemy: 0 },
+      monsterReports: [
+        battleReportFor(plainCrow.id, plainCrow.definitionId, {
+          'coin-snatch': 2,
+          mend: 4,
+          'normal-attack': 1,
+        }),
+        battleReportFor(starredCrow.id, starredCrow.definitionId, {
+          'coin-snatch': 3,
+          'night-claw': 2,
+          'normal-attack': 2,
+        }),
+      ],
+    });
+
+    expect(result.coins).toBe(prepared.coins + 22);
+    expect(result.lastBattleRewards).toEqual({ coins: 22, xpByMonsterId: {} });
+    expect(result.roster.every((monster) => monster.cyclesHeld === 1)).toBe(true);
+  });
+
+  it('uses one deterministic crow action for synthetic rival battles without combat reports', () => {
+    const run = finishDraft();
+    const crow = createMonster(GAME_DATA, 'coin-crow-1', 'synthetic-crow', { colorStars: 1 });
+    const prepared = { ...run, roster: [crow], activeIds: [crow.id] };
+
+    const result = applyBattleResult(GAME_DATA, prepared, {
+      winner: 'enemy',
+      durationSeconds: 12,
+      frames: [],
+      damageByTeam: { player: 0, enemy: 1 },
       monsterReports: [],
     });
 
-    expect(result.coins).toBe(prepared.coins + 2);
+    expect(result.lastBattleRewards).toEqual({ coins: 3, xpByMonsterId: {} });
+  });
+
+  it('unlocks the owl aura from the bench at color star one and reaches the whole roster at color star two', () => {
+    const run = finishDraft();
+    const active = createMonster(GAME_DATA, 'fire-dragon-1', 'fighter');
+    const bench = createMonster(GAME_DATA, 'light-demon-1', 'bench');
+    const stageOneOwl = createMonster(GAME_DATA, 'study-owl-1', 'stage-one-owl', { colorStars: 1 });
+    const stageOne = applyBattleResult(
+      GAME_DATA,
+      {
+        ...run,
+        roster: [active, stageOneOwl, bench],
+        activeIds: [active.id],
+      },
+      {
+        winner: 'player',
+        durationSeconds: 12,
+        frames: [],
+        damageByTeam: { player: 1, enemy: 0 },
+        monsterReports: [],
+      },
+    );
+    expect(stageOne.lastBattleRewards).toEqual({
+      coins: 0,
+      xpByMonsterId: { [active.id]: 2 },
+    });
+
+    const owl = createMonster(GAME_DATA, 'study-owl-1', 'study-owl', { colorStars: 2 });
+    const result = applyBattleResult(
+      GAME_DATA,
+      { ...run, roster: [active, owl, bench], activeIds: [active.id] },
+      {
+        winner: 'player',
+        durationSeconds: 12,
+        frames: [],
+        damageByTeam: { player: 1, enemy: 0 },
+        monsterReports: [],
+      },
+    );
+
     expect(result.lastBattleRewards).toEqual({
-      coins: 2,
+      coins: 0,
       xpByMonsterId: {
-        [coinMonster.id]: 2,
-        [xpMonster.id]: 2,
-        [fighter.id]: 2,
+        [active.id]: 2,
+        [owl.id]: 2,
+        [bench.id]: 2,
       },
     });
-    expect(result.roster.every((monster) => monster.cyclesHeld === 1)).toBe(true);
-    expect(result.roster.map((monster) => monster.xp)).toEqual([7, 7, 7]);
+    expect(result.roster.map((monster) => monster.xp)).toEqual([7, 4, 4]);
   });
 
   it('hatches eggs deterministically after one held battle within their rank cap', () => {

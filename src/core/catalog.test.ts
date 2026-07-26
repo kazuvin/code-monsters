@@ -9,10 +9,10 @@ import {
 import { createMonster } from './monster';
 
 describe('monster catalog discovery', () => {
-  it('lists all 45 standard monsters and five oddities without exposing locked details', () => {
+  it('lists all 45 standard monsters and six oddities without exposing locked details', () => {
     const entries = monsterCatalogEntries(GAME_DATA, new Set());
 
-    expect(entries).toHaveLength(50);
+    expect(entries).toHaveLength(51);
     expect(entries.filter((entry) => entry.id === 'buried-mole-1')).toHaveLength(1);
     expect(entries.every((entry) => entry.state === 'locked')).toBe(true);
     expect(entries.every((entry) => entry.details === undefined)).toBe(true);

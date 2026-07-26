@@ -8753,3 +8753,260 @@ button.effect-skill-card {
     transform: none;
   }
 }
+
+.performance-tag-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.performance-tag-row i {
+  padding: 2px 4px;
+  border: 1px solid color-mix(in srgb, var(--monster-color, var(--gold)) 58%, var(--line));
+  background: color-mix(in srgb, var(--monster-color, var(--gold)) 10%, var(--void));
+  color: var(--paper);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 6px;
+  font-style: normal;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.roster-growth-tag {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--monster-color);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 5px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.growth-profile-panel {
+  --scan-xp: var(--gold);
+  --scan-stats: var(--mint);
+  position: relative;
+  margin-top: 10px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--monster-color, var(--gold));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--monster-color, var(--gold)) 8%, transparent), transparent 42%),
+    repeating-linear-gradient(90deg, transparent 0 24px, rgba(255, 255, 255, 0.018) 24px 25px), var(--void);
+  box-shadow: 3px 3px 0 var(--void-deep);
+}
+
+.growth-profile-panel > header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.growth-profile-panel > header > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.growth-profile-panel > header span {
+  color: var(--monster-color, var(--gold));
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}
+
+.growth-profile-panel > header strong {
+  margin-top: 2px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 11px;
+}
+
+.growth-profile-panel > header .performance-tag-row {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+.growth-scan {
+  display: grid;
+  gap: 4px;
+  padding-top: 7px;
+}
+
+.growth-scan-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 5px;
+}
+
+.growth-scan-row > span {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  padding-right: 5px;
+  border-right: 1px solid var(--line-soft);
+}
+
+.growth-scan-row > span b {
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+}
+
+.growth-scan-row > span small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 6px;
+}
+
+.growth-scan-columns {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(9, minmax(14px, 1fr));
+  gap: 2px;
+}
+
+.growth-scan-columns button {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  height: 49px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 1px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--line-soft), var(--line-soft)) 0 33% / 100% 1px no-repeat,
+    linear-gradient(var(--line-soft), var(--line-soft)) 0 66% / 100% 1px no-repeat,
+    var(--deck);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.growth-scan-columns button > i {
+  width: min(11px, 62%);
+  height: var(--scan-bar);
+  min-height: 3px;
+  background: var(--scan-xp);
+  box-shadow: 1px 0 0 color-mix(in srgb, var(--scan-xp) 50%, transparent);
+  font-style: normal;
+}
+
+.growth-scan-row.is-stats .growth-scan-columns button > i {
+  background: var(--scan-stats);
+  box-shadow: 1px 0 0 color-mix(in srgb, var(--scan-stats) 50%, transparent);
+}
+
+.growth-scan-columns button > small {
+  position: relative;
+  z-index: 1;
+  font-size: 5px;
+  white-space: nowrap;
+}
+
+.growth-scan-columns button.is-selected {
+  border-color: var(--paper);
+  color: var(--paper);
+  background-color: var(--panel-high);
+}
+
+.growth-scan-columns button.is-current::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--pink);
+  box-shadow: 0 0 5px var(--pink);
+  content: "";
+  opacity: 0.9;
+}
+
+.growth-scan-reading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin: 7px 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line-soft);
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 7px;
+}
+
+.growth-scan-reading span {
+  padding: 2px 4px;
+  background: var(--paper);
+  color: var(--void);
+  font-family: "Pixelify Sans", monospace;
+  font-size: 8px;
+}
+
+.growth-scan-reading i {
+  color: var(--mint);
+  font-style: normal;
+}
+
+.growth-scan-reading b {
+  margin-left: auto;
+  color: var(--pink);
+  font-size: 7px;
+}
+
+.catalog-profile .growth-profile-panel {
+  margin: 0 0 10px;
+}
+
+@media (max-width: 640px) {
+  .performance-tag-row i {
+    padding: 2px 3px;
+    font-size: 5px;
+  }
+
+  .growth-profile-panel {
+    padding: 7px;
+  }
+
+  .growth-scan-row {
+    grid-template-columns: 49px minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .growth-scan-row > span b {
+    font-size: 7px;
+  }
+
+  .growth-scan-columns {
+    gap: 1px;
+  }
+
+  .growth-scan-columns button {
+    height: 42px;
+  }
+
+  .growth-scan-columns button > small {
+    font-size: 4px;
+  }
+
+  .growth-scan-reading {
+    gap: 5px;
+    font-size: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .growth-scan-columns button.is-current::after {
+    box-shadow: none;
+  }
+}

@@ -46,6 +46,17 @@ describe('breeding', () => {
     );
   });
 
+  it('allows crow and owl color-star growth only through same-name breeding', () => {
+    const firstCrow = createMonster(GAME_DATA, 'coin-crow-1', 'crow-1', { xp: 4 });
+    const secondCrow = createMonster(GAME_DATA, 'coin-crow-1', 'crow-2', { xp: 4 });
+    const owl = createMonster(GAME_DATA, 'study-owl-1', 'owl', { xp: 4 });
+
+    expect(listBreedingCandidates(GAME_DATA, firstCrow, secondCrow)).toEqual([
+      expect.objectContaining({ definitionId: 'coin-crow-1', colorStars: 1, kind: 'same-name' }),
+    ]);
+    expect(listBreedingCandidates(GAME_DATA, firstCrow, owl)).toEqual([]);
+  });
+
   it('inherits permanent stats at the color-star rate and only one selected skill', () => {
     const first = createMonster(GAME_DATA, 'light-dragon-1', 'first', {
       colorStars: 1,

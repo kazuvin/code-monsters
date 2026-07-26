@@ -29,10 +29,36 @@ export const definitionFor = (data: GameData, monster: MonsterInstance) => {
   return definition;
 };
 
-export const levelForXp = (data: GameData, xp: number) => {
+const definitionFrom = (data: GameData, source: MonsterDefinition | MonsterInstance) =>
+  'definitionId' in source ? definitionFor(data, source) : source;
+
+export const experienceProfileFor = (data: GameData, source: MonsterDefinition | MonsterInstance) => {
+  const definition = definitionFrom(data, source);
+  const profile = data.experienceProfiles.find((entry) => entry.id === definition.experienceProfileId);
+  if (!profile) throw new Error(`Unknown experience profile: ${definition.experienceProfileId}`);
+  return profile;
+};
+
+export const experienceThresholdsFor = (data: GameData, source: MonsterDefinition | MonsterInstance) =>
+  experienceProfileFor(data, source).thresholds;
+
+export const statGrowthProfileFor = (data: GameData, source: MonsterDefinition | MonsterInstance) => {
+  const definition = definitionFrom(data, source);
+  const profile = data.statGrowthProfiles.find((entry) => entry.id === definition.statGrowthProfileId);
+  if (!profile) throw new Error(`Unknown stat growth profile: ${definition.statGrowthProfileId}`);
+  return profile;
+};
+
+export const statGrowthUnitsForLevel = (data: GameData, source: MonsterDefinition | MonsterInstance, level: number) =>
+  statGrowthProfileFor(data, source)
+    .incrementsByLevel.slice(0, Math.max(0, Math.min(data.rules.maxLevel, level) - 1))
+    .reduce((total, increment) => total + increment, 0);
+
+export const levelForXp = (data: GameData, definition: MonsterDefinition, xp: number) => {
+  const thresholds = experienceThresholdsFor(data, definition);
   let level = 1;
-  for (let index = 1; index < data.rules.levelThresholds.length; index += 1) {
-    if (xp < (data.rules.levelThresholds[index] ?? Number.POSITIVE_INFINITY)) break;
+  for (let index = 1; index < thresholds.length; index += 1) {
+    if (xp < (thresholds[index] ?? Number.POSITIVE_INFINITY)) break;
     level = index + 1;
   }
   return Math.min(data.rules.maxLevel, level);
@@ -78,7 +104,7 @@ export function createMonster(
     id,
     definitionId,
     colorStars: options.colorStars ?? 0,
-    level: levelForXp(data, xp),
+    level: levelForXp(data, definition, xp),
     xp,
     cyclesHeld: Math.max(0, Math.floor(options.cyclesHeld ?? 0)),
     journeySeed: Math.floor(options.journeySeed ?? 0),
@@ -123,17 +149,19 @@ export const farewellCoinsFor = (data: GameData, monster: MonsterInstance) =>
   farewellCoinBreakdownFor(data, monster).total;
 
 export const gainMonsterXp = (data: GameData, monster: MonsterInstance, amount: number): MonsterInstance => {
-  const maximumXp = data.rules.levelThresholds[data.rules.maxLevel - 1] ?? monster.xp;
+  const definition = definitionFor(data, monster);
+  const maximumXp = experienceThresholdsFor(data, definition)[data.rules.maxLevel - 1] ?? monster.xp;
   const xp = Math.min(maximumXp, monster.xp + Math.max(0, Math.floor(amount)));
-  return { ...monster, xp, level: levelForXp(data, xp) };
+  return { ...monster, xp, level: levelForXp(data, definition, xp) };
 };
 
 export function permanentStatsFor(data: GameData, monster: MonsterInstance): StatBlock {
   const definition = definitionFor(data, monster);
   const growthMultiplier = data.rules.breeding.colorGrowthBonus[monster.colorStars];
+  const growthUnits = statGrowthUnitsForLevel(data, definition, monster.level);
   return Object.fromEntries(
     STAT_IDS.map((statId) => {
-      const levelGrowth = Math.floor(definition.growthPerLevel[statId] * (monster.level - 1) * growthMultiplier);
+      const levelGrowth = Math.floor(definition.growthPerLevel[statId] * growthUnits * growthMultiplier);
       const value = definition.baseStats[statId] + levelGrowth + monster.inheritedStats[statId];
       return [statId, statId === 'crit' ? Math.min(data.rules.battle.criticalCap, value) : value];
     }),
@@ -144,10 +172,11 @@ export function statBreakdownFor(data: GameData, monster: MonsterInstance): Mons
   const definition = definitionFor(data, monster);
   const equipment = data.equipment.find((entry) => entry.id === monster.equipmentId);
   const growthMultiplier = data.rules.breeding.colorGrowthBonus[monster.colorStars];
+  const growthUnits = statGrowthUnitsForLevel(data, definition, monster.level);
   return Object.fromEntries(
     STAT_IDS.map((statId) => {
       const base = definition.baseStats[statId];
-      const growth = Math.floor(definition.growthPerLevel[statId] * (monster.level - 1) * growthMultiplier);
+      const growth = Math.floor(definition.growthPerLevel[statId] * growthUnits * growthMultiplier);
       const individual = monster.inheritedStats[statId];
       const equipmentBonus = equipment?.statBonus[statId] ?? 0;
       const rawTotal = base + growth + individual + equipmentBonus;

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "rules": {
-    "contentVersion": "casual-prototype-5",
+    "contentVersion": "casual-prototype-6",
     "maxCycles": 12,
     "maxLosses": 5,
     "rosterLimit": 7,
@@ -10,7 +10,7 @@
     "initialCoins": 10,
     "cycleIncome": 10,
     "breedingCoinBonus": 1,
-    "levelThresholds": [0, 4, 10, 18, 28, 40, 54, 70, 88, 108],
+    "experienceProfileIdsByWhiteStars": ["early", "standard", "standard", "standard", "standard"],
     "maxLevel": 10,
     "activeXpByCycleBand": [4, 5, 6, 7],
     "battleWinXp": 1,
@@ -58,6 +58,29 @@
     { "id": "fire", "name": "火", "color": "#ea6b52", "accent": "#ffb06f" }
   ],
   "rankStatMultipliers": [1, 1.26, 1.58, 1.95, 2.38],
+  "experienceProfiles": [
+    { "id": "early", "name": "早熟", "thresholds": [0, 2, 4, 10, 18, 29, 43, 60, 81, 105] },
+    { "id": "standard", "name": "標準", "thresholds": [0, 2, 4, 12, 23, 36, 52, 71, 93, 118] },
+    { "id": "late", "name": "晩成", "thresholds": [0, 2, 4, 14, 28, 46, 68, 94, 124, 158] }
+  ],
+  "statGrowthProfiles": [
+    { "id": "steady", "name": "均等成長", "incrementsByLevel": [1, 1, 1, 1, 1, 1, 1, 1, 1] },
+    {
+      "id": "late-surge",
+      "name": "後半加速",
+      "incrementsByLevel": [0.45, 0.55, 0.7, 0.95, 1.3, 1.7, 2.2, 2.85, 3.55]
+    }
+  ],
+  "roleTags": [
+    { "id": "physical", "label": "物理" },
+    { "id": "magic", "label": "魔法" },
+    { "id": "defense", "label": "耐久" },
+    { "id": "speed", "label": "先手" },
+    { "id": "support", "label": "支援" },
+    { "id": "economy", "label": "稼ぎ" },
+    { "id": "hatch", "label": "孵化" },
+    { "id": "late-bloom", "label": "晩成" }
+  ],
   "archetypes": [
     {
       "id": "light-dragon",
@@ -65,6 +88,7 @@
       "attributeId": "light",
       "baseStats": { "maxHp": 92, "maxMp": 28, "attack": 24, "defense": 27, "speed": 19, "wisdom": 16, "crit": 6 },
       "growthPerLevel": { "maxHp": 8, "maxMp": 2, "attack": 3, "defense": 3, "speed": 2, "wisdom": 2, "crit": 0 },
+      "roleTagIds": ["physical", "defense"],
       "forms": [
         {
           "name": "ハクリュウコ",
@@ -114,6 +138,7 @@
       "attributeId": "dark",
       "baseStats": { "maxHp": 84, "maxMp": 30, "attack": 28, "defense": 21, "speed": 24, "wisdom": 17, "crit": 10 },
       "growthPerLevel": { "maxHp": 7, "maxMp": 2, "attack": 3, "defense": 2, "speed": 3, "wisdom": 2, "crit": 1 },
+      "roleTagIds": ["physical", "speed"],
       "forms": [
         {
           "name": "ヨイヤモリ",
@@ -163,6 +188,7 @@
       "attributeId": "fire",
       "baseStats": { "maxHp": 88, "maxMp": 27, "attack": 29, "defense": 23, "speed": 22, "wisdom": 15, "crit": 8 },
       "growthPerLevel": { "maxHp": 8, "maxMp": 2, "attack": 4, "defense": 2, "speed": 2, "wisdom": 1, "crit": 0 },
+      "roleTagIds": ["physical", "defense"],
       "forms": [
         {
           "name": "ヒノコトカゲ",
@@ -212,6 +238,7 @@
       "attributeId": "light",
       "baseStats": { "maxHp": 72, "maxMp": 44, "attack": 16, "defense": 18, "speed": 23, "wisdom": 30, "crit": 5 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 2, "wisdom": 4, "crit": 0 },
+      "roleTagIds": ["magic", "support"],
       "forms": [
         {
           "name": "ランプインプ",
@@ -261,6 +288,7 @@
       "attributeId": "dark",
       "baseStats": { "maxHp": 75, "maxMp": 42, "attack": 17, "defense": 17, "speed": 25, "wisdom": 31, "crit": 7 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 3, "wisdom": 4, "crit": 0 },
+      "roleTagIds": ["magic", "speed"],
       "forms": [
         {
           "name": "スミインプ",
@@ -310,6 +338,7 @@
       "attributeId": "fire",
       "baseStats": { "maxHp": 78, "maxMp": 38, "attack": 22, "defense": 18, "speed": 21, "wisdom": 28, "crit": 7 },
       "growthPerLevel": { "maxHp": 7, "maxMp": 3, "attack": 2, "defense": 2, "speed": 2, "wisdom": 4, "crit": 0 },
+      "roleTagIds": ["magic", "physical"],
       "forms": [
         {
           "name": "アカインプ",
@@ -359,6 +388,7 @@
       "attributeId": "light",
       "baseStats": { "maxHp": 74, "maxMp": 40, "attack": 15, "defense": 20, "speed": 27, "wisdom": 27, "crit": 5 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 1, "defense": 2, "speed": 3, "wisdom": 4, "crit": 0 },
+      "roleTagIds": ["magic", "support"],
       "forms": [
         {
           "name": "ヒカリノコ",
@@ -408,6 +438,7 @@
       "attributeId": "dark",
       "baseStats": { "maxHp": 70, "maxMp": 42, "attack": 16, "defense": 18, "speed": 29, "wisdom": 28, "crit": 6 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 4, "attack": 1, "defense": 2, "speed": 4, "wisdom": 3, "crit": 0 },
+      "roleTagIds": ["magic", "speed"],
       "forms": [
         {
           "name": "カゲノコ",
@@ -457,6 +488,7 @@
       "attributeId": "fire",
       "baseStats": { "maxHp": 73, "maxMp": 37, "attack": 19, "defense": 18, "speed": 31, "wisdom": 24, "crit": 7 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 2, "defense": 2, "speed": 4, "wisdom": 3, "crit": 0 },
+      "roleTagIds": ["speed", "support"],
       "forms": [
         {
           "name": "ホムラノコ",
@@ -506,7 +538,7 @@
       "id": "buried-mole-1",
       "archetypeId": "buried-mole",
       "kind": "oddity",
-      "breedable": false,
+      "breedingMode": "none",
       "lineageId": "spirit",
       "attributeId": "dark",
       "name": "埋蔵モグラ",
@@ -515,6 +547,9 @@
       "appearance": { "body": "🐹", "attire": "⛏", "form": "whelp" },
       "baseStats": { "maxHp": 82, "maxMp": 24, "attack": 19, "defense": 27, "speed": 15, "wisdom": 18, "crit": 4 },
       "growthPerLevel": { "maxHp": 7, "maxMp": 2, "attack": 2, "defense": 3, "speed": 1, "wisdom": 2, "crit": 0 },
+      "experienceProfileId": "early",
+      "statGrowthProfileId": "steady",
+      "roleTagIds": ["economy", "defense"],
       "intrinsicSkillIds": ["tail-swipe", "scale-wall"],
       "defaultSkillId": "spirit-spark",
       "traitId": "buried-treasury",
@@ -525,7 +560,7 @@
       "id": "coin-crow-1",
       "archetypeId": "coin-crow",
       "kind": "oddity",
-      "breedable": false,
+      "breedingMode": "same-name-only",
       "lineageId": "demon",
       "attributeId": "dark",
       "name": "銭羽ガラス",
@@ -534,6 +569,9 @@
       "appearance": { "body": "🐦‍⬛", "attire": "¤", "form": "scout" },
       "baseStats": { "maxHp": 74, "maxMp": 31, "attack": 22, "defense": 17, "speed": 28, "wisdom": 20, "crit": 9 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 2, "defense": 2, "speed": 3, "wisdom": 2, "crit": 1 },
+      "experienceProfileId": "early",
+      "statGrowthProfileId": "steady",
+      "roleTagIds": ["economy", "speed"],
       "intrinsicSkillIds": ["coin-snatch", "night-claw"],
       "defaultSkillId": "quick-flare",
       "traitId": "impish-opening",
@@ -544,7 +582,7 @@
       "id": "study-owl-1",
       "archetypeId": "study-owl",
       "kind": "oddity",
-      "breedable": false,
+      "breedingMode": "same-name-only",
       "lineageId": "spirit",
       "attributeId": "light",
       "name": "学灯フクロウ",
@@ -553,6 +591,9 @@
       "appearance": { "body": "🦉", "attire": "✎", "form": "winged" },
       "baseStats": { "maxHp": 76, "maxMp": 38, "attack": 16, "defense": 19, "speed": 22, "wisdom": 29, "crit": 4 },
       "growthPerLevel": { "maxHp": 6, "maxMp": 3, "attack": 1, "defense": 2, "speed": 2, "wisdom": 4, "crit": 0 },
+      "experienceProfileId": "early",
+      "statGrowthProfileId": "steady",
+      "roleTagIds": ["economy", "support"],
       "intrinsicSkillIds": ["study-lantern", "mend"],
       "defaultSkillId": "spirit-spark",
       "traitId": "morning-dew",
@@ -563,7 +604,7 @@
       "id": "mystery-egg-1",
       "archetypeId": "mystery-egg",
       "kind": "oddity",
-      "breedable": false,
+      "breedingMode": "none",
       "lineageId": "spirit",
       "attributeId": "light",
       "name": "まだら卵",
@@ -572,6 +613,9 @@
       "appearance": { "body": "🥚", "attire": "?", "form": "whelp" },
       "baseStats": { "maxHp": 98, "maxMp": 18, "attack": 10, "defense": 32, "speed": 10, "wisdom": 12, "crit": 0 },
       "growthPerLevel": { "maxHp": 8, "maxMp": 1, "attack": 1, "defense": 3, "speed": 1, "wisdom": 1, "crit": 0 },
+      "experienceProfileId": "early",
+      "statGrowthProfileId": "steady",
+      "roleTagIds": ["hatch", "defense"],
       "intrinsicSkillIds": ["scale-wall", "aegis-dust"],
       "defaultSkillId": "tail-swipe",
       "traitId": "waiting-shell",
@@ -587,7 +631,7 @@
       "id": "mystery-egg-2",
       "archetypeId": "mystery-egg",
       "kind": "oddity",
-      "breedable": false,
+      "breedingMode": "none",
       "lineageId": "spirit",
       "attributeId": "light",
       "name": "星殻の卵",
@@ -596,6 +640,9 @@
       "appearance": { "body": "🥚", "attire": "✦", "form": "armored" },
       "baseStats": { "maxHp": 124, "maxMp": 23, "attack": 13, "defense": 40, "speed": 13, "wisdom": 15, "crit": 0 },
       "growthPerLevel": { "maxHp": 9, "maxMp": 1, "attack": 1, "defense": 4, "speed": 1, "wisdom": 1, "crit": 0 },
+      "experienceProfileId": "standard",
+      "statGrowthProfileId": "steady",
+      "roleTagIds": ["hatch", "defense"],
       "intrinsicSkillIds": ["scale-wall", "aegis-dust"],
       "defaultSkillId": "tail-swipe",
       "traitId": "waiting-shell",
@@ -606,22 +653,48 @@
         "upgradeChance": 0.1,
         "maximumWhiteStars": 3
       }
+    },
+    {
+      "id": "slumbering-grove-1",
+      "archetypeId": "slumbering-grove",
+      "kind": "oddity",
+      "breedingMode": "none",
+      "lineageId": "spirit",
+      "attributeId": "dark",
+      "name": "年輪獣ネムルガ",
+      "whiteStars": 1,
+      "glyph": "輪",
+      "appearance": { "body": "🌳", "attire": "◉", "form": "armored" },
+      "baseStats": { "maxHp": 62, "maxMp": 28, "attack": 15, "defense": 20, "speed": 12, "wisdom": 18, "crit": 3 },
+      "growthPerLevel": { "maxHp": 11, "maxMp": 3, "attack": 4, "defense": 5, "speed": 2, "wisdom": 5, "crit": 1 },
+      "experienceProfileId": "late",
+      "statGrowthProfileId": "late-surge",
+      "roleTagIds": ["late-bloom", "defense", "magic"],
+      "intrinsicSkillIds": ["scale-wall", "mend"],
+      "defaultSkillId": "spirit-spark",
+      "traitId": "ancient-carapace",
+      "price": 3,
+      "sellPrice": 1
     }
   ],
   "skills": [
     {
       "id": "coin-snatch",
       "name": "銭さらい",
-      "description": "主力として戦闘を完了すると、戦闘終了時に2コインを拾う。1戦につき1回。",
+      "description": "主力にいると、ダメージ行動のたびに色星0/1/2で2/3/4コインを盗む。1戦4回まで。",
       "mpCost": 2,
       "targetScope": "single-enemy",
       "effects": [{ "kind": "damage", "scaling": "physical", "power": 72, "target": "action-target", "canCrit": true }],
-      "postBattleReward": { "kind": "coins", "amount": 2 }
+      "runReward": {
+        "kind": "coins-per-damage-action",
+        "amountsByColorStars": [2, 3, 4],
+        "maximumTriggersPerBattle": 4
+      }
     },
     {
       "id": "study-lantern",
       "name": "学灯の導き",
-      "description": "主力として戦闘を完了すると、主力全員が戦闘終了時に追加で経験値2を得る。",
+      "description": "色星0は主力で主力全員に経験値2。色星1は控えからも発動し、色星2は控えを含む全員へ届く。",
       "mpCost": 4,
       "targetScope": "single-enemy",
       "effects": [
@@ -634,7 +707,12 @@
           "target": "all-allies"
         }
       ],
-      "postBattleReward": { "kind": "active-xp", "amount": 2 }
+      "runReward": {
+        "kind": "xp-aura",
+        "amountsByColorStars": [2, 2, 2],
+        "activatesFromBenchAtColorStars": 1,
+        "targetsRosterAtColorStars": 2
+      }
     },
     {
       "id": "tail-swipe",
