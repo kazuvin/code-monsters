@@ -54,6 +54,7 @@ import type {
   ColorStars,
   CommandResult,
   EffectDefinition,
+  EggHatchResult,
   FighterSnapshot,
   GameData,
   GambitCondition,
@@ -70,7 +71,7 @@ import type {
 } from './core/types';
 import { GAME_DATA } from './game/game-data';
 
-const CATALOG_MONSTER_COUNT = GAME_DATA.monsters.filter((monster) => monster.kind === 'standard').length;
+const CATALOG_MONSTER_COUNT = GAME_DATA.monsters.length;
 
 type InspectorTab = 'profile' | 'gambit' | 'recipes';
 type CatalogDetailTab = 'profile' | 'recipes';
@@ -1472,6 +1473,115 @@ function BreedingRevealDialog({ child, onComplete }: { child?: MonsterInstance; 
   );
 }
 
+function EggHatchRevealSequence({
+  hatches,
+  onComplete,
+}: {
+  hatches: readonly EggHatchResult[];
+  onComplete: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [index, setIndex] = useState(0);
+  const [stage, setStage] = useState(0);
+  const hatch = hatches[index];
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || hatches.length === 0) return;
+    dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [hatches.length]);
+
+  useEffect(() => {
+    if (!hatch) return;
+    setStage(0);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timers = reducedMotion
+      ? [window.setTimeout(() => setStage(3), 0)]
+      : [
+          window.setTimeout(() => setStage(1), 260),
+          window.setTimeout(() => setStage(2), 1120),
+          window.setTimeout(() => setStage(3), 1840),
+        ];
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [hatch?.eggId]);
+
+  if (!hatch) return null;
+  const eggDefinition = definitionById(GAME_DATA, hatch.eggDefinitionId);
+  const resultDefinition = definitionById(GAME_DATA, hatch.resultDefinitionId);
+  const rankUp = hatch.toWhiteStars > hatch.fromWhiteStars;
+  const finalHatch = index === hatches.length - 1;
+  const continueReveal = () => {
+    if (!finalHatch) {
+      setIndex((current) => current + 1);
+      return;
+    }
+    dialogRef.current?.close();
+    onComplete();
+  };
+  return (
+    <dialog
+      ref={dialogRef}
+      className={`hatch-reveal-dialog hatch-stage-${stage}${rankUp ? ' is-rank-up' : ''}`}
+      onCancel={(event) => event.preventDefault()}
+      aria-label={`${resultDefinition.name}の孵化 ${index + 1}/${hatches.length}`}
+    >
+      <section className="hatch-reveal-stage" style={monsterStyle(GAME_DATA, resultDefinition)}>
+        <header className="hatch-reveal-header">
+          <div>
+            <span>INCUBATION RECORD</span>
+            <strong>
+              HATCH {String(index + 1).padStart(2, '0')} / {String(hatches.length).padStart(2, '0')}
+            </strong>
+          </div>
+          <b>{rankUp ? 'RANK SIGNAL DETECTED' : `${eggDefinition.name} / READY`}</b>
+        </header>
+        <div className="hatch-chamber" aria-live="polite">
+          <div className="hatch-aura" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+          <div className="hatch-particles" aria-hidden="true">
+            {Array.from({ length: 16 }, (_, particleIndex) => (
+              <i key={particleIndex} style={{ '--hatch-particle': particleIndex } as CSSProperties} />
+            ))}
+          </div>
+          <div className="hatch-flash" aria-hidden="true" />
+          <div className="egg-shell" aria-hidden="true">
+            <span>{eggDefinition.glyph}</span>
+            <i />
+            <i />
+            <i />
+          </div>
+          <div className="hatched-monster">
+            <div className="hatched-sigil">
+              <MonsterSigil data={GAME_DATA} definition={resultDefinition} colorStars={0} size="large" />
+            </div>
+            <span>{rankUp ? 'LUCKY RANK UP' : 'SHELL OPENED'}</span>
+            <h2>{resultDefinition.name}</h2>
+            <strong>{starText(resultDefinition.whiteStars, 0)}</strong>
+          </div>
+        </div>
+        <footer className="hatch-reveal-result">
+          <div>
+            <span>WHITE STAR RESULT</span>
+            <strong>
+              {'★'.repeat(hatch.fromWhiteStars)} <i>→</i> {'★'.repeat(hatch.toWhiteStars)}
+            </strong>
+            <small>{rankUp ? '10%の昇格を引き当てました' : '卵と同じ白星で孵化しました'}</small>
+          </div>
+          <button type="button" className="primary-button" disabled={stage < 3} onClick={continueReveal}>
+            {finalHatch ? '旅へ戻る' : '次の卵を孵す'}
+          </button>
+        </footer>
+      </section>
+    </dialog>
+  );
+}
+
 function BreedingView({
   open,
   run,
@@ -2029,7 +2139,11 @@ function MonsterRecipeView({
             ) : (
               <div className="monster-recipe-empty">
                 <span>NO SPECIAL ROUTE</span>
-                <p>この方向の特殊配合はまだ記録されていません。</p>
+                <p>
+                  {section.id === 'created-by'
+                    ? 'このモンスターを作る特殊配合はありません。'
+                    : 'このモンスターを親として使う特殊配合はありません。'}
+                </p>
               </div>
             )}
           </section>
@@ -2296,7 +2410,7 @@ function MonsterCatalogDialog({
             aria-pressed={filter === 'all'}
             onClick={() => setFilter('all')}
           >
-            すべて <b>45</b>
+            すべて <b>{CATALOG_MONSTER_COUNT}</b>
           </button>
           {GAME_DATA.lineages.map((lineage) => (
             <button
@@ -2399,11 +2513,9 @@ function Inspector({
           <button type="button" className={tab === 'gambit' ? 'is-active' : ''} onClick={() => setTab('gambit')}>
             ガンビット
           </button>
-          {definition.breedable && (
-            <button type="button" className={tab === 'recipes' ? 'is-active' : ''} onClick={() => setTab('recipes')}>
-              特殊配合
-            </button>
-          )}
+          <button type="button" className={tab === 'recipes' ? 'is-active' : ''} onClick={() => setTab('recipes')}>
+            特殊配合
+          </button>
         </nav>
         <div className="inspector-tab-panel">
           {tab === 'profile' && (
@@ -2538,7 +2650,9 @@ function WorkshopScreen({
               .join(' / ')}
           </strong>
           <small>
-            {run.lastHatches.map((hatch) => `⭐${hatch.fromWhiteStars}卵 → ⭐${hatch.toWhiteStars}`).join(' · ')}
+            {run.lastHatches
+              .map((hatch) => `${'★'.repeat(hatch.fromWhiteStars)}卵 → ${'★'.repeat(hatch.toWhiteStars)}`)
+              .join(' · ')}
           </small>
         </section>
       )}
@@ -3577,6 +3691,7 @@ export function App() {
   const [battle, setBattle] = useState<BattleViewState>();
   const [lastBattleRoster, setLastBattleRoster] = useState<MonsterInstance[]>([]);
   const [lastBattleEnemy, setLastBattleEnemy] = useState<MonsterInstance[]>([]);
+  const [pendingHatches, setPendingHatches] = useState<EggHatchResult[]>();
   const [discoveredMonsterIds, setDiscoveredMonsterIds] = useState(() => new Set<string>(loadDiscoveredMonsterIds()));
 
   useEffect(() => {
@@ -3602,17 +3717,20 @@ export function App() {
   const continueAfterBattle = () => {
     const next = continueRun(GAME_DATA, run);
     if (next.phase === 'finished') setRunCompletedAt(new Date().toISOString());
+    if (next.lastHatches && next.lastHatches.length > 0) setPendingHatches(next.lastHatches);
     setRun(next);
   };
   const restartRun = () => {
     const startedAt = new Date().toISOString();
     setRunStartedAt(startedAt);
     setRunCompletedAt(undefined);
+    setPendingHatches(undefined);
     setRun(createCasualRun(GAME_DATA, deriveSeed(run.seed, run.commandIndex + 71)));
   };
 
+  let screen;
   if (battle) {
-    return (
+    screen = (
       <BattleScreen
         battle={battle}
         onChange={setBattle}
@@ -3623,18 +3741,14 @@ export function App() {
         }}
       />
     );
-  }
-  if (run.phase === 'draft') {
-    return <DraftScreen run={run} onChoose={(id) => setRun(chooseDraftMonster(GAME_DATA, run, id))} />;
-  }
-  if (run.phase === 'event') {
-    return <EventScreen run={run} onChoose={(id, targetId) => setRun(chooseEvent(GAME_DATA, run, id, targetId))} />;
-  }
-  if (run.phase === 'event-result') {
-    return <EventResultScreen run={run} onContinue={() => setRun(continueEvent(run))} />;
-  }
-  if (run.phase === 'prepare') {
-    return (
+  } else if (run.phase === 'draft') {
+    screen = <DraftScreen run={run} onChoose={(id) => setRun(chooseDraftMonster(GAME_DATA, run, id))} />;
+  } else if (run.phase === 'event') {
+    screen = <EventScreen run={run} onChoose={(id, targetId) => setRun(chooseEvent(GAME_DATA, run, id, targetId))} />;
+  } else if (run.phase === 'event-result') {
+    screen = <EventResultScreen run={run} onContinue={() => setRun(continueEvent(run))} />;
+  } else if (run.phase === 'prepare') {
+    screen = (
       <WorkshopScreen
         run={run}
         discoveredMonsterIds={discoveredMonsterIds}
@@ -3642,9 +3756,8 @@ export function App() {
         onStartBattle={startBattle}
       />
     );
-  }
-  if (run.phase === 'result') {
-    return (
+  } else if (run.phase === 'result') {
+    screen = (
       <ResultScreen
         run={run}
         beforeRoster={lastBattleRoster}
@@ -3652,13 +3765,22 @@ export function App() {
         onContinue={continueAfterBattle}
       />
     );
+  } else {
+    screen = (
+      <FinishedScreen
+        run={run}
+        startedAt={runStartedAt}
+        completedAt={runCompletedAt ?? runStartedAt}
+        onRestart={restartRun}
+      />
+    );
   }
   return (
-    <FinishedScreen
-      run={run}
-      startedAt={runStartedAt}
-      completedAt={runCompletedAt ?? runStartedAt}
-      onRestart={restartRun}
-    />
+    <>
+      {screen}
+      {pendingHatches && (
+        <EggHatchRevealSequence hatches={pendingHatches} onComplete={() => setPendingHatches(undefined)} />
+      )}
+    </>
   );
 }

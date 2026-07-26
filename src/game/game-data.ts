@@ -153,6 +153,20 @@ export function validateGameData(data: GameData): string[] {
   }
   for (const trait of data.traits) {
     if (trait.stages.length !== 3) errors.push(`${trait.id} needs exactly three color-star stages`);
+    for (const stage of trait.stages) {
+      if ((stage.farewellCoinsPerHeldCycle ?? 0) < 0) {
+        errors.push(`${trait.id} has a negative held-cycle farewell reward`);
+      }
+      if (
+        stage.farewellCoinGrowthEveryHeldCycles !== undefined &&
+        (!Number.isInteger(stage.farewellCoinGrowthEveryHeldCycles) || stage.farewellCoinGrowthEveryHeldCycles < 1)
+      ) {
+        errors.push(`${trait.id} needs a positive integer farewell growth interval`);
+      }
+      if ((stage.farewellCoinGrowthAmount ?? 0) < 0) {
+        errors.push(`${trait.id} has a negative farewell growth amount`);
+      }
+    }
   }
   for (const cycle of data.rules.eventCycles) {
     if (cycle <= 1 || cycle >= data.rules.maxCycles) errors.push(`event cycle ${cycle} is outside the run`);

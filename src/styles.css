@@ -707,6 +707,515 @@ button.definition-card:active,
   font-size: 7px;
 }
 
+.hatch-reveal-dialog {
+  width: min(720px, calc(100vw - 20px));
+  max-width: none;
+  max-height: calc(100dvh - 20px);
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+}
+
+.hatch-reveal-dialog::backdrop {
+  background: radial-gradient(circle at 50% 47%, rgba(245, 202, 107, 0.2), transparent 28%), rgba(5, 6, 10, 0.94);
+  backdrop-filter: blur(5px);
+}
+
+.hatch-reveal-stage {
+  --monster-color: var(--gold);
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: min(680px, calc(100dvh - 20px));
+  min-height: 520px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 16px;
+  overflow: hidden;
+  border: 2px solid var(--gold);
+  background:
+    linear-gradient(135deg, rgba(245, 202, 107, 0.12), transparent 34%),
+    repeating-linear-gradient(0deg, transparent 0 23px, rgba(255, 255, 255, 0.025) 24px), var(--panel);
+  box-shadow:
+    8px 8px 0 var(--void-deep),
+    0 0 56px rgba(245, 202, 107, 0.24);
+}
+
+.hatch-reveal-stage::before {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(245, 202, 107, 0.38);
+  content: "";
+  pointer-events: none;
+}
+
+.hatch-reveal-header,
+.hatch-reveal-result {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hatch-reveal-header {
+  padding: 1px 5px 10px;
+  border-bottom: 1px solid var(--gold);
+}
+
+.hatch-reveal-header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.hatch-reveal-header span,
+.hatch-reveal-result span {
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.hatch-reveal-header strong {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}
+
+.hatch-reveal-header > b {
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  background: var(--void);
+  color: var(--muted);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.hatch-reveal-dialog.is-rank-up .hatch-reveal-header > b {
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 18px rgba(245, 202, 107, 0.22);
+}
+
+.hatch-chamber {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  background:
+    radial-gradient(circle at 50% 52%, rgba(245, 202, 107, 0.13), transparent 31%),
+    linear-gradient(90deg, transparent 49.8%, rgba(245, 202, 107, 0.16) 50%, transparent 50.2%),
+    linear-gradient(transparent 49.8%, rgba(245, 202, 107, 0.16) 50%, transparent 50.2%), var(--void-deep);
+}
+
+.hatch-chamber::before,
+.hatch-chamber::after {
+  position: absolute;
+  z-index: 0;
+  border: 1px solid rgba(245, 202, 107, 0.18);
+  border-radius: 50%;
+  content: "";
+}
+
+.hatch-chamber::before {
+  width: min(420px, 72%);
+  aspect-ratio: 1;
+}
+
+.hatch-chamber::after {
+  width: min(310px, 56%);
+  aspect-ratio: 1;
+}
+
+.egg-shell {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 178px;
+  height: 226px;
+  place-items: center;
+  overflow: hidden;
+  border: 4px solid #8e784a;
+  border-radius: 52% 48% 46% 46% / 60% 60% 40% 40%;
+  background:
+    repeating-linear-gradient(126deg, transparent 0 22px, rgba(112, 83, 40, 0.09) 23px 25px),
+    linear-gradient(145deg, #fff8d8, #e0c47c 72%, #9b743a);
+  color: #503b23;
+  box-shadow:
+    inset -14px -18px 0 rgba(93, 59, 26, 0.12),
+    inset 12px 12px 0 rgba(255, 255, 255, 0.28),
+    0 18px 0 -9px rgba(0, 0, 0, 0.38),
+    0 0 28px rgba(245, 202, 107, 0.25);
+  animation: egg-heartbeat 780ms steps(4) infinite;
+  transform-origin: 50% 82%;
+}
+
+.egg-shell > span {
+  font-size: 66px;
+  text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.3);
+}
+
+.egg-shell > i {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  width: 3px;
+  height: 58px;
+  background: var(--void-deep);
+  opacity: 0;
+  transform-origin: top;
+}
+
+.egg-shell > i:nth-of-type(1) {
+  transform: rotate(24deg);
+}
+
+.egg-shell > i:nth-of-type(2) {
+  transform: rotate(-31deg);
+}
+
+.egg-shell > i:nth-of-type(3) {
+  top: 55%;
+  height: 44px;
+  transform: rotate(42deg);
+}
+
+.hatch-stage-1 .egg-shell {
+  animation: egg-crack 520ms steps(7) infinite;
+  filter: brightness(1.12);
+}
+
+.hatch-stage-1 .egg-shell > i {
+  opacity: 1;
+  transition: opacity 80ms steps(2);
+}
+
+.hatch-stage-2 .egg-shell,
+.hatch-stage-3 .egg-shell {
+  opacity: 0;
+  transform: scale(1.45);
+  transition:
+    opacity 170ms steps(3),
+    transform 240ms steps(4);
+}
+
+.hatch-flash {
+  position: absolute;
+  z-index: 5;
+  inset: -20%;
+  background: radial-gradient(circle, #fff 0 9%, #ffe8a1 10% 20%, transparent 42%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hatch-stage-2 .hatch-flash {
+  animation: hatch-flash 520ms steps(7) both;
+}
+
+.hatch-aura {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.hatch-aura i {
+  position: absolute;
+  width: 130px;
+  aspect-ratio: 1;
+  border: 2px solid var(--monster-color);
+  opacity: 0;
+  transform: rotate(45deg) scale(0.2);
+}
+
+.hatch-stage-2 .hatch-aura i,
+.hatch-stage-3 .hatch-aura i {
+  animation: hatch-aura-expand 920ms steps(9) calc((var(--aura-index, 0)) * 100ms) both;
+}
+
+.hatch-aura i:nth-child(2) {
+  --aura-index: 1;
+}
+
+.hatch-aura i:nth-child(3) {
+  --aura-index: 2;
+}
+
+.hatch-particles {
+  position: absolute;
+  z-index: 3;
+  inset: 50%;
+  pointer-events: none;
+}
+
+.hatch-particles i {
+  --particle-angle: calc(var(--hatch-particle) * 22.5deg);
+  position: absolute;
+  width: 5px;
+  height: 14px;
+  background: var(--gold);
+  opacity: 0;
+  transform: rotate(var(--particle-angle)) translateY(0);
+}
+
+.hatch-particles i:nth-child(3n + 1) {
+  background: var(--mint);
+}
+
+.hatch-particles i:nth-child(3n + 2) {
+  background: var(--pink);
+}
+
+.hatch-stage-2 .hatch-particles i,
+.hatch-stage-3 .hatch-particles i {
+  animation: hatch-particle-burst 850ms steps(9) calc(var(--hatch-particle) * 14ms) both;
+}
+
+.hatched-monster {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  max-width: 90%;
+  place-items: center;
+  opacity: 0;
+  text-align: center;
+  transform: scale(0.18) translateY(20px);
+}
+
+.hatch-stage-2 .hatched-monster,
+.hatch-stage-3 .hatched-monster {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity 240ms steps(4) 120ms,
+    transform 620ms cubic-bezier(0.17, 1.45, 0.42, 1) 80ms;
+}
+
+.hatched-sigil {
+  display: grid;
+  width: 174px;
+  height: 174px;
+  place-items: center;
+  margin-bottom: 4px;
+  border: 2px solid var(--monster-color);
+  background: color-mix(in srgb, var(--monster-color) 9%, var(--panel));
+  box-shadow:
+    8px 8px 0 var(--void-deep),
+    0 0 36px color-mix(in srgb, var(--monster-color) 44%, transparent);
+  transform: rotate(45deg);
+}
+
+.hatched-sigil .monster-sigil {
+  width: 124px;
+  height: 124px;
+  transform: rotate(-45deg);
+}
+
+.hatched-sigil .monster-sigil > span {
+  font-size: 76px;
+}
+
+.hatched-sigil .monster-sigil > em {
+  width: 26px;
+  height: 26px;
+  font-size: 15px;
+}
+
+.hatched-sigil .monster-sigil > s {
+  font-size: 13px;
+}
+
+.hatched-sigil .monster-sigil > b {
+  font-size: 10px;
+}
+
+.hatched-monster > span {
+  margin-top: 10px;
+  color: var(--gold);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+.hatched-monster h2 {
+  margin: 2px 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: clamp(25px, 6vw, 40px);
+}
+
+.hatched-monster > strong {
+  color: var(--monster-color);
+  font-size: 18px;
+  letter-spacing: -0.08em;
+}
+
+.hatch-reveal-result {
+  padding: 10px 5px 1px;
+  border-top: 1px solid var(--gold);
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.hatch-stage-3 .hatch-reveal-result {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 240ms steps(4),
+    transform 240ms steps(4);
+}
+
+.hatch-reveal-result > div {
+  display: grid;
+  gap: 2px;
+}
+
+.hatch-reveal-result strong {
+  color: var(--gold);
+  font-size: 18px;
+  letter-spacing: -0.08em;
+}
+
+.hatch-reveal-result strong i {
+  margin: 0 7px;
+  color: var(--muted);
+  font-style: normal;
+}
+
+.hatch-reveal-result small {
+  color: var(--muted);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+}
+
+.hatch-reveal-result .primary-button {
+  min-width: 180px;
+  min-height: 40px;
+  border-color: var(--gold);
+  background: var(--gold);
+}
+
+@keyframes egg-heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.035);
+  }
+}
+
+@keyframes egg-crack {
+  0%,
+  100% {
+    transform: rotate(-1deg) translateX(-2px);
+  }
+  50% {
+    transform: rotate(1deg) translateX(2px) scale(1.03);
+  }
+}
+
+@keyframes hatch-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
+@keyframes hatch-aura-expand {
+  0% {
+    opacity: 0.8;
+    transform: rotate(45deg) scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(225deg) scale(2.5);
+  }
+}
+
+@keyframes hatch-particle-burst {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--particle-angle)) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--particle-angle)) translateY(-190px) scale(0.4);
+  }
+}
+
+@media (max-width: 560px) {
+  .hatch-reveal-dialog {
+    width: calc(100vw - 12px);
+  }
+
+  .hatch-reveal-stage {
+    height: calc(100dvh - 12px);
+    min-height: 0;
+    padding: 10px;
+  }
+
+  .hatch-reveal-header {
+    align-items: flex-start;
+  }
+
+  .hatch-reveal-header strong {
+    font-size: 12px;
+  }
+
+  .hatch-reveal-header > b {
+    max-width: 130px;
+    text-align: right;
+  }
+
+  .egg-shell {
+    width: 136px;
+    height: 174px;
+  }
+
+  .egg-shell > span {
+    font-size: 50px;
+  }
+
+  .hatched-sigil {
+    width: 136px;
+    height: 136px;
+  }
+
+  .hatched-sigil .monster-sigil {
+    width: 96px;
+    height: 96px;
+  }
+
+  .hatched-sigil .monster-sigil > span {
+    font-size: 60px;
+  }
+
+  .hatched-monster h2 {
+    font-size: 25px;
+  }
+
+  .hatch-reveal-result {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hatch-reveal-result .primary-button {
+    width: 100%;
+    min-height: 36px;
+  }
+}
+
 .workbench-layout {
   display: grid;
   min-height: 0;

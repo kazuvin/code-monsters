@@ -9,11 +9,11 @@ import {
 import { createMonster } from './monster';
 
 describe('monster catalog discovery', () => {
-  it('lists all 45 monsters without exposing locked details', () => {
+  it('lists all 45 standard monsters and five oddities without exposing locked details', () => {
     const entries = monsterCatalogEntries(GAME_DATA, new Set());
 
-    expect(entries).toHaveLength(45);
-    expect(entries.every((entry) => entry.details?.kind !== 'oddity')).toBe(true);
+    expect(entries).toHaveLength(50);
+    expect(entries.filter((entry) => entry.id === 'buried-mole-1')).toHaveLength(1);
     expect(entries.every((entry) => entry.state === 'locked')).toBe(true);
     expect(entries.every((entry) => entry.details === undefined)).toBe(true);
   });
@@ -60,5 +60,16 @@ describe('monster catalog discovery', () => {
       'umbral-grove',
     ]);
     expect(unrelatedRelations).toEqual({ createdBy: [], usedBy: [] });
+  });
+
+  it('keeps both special recipe directions empty for oddity species', () => {
+    expect(specialRecipeRelationsFor(GAME_DATA, 'buried-mole-1')).toEqual({
+      createdBy: [],
+      usedBy: [],
+    });
+    expect(specialRecipeRelationsFor(GAME_DATA, 'mystery-egg-2')).toEqual({
+      createdBy: [],
+      usedBy: [],
+    });
   });
 });

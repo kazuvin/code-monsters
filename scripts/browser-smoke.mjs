@@ -104,7 +104,7 @@ const assertReadableMonsterCards = async (page, label, cardSelector, nameSelecto
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
 await desktop.addInitScript(() => {
-  window.localStorage.setItem('code-monsters:recipe-discovery:v3', JSON.stringify(['fire-spirit-3']));
+  window.localStorage.setItem('code-monsters:recipe-discovery:v3', JSON.stringify(['fire-spirit-3', 'buried-mole-1']));
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
@@ -157,8 +157,8 @@ await assertReadableMonsterCards(
 );
 await desktop.getByRole('button', { name: /モンスター図鑑/ }).click();
 await desktop.locator('.catalog-dialog[open]').waitFor();
-if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 45) {
-  throw new Error('Monster catalog does not show all 45 records');
+if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 50) {
+  throw new Error('Monster catalog does not show all 45 standard and five oddity records');
 }
 if ((await desktop.locator('.catalog-card.is-unlocked').count()) < 3) {
   throw new Error('Monsters welcomed during the draft were not unlocked in the catalog');
@@ -190,6 +190,21 @@ if ((await desktop.locator('.catalog-detail .recipe-card:not(.is-special)').coun
   throw new Error('Catalog detail recipe tab contains a non-special recipe');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-recipes-desktop.png', fullPage: true });
+await desktop.locator('.catalog-card[data-catalog-id="buried-mole-1"]').click();
+if ((await desktop.locator('.catalog-detail[data-catalog-detail-state="unlocked"]').count()) !== 1) {
+  throw new Error('Discovered oddity does not open as a complete catalog record');
+}
+await desktop.locator('.catalog-detail-tabs').getByRole('button', { name: '特殊配合' }).click();
+if ((await desktop.locator('.catalog-detail .monster-recipe-empty').count()) !== 2) {
+  throw new Error('Oddity catalog record does not keep both empty special breeding directions');
+}
+if (
+  (await desktop.getByText('このモンスターを作る特殊配合はありません。').count()) !== 1 ||
+  (await desktop.getByText('このモンスターを親として使う特殊配合はありません。').count()) !== 1
+) {
+  throw new Error('Oddity catalog record does not explain both unavailable special breeding directions');
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-catalog-oddity-desktop.png', fullPage: true });
 await desktop.locator('.catalog-card.is-unlocked').first().click();
 if ((await desktop.locator('.catalog-detail.is-unlocked .catalog-stat-grid span').count()) !== 7) {
   throw new Error('Discovered catalog record does not show all seven base stats');
@@ -806,8 +821,8 @@ await assertFitsViewport(mobile, 'Mobile workshop');
 
 await mobile.getByRole('button', { name: /モンスター図鑑/ }).click();
 await mobile.locator('.catalog-dialog[open]').waitFor();
-if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 45) {
-  throw new Error('Mobile monster catalog does not show all 45 records');
+if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 50) {
+  throw new Error('Mobile monster catalog does not show all 45 standard and five oddity records');
 }
 await assertReadableMonsterCards(
   mobile,
@@ -1017,6 +1032,66 @@ if (
 await playtest.locator('.playtest-ledger').scrollIntoViewIfNeeded();
 await playtest.screenshot({ path: '/tmp/code-monsters-playtest-report-mobile.png' });
 
+const hatchTarget = new URL(target);
+hatchTarget.searchParams.set('seed', '242');
+const hatchPage = await browser.newPage({
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: 1,
+  hasTouch: true,
+  isMobile: true,
+});
+watchErrors(hatchPage);
+await hatchPage.goto(hatchTarget.toString(), { waitUntil: 'networkidle' });
+for (let round = 0; round < 3; round += 1) {
+  await hatchPage.locator('.draft-choice .monster-card-footer button').first().click();
+}
+await hatchPage.getByRole('heading', { name: '旅商人の棚' }).waitFor();
+if ((await hatchPage.locator('.shop-monsters .definition-card').filter({ hasText: 'まだら卵' }).count()) !== 2) {
+  throw new Error('Seed 242 no longer exposes the two-egg hatch smoke fixture');
+}
+for (let egg = 0; egg < 2; egg += 1) {
+  await hatchPage
+    .locator('.shop-monsters .definition-card')
+    .filter({ hasText: 'まだら卵' })
+    .first()
+    .locator('.buy-button')
+    .click();
+}
+const ownedEgg = hatchPage.locator('.team-zone.is-bench .roster-card').filter({ hasText: 'まだら卵' }).first();
+await ownedEgg.click();
+if ((await hatchPage.locator('.monster-dialog .inspector-tabs button').count()) !== 3) {
+  throw new Error('Owned egg does not retain its special breeding page');
+}
+await hatchPage.locator('.monster-dialog .inspector-tabs').getByRole('button', { name: '特殊配合' }).click();
+if ((await hatchPage.locator('.monster-dialog .monster-recipe-empty').count()) !== 2) {
+  throw new Error('Owned egg does not show both unavailable special breeding directions');
+}
+await hatchPage.getByRole('button', { name: '閉じる', exact: true }).click();
+await hatchPage.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
+await hatchPage.getByRole('button', { name: '最後まで送る' }).click();
+await hatchPage.getByRole('button', { name: '結果を見る →' }).click();
+const hatchRewards = hatchPage.getByRole('button', { name: '報酬をすべて表示' });
+if ((await hatchRewards.count()) === 1) await hatchRewards.click();
+await hatchPage.locator('.result-screen[data-reveal-complete="true"]').waitFor();
+await hatchPage.getByRole('button', { name: 'NEXT CYCLE 2 旅を続ける' }).click();
+const hatchDialog = hatchPage.locator('.hatch-reveal-dialog[open]');
+await hatchDialog.waitFor();
+if (!((await hatchDialog.getAttribute('aria-label')) ?? '').endsWith('1/2')) {
+  throw new Error('Multi-egg reveal did not begin with the first hatch');
+}
+await hatchPage.locator('.hatch-reveal-dialog.hatch-stage-3').waitFor();
+await hatchPage.screenshot({ path: '/tmp/code-monsters-hatch-reveal-1-mobile.png' });
+await hatchPage.getByRole('button', { name: '次の卵を孵す' }).click();
+await hatchPage.waitForFunction(() =>
+  document.querySelector('.hatch-reveal-dialog')?.getAttribute('aria-label')?.endsWith('2/2'),
+);
+await hatchPage.locator('.hatch-reveal-dialog.hatch-stage-3').waitFor();
+await hatchPage.screenshot({ path: '/tmp/code-monsters-hatch-reveal-2-mobile.png' });
+await hatchPage.getByRole('button', { name: '旅へ戻る' }).click();
+await hatchDialog.waitFor({ state: 'hidden' });
+await hatchPage.getByRole('heading', { name: '旅商人の棚' }).waitFor();
+await assertFitsViewport(hatchPage, 'Mobile workshop after sequential hatches');
+
 await browser.close();
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
@@ -1028,6 +1103,7 @@ console.log(
       '/tmp/code-monsters-prospect-desktop.png',
       '/tmp/code-monsters-catalog-desktop.png',
       '/tmp/code-monsters-catalog-recipes-desktop.png',
+      '/tmp/code-monsters-catalog-oddity-desktop.png',
       '/tmp/code-monsters-stat-breakdown-desktop.png',
       '/tmp/code-monsters-monster-recipes-desktop.png',
       '/tmp/code-monsters-battle-desktop.png',
@@ -1049,6 +1125,8 @@ console.log(
       '/tmp/code-monsters-result-mobile.png',
       '/tmp/code-monsters-playtest-report-desktop.png',
       '/tmp/code-monsters-playtest-report-mobile.png',
+      '/tmp/code-monsters-hatch-reveal-1-mobile.png',
+      '/tmp/code-monsters-hatch-reveal-2-mobile.png',
     ],
   }),
 );

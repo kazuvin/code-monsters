@@ -89,9 +89,9 @@ describe('casual run', () => {
     });
   });
 
-  it('raises the buried mole farewell value linearly for every held battle', () => {
+  it('raises the buried mole farewell value faster at each three-battle holding band', () => {
     const run = finishDraft();
-    const values = [0, 1, 3, 6].map((cyclesHeld) => {
+    const values = [0, 1, 3, 6, 9, 12].map((cyclesHeld) => {
       const mole = createMonster(GAME_DATA, 'buried-mole-1', `buried-mole-${cyclesHeld}`, {
         cyclesHeld,
       });
@@ -100,7 +100,7 @@ describe('casual run', () => {
       return result.state.coins - run.coins;
     });
 
-    expect(values).toEqual([1, 2, 4, 7]);
+    expect(values).toEqual([1, 3, 7, 16, 28, 43]);
   });
 
   it('applies coin and active experience skills once after battle and advances held cycles', () => {
@@ -122,17 +122,17 @@ describe('casual run', () => {
       monsterReports: [],
     });
 
-    expect(result.coins).toBe(prepared.coins + 1);
+    expect(result.coins).toBe(prepared.coins + 2);
     expect(result.lastBattleRewards).toEqual({
-      coins: 1,
+      coins: 2,
       xpByMonsterId: {
-        [coinMonster.id]: 1,
-        [xpMonster.id]: 1,
-        [fighter.id]: 1,
+        [coinMonster.id]: 2,
+        [xpMonster.id]: 2,
+        [fighter.id]: 2,
       },
     });
     expect(result.roster.every((monster) => monster.cyclesHeld === 1)).toBe(true);
-    expect(result.roster.map((monster) => monster.xp)).toEqual([6, 6, 6]);
+    expect(result.roster.map((monster) => monster.xp)).toEqual([7, 7, 7]);
   });
 
   it('hatches eggs deterministically after one held battle within their rank cap', () => {

@@ -83,6 +83,8 @@ export type TraitStageDefinition = {
   description: string;
   battleStartEffects: EffectDefinition[];
   farewellCoinsPerHeldCycle?: number;
+  farewellCoinGrowthEveryHeldCycles?: number;
+  farewellCoinGrowthAmount?: number;
 };
 
 export type TraitDefinition = {

@@ -100,12 +100,18 @@ export type FarewellCoinBreakdown = {
 export function farewellCoinBreakdownFor(data: GameData, monster: MonsterInstance): FarewellCoinBreakdown {
   const definition = definitionFor(data, monster);
   const trait = data.traits.find((entry) => entry.id === definition.traitId);
-  const traitRate = trait?.stages[monster.colorStars].farewellCoinsPerHeldCycle ?? 0;
+  const traitStage = trait?.stages[monster.colorStars];
+  const traitRate = traitStage?.farewellCoinsPerHeldCycle ?? 0;
+  const growthEvery = Math.max(1, Math.floor(traitStage?.farewellCoinGrowthEveryHeldCycles ?? 1));
+  const growthAmount = traitStage?.farewellCoinGrowthAmount ?? 0;
+  const completedBands = Math.floor(monster.cyclesHeld / growthEvery);
+  const cyclesInCurrentBand = monster.cyclesHeld % growthEvery;
+  const growthUnits = (growthEvery * completedBands * (completedBands - 1)) / 2 + completedBands * cyclesInCurrentBand;
   const breakdown = {
     whiteStars: definition.sellPrice,
     level: Math.max(0, monster.level - 1) * data.rules.farewell.levelCoinPerLevel,
     colorStars: monster.colorStars * data.rules.farewell.colorStarCoinBonus,
-    trait: monster.cyclesHeld * traitRate,
+    trait: monster.cyclesHeld * traitRate + growthUnits * growthAmount,
   };
   return {
     ...breakdown,

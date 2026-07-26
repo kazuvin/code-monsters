@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "rules": {
-    "contentVersion": "casual-prototype-4",
+    "contentVersion": "casual-prototype-5",
     "maxCycles": 12,
     "maxLosses": 5,
     "rosterLimit": 7,
@@ -612,16 +612,16 @@
     {
       "id": "coin-snatch",
       "name": "銭さらい",
-      "description": "主力として戦闘を完了すると、戦闘終了時に1コインを拾う。1戦につき1回。",
+      "description": "主力として戦闘を完了すると、戦闘終了時に2コインを拾う。1戦につき1回。",
       "mpCost": 2,
       "targetScope": "single-enemy",
       "effects": [{ "kind": "damage", "scaling": "physical", "power": 72, "target": "action-target", "canCrit": true }],
-      "postBattleReward": { "kind": "coins", "amount": 1 }
+      "postBattleReward": { "kind": "coins", "amount": 2 }
     },
     {
       "id": "study-lantern",
       "name": "学灯の導き",
-      "description": "主力として戦闘を完了すると、主力全員が戦闘終了時に追加で経験値1を得る。",
+      "description": "主力として戦闘を完了すると、主力全員が戦闘終了時に追加で経験値2を得る。",
       "mpCost": 4,
       "targetScope": "single-enemy",
       "effects": [
@@ -634,7 +634,7 @@
           "target": "all-allies"
         }
       ],
-      "postBattleReward": { "kind": "active-xp", "amount": 1 }
+      "postBattleReward": { "kind": "active-xp", "amount": 2 }
     },
     {
       "id": "tail-swipe",
@@ -1023,19 +1023,25 @@
       "name": "埋蔵勘",
       "stages": [
         {
-          "description": "戦闘を1回終えるたび、別れでもらえるコインが1枚増える。",
+          "description": "別れコインが1戦ごとに2枚増え、3戦保持するたび以降の増加量がさらに1枚上がる。",
           "battleStartEffects": [],
-          "farewellCoinsPerHeldCycle": 1
+          "farewellCoinsPerHeldCycle": 2,
+          "farewellCoinGrowthEveryHeldCycles": 3,
+          "farewellCoinGrowthAmount": 1
         },
         {
-          "description": "戦闘を1回終えるたび、別れでもらえるコインが1枚増える。",
+          "description": "別れコインが1戦ごとに2枚増え、3戦保持するたび以降の増加量がさらに1枚上がる。",
           "battleStartEffects": [],
-          "farewellCoinsPerHeldCycle": 1
+          "farewellCoinsPerHeldCycle": 2,
+          "farewellCoinGrowthEveryHeldCycles": 3,
+          "farewellCoinGrowthAmount": 1
         },
         {
-          "description": "戦闘を1回終えるたび、別れでもらえるコインが1枚増える。",
+          "description": "別れコインが1戦ごとに2枚増え、3戦保持するたび以降の増加量がさらに1枚上がる。",
           "battleStartEffects": [],
-          "farewellCoinsPerHeldCycle": 1
+          "farewellCoinsPerHeldCycle": 2,
+          "farewellCoinGrowthEveryHeldCycles": 3,
+          "farewellCoinGrowthAmount": 1
         }
       ]
     },
