@@ -930,6 +930,18 @@ await mobile.waitForTimeout(1000);
 if ((await mobile.locator('.draft-grid .definition-card').count()) !== 3) {
   throw new Error('Mobile draft does not show three choices');
 }
+const mobileStarterLayout = await mobile.locator('.starter-pedestal').evaluateAll((pedestals) =>
+  pedestals.map((pedestal) => {
+    const box = pedestal.getBoundingClientRect();
+    return { left: box.left, top: box.top, width: box.width };
+  }),
+);
+if (
+  mobileStarterLayout.some(({ top }) => Math.abs(top - mobileStarterLayout[0].top) > 1) ||
+  mobileStarterLayout.some(({ width }) => width < 100)
+) {
+  throw new Error(`Mobile starters are not presented side by side: ${JSON.stringify(mobileStarterLayout)}`);
+}
 await assertReadableMonsterCards(mobile, 'Mobile draft', '.draft-grid .definition-card', '.monster-card-copy > strong');
 await assertFitsViewport(mobile, 'Mobile draft');
 await mobile.screenshot({ path: '/tmp/code-monsters-draft-mobile.png' });
