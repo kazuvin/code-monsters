@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "rules": {
-    "contentVersion": "casual-prototype-6",
+    "contentVersion": "casual-prototype-7",
     "maxCycles": 12,
     "maxLosses": 5,
     "rosterLimit": 7,
@@ -24,7 +24,7 @@
       "equipmentSlots": 2,
       "rerollCost": 1,
       "luckyUpgradeChance": 0.02,
-      "oddityOfferChance": 0.12
+      "rareOfferChance": 0.12
     },
     "breeding": {
       "minimumLevel": 3,
@@ -61,14 +61,14 @@
   "experienceProfiles": [
     { "id": "early", "name": "早熟", "thresholds": [0, 2, 4, 10, 18, 29, 43, 60, 81, 105] },
     { "id": "standard", "name": "標準", "thresholds": [0, 2, 4, 12, 23, 36, 52, 71, 93, 118] },
-    { "id": "late", "name": "晩成", "thresholds": [0, 2, 4, 14, 28, 46, 68, 94, 124, 158] }
+    { "id": "late", "name": "晩成", "thresholds": [0, 2, 4, 12, 24, 39, 57, 78, 102, 129] }
   ],
   "statGrowthProfiles": [
     { "id": "steady", "name": "均等成長", "incrementsByLevel": [1, 1, 1, 1, 1, 1, 1, 1, 1] },
     {
       "id": "late-surge",
       "name": "後半加速",
-      "incrementsByLevel": [0.45, 0.55, 0.7, 0.95, 1.3, 1.7, 2.2, 2.85, 3.55]
+      "incrementsByLevel": [0.75, 0.85, 0.95, 1.1, 1.3, 1.55, 1.85, 2.2, 2.6]
     }
   ],
   "roleTags": [
@@ -96,7 +96,8 @@
           "appearance": { "body": "🦎", "attire": "·", "form": "whelp" },
           "intrinsicSkillIds": ["halo-bite", "scale-wall"],
           "defaultSkillId": "tail-swipe",
-          "traitId": "whelp-instinct"
+          "traitId": "whelp-instinct",
+          "statGrowthProfileId": "late-surge"
         },
         {
           "name": "曙光ドレイク",
@@ -296,7 +297,8 @@
           "appearance": { "body": "👹", "attire": "·", "form": "whelp" },
           "intrinsicSkillIds": ["void-needle", "silence-mark"],
           "defaultSkillId": "arc-shot",
-          "traitId": "impish-opening"
+          "traitId": "impish-opening",
+          "statGrowthProfileId": "late-surge"
         },
         {
           "name": "夜帳グレムリン",
@@ -496,7 +498,8 @@
           "appearance": { "body": "🔥", "attire": "·", "form": "whelp" },
           "intrinsicSkillIds": ["quick-flare", "haste-song"],
           "defaultSkillId": "spirit-spark",
-          "traitId": "mote-awakening"
+          "traitId": "mote-awakening",
+          "statGrowthProfileId": "late-surge"
         },
         {
           "name": "火花ピクシー",
@@ -533,12 +536,11 @@
       ]
     }
   ],
-  "oddities": [
+  "standaloneMonsters": [
     {
       "id": "buried-mole-1",
       "archetypeId": "buried-mole",
-      "kind": "oddity",
-      "breedingMode": "none",
+      "shopAvailability": "rare",
       "lineageId": "spirit",
       "attributeId": "dark",
       "name": "埋蔵モグラ",
@@ -559,8 +561,7 @@
     {
       "id": "coin-crow-1",
       "archetypeId": "coin-crow",
-      "kind": "oddity",
-      "breedingMode": "same-name-only",
+      "shopAvailability": "rare",
       "lineageId": "demon",
       "attributeId": "dark",
       "name": "銭羽ガラス",
@@ -581,8 +582,7 @@
     {
       "id": "study-owl-1",
       "archetypeId": "study-owl",
-      "kind": "oddity",
-      "breedingMode": "same-name-only",
+      "shopAvailability": "rare",
       "lineageId": "spirit",
       "attributeId": "light",
       "name": "学灯フクロウ",
@@ -596,15 +596,14 @@
       "roleTagIds": ["economy", "support"],
       "intrinsicSkillIds": ["study-lantern", "mend"],
       "defaultSkillId": "spirit-spark",
-      "traitId": "morning-dew",
+      "traitId": "scholar-lantern",
       "price": 3,
       "sellPrice": 1
     },
     {
       "id": "mystery-egg-1",
       "archetypeId": "mystery-egg",
-      "kind": "oddity",
-      "breedingMode": "none",
+      "shopAvailability": "rare",
       "lineageId": "spirit",
       "attributeId": "light",
       "name": "まだら卵",
@@ -630,8 +629,7 @@
     {
       "id": "mystery-egg-2",
       "archetypeId": "mystery-egg",
-      "kind": "oddity",
-      "breedingMode": "none",
+      "shopAvailability": "upgrade-only",
       "lineageId": "spirit",
       "attributeId": "light",
       "name": "星殻の卵",
@@ -657,8 +655,7 @@
     {
       "id": "slumbering-grove-1",
       "archetypeId": "slumbering-grove",
-      "kind": "oddity",
-      "breedingMode": "none",
+      "shopAvailability": "rare",
       "lineageId": "spirit",
       "attributeId": "dark",
       "name": "年輪獣ネムルガ",
@@ -673,6 +670,27 @@
       "intrinsicSkillIds": ["scale-wall", "mend"],
       "defaultSkillId": "spirit-spark",
       "traitId": "ancient-carapace",
+      "price": 3,
+      "sellPrice": 1
+    },
+    {
+      "id": "training-lynx-1",
+      "archetypeId": "training-lynx",
+      "shopAvailability": "rare",
+      "lineageId": "demon",
+      "attributeId": "fire",
+      "name": "修練ヤマネコ",
+      "whiteStars": 1,
+      "glyph": "鍛",
+      "appearance": { "body": "🐈", "attire": "拳", "form": "scout" },
+      "baseStats": { "maxHp": 72, "maxMp": 26, "attack": 24, "defense": 18, "speed": 29, "wisdom": 16, "crit": 8 },
+      "growthPerLevel": { "maxHp": 6, "maxMp": 2, "attack": 3, "defense": 2, "speed": 4, "wisdom": 2, "crit": 1 },
+      "experienceProfileId": "early",
+      "statGrowthProfileId": "steady",
+      "roleTagIds": ["economy", "physical", "speed"],
+      "intrinsicSkillIds": ["training-pounce", "haste-song"],
+      "defaultSkillId": "tail-swipe",
+      "traitId": "impish-opening",
       "price": 3,
       "sellPrice": 1
     }
@@ -694,7 +712,7 @@
     {
       "id": "study-lantern",
       "name": "学灯の導き",
-      "description": "色星0は主力で主力全員に経験値2。色星1は控えからも発動し、色星2は控えを含む全員へ届く。",
+      "description": "魔法攻撃と同時に、味方全体の賢さを上げる。",
       "mpCost": 4,
       "targetScope": "single-enemy",
       "effects": [
@@ -706,12 +724,19 @@
           "durationSeconds": 6,
           "target": "all-allies"
         }
-      ],
+      ]
+    },
+    {
+      "id": "training-pounce",
+      "name": "実戦修練",
+      "description": "このスキルを持つ個体は、ダメージ行動のたびに色星0/1/2で経験値1/2/3を得る。1戦4回まで。",
+      "mpCost": 2,
+      "targetScope": "single-enemy",
+      "effects": [{ "kind": "damage", "scaling": "physical", "power": 76, "target": "action-target", "canCrit": true }],
       "runReward": {
-        "kind": "xp-aura",
-        "amountsByColorStars": [2, 2, 2],
-        "activatesFromBenchAtColorStars": 1,
-        "targetsRosterAtColorStars": 2
+        "kind": "xp-per-damage-action",
+        "amountsByColorStars": [1, 2, 3],
+        "maximumTriggersPerBattle": 4
       }
     },
     {
@@ -1120,6 +1145,27 @@
           "farewellCoinsPerHeldCycle": 2,
           "farewellCoinGrowthEveryHeldCycles": 3,
           "farewellCoinGrowthAmount": 1
+        }
+      ]
+    },
+    {
+      "id": "scholar-lantern",
+      "name": "学びの灯",
+      "stages": [
+        {
+          "description": "主力にいると、戦闘終了時に主力全員が追加経験値2を得る。",
+          "battleStartEffects": [],
+          "postBattleXpAura": { "amount": 2, "activatesFromBench": false, "targets": "active" }
+        },
+        {
+          "description": "控えにいても発動し、戦闘終了時に主力全員が追加経験値2を得る。",
+          "battleStartEffects": [],
+          "postBattleXpAura": { "amount": 2, "activatesFromBench": true, "targets": "active" }
+        },
+        {
+          "description": "控えにいても発動し、戦闘終了時に仲間全員が追加経験値2を得る。",
+          "battleStartEffects": [],
+          "postBattleXpAura": { "amount": 2, "activatesFromBench": true, "targets": "roster" }
         }
       ]
     },

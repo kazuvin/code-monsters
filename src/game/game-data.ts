@@ -13,11 +13,11 @@ const fileData = rawGameData as RawGameData;
 const catalogMonsters: MonsterDefinition[] = fileData.archetypes.flatMap((archetype) =>
   archetype.forms.map((form, index) => {
     const whiteStars = (index + 1) as WhiteStars;
+    const statGrowthProfileId = form.statGrowthProfileId ?? 'steady';
     return {
       id: `${archetype.attributeId}-${archetype.lineageId}-${whiteStars}`,
       archetypeId: archetype.id,
-      kind: 'standard' as const,
-      breedingMode: 'full' as const,
+      shopAvailability: index === 0 ? ('common' as const) : ('upgrade-only' as const),
       lineageId: archetype.lineageId,
       attributeId: archetype.attributeId,
       name: form.name,
@@ -27,8 +27,11 @@ const catalogMonsters: MonsterDefinition[] = fileData.archetypes.flatMap((archet
       baseStats: scaleStats(archetype.baseStats, fileData.rankStatMultipliers[index] ?? 1),
       growthPerLevel: scaleStats(archetype.growthPerLevel, 1 + index * 0.08),
       experienceProfileId: fileData.rules.experienceProfileIdsByWhiteStars[index] ?? 'standard',
-      statGrowthProfileId: 'steady',
-      roleTagIds: archetype.roleTagIds,
+      statGrowthProfileId,
+      roleTagIds:
+        statGrowthProfileId === 'late-surge'
+          ? [...new Set(['late-bloom', ...archetype.roleTagIds])]
+          : archetype.roleTagIds,
       intrinsicSkillIds: form.intrinsicSkillIds,
       defaultSkillId: form.defaultSkillId,
       traitId: form.traitId,
@@ -38,7 +41,7 @@ const catalogMonsters: MonsterDefinition[] = fileData.archetypes.flatMap((archet
   }),
 );
 
-const monsters: MonsterDefinition[] = [...catalogMonsters, ...fileData.oddities];
+const monsters: MonsterDefinition[] = [...catalogMonsters, ...fileData.standaloneMonsters];
 
 export const GAME_DATA: GameData = { ...fileData, monsters };
 
@@ -87,21 +90,9 @@ export function validateGameData(data: GameData): string[] {
 
   if (data.lineages.length !== 3) errors.push('Validation catalog must contain exactly 3 lineages');
   if (data.attributes.length !== 3) errors.push('Validation catalog must contain exactly 3 attributes');
-  const standardMonsters = data.monsters.filter((monster) => monster.kind === 'standard');
-  const oddities = data.monsters.filter((monster) => monster.kind === 'oddity');
-  if (standardMonsters.length !== 45) errors.push('Validation catalog must expand to exactly 45 monsters');
-  if (standardMonsters.some((monster) => monster.breedingMode !== 'full')) {
-    errors.push('Standard monsters must allow full breeding');
-  }
-  if (
-    oddities.some(
-      (monster) =>
-        monster.breedingMode === 'full' ||
-        (monster.breedingMode === 'same-name-only' && !(monster.id === 'coin-crow-1' || monster.id === 'study-owl-1')),
-    )
-  ) {
-    errors.push('Only reward oddities may allow same-name breeding');
-  }
+  const lineageGridIds = new Set(data.archetypes.map((archetype) => archetype.id));
+  const lineageGridMonsters = data.monsters.filter((monster) => lineageGridIds.has(monster.archetypeId));
+  if (lineageGridMonsters.length !== 45) errors.push('Validation catalog must expand to exactly 45 grid monsters');
   if (data.rules.activeLimit !== 3) errors.push('The validation battle format must be 3v3');
   if (data.rules.rosterLimit !== data.rules.activeLimit + data.rules.benchLimit) {
     errors.push('rosterLimit must equal activeLimit plus benchLimit');
@@ -150,6 +141,9 @@ export function validateGameData(data: GameData): string[] {
     for (const tagId of monster.roleTagIds) {
       if (!roleTagIds.has(tagId)) errors.push(`${monster.id} references unknown role tag "${tagId}"`);
     }
+    if (!['common', 'rare', 'upgrade-only'].includes(monster.shopAvailability)) {
+      errors.push(`${monster.id} has an invalid shop availability`);
+    }
   }
   for (const archetype of data.archetypes) {
     if (archetype.forms.length !== 5) errors.push(`${archetype.id} needs exactly five white-star forms`);
@@ -185,23 +179,23 @@ export function validateGameData(data: GameData): string[] {
       errors.push(`${recipe.id} references unknown result "${recipe.resultDefinitionId}"`);
     }
   }
-  for (const oddity of oddities) {
-    const skillIdsForOddity = [...oddity.intrinsicSkillIds, oddity.defaultSkillId];
-    if (new Set(skillIdsForOddity).size !== 3) errors.push(`${oddity.id} must have three different skills`);
-    for (const skillId of skillIdsForOddity) {
-      if (!skillIds.has(skillId)) errors.push(`${oddity.id} references unknown skill "${skillId}"`);
+  for (const monster of data.standaloneMonsters) {
+    const skillIdsForMonster = [...monster.intrinsicSkillIds, monster.defaultSkillId];
+    if (new Set(skillIdsForMonster).size !== 3) errors.push(`${monster.id} must have three different skills`);
+    for (const skillId of skillIdsForMonster) {
+      if (!skillIds.has(skillId)) errors.push(`${monster.id} references unknown skill "${skillId}"`);
     }
-    if (!traitIds.has(oddity.traitId)) errors.push(`${oddity.id} references unknown trait "${oddity.traitId}"`);
-    if (oddity.hatch) {
-      if (oddity.hatch.afterHeldCycles < 1) errors.push(`${oddity.id} must be held for at least one cycle`);
-      if (oddity.hatch.maximumWhiteStars < oddity.whiteStars) {
-        errors.push(`${oddity.id} hatch maximum cannot be below its egg rank`);
+    if (!traitIds.has(monster.traitId)) errors.push(`${monster.id} references unknown trait "${monster.traitId}"`);
+    if (monster.hatch) {
+      if (monster.hatch.afterHeldCycles < 1) errors.push(`${monster.id} must be held for at least one cycle`);
+      if (monster.hatch.maximumWhiteStars < monster.whiteStars) {
+        errors.push(`${monster.id} hatch maximum cannot be below its egg rank`);
       }
-      if (oddity.hatch.maximumWhiteStars > Math.min(5, oddity.whiteStars + 1)) {
-        errors.push(`${oddity.id} hatch maximum can be at most one rank above its egg rank`);
+      if (monster.hatch.maximumWhiteStars > Math.min(5, monster.whiteStars + 1)) {
+        errors.push(`${monster.id} hatch maximum can be at most one rank above its egg rank`);
       }
-      if (oddity.hatch.upgradeChance < 0 || oddity.hatch.upgradeChance > 1) {
-        errors.push(`${oddity.id} has an invalid hatch upgrade chance`);
+      if (monster.hatch.upgradeChance < 0 || monster.hatch.upgradeChance > 1) {
+        errors.push(`${monster.id} has an invalid hatch upgrade chance`);
       }
     }
   }
@@ -212,7 +206,7 @@ export function validateGameData(data: GameData): string[] {
       errors.push(`${skill.id} needs positive run-reward amounts`);
     }
     if (
-      skill.runReward?.kind === 'coins-per-damage-action' &&
+      skill.runReward &&
       (!Number.isInteger(skill.runReward.maximumTriggersPerBattle) || skill.runReward.maximumTriggersPerBattle < 1)
     ) {
       errors.push(`${skill.id} needs a positive run-reward trigger cap`);
@@ -232,6 +226,9 @@ export function validateGameData(data: GameData): string[] {
       }
       if ((stage.farewellCoinGrowthAmount ?? 0) < 0) {
         errors.push(`${trait.id} has a negative farewell growth amount`);
+      }
+      if (stage.postBattleXpAura && stage.postBattleXpAura.amount <= 0) {
+        errors.push(`${trait.id} needs a positive post-battle experience aura`);
       }
     }
   }

@@ -18,26 +18,6 @@ export function listBreedingCandidates(
   const firstDefinition = definitionFor(data, first);
   const secondDefinition = definitionFor(data, second);
   const candidates: BreedingCandidate[] = [];
-  if (firstDefinition.breedingMode === 'none' || secondDefinition.breedingMode === 'none') return candidates;
-  if (firstDefinition.breedingMode === 'same-name-only' || secondDefinition.breedingMode === 'same-name-only') {
-    if (
-      firstDefinition.breedingMode === 'same-name-only' &&
-      secondDefinition.breedingMode === 'same-name-only' &&
-      first.definitionId === second.definitionId
-    ) {
-      const nextColor = Math.min(2, Math.max(first.colorStars, second.colorStars) + 1) as ColorStars;
-      if (nextColor > Math.max(first.colorStars, second.colorStars)) {
-        candidates.push({
-          id: candidateId('same-name', firstDefinition.id, nextColor),
-          kind: 'same-name',
-          definitionId: firstDefinition.id,
-          colorStars: nextColor,
-          label: `同名配合 → 色星${nextColor}`,
-        });
-      }
-    }
-    return candidates;
-  }
   const averagedWhiteStars = Math.min(
     5,
     Math.ceil((effectiveStarsFor(data, first) + effectiveStarsFor(data, second)) / 2),
@@ -49,12 +29,12 @@ export function listBreedingCandidates(
     { lineageId: secondDefinition.lineageId, attributeId: firstDefinition.attributeId },
   ];
   for (const pair of genericPairs) {
+    const archetype = data.archetypes.find(
+      (entry) => entry.lineageId === pair.lineageId && entry.attributeId === pair.attributeId,
+    );
+    if (!archetype) continue;
     const definition = data.monsters.find(
-      (entry) =>
-        entry.kind === 'standard' &&
-        entry.lineageId === pair.lineageId &&
-        entry.attributeId === pair.attributeId &&
-        entry.whiteStars === resultWhiteStars,
+      (entry) => entry.archetypeId === archetype.id && entry.whiteStars === resultWhiteStars,
     );
     if (!definition) continue;
     if (

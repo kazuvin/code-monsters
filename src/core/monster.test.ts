@@ -29,7 +29,7 @@ describe('monster stat breakdown', () => {
     const definition = definitionFor(GAME_DATA, monster);
     const growth = Math.floor(
       definition.growthPerLevel.attack *
-        (monster.level - 1) *
+        statGrowthUnitsForLevel(GAME_DATA, definition, monster.level) *
         GAME_DATA.rules.breeding.colorGrowthBonus[monster.colorStars],
     );
 
@@ -67,15 +67,27 @@ describe('monster growth profiles', () => {
     }
   });
 
-  it('makes the late-bloom specimen slower after level three and much stronger near level ten', () => {
+  it('keeps late bloom near the normal level pace while back-loading stat growth', () => {
     const late = GAME_DATA.monsters.find((monster) => monster.id === 'slumbering-grove-1');
     const standard = GAME_DATA.monsters.find((monster) => monster.id === 'light-dragon-2');
     if (!late || !standard) throw new Error('Expected late and standard growth specimens');
 
-    expect(experienceThresholdsFor(GAME_DATA, late)).toEqual([0, 2, 4, 14, 28, 46, 68, 94, 124, 158]);
+    expect(experienceThresholdsFor(GAME_DATA, late)).toEqual([0, 2, 4, 12, 24, 39, 57, 78, 102, 129]);
     expect(statGrowthUnitsForLevel(GAME_DATA, late, 3)).toBeLessThan(statGrowthUnitsForLevel(GAME_DATA, standard, 3));
+    expect(statGrowthUnitsForLevel(GAME_DATA, late, 3)).toBeGreaterThanOrEqual(1.5);
     expect(statGrowthUnitsForLevel(GAME_DATA, late, 10)).toBeGreaterThan(
       statGrowthUnitsForLevel(GAME_DATA, standard, 10),
     );
+  });
+
+  it('adds late stat growth to existing rank-one monsters without slowing their early experience', () => {
+    for (const definitionId of ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1']) {
+      const definition = GAME_DATA.monsters.find((monster) => monster.id === definitionId);
+      if (!definition) throw new Error(`Expected ${definitionId}`);
+
+      expect(definition.experienceProfileId, definitionId).toBe('early');
+      expect(definition.statGrowthProfileId, definitionId).toBe('late-surge');
+      expect(definition.roleTagIds, definitionId).toContain('late-bloom');
+    }
   });
 });

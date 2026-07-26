@@ -46,15 +46,38 @@ describe('breeding', () => {
     );
   });
 
-  it('allows crow and owl color-star growth only through same-name breeding', () => {
+  it('lets every standalone monster use ordinary lineage and attribute breeding', () => {
     const firstCrow = createMonster(GAME_DATA, 'coin-crow-1', 'crow-1', { xp: 4 });
     const secondCrow = createMonster(GAME_DATA, 'coin-crow-1', 'crow-2', { xp: 4 });
     const owl = createMonster(GAME_DATA, 'study-owl-1', 'owl', { xp: 4 });
+    const mole = createMonster(GAME_DATA, 'buried-mole-1', 'mole', { xp: 4 });
+    const fireDragon = createMonster(GAME_DATA, 'fire-dragon-1', 'dragon', { xp: 4 });
+    const egg = createMonster(GAME_DATA, 'mystery-egg-1', 'egg', { xp: 4 });
 
-    expect(listBreedingCandidates(GAME_DATA, firstCrow, secondCrow)).toEqual([
-      expect.objectContaining({ definitionId: 'coin-crow-1', colorStars: 1, kind: 'same-name' }),
-    ]);
-    expect(listBreedingCandidates(GAME_DATA, firstCrow, owl)).toEqual([]);
+    expect(listBreedingCandidates(GAME_DATA, firstCrow, secondCrow)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ definitionId: 'coin-crow-1', colorStars: 1, kind: 'same-name' }),
+        expect.objectContaining({ definitionId: 'dark-demon-2', kind: 'generic' }),
+      ]),
+    );
+    expect(listBreedingCandidates(GAME_DATA, firstCrow, owl)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ definitionId: 'dark-spirit-2', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'light-demon-2', kind: 'generic' }),
+      ]),
+    );
+    expect(listBreedingCandidates(GAME_DATA, mole, fireDragon)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ definitionId: 'fire-spirit-2', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'dark-dragon-2', kind: 'generic' }),
+      ]),
+    );
+    expect(listBreedingCandidates(GAME_DATA, egg, firstCrow)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ definitionId: 'dark-spirit-2', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'light-demon-2', kind: 'generic' }),
+      ]),
+    );
   });
 
   it('inherits permanent stats at the color-star rate and only one selected skill', () => {

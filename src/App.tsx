@@ -381,7 +381,7 @@ const runRewardTextFor = (skill: SkillDefinition) => {
   if (reward.kind === 'coins-per-damage-action') {
     return `ダメージ行動ごとに色星0/1/2で${reward.amountsByColorStars.join('/')}コイン · 1戦${reward.maximumTriggersPerBattle}回まで`;
   }
-  return `色星0は主力全員EXP +${reward.amountsByColorStars[0]} · 色星1で控え発動 · 色星2で全員対象`;
+  return `ダメージ行動ごとに本人が色星0/1/2でEXP +${reward.amountsByColorStars.join('/')} · 1戦${reward.maximumTriggersPerBattle}回まで`;
 };
 
 const skillTagsFor = (skill: SkillDefinition) => {
@@ -1181,8 +1181,8 @@ function ShopView({
           <span className="section-index">MONSTER EXCHANGE</span>
           <h2>旅商人の棚</h2>
           <small className="shop-luck-readout">
-            ⭐2 出現率 {Math.round((GAME_DATA.rules.shop.luckyUpgradeChance + run.shopLuckBonus) * 100)}% · 奇獣
-            {Math.round(GAME_DATA.rules.shop.oddityOfferChance * 100)}%
+            ⭐2 出現率 {Math.round((GAME_DATA.rules.shop.luckyUpgradeChance + run.shopLuckBonus) * 100)}% · 希少入荷
+            {Math.round(GAME_DATA.rules.shop.rareOfferChance * 100)}%
           </small>
         </div>
         <div className="shop-actions">
@@ -1216,8 +1216,8 @@ function ShopView({
               eyebrow={
                 offer.lucky
                   ? 'LUCKY RANK UP'
-                  : definition.kind === 'oddity'
-                    ? 'ODDITY / 旅の奇獣'
+                  : definition.shopAvailability === 'rare'
+                    ? 'RARE ARRIVAL / 珍しい旅仲間'
                     : `${attributeName(GAME_DATA, definition)}の気配`
               }
               onClick={() => setPreviewDefinitionId(definition.id)}
@@ -1797,8 +1797,7 @@ function BreedingView({
               <h3>親を2体選択</h3>
               {run.roster.map((monster) => {
                 const definition = definitionFor(GAME_DATA, monster);
-                const breedingAllowed = definition.breedingMode !== 'none';
-                const eligible = breedingAllowed && monster.level >= GAME_DATA.rules.breeding.minimumLevel;
+                const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel;
                 return (
                   <button
                     type="button"
@@ -1828,12 +1827,8 @@ function BreedingView({
                           ? '位階上昇の核'
                           : parentIds.includes(monster.id)
                             ? '選択中'
-                            : definition.breedingMode === 'same-name-only'
-                              ? '同名だけ'
-                              : '選ぶ'
-                        : breedingAllowed
-                          ? 'Lv.3必要'
-                          : '配合不可'}
+                            : '選ぶ'
+                        : 'Lv.3必要'}
                     </b>
                   </button>
                 );

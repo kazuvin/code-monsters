@@ -104,7 +104,7 @@ const assertReadableMonsterCards = async (page, label, cardSelector, nameSelecto
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
 await desktop.addInitScript(() => {
-  window.localStorage.setItem('code-monsters:recipe-discovery:v3', JSON.stringify(['fire-spirit-3', 'buried-mole-1']));
+  window.localStorage.setItem('code-monsters:recipe-discovery:v4', JSON.stringify(['fire-spirit-3', 'buried-mole-1']));
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
@@ -157,8 +157,11 @@ await assertReadableMonsterCards(
 );
 await desktop.getByRole('button', { name: /モンスター図鑑/ }).click();
 await desktop.locator('.catalog-dialog[open]').waitFor();
-if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 51) {
-  throw new Error('Monster catalog does not show all 45 standard and six oddity records');
+if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 52) {
+  throw new Error('Monster catalog does not show all 45 lineage-grid and seven standalone records');
+}
+if ((await desktop.locator('.catalog-card[data-catalog-id="training-lynx-1"]').count()) !== 1) {
+  throw new Error('Attack-experience monster is missing from the catalog');
 }
 if ((await desktop.locator('.catalog-card.is-unlocked').count()) < 3) {
   throw new Error('Monsters welcomed during the draft were not unlocked in the catalog');
@@ -192,19 +195,19 @@ if ((await desktop.locator('.catalog-detail .recipe-card:not(.is-special)').coun
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-recipes-desktop.png', fullPage: true });
 await desktop.locator('.catalog-card[data-catalog-id="buried-mole-1"]').click();
 if ((await desktop.locator('.catalog-detail[data-catalog-detail-state="unlocked"]').count()) !== 1) {
-  throw new Error('Discovered oddity does not open as a complete catalog record');
+  throw new Error('Discovered standalone monster does not open as a complete catalog record');
 }
 await desktop.locator('.catalog-detail-tabs').getByRole('button', { name: '特殊配合' }).click();
 if ((await desktop.locator('.catalog-detail .monster-recipe-empty').count()) !== 2) {
-  throw new Error('Oddity catalog record does not keep both empty special breeding directions');
+  throw new Error('Standalone catalog record does not keep both empty special breeding directions');
 }
 if (
   (await desktop.getByText('このモンスターを作る特殊配合はありません。').count()) !== 1 ||
   (await desktop.getByText('このモンスターを親として使う特殊配合はありません。').count()) !== 1
 ) {
-  throw new Error('Oddity catalog record does not explain both unavailable special breeding directions');
+  throw new Error('Standalone catalog record does not explain both unavailable special breeding directions');
 }
-await desktop.screenshot({ path: '/tmp/code-monsters-catalog-oddity-desktop.png', fullPage: true });
+await desktop.screenshot({ path: '/tmp/code-monsters-catalog-standalone-desktop.png', fullPage: true });
 await desktop.locator('.catalog-card.is-unlocked').first().click();
 if ((await desktop.locator('.catalog-detail.is-unlocked .catalog-stat-grid span').count()) !== 7) {
   throw new Error('Discovered catalog record does not show all seven base stats');
@@ -831,8 +834,8 @@ await assertFitsViewport(mobile, 'Mobile workshop');
 
 await mobile.getByRole('button', { name: /モンスター図鑑/ }).click();
 await mobile.locator('.catalog-dialog[open]').waitFor();
-if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 51) {
-  throw new Error('Mobile monster catalog does not show all 45 standard and six oddity records');
+if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 52) {
+  throw new Error('Mobile monster catalog does not show all 45 lineage-grid and seven standalone records');
 }
 await assertReadableMonsterCards(
   mobile,
@@ -1047,7 +1050,7 @@ await playtest.locator('.playtest-ledger').scrollIntoViewIfNeeded();
 await playtest.screenshot({ path: '/tmp/code-monsters-playtest-report-mobile.png' });
 
 const hatchTarget = new URL(target);
-hatchTarget.searchParams.set('seed', '325');
+hatchTarget.searchParams.set('seed', '1638');
 const hatchPage = await browser.newPage({
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 1,
@@ -1061,7 +1064,7 @@ for (let round = 0; round < 3; round += 1) {
 }
 await hatchPage.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 if ((await hatchPage.locator('.shop-monsters .definition-card').filter({ hasText: 'まだら卵' }).count()) !== 2) {
-  throw new Error('Seed 325 no longer exposes the two-egg hatch smoke fixture');
+  throw new Error('Seed 1638 no longer exposes the two-egg hatch smoke fixture');
 }
 for (let egg = 0; egg < 2; egg += 1) {
   await hatchPage
@@ -1117,7 +1120,7 @@ console.log(
       '/tmp/code-monsters-prospect-desktop.png',
       '/tmp/code-monsters-catalog-desktop.png',
       '/tmp/code-monsters-catalog-recipes-desktop.png',
-      '/tmp/code-monsters-catalog-oddity-desktop.png',
+      '/tmp/code-monsters-catalog-standalone-desktop.png',
       '/tmp/code-monsters-stat-breakdown-desktop.png',
       '/tmp/code-monsters-monster-recipes-desktop.png',
       '/tmp/code-monsters-battle-desktop.png',

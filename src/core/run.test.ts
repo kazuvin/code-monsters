@@ -196,6 +196,46 @@ describe('casual run', () => {
     expect(result.lastBattleRewards).toEqual({ coins: 3, xpByMonsterId: {} });
   });
 
+  it('grants attack experience from the new skill and keeps the effect when inherited', () => {
+    const run = finishDraft();
+    const learner = createMonster(GAME_DATA, 'training-lynx-1', 'learner');
+    const inheritor = createMonster(GAME_DATA, 'fire-dragon-1', 'inheritor', {
+      colorStars: 1,
+      inheritedSkillId: 'training-pounce',
+    });
+    const prepared = {
+      ...run,
+      roster: [learner, inheritor],
+      activeIds: [learner.id, inheritor.id],
+    };
+
+    const result = applyBattleResult(GAME_DATA, prepared, {
+      winner: 'player',
+      durationSeconds: 12,
+      frames: [],
+      damageByTeam: { player: 1, enemy: 0 },
+      monsterReports: [
+        battleReportFor(learner.id, learner.definitionId, {
+          'training-pounce': 2,
+          'normal-attack': 1,
+          mend: 4,
+        }),
+        battleReportFor(inheritor.id, inheritor.definitionId, {
+          'normal-attack': 2,
+        }),
+      ],
+    });
+
+    expect(result.lastBattleRewards).toEqual({
+      coins: 0,
+      xpByMonsterId: {
+        [learner.id]: 3,
+        [inheritor.id]: 4,
+      },
+    });
+    expect(result.roster.map((monster) => monster.xp)).toEqual([8, 9]);
+  });
+
   it('unlocks the owl aura from the bench at color star one and reaches the whole roster at color star two', () => {
     const run = finishDraft();
     const active = createMonster(GAME_DATA, 'fire-dragon-1', 'fighter');

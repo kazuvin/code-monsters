@@ -5,8 +5,7 @@ export type AttributeId = 'light' | 'dark' | 'fire';
 export type WhiteStars = 1 | 2 | 3 | 4 | 5;
 export type ColorStars = 0 | 1 | 2;
 export type StatId = 'maxHp' | 'maxMp' | 'attack' | 'defense' | 'speed' | 'wisdom' | 'crit';
-export type MonsterKind = 'standard' | 'oddity';
-export type BreedingMode = 'full' | 'same-name-only' | 'none';
+export type ShopAvailability = 'common' | 'rare' | 'upgrade-only';
 
 export type StatBlock = Record<StatId, number>;
 
@@ -84,10 +83,9 @@ export type SkillDefinition = {
         maximumTriggersPerBattle: number;
       }
     | {
-        kind: 'xp-aura';
+        kind: 'xp-per-damage-action';
         amountsByColorStars: [number, number, number];
-        activatesFromBenchAtColorStars: ColorStars;
-        targetsRosterAtColorStars: ColorStars;
+        maximumTriggersPerBattle: number;
       };
 };
 
@@ -114,6 +112,11 @@ export type TraitStageDefinition = {
   farewellCoinsPerHeldCycle?: number;
   farewellCoinGrowthEveryHeldCycles?: number;
   farewellCoinGrowthAmount?: number;
+  postBattleXpAura?: {
+    amount: number;
+    activatesFromBench: boolean;
+    targets: 'active' | 'roster';
+  };
 };
 
 export type TraitDefinition = {
@@ -150,6 +153,7 @@ export type MonsterFormDefinition = {
   intrinsicSkillIds: [string, string];
   defaultSkillId: string;
   traitId: string;
+  statGrowthProfileId?: string;
 };
 
 export type MonsterArchetypeDefinition = {
@@ -171,8 +175,7 @@ export type MonsterArchetypeDefinition = {
 export type MonsterDefinition = {
   id: string;
   archetypeId: string;
-  kind: MonsterKind;
-  breedingMode: BreedingMode;
+  shopAvailability: ShopAvailability;
   lineageId: LineageId;
   attributeId: AttributeId;
   name: string;
@@ -261,7 +264,7 @@ export type GameRules = {
     equipmentSlots: number;
     rerollCost: number;
     luckyUpgradeChance: number;
-    oddityOfferChance: number;
+    rareOfferChance: number;
   };
   breeding: {
     minimumLevel: number;
@@ -295,7 +298,7 @@ export type RawGameData = {
   statGrowthProfiles: StatGrowthProfileDefinition[];
   roleTags: RoleTagDefinition[];
   archetypes: MonsterArchetypeDefinition[];
-  oddities: MonsterDefinition[];
+  standaloneMonsters: MonsterDefinition[];
   skills: SkillDefinition[];
   traits: TraitDefinition[];
   equipment: EquipmentDefinition[];

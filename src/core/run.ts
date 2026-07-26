@@ -20,7 +20,7 @@ import { createMonster } from './monster';
 const draftChoicesFor = (data: GameData, seed: number, round: number) => {
   const random = createSeededRandom(deriveSeed(seed, round + 1));
   return random
-    .shuffle(data.monsters.filter((monster) => monster.kind === 'standard' && monster.whiteStars === 1))
+    .shuffle(data.monsters.filter((monster) => monster.shopAvailability === 'common' && monster.whiteStars === 1))
     .slice(0, 3)
     .map((monster) => monster.id);
 };
@@ -351,9 +351,6 @@ export function breedInRun(
   const first = run.roster.find((monster) => monster.id === firstId);
   const second = run.roster.find((monster) => monster.id === secondId);
   if (!first || !second) return failure(run, '親モンスターが見つかりません');
-  if (definitionFor(data, first).breedingMode === 'none' || definitionFor(data, second).breedingMode === 'none') {
-    return failure(run, 'このモンスターは配合の親にできません');
-  }
   if (first.level < data.rules.breeding.minimumLevel || second.level < data.rules.breeding.minimumLevel) {
     return failure(run, `配合にはレベル${data.rules.breeding.minimumLevel}が必要です`);
   }
@@ -412,28 +409,33 @@ const battleRunRewardsFor = (
   ]);
   for (const monster of run.roster) {
     const active = run.activeIds.includes(monster.id);
+    const report = result.monsterReports.find((entry) => entry.id === monster.id && entry.team === 'player');
+    const damageActions = report
+      ? Object.entries(report.skillUses).reduce(
+          (total, [usedSkillId, uses]) => total + (damagingSkillIds.has(usedSkillId) ? uses : 0),
+          0,
+        )
+      : 1;
     for (const skillId of new Set(skillIdsFor(data, monster))) {
       const reward = data.skills.find((skill) => skill.id === skillId)?.runReward;
       if (!reward) continue;
       if (reward.kind === 'coins-per-damage-action' && active) {
-        const report = result.monsterReports.find((entry) => entry.id === monster.id && entry.team === 'player');
-        const damageActions = report
-          ? Object.entries(report.skillUses).reduce(
-              (total, [usedSkillId, uses]) => total + (damagingSkillIds.has(usedSkillId) ? uses : 0),
-              0,
-            )
-          : 1;
         const triggers = Math.min(reward.maximumTriggersPerBattle, damageActions);
         coins += triggers * (reward.amountsByColorStars[monster.colorStars] ?? 0);
       }
-      if (reward.kind === 'xp-aura') {
-        if (!active && monster.colorStars < reward.activatesFromBenchAtColorStars) continue;
-        const amount = reward.amountsByColorStars[monster.colorStars] ?? 0;
-        const targetIds =
-          monster.colorStars >= reward.targetsRosterAtColorStars ? run.roster.map((entry) => entry.id) : run.activeIds;
-        for (const targetId of targetIds) {
-          rawXpByMonsterId[targetId] = (rawXpByMonsterId[targetId] ?? 0) + amount;
-        }
+      if (reward.kind === 'xp-per-damage-action' && active) {
+        const triggers = Math.min(reward.maximumTriggersPerBattle, damageActions);
+        const amount = triggers * (reward.amountsByColorStars[monster.colorStars] ?? 0);
+        rawXpByMonsterId[monster.id] = (rawXpByMonsterId[monster.id] ?? 0) + amount;
+      }
+    }
+    const definition = definitionFor(data, monster);
+    const trait = data.traits.find((entry) => entry.id === definition.traitId);
+    const aura = trait?.stages[monster.colorStars].postBattleXpAura;
+    if (aura && (active || aura.activatesFromBench)) {
+      const targetIds = aura.targets === 'roster' ? run.roster.map((entry) => entry.id) : run.activeIds;
+      for (const targetId of targetIds) {
+        rawXpByMonsterId[targetId] = (rawXpByMonsterId[targetId] ?? 0) + aura.amount;
       }
     }
   }
@@ -499,8 +501,9 @@ const hatchMonster = (
     hatchRule.maximumWhiteStars,
     eggDefinition.whiteStars + (upgraded ? 1 : 0),
   ) as WhiteStars;
+  const lineageGridIds = new Set(data.archetypes.map((archetype) => archetype.id));
   const candidates = data.monsters.filter(
-    (monster) => monster.kind === 'standard' && monster.whiteStars === targetWhiteStars,
+    (monster) => lineageGridIds.has(monster.archetypeId) && monster.whiteStars === targetWhiteStars,
   );
   const resultDefinition = random.pick(candidates);
   return {

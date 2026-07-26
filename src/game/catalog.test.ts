@@ -2,19 +2,40 @@ import { describe, expect, it } from 'vitest';
 import { GAME_DATA, validateGameData } from './game-data';
 
 describe('DQM run game data', () => {
-  it('keeps the validation catalog at 45 species and adds six oddity definitions', () => {
-    const catalogMonsters = GAME_DATA.monsters.filter((monster) => monster.kind === 'standard');
-    const oddities = GAME_DATA.monsters.filter((monster) => monster.kind === 'oddity');
+  it('keeps the 45 lineage-grid species and seven ordinary standalone species without a monster-kind category', () => {
+    const lineageGridIds = new Set(GAME_DATA.archetypes.map((archetype) => archetype.id));
+    const lineageGridMonsters = GAME_DATA.monsters.filter((monster) => lineageGridIds.has(monster.archetypeId));
 
-    expect(catalogMonsters).toHaveLength(45);
-    expect(oddities).toHaveLength(6);
-    expect(new Set(GAME_DATA.monsters.map((monster) => monster.id)).size).toBe(51);
-    expect(new Set(GAME_DATA.monsters.map((monster) => monster.name)).size).toBe(51);
-    expect(GAME_DATA.monsters.find((monster) => monster.id === 'coin-crow-1')?.breedingMode).toBe('same-name-only');
-    expect(GAME_DATA.monsters.find((monster) => monster.id === 'study-owl-1')?.breedingMode).toBe('same-name-only');
+    expect(lineageGridMonsters).toHaveLength(45);
+    expect(GAME_DATA.standaloneMonsters).toHaveLength(7);
+    expect(new Set(GAME_DATA.monsters.map((monster) => monster.id)).size).toBe(52);
+    expect(new Set(GAME_DATA.monsters.map((monster) => monster.name)).size).toBe(52);
+    expect(GAME_DATA.monsters.every((monster) => !('kind' in monster) && !('breedingMode' in monster))).toBe(true);
     expect(GAME_DATA.monsters.find((monster) => monster.id === 'slumbering-grove-1')?.roleTagIds).toContain(
       'late-bloom',
     );
+    expect(GAME_DATA.monsters.find((monster) => monster.id === 'training-lynx-1')).toMatchObject({
+      lineageId: 'demon',
+      attributeId: 'fire',
+      whiteStars: 1,
+    });
+  });
+
+  it('keeps attack rewards on skills and the owl end-of-battle experience on its trait', () => {
+    const coinSkill = GAME_DATA.skills.find((skill) => skill.id === 'coin-snatch');
+    const trainingSkill = GAME_DATA.skills.find((skill) => skill.id === 'training-pounce');
+    const owlSkill = GAME_DATA.skills.find((skill) => skill.id === 'study-lantern');
+    const owl = GAME_DATA.monsters.find((monster) => monster.id === 'study-owl-1');
+    const owlTrait = GAME_DATA.traits.find((trait) => trait.id === owl?.traitId);
+
+    expect(coinSkill?.runReward?.kind).toBe('coins-per-damage-action');
+    expect(trainingSkill?.runReward?.kind).toBe('xp-per-damage-action');
+    expect(owlSkill?.runReward).toBeUndefined();
+    expect(owlTrait?.stages.map((stage) => stage.postBattleXpAura)).toEqual([
+      { amount: 2, activatesFromBench: false, targets: 'active' },
+      { amount: 2, activatesFromBench: true, targets: 'active' },
+      { amount: 2, activatesFromBench: true, targets: 'roster' },
+    ]);
   });
 
   it('contains every lineage, attribute, and white-star combination', () => {

@@ -9,10 +9,10 @@ import {
 import { createMonster } from './monster';
 
 describe('monster catalog discovery', () => {
-  it('lists all 45 standard monsters and six oddities without exposing locked details', () => {
+  it('lists all 52 monsters without exposing locked details', () => {
     const entries = monsterCatalogEntries(GAME_DATA, new Set());
 
-    expect(entries).toHaveLength(51);
+    expect(entries).toHaveLength(52);
     expect(entries.filter((entry) => entry.id === 'buried-mole-1')).toHaveLength(1);
     expect(entries.every((entry) => entry.state === 'locked')).toBe(true);
     expect(entries.every((entry) => entry.details === undefined)).toBe(true);
@@ -62,7 +62,7 @@ describe('monster catalog discovery', () => {
     expect(unrelatedRelations).toEqual({ createdBy: [], usedBy: [] });
   });
 
-  it('keeps both special recipe directions empty for oddity species', () => {
+  it('keeps both special recipe directions empty when a standalone species has no special recipe', () => {
     expect(specialRecipeRelationsFor(GAME_DATA, 'buried-mole-1')).toEqual({
       createdBy: [],
       usedBy: [],
