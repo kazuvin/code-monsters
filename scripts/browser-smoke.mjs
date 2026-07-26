@@ -162,6 +162,27 @@ await desktop.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 if ((await desktop.locator('.team-panel .roster-card.is-active').count()) !== 3) {
   throw new Error('Initial draft did not create a three-monster active party');
 }
+if ((await desktop.locator('.team-zone.is-active .roster-equipment-preview').count()) !== 3) {
+  throw new Error('Active formation does not show one equipment slot per monster');
+}
+if ((await desktop.locator('.team-zone.is-active .roster-gambit-row').count()) !== 9) {
+  throw new Error('Active formation does not expose all three gambits for every monster');
+}
+const preparationBoardLayout = await desktop.evaluate(() => {
+  const party = document.querySelector('.team-panel')?.getBoundingClientRect();
+  const shop = document.querySelector('.workbench')?.getBoundingClientRect();
+  const dock = document.querySelector('.prep-command-dock')?.getBoundingClientRect();
+  return {
+    partyWidth: party?.width ?? 0,
+    shopWidth: shop?.width ?? 0,
+    dockHeight: dock?.height ?? 0,
+  };
+});
+if (preparationBoardLayout.partyWidth <= preparationBoardLayout.shopWidth || preparationBoardLayout.dockHeight < 58) {
+  throw new Error(
+    `Preparation screen is not structured as a formation board: ${JSON.stringify(preparationBoardLayout)}`,
+  );
+}
 if ((await desktop.locator('.shop-monsters .definition-card, .shop-monsters .sold-slot').count()) !== 3) {
   throw new Error('Monster shop does not have three slots');
 }
@@ -1112,7 +1133,7 @@ for (let battleNumber = 0; battleNumber < 12; battleNumber += 1) {
   await playtest.locator('.result-screen[data-reveal-complete="true"]').waitFor();
   await playtest.locator('.result-actions .launch-button').click();
   await playtest.waitForFunction(() =>
-    Boolean(document.querySelector('.finished-screen, .event-choice-card, .battle-launcher')),
+    Boolean(document.querySelector('.finished-screen, .event-choice-card, .prep-command-dock')),
   );
 
   if ((await playtest.locator('.finished-screen').count()) === 1) break;
@@ -1121,7 +1142,7 @@ for (let battleNumber = 0; battleNumber < 12; battleNumber += 1) {
     await playtest.locator('.event-result-stage').waitFor();
     await playtest.getByRole('button', { name: '育成と編成へ進む' }).click();
   }
-  await playtest.locator('.battle-launcher').waitFor();
+  await playtest.locator('.prep-command-dock').waitFor();
 }
 
 await playtest.locator('.finished-screen').waitFor();

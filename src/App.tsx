@@ -1290,6 +1290,51 @@ function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (defini
   );
 }
 
+const compactGambitCondition = (condition: GambitCondition) => {
+  switch (condition.kind) {
+    case 'always':
+      return 'いつでも';
+    case 'self-hp-below':
+      return `自HP ≤ ${condition.threshold}%`;
+    case 'self-mp-above':
+      return `自MP ≥ ${condition.threshold}%`;
+    case 'ally-hp-below':
+      return `味方HP ≤ ${condition.threshold}%`;
+    case 'enemy-hp-below':
+      return `敵HP ≤ ${condition.threshold}%`;
+    case 'ally-has-status':
+      return `味方：${STATUS_LABELS[condition.statusId]}`;
+    case 'enemy-has-status':
+      return `敵：${STATUS_LABELS[condition.statusId]}`;
+    case 'living-count-at-most':
+      return `${condition.team === 'ally' ? '味方' : '敵'}残り${condition.count}体`;
+  }
+};
+
+const gambitActionPreview = (rule: GambitRule) => {
+  if (rule.action.skillId === 'normal-attack') {
+    return { mark: '⚔', name: '通常攻撃', target: TARGET_LABELS[rule.action.target] };
+  }
+  const skill = GAME_DATA.skills.find((entry) => entry.id === rule.action.skillId);
+  const effects = skill?.effects ?? [];
+  const mark = effects.some((effect) => effect.kind === 'heal')
+    ? '♥'
+    : effects.some((effect) => effect.kind === 'shield')
+      ? '◆'
+      : effects.some((effect) => effect.kind === 'status')
+        ? '✦'
+        : effects.some((effect) => effect.kind === 'atb')
+          ? '↻'
+          : effects.some((effect) => effect.kind === 'mp')
+            ? 'MP'
+            : '⚔';
+  return {
+    mark,
+    name: skill?.name ?? rule.action.skillId,
+    target: TARGET_LABELS[rule.action.target],
+  };
+};
+
 function RosterCard({
   monster,
   active,
@@ -1316,6 +1361,7 @@ function RosterCard({
   const definition = definitionFor(GAME_DATA, monster);
   const experienceProfile = experienceProfileFor(GAME_DATA, definition);
   const primaryRole = GAME_DATA.roleTags.find((entry) => entry.id === definition.roleTagIds[0])?.label;
+  const equipment = GAME_DATA.equipment.find((entry) => entry.id === monster.equipmentId);
   const holdTimer = useRef<number | undefined>(undefined);
   const dragging = useRef(false);
   const pointerIsDown = useRef(false);
@@ -1391,18 +1437,50 @@ function RosterCard({
       aria-pressed={selected}
       aria-label={`${definition.name}、${active ? '主力' : '控え'}。タップで詳細、長押しで移動`}
     >
-      <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="small" />
-      <span>
-        <small>{active ? 'ACTIVE' : 'BENCH'}</small>
+      <span className="roster-identity">
+        <small>{active ? `主力 ${slotIndex + 1}` : `控え ${slotIndex + 1}`}</small>
+        <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="small" />
         <strong>{definition.name}</strong>
         <i>
-          Lv.{monster.level} · {starText(definition.whiteStars, monster.colorStars)}
+          Lv.{monster.level} {starText(definition.whiteStars, monster.colorStars)}
         </i>
-        <em className="roster-growth-tag">
+        <em>
+          {lineageName(GAME_DATA, definition)} × {attributeName(GAME_DATA, definition)}
+        </em>
+        <span className="roster-role">
           {experienceProfile.name}
           {primaryRole ? ` · ${primaryRole}` : ''}
-        </em>
+        </span>
       </span>
+      {active && (
+        <>
+          <span className={`roster-equipment-preview${equipment ? '' : ' is-empty'}`}>
+            <b>{equipment?.glyph ?? '＋'}</b>
+            <span>
+              <small>装備</small>
+              <i>{equipment?.name ?? '装備なし'}</i>
+            </span>
+          </span>
+          <span className="roster-gambit-preview">
+            {monster.gambits.map((rule, index) => {
+              const action = gambitActionPreview(rule);
+              return (
+                <span
+                  className="roster-gambit-row"
+                  title={`${action.name} → ${action.target}`}
+                  key={`${monster.id}-${index}`}
+                >
+                  <b>{index + 1}</b>
+                  <i>{compactGambitCondition(rule.condition)}</i>
+                  <em>›</em>
+                  <span>{action.mark}</span>
+                  <small>{action.name}</small>
+                </span>
+              );
+            })}
+          </span>
+        </>
+      )}
     </button>
   );
 }
@@ -1471,8 +1549,8 @@ function TeamPanel({
   return (
     <aside className="team-panel panel">
       <div className="panel-heading">
-        <span>PARTY DECK</span>
-        <strong>長押しで編成</strong>
+        <span>編成ボード</span>
+        <strong>カードを長押しして並べ替え</strong>
       </div>
       <section
         className={`team-zone is-active${dropSlot?.zone === 'active' ? ' is-drop-target' : ''}`}
@@ -1495,7 +1573,8 @@ function TeamPanel({
               data-team-zone="active"
               data-slot-index={active.length + index}
             >
-              ＋
+              <span>＋</span>
+              <small>主力を配置</small>
             </div>
           ))}
         </div>
@@ -1521,7 +1600,7 @@ function TeamPanel({
               data-team-zone="bench"
               data-slot-index={bench.length + index}
             >
-              ·
+              <span>＋</span>
             </div>
           ))}
         </div>
@@ -1601,43 +1680,54 @@ function ShopView({
             );
           const definition = definitionById(GAME_DATA, offer.definitionId);
           const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
+          const eyebrow = offer.lucky
+            ? '星が多い'
+            : definition.shopAvailability === 'rare'
+              ? '珍しい旅仲間'
+              : attributeName(GAME_DATA, definition);
           return (
-            <DefinitionCard
+            <article
+              className="definition-card shop-offer-card"
+              style={monsterStyle(GAME_DATA, definition)}
               key={offer.id}
-              data={GAME_DATA}
-              definition={definition}
-              eyebrow={
-                offer.lucky
-                  ? '星が多い'
-                  : definition.shopAvailability === 'rare'
-                    ? '珍しい旅仲間'
-                    : `${attributeName(GAME_DATA, definition)}の気配`
-              }
-              onClick={() => setPreviewDefinitionId(definition.id)}
-              footer={
-                <div className="shop-card-footer">
-                  <span>{trait?.name}</span>
-                  <div className="shop-card-actions">
-                    <button
-                      type="button"
-                      className="card-detail-button"
-                      onClick={() => setPreviewDefinitionId(definition.id)}
-                    >
-                      能力を見る
-                    </button>
-                    <button
-                      type="button"
-                      className="buy-button"
-                      onClick={() =>
-                        onCommand(buyMonster(GAME_DATA, run, offer.id), `${definition.name}が仲間になりました`)
-                      }
-                    >
-                      迎える <b>{definition.price}</b>
-                    </button>
-                  </div>
+            >
+              <button
+                type="button"
+                className="definition-card-main"
+                onClick={() => setPreviewDefinitionId(definition.id)}
+                aria-label={`${definition.name}の能力を見る`}
+              >
+                <span className="shop-offer-attribute">{eyebrow}</span>
+                <MonsterSigil data={GAME_DATA} definition={definition} />
+                <span className="monster-card-copy">
+                  <strong>{definition.name}</strong>
+                  <span className="star-row">{starText(definition.whiteStars)}</span>
+                  <small>{lineageName(GAME_DATA, definition)}</small>
+                </span>
+              </button>
+              <div className="monster-card-footer shop-card-footer">
+                <span>{trait?.name}</span>
+                <div className="shop-card-actions">
+                  <button
+                    type="button"
+                    className="card-detail-button"
+                    onClick={() => setPreviewDefinitionId(definition.id)}
+                  >
+                    詳細
+                  </button>
+                  <button
+                    type="button"
+                    className="buy-button"
+                    onClick={() =>
+                      onCommand(buyMonster(GAME_DATA, run, offer.id), `${definition.name}が仲間になりました`)
+                    }
+                  >
+                    <span>●</span>
+                    <b>{definition.price}</b>
+                  </button>
                 </div>
-              }
-            />
+              </div>
+            </article>
           );
         })}
       </div>
@@ -1672,12 +1762,13 @@ function ShopView({
                   <small>{equipment.description}</small>
                 </div>
                 <footer>
-                  <span>COIN {equipment.price}</span>
                   <button
                     type="button"
+                    aria-label="購入"
                     onClick={() => onCommand(buyEquipment(GAME_DATA, run, offer.id), `${equipment.name}を購入しました`)}
                   >
-                    購入
+                    <span>●</span>
+                    <b>{equipment.price}</b>
                   </button>
                 </footer>
               </article>
@@ -3517,7 +3608,7 @@ function WorkshopScreen({
   };
 
   return (
-    <main className="run-screen">
+    <main className="run-screen prep-board">
       <RunHeader run={run} discoveredCount={discoveredMonsterIds.size} onOpenCatalog={() => setCatalogOpen(true)} />
       {(visibleHatchNoticeKey || notice) && (
         <div className="notice-stack" aria-live="polite" aria-atomic="true">
@@ -3568,24 +3659,6 @@ function WorkshopScreen({
           }}
         />
         <section className="workbench panel">
-          <nav className="workshop-tabs" aria-label="育成メニュー">
-            <button
-              type="button"
-              className="is-active"
-              aria-pressed={!breedingOpen}
-              onClick={() => setBreedingOpen(false)}
-            >
-              <span>01</span> ショップ
-            </button>
-            <button
-              type="button"
-              className={breedingOpen ? 'is-active' : ''}
-              aria-pressed={breedingOpen}
-              onClick={() => setBreedingOpen(true)}
-            >
-              <span>02</span> 配合
-            </button>
-          </nav>
           <ShopView run={run} onCommand={onCommand} onFreeze={() => setRun(toggleShopFreeze(run))} />
         </section>
       </div>
@@ -3614,11 +3687,37 @@ function WorkshopScreen({
         developerMode={developerMode}
         onClose={() => setCatalogOpen(false)}
       />
-      <footer className="battle-launcher">
-        <div>
-          <span>
-            {online ? 'NEXT / ONLINE RIVAL' : 'NEXT / ASYNC GHOST'} #{run.cycle.toString().padStart(2, '0')}
-          </span>
+      <footer className="prep-command-dock panel">
+        <nav className="workshop-tabs" aria-label="育成メニュー">
+          <button
+            type="button"
+            className="is-active"
+            aria-pressed={!breedingOpen}
+            onClick={() => setBreedingOpen(false)}
+          >
+            <span>01</span> ショップ
+          </button>
+          <button
+            type="button"
+            className={breedingOpen ? 'is-active' : ''}
+            aria-pressed={breedingOpen}
+            onClick={() => setBreedingOpen(true)}
+          >
+            <span>02</span> 配合
+          </button>
+        </nav>
+        <div className="prep-loss-track" aria-label={`5敗中${run.losses}敗`}>
+          <span>敗北</span>
+          <div>
+            {Array.from({ length: 5 }, (_, index) => (
+              <i className={index < run.losses ? 'is-lost' : ''} key={index}>
+                ♥
+              </i>
+            ))}
+          </div>
+        </div>
+        <div className="prep-readiness">
+          <span>{online ? 'オンライン対戦' : `次のゴースト #${run.cycle.toString().padStart(2, '0')}`}</span>
           <strong>
             {run.activeIds.length !== 3
               ? `主力をあと${3 - run.activeIds.length}体選択`

@@ -11671,3 +11671,1195 @@ button.effect-skill-card {
     min-height: 66px;
   }
 }
+
+/* Preparation board v2: formation builds, stock, and the next battle remain visible together. */
+.prep-board {
+  --prep-frame: #3b2922;
+  --prep-frame-high: #75533d;
+  --prep-sheet: #ead5ab;
+  --prep-sheet-high: #f7e6c4;
+  --prep-ink: #2c211d;
+  --prep-rule: #9a7b5b;
+  gap: 0;
+  background: linear-gradient(rgba(29, 17, 13, 0.1), rgba(29, 17, 13, 0.1));
+}
+
+.prep-board > .run-header {
+  min-height: 54px;
+}
+
+.prep-board > .cycle-rail {
+  min-height: 22px;
+  flex-basis: 22px;
+  margin: 5px 0 8px;
+}
+
+.prep-board .workbench-layout {
+  grid-template-columns: minmax(640px, 1.62fr) minmax(360px, 0.88fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.prep-board .team-panel,
+.prep-board .workbench {
+  border: 6px solid var(--prep-frame);
+  background: repeating-linear-gradient(1deg, transparent 0 19px, rgba(67, 45, 32, 0.035) 20px 21px), var(--prep-sheet);
+  box-shadow:
+    inset 0 0 0 2px var(--prep-frame-high),
+    5px 6px 0 #140c09;
+  color: var(--prep-ink);
+}
+
+.prep-board .team-panel::before,
+.prep-board .workbench::before,
+.prep-board .prep-command-dock::before {
+  display: none;
+}
+
+.prep-board .team-panel {
+  grid-template-rows: 34px minmax(0, 1fr) 116px;
+  gap: 8px;
+  padding: 12px;
+}
+
+.prep-board .panel-heading {
+  padding: 0 4px 8px;
+  border-bottom: 1px solid var(--prep-rule);
+  color: var(--prep-ink);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.prep-board .panel-heading strong {
+  color: #5f4b3b;
+  font-size: 9px;
+}
+
+.prep-board .team-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 26px minmax(0, 1fr);
+  gap: 6px;
+  padding: 0;
+  border: 0;
+}
+
+.prep-board .team-zone.is-bench {
+  padding-top: 8px;
+  border-top: 2px solid var(--prep-frame);
+}
+
+.prep-board .team-zone-label {
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 0 4px;
+  color: #67503d;
+}
+
+.prep-board .team-zone-label h2,
+.prep-board .team-zone-label h3 {
+  font-size: 11px;
+  writing-mode: horizontal-tb;
+}
+
+.prep-board .team-zone-label span {
+  margin: 0;
+  color: #805d20;
+  font-size: 10px;
+}
+
+.prep-board .team-zone.is-active .roster-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.prep-board .roster-card {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(150px, 0.95fr) 62px minmax(132px, 0.8fr);
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+  border: 2px solid #755a45;
+  border-bottom: 5px solid var(--monster-color);
+  background:
+    radial-gradient(circle at 50% 21%, color-mix(in srgb, var(--monster-color) 10%, transparent), transparent 26%),
+    var(--prep-sheet-high);
+  box-shadow: 2px 3px 0 #6b4b38;
+  color: var(--prep-ink);
+}
+
+.prep-board .roster-card:hover,
+.prep-board .roster-card:focus-visible,
+.prep-board .roster-card.is-selected {
+  border-color: var(--monster-color);
+  background:
+    radial-gradient(circle at 50% 21%, color-mix(in srgb, var(--monster-color) 15%, transparent), transparent 29%),
+    #fff0cf;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--monster-color) 45%, transparent);
+  transform: none;
+}
+
+.prep-board .roster-identity {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto minmax(72px, 1fr) auto auto auto auto;
+  justify-items: center;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.prep-board .roster-identity > small {
+  align-self: start;
+  padding: 4px 12px;
+  background: var(--monster-color);
+  color: #201510;
+  font-family: "Pixelify Sans", "Yu Gothic", sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+}
+
+.prep-board .roster-identity .monster-sigil {
+  width: clamp(72px, 7vw, 98px);
+  height: clamp(72px, 7vw, 98px);
+  margin-top: 4px;
+  border-width: 3px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--monster-color) 18%, white), transparent 68%), #f8e8c7;
+  box-shadow:
+    inset 0 0 0 4px #d5ba8e,
+    0 4px 0 #765540;
+}
+
+.prep-board .roster-identity .monster-sigil > span {
+  font-size: clamp(42px, 4vw, 60px);
+}
+
+.prep-board .roster-identity > strong {
+  width: 100%;
+  color: var(--prep-ink);
+  font-size: clamp(13px, 1.15vw, 17px);
+  line-height: 1.15;
+}
+
+.prep-board .roster-identity > i {
+  color: #4d3b30;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.prep-board .roster-identity > i .stars {
+  margin-left: 3px;
+  color: #6d4f20;
+  font-size: 12px;
+}
+
+.prep-board .roster-identity > em,
+.prep-board .roster-role {
+  color: #725c49;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.prep-board .roster-role {
+  padding: 2px 6px;
+  border: 1px solid #b59470;
+}
+
+.prep-board .roster-equipment-preview {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #9b7a59;
+  background: #e3c99f;
+  color: var(--prep-ink);
+}
+
+.prep-board .roster-equipment-preview > b {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 2px solid #765842;
+  background: #f6e5c3;
+  color: #504035;
+  font-size: 17px;
+}
+
+.prep-board .roster-equipment-preview > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  text-align: left;
+}
+
+.prep-board .roster-equipment-preview small {
+  color: #876b51;
+  font-size: 7px;
+}
+
+.prep-board .roster-equipment-preview i {
+  overflow: hidden;
+  color: var(--prep-ink);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prep-board .roster-equipment-preview.is-empty {
+  opacity: 0.7;
+}
+
+.prep-board .roster-gambit-preview {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.prep-board .roster-gambit-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 28px minmax(56px, 1fr) 12px 28px minmax(52px, 0.9fr);
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #a3815f;
+  background: #ead5ae;
+  color: var(--prep-ink);
+  text-align: left;
+}
+
+.prep-board .roster-gambit-row > b {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  background: #bc5146;
+  color: #fff0d3;
+  font-size: 14px;
+}
+
+.prep-board .roster-gambit-row > i,
+.prep-board .roster-gambit-row > small {
+  overflow: hidden;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 8px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prep-board .roster-gambit-row > em {
+  color: #7d624a;
+  font-size: 15px;
+  font-style: normal;
+  text-align: center;
+}
+
+.prep-board .roster-gambit-row > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid #896b51;
+  background: #f8e5bd;
+  color: #a13f36;
+  font-size: 11px;
+}
+
+.prep-board .team-zone.is-bench .roster-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.prep-board .team-zone.is-bench .roster-card {
+  display: block;
+  min-height: 0;
+  padding: 5px 7px;
+  border-width: 1px;
+  border-bottom-width: 4px;
+  box-shadow: 1px 2px 0 #6b4b38;
+}
+
+.prep-board .team-zone.is-bench .roster-identity {
+  height: 100%;
+  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  justify-items: start;
+  column-gap: 7px;
+  text-align: left;
+}
+
+.prep-board .team-zone.is-bench .roster-identity > small,
+.prep-board .team-zone.is-bench .roster-identity > em,
+.prep-board .team-zone.is-bench .roster-role {
+  display: none;
+}
+
+.prep-board .team-zone.is-bench .roster-identity .monster-sigil {
+  width: 48px;
+  height: 48px;
+  grid-row: 1 / -1;
+  margin: 0;
+}
+
+.prep-board .team-zone.is-bench .roster-identity .monster-sigil > span {
+  font-size: 27px;
+}
+
+.prep-board .team-zone.is-bench .roster-identity > strong {
+  align-self: end;
+  font-size: 11px;
+  text-align: left;
+}
+
+.prep-board .team-zone.is-bench .roster-identity > i {
+  align-self: start;
+  font-size: 8px;
+}
+
+.prep-board .empty-roster-slot {
+  display: grid;
+  min-height: 0;
+  place-content: center;
+  gap: 3px;
+  border: 1px dashed #ad8d68;
+  background: rgba(255, 240, 207, 0.42);
+  color: #8b7055;
+  text-align: center;
+}
+
+.prep-board .empty-roster-slot span {
+  font-size: 24px;
+}
+
+.prep-board .empty-roster-slot small {
+  font-size: 8px;
+}
+
+.prep-board .workbench {
+  display: block;
+  overflow: hidden;
+}
+
+.prep-board .shop-view {
+  display: grid;
+  height: 100%;
+  grid-template-rows: 58px minmax(220px, 1fr) 184px;
+  gap: 10px;
+  padding: 12px;
+}
+
+.prep-board .workshop-title {
+  min-height: 0;
+  align-items: center;
+  margin: 0;
+}
+
+.prep-board .workshop-title .section-index {
+  display: none;
+}
+
+.prep-board .workshop-title h2 {
+  color: var(--prep-ink);
+  font-size: 22px;
+}
+
+.prep-board .shop-luck-readout {
+  margin-top: 3px;
+  color: #70562a;
+  font-size: 8px;
+}
+
+.prep-board .shop-actions button {
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 2px solid #745642;
+  background: #e2c79b;
+  color: #342720;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.prep-board .shop-monsters {
+  height: auto;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.prep-board .shop-offer-card {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  padding: 8px;
+  border: 2px solid #816048;
+  border-bottom: 5px solid var(--monster-color);
+  background: var(--prep-sheet-high);
+  box-shadow: 2px 3px 0 #6a4a37;
+  color: var(--prep-ink);
+}
+
+.prep-board .shop-offer-card .definition-card-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(64px, 1fr) auto;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.prep-board .shop-offer-attribute {
+  padding: 3px 8px;
+  background: var(--monster-color);
+  color: #211611;
+  font-size: 8px;
+}
+
+.prep-board .shop-offer-card .monster-sigil {
+  width: clamp(56px, 6vw, 78px);
+  height: clamp(56px, 6vw, 78px);
+  align-self: center;
+  margin: 0;
+  background: #f5e3bf;
+}
+
+.prep-board .shop-offer-card .monster-sigil > span {
+  font-size: clamp(32px, 3.6vw, 45px);
+}
+
+.prep-board .shop-offer-card .monster-card-copy {
+  align-items: center;
+  color: var(--prep-ink);
+}
+
+.prep-board .shop-offer-card .monster-card-copy > strong {
+  color: var(--prep-ink);
+  font-size: 12px;
+  text-align: center;
+}
+
+.prep-board .shop-offer-card .monster-card-copy > small {
+  color: #765e49;
+  font-size: 8px;
+}
+
+.prep-board .shop-offer-card .star-row {
+  color: #71501a;
+  font-size: 11px;
+}
+
+.prep-board .shop-offer-card .monster-card-footer {
+  padding-top: 7px;
+  border-top: 1px solid #b18e68;
+}
+
+.prep-board .shop-card-footer {
+  gap: 6px;
+}
+
+.prep-board .shop-card-footer > span {
+  color: #745b46;
+  font-size: 8px;
+}
+
+.prep-board .shop-card-actions {
+  grid-template-columns: minmax(0, 0.78fr) minmax(52px, 1.22fr);
+  gap: 5px;
+}
+
+.prep-board .card-detail-button {
+  min-height: 30px;
+  border: 1px solid #8f6f53;
+  background: #f3dfba;
+  color: #4d3b30;
+  font-size: 9px;
+}
+
+.prep-board .buy-button {
+  min-height: 30px;
+  gap: 6px;
+  border: 0;
+  background: #8b6c51;
+  color: #fff0d3;
+  font-size: 10px;
+}
+
+.prep-board .buy-button > span {
+  color: var(--gold);
+  font-size: 10px;
+}
+
+.prep-board .buy-button b {
+  color: #fff0d3;
+  font-size: 14px;
+}
+
+.prep-board .equipment-shelf {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 26px minmax(0, 1fr);
+  gap: 7px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 2px solid var(--prep-frame);
+}
+
+.prep-board .equipment-shelf > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prep-board .equipment-shelf .section-index {
+  display: none;
+}
+
+.prep-board .equipment-shelf h3 {
+  color: var(--prep-ink);
+  font-size: 12px;
+}
+
+.prep-board .equipment-rarity-readout {
+  display: block;
+  margin: 0;
+  color: #765e49;
+  font-size: 7px;
+}
+
+.prep-board .equipment-offers {
+  gap: 8px;
+}
+
+.prep-board .equipment-offer {
+  min-height: 0;
+  grid-template-columns: 58px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 5px 8px;
+  padding: 8px;
+  border: 2px solid #816048;
+  border-top: 5px solid var(--rarity-color);
+  background: var(--prep-sheet-high);
+  box-shadow: 2px 2px 0 #6a4a37;
+}
+
+.prep-board .equipment-offer header {
+  grid-row: 1 / -1;
+  align-self: center;
+  justify-content: center;
+}
+
+.prep-board .equipment-offer header > small {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  display: block;
+  color: #665243;
+  font-size: 6px;
+}
+
+.prep-board .equipment-offer .equipment-glyph {
+  width: 52px;
+  height: 52px;
+  border: 2px solid var(--rarity-color);
+  background: #f3dfb8;
+  color: var(--rarity-color);
+  font-size: 18px;
+}
+
+.prep-board .equipment-copy {
+  align-self: end;
+}
+
+.prep-board .equipment-offer strong {
+  color: var(--prep-ink);
+  font-size: 11px;
+}
+
+.prep-board .equipment-offer small {
+  color: #6d5846;
+  font-size: 8px;
+}
+
+.prep-board .equipment-offer footer {
+  align-self: start;
+  justify-content: flex-end;
+}
+
+.prep-board .equipment-offer footer button {
+  display: flex;
+  min-width: 66px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  background: #7a604c;
+  color: #fff1d4;
+}
+
+.prep-board .equipment-offer footer button span {
+  color: var(--gold);
+}
+
+.prep-board .equipment-offer footer button b {
+  font-size: 13px;
+}
+
+.prep-board .sold-slot {
+  border: 1px dashed #9f7e5b;
+  background: rgba(239, 218, 179, 0.56);
+  color: #876c53;
+}
+
+.prep-board .prep-command-dock {
+  display: grid;
+  min-height: 76px;
+  flex: 0 0 76px;
+  grid-template-columns: 270px 170px minmax(190px, 1fr) 250px;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px;
+  border: 5px solid #2d1e19;
+  background: repeating-linear-gradient(2deg, transparent 0 9px, rgba(255, 232, 191, 0.025) 10px 11px), #3b2821;
+  box-shadow:
+    inset 0 0 0 2px #72503b,
+    4px 5px 0 #120b08;
+  color: #f3dfb9;
+}
+
+.prep-board .workshop-tabs {
+  display: grid;
+  min-height: 0;
+  grid-row: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid #8c674e;
+  background: #241712;
+}
+
+.prep-board .workshop-tabs button {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: auto 1fr;
+  place-items: center;
+  gap: 5px;
+  border-right: 1px solid #8c674e;
+  background: #4d352b;
+  color: #e9d2aa;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.prep-board .workshop-tabs button.is-active {
+  background: #c85b4e;
+  color: #fff0d3;
+  box-shadow: inset 0 3px #ee9d82;
+}
+
+.prep-board .workshop-tabs button span {
+  color: #d6b26b;
+  font-size: 8px;
+}
+
+.prep-board .prep-loss-track {
+  display: grid;
+  place-content: center;
+  gap: 5px;
+  border: 1px solid #8c674e;
+  background: #2a1a16;
+  text-align: center;
+}
+
+.prep-board .prep-loss-track > span {
+  color: #bca181;
+  font-size: 7px;
+}
+
+.prep-board .prep-loss-track > div {
+  display: flex;
+  gap: 5px;
+}
+
+.prep-board .prep-loss-track i {
+  color: #755548;
+  font-size: 15px;
+  font-style: normal;
+}
+
+.prep-board .prep-loss-track i.is-lost {
+  color: #cf5f52;
+}
+
+.prep-board .prep-readiness {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 4px;
+  padding: 0 12px;
+  border: 1px solid #8c674e;
+  background: #2a1a16;
+}
+
+.prep-board .prep-readiness span {
+  color: #d0a962;
+  font-size: 8px;
+}
+
+.prep-board .prep-readiness strong {
+  overflow: hidden;
+  color: #f3dfb9;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prep-board .launch-button {
+  min-width: 0;
+  min-height: 0;
+  align-items: center;
+  border: 2px solid #8e3f36;
+  background: #c85b4e;
+  color: #fff2d7;
+  box-shadow:
+    inset 0 3px #ee9177,
+    3px 3px 0 #1a0f0c;
+  font-size: 15px;
+  text-align: center;
+}
+
+.prep-board .launch-button span {
+  color: #632922;
+  font-size: 8px;
+}
+
+@media (min-width: 901px) and (max-height: 800px) {
+  .prep-board .team-panel {
+    grid-template-rows: 30px minmax(0, 1fr) 90px;
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .prep-board .team-zone {
+    grid-template-rows: 22px minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .prep-board .team-zone.is-bench {
+    padding-top: 5px;
+  }
+
+  .prep-board .roster-card {
+    grid-template-rows: minmax(132px, 1fr) 48px 96px;
+    gap: 4px;
+    padding: 5px;
+  }
+
+  .prep-board .roster-identity {
+    grid-template-rows: auto minmax(60px, 1fr) auto auto auto auto;
+    gap: 1px;
+  }
+
+  .prep-board .roster-identity > small {
+    padding: 2px 10px;
+  }
+
+  .prep-board .roster-identity .monster-sigil {
+    width: 66px;
+    height: 66px;
+    margin-top: 1px;
+  }
+
+  .prep-board .roster-identity .monster-sigil > span {
+    font-size: 38px;
+  }
+
+  .prep-board .roster-equipment-preview {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 6px;
+    padding: 4px 6px;
+  }
+
+  .prep-board .roster-equipment-preview > b {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+  }
+
+  .prep-board .roster-gambit-preview {
+    gap: 2px;
+  }
+
+  .prep-board .roster-gambit-row {
+    grid-template-columns: 24px minmax(56px, 1fr) 10px 22px minmax(52px, 0.9fr);
+    gap: 3px;
+  }
+
+  .prep-board .roster-gambit-row > span {
+    width: 19px;
+    height: 19px;
+    font-size: 9px;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity .monster-sigil {
+    width: 40px;
+    height: 40px;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity .monster-sigil > span {
+    font-size: 23px;
+  }
+}
+
+@media (max-width: 900px) {
+  .prep-board {
+    overflow: hidden;
+  }
+
+  .prep-board > .run-header {
+    min-height: 44px;
+  }
+
+  .prep-board > .cycle-rail {
+    min-height: 9px;
+    flex-basis: 9px;
+    margin: 4px 0 6px;
+  }
+
+  .prep-board .workbench-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(292px, 1.08fr) minmax(276px, 0.92fr);
+    gap: 7px;
+  }
+
+  .prep-board .team-panel,
+  .prep-board .workbench {
+    border-width: 3px;
+    box-shadow:
+      inset 0 0 0 1px var(--prep-frame-high),
+      2px 3px 0 #140c09;
+  }
+
+  .prep-board .team-panel {
+    grid-template-rows: 23px minmax(0, 1fr) 64px;
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .prep-board .panel-heading {
+    padding: 0 2px 4px;
+    font-size: 9px;
+  }
+
+  .prep-board .panel-heading strong {
+    font-size: 7px;
+  }
+
+  .prep-board .team-zone {
+    grid-template-rows: 18px minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .prep-board .team-zone-label h2,
+  .prep-board .team-zone-label h3,
+  .prep-board .team-zone-label span {
+    font-size: 8px;
+  }
+
+  .prep-board .team-zone.is-active .roster-list {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(280px, 84vw);
+    grid-template-columns: none;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .prep-board .team-zone.is-active .roster-card {
+    grid-template-columns: 100px minmax(0, 1fr);
+    grid-template-rows: 48px minmax(0, 1fr);
+    gap: 5px;
+    padding: 5px;
+    border-width: 1px;
+    border-bottom-width: 4px;
+    scroll-snap-align: start;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity {
+    grid-row: 1 / -1;
+    grid-template-rows: auto minmax(55px, 1fr) auto auto;
+    align-content: center;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity .monster-sigil {
+    width: 62px;
+    height: 62px;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity .monster-sigil > span {
+    font-size: 35px;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity > strong {
+    font-size: 11px;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity > i {
+    font-size: 8px;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity > em,
+  .prep-board .team-zone.is-active .roster-role {
+    display: none;
+  }
+
+  .prep-board .roster-equipment-preview {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 5px;
+    padding: 4px 5px;
+  }
+
+  .prep-board .roster-equipment-preview > b {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .prep-board .roster-equipment-preview i {
+    font-size: 8px;
+  }
+
+  .prep-board .roster-gambit-preview {
+    gap: 3px;
+  }
+
+  .prep-board .roster-gambit-row {
+    grid-template-columns: 22px minmax(58px, 1fr) 8px 23px minmax(50px, 0.8fr);
+    gap: 2px;
+  }
+
+  .prep-board .roster-gambit-row > b {
+    font-size: 10px;
+  }
+
+  .prep-board .roster-gambit-row > i,
+  .prep-board .roster-gambit-row > small {
+    font-size: 7px;
+  }
+
+  .prep-board .roster-gambit-row > span {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+
+  .prep-board .team-zone.is-bench {
+    padding-top: 4px;
+  }
+
+  .prep-board .team-zone.is-bench .roster-list {
+    gap: 4px;
+  }
+
+  .prep-board .team-zone.is-bench .roster-card {
+    padding: 2px;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 34px auto;
+    place-items: center;
+    text-align: center;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity .monster-sigil {
+    width: 34px;
+    height: 34px;
+    grid-row: auto;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity .monster-sigil > span {
+    font-size: 18px;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity > strong {
+    font-size: 8px;
+    text-align: center;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity > i {
+    display: none;
+  }
+
+  .prep-board .shop-view {
+    grid-template-rows: 38px minmax(128px, 1fr) 82px;
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .prep-board .workshop-title h2 {
+    font-size: 16px;
+  }
+
+  .prep-board .shop-luck-readout {
+    font-size: 6px;
+  }
+
+  .prep-board .shop-actions {
+    gap: 3px;
+  }
+
+  .prep-board .shop-actions button {
+    min-height: 28px;
+    padding: 4px 6px;
+    border-width: 1px;
+    font-size: 7px;
+  }
+
+  .prep-board .shop-monsters {
+    gap: 4px;
+  }
+
+  .prep-board .shop-offer-card {
+    padding: 4px;
+    border-width: 1px;
+    border-bottom-width: 4px;
+  }
+
+  .prep-board .shop-offer-card .definition-card-main {
+    grid-template-rows: auto minmax(40px, 1fr) auto;
+    gap: 2px;
+  }
+
+  .prep-board .shop-offer-attribute {
+    padding: 2px 4px;
+    font-size: 6px;
+  }
+
+  .prep-board .shop-offer-card .monster-sigil {
+    width: 42px;
+    height: 42px;
+  }
+
+  .prep-board .shop-offer-card .monster-sigil > span {
+    font-size: 24px;
+  }
+
+  .prep-board .shop-offer-card .monster-card-copy > strong {
+    font-size: 10px;
+  }
+
+  .prep-board .shop-offer-card .monster-card-copy > small,
+  .prep-board .shop-card-footer > span {
+    display: none;
+  }
+
+  .prep-board .shop-offer-card .star-row {
+    font-size: 8px;
+  }
+
+  .prep-board .shop-offer-card .monster-card-footer {
+    padding-top: 3px;
+  }
+
+  .prep-board .shop-card-actions {
+    grid-template-columns: minmax(0, 0.66fr) minmax(42px, 1.34fr);
+    gap: 3px;
+  }
+
+  .prep-board .card-detail-button,
+  .prep-board .buy-button {
+    min-height: 24px;
+    padding: 2px;
+    font-size: 7px;
+  }
+
+  .prep-board .buy-button b {
+    font-size: 11px;
+  }
+
+  .prep-board .equipment-shelf {
+    grid-template-rows: minmax(0, 1fr);
+    padding-top: 4px;
+  }
+
+  .prep-board .equipment-shelf > div:first-child {
+    display: none;
+  }
+
+  .prep-board .equipment-offers {
+    gap: 4px;
+  }
+
+  .prep-board .equipment-offer {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 3px 5px;
+    padding: 4px;
+    border-width: 1px;
+    border-top-width: 4px;
+  }
+
+  .prep-board .equipment-offer header > small,
+  .prep-board .equipment-offer .equipment-copy small {
+    display: none;
+  }
+
+  .prep-board .equipment-offer .equipment-glyph {
+    width: 34px;
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .prep-board .equipment-offer strong {
+    font-size: 8px;
+  }
+
+  .prep-board .equipment-offer footer button {
+    min-width: 48px;
+    min-height: 22px;
+  }
+
+  .prep-board .prep-command-dock {
+    min-height: 62px;
+    flex-basis: 62px;
+    grid-template-columns: minmax(0, 1fr) minmax(145px, 1fr);
+    gap: 6px;
+    margin-top: 7px;
+    padding: 5px;
+    border-width: 3px;
+  }
+
+  .prep-board .prep-loss-track,
+  .prep-board .prep-readiness {
+    display: none;
+  }
+
+  .prep-board .workshop-tabs button {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 2px;
+    font-size: 9px;
+  }
+
+  .prep-board .workshop-tabs button span {
+    font-size: 6px;
+  }
+
+  .prep-board .launch-button {
+    min-width: 0;
+    min-height: 0;
+    font-size: 11px;
+  }
+}
