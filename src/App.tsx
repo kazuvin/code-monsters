@@ -1608,9 +1608,9 @@ function ShopView({
               definition={definition}
               eyebrow={
                 offer.lucky
-                  ? 'LUCKY RANK UP'
+                  ? '星が多い'
                   : definition.shopAvailability === 'rare'
-                    ? 'RARE ARRIVAL / 珍しい旅仲間'
+                    ? '珍しい旅仲間'
                     : `${attributeName(GAME_DATA, definition)}の気配`
               }
               onClick={() => setPreviewDefinitionId(definition.id)}
@@ -1665,7 +1665,7 @@ function ShopView({
               <article className={`equipment-offer is-rarity-${equipment.rarity}`} key={offer.id}>
                 <header>
                   <span className="equipment-glyph">{equipment.glyph}</span>
-                  <small>{RARITY_LABELS[equipment.rarity]} / EQUIPMENT</small>
+                  <small>{RARITY_LABELS[equipment.rarity]} / 装備</small>
                 </header>
                 <div className="equipment-copy">
                   <strong>{equipment.name}</strong>
@@ -3486,6 +3486,10 @@ function WorkshopScreen({
   const [inspectedId, setInspectedId] = useState<string>();
   const [parentIds, setParentIds] = useState<string[]>([]);
   const [notice, setNotice] = useState('');
+  const hatchNoticeKey = (run.lastHatches ?? [])
+    .map((hatch) => `${hatch.eggId}:${hatch.resultDefinitionId}:${hatch.toWhiteStars}`)
+    .join('|');
+  const [visibleHatchNoticeKey, setVisibleHatchNoticeKey] = useState(hatchNoticeKey);
   const selected = run.roster.find((monster) => monster.id === selectedId);
   const inspected = run.roster.find((monster) => monster.id === inspectedId);
 
@@ -3497,6 +3501,15 @@ function WorkshopScreen({
     const timer = window.setTimeout(() => setNotice(''), 3200);
     return () => window.clearTimeout(timer);
   }, [notice]);
+  useEffect(() => {
+    if (!hatchNoticeKey) {
+      setVisibleHatchNoticeKey('');
+      return;
+    }
+    setVisibleHatchNoticeKey(hatchNoticeKey);
+    const timer = window.setTimeout(() => setVisibleHatchNoticeKey(''), 5200);
+    return () => window.clearTimeout(timer);
+  }, [hatchNoticeKey]);
 
   const onCommand = (result: CommandResult<CasualRunState>, successMessage: string) => {
     setRun(result.state);
@@ -3506,25 +3519,38 @@ function WorkshopScreen({
   return (
     <main className="run-screen">
       <RunHeader run={run} discoveredCount={discoveredMonsterIds.size} onOpenCatalog={() => setCatalogOpen(true)} />
-      {run.lastHatches && run.lastHatches.length > 0 && (
-        <section className="hatch-notice" aria-live="polite">
-          <span>HATCH REPORT</span>
-          <strong>
-            {run.lastHatches
-              .map((hatch) => `${definitionById(GAME_DATA, hatch.resultDefinitionId).name}が孵化`)
-              .join(' / ')}
-          </strong>
-          <small>
-            {run.lastHatches
-              .map((hatch) => `${'★'.repeat(hatch.fromWhiteStars)}卵 → ${'★'.repeat(hatch.toWhiteStars)}`)
-              .join(' · ')}
-          </small>
-        </section>
-      )}
-      {notice && (
-        <button type="button" className="notice-strip" onClick={() => setNotice('')}>
-          {notice} <span>×</span>
-        </button>
+      {(visibleHatchNoticeKey || notice) && (
+        <div className="notice-stack" aria-live="polite" aria-atomic="true">
+          {visibleHatchNoticeKey && run.lastHatches && run.lastHatches.length > 0 && (
+            <section className="notice-toast is-hatch">
+              <span>孵化</span>
+              <div>
+                <strong>
+                  {run.lastHatches
+                    .map((hatch) => `${definitionById(GAME_DATA, hatch.resultDefinitionId).name}が孵化`)
+                    .join(' / ')}
+                </strong>
+                <small>
+                  {run.lastHatches
+                    .map((hatch) => `${'★'.repeat(hatch.fromWhiteStars)} → ${'★'.repeat(hatch.toWhiteStars)}`)
+                    .join(' · ')}
+                </small>
+              </div>
+              <button type="button" onClick={() => setVisibleHatchNoticeKey('')} aria-label="孵化通知を閉じる">
+                ×
+              </button>
+            </section>
+          )}
+          {notice && (
+            <section className="notice-toast is-command">
+              <span>記録</span>
+              <strong>{notice}</strong>
+              <button type="button" onClick={() => setNotice('')} aria-label="通知を閉じる">
+                ×
+              </button>
+            </section>
+          )}
+        </div>
       )}
       <div className="workbench-layout">
         <TeamPanel

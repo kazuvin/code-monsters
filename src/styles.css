@@ -1,25 +1,30 @@
 :root {
-  color: #f7f3df;
-  background: #11131b;
+  color: #f6e8c9;
+  background: #241713;
   font-family: "Pixelify Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --void: #11131b;
-  --void-deep: #090a10;
-  --deck: #1b2030;
-  --panel: #242b40;
-  --panel-high: #303a56;
-  --line: #6d7898;
-  --line-soft: #3b4563;
-  --paper: #f7f3df;
-  --muted: #a7b1cf;
-  --pink: #f17b9d;
-  --pink-deep: #a94f6c;
-  --mint: #7ce0bd;
-  --gold: #f5ca6b;
-  --iris: #9ca5ff;
-  --danger: #ff6b73;
-  --pixel-shadow: 4px 4px 0 var(--void-deep);
+  --void: #241713;
+  --void-deep: #150c0a;
+  --deck: #39251f;
+  --panel: #4a3028;
+  --panel-high: #654437;
+  --line: #9b775b;
+  --line-soft: #67473a;
+  --paper: #f6e8c9;
+  --muted: #c4a987;
+  --pink: #cf5f52;
+  --pink-deep: #963f37;
+  --mint: #3ba19a;
+  --gold: #dda93a;
+  --iris: #9079b5;
+  --danger: #d75249;
+  --ink: #34231e;
+  --parchment: #f1ddba;
+  --parchment-high: #fff0d0;
+  --parchment-shade: #d2b487;
+  --timber: #5a382c;
+  --pixel-shadow: 4px 5px 0 var(--void-deep);
 }
 
 * {
@@ -39,9 +44,13 @@ body,
 
 body {
   background-image:
-    linear-gradient(rgba(122, 138, 182, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(122, 138, 182, 0.045) 1px, transparent 1px);
-  background-size: 8px 8px;
+    linear-gradient(90deg, transparent 0 48%, rgba(20, 10, 8, 0.38) 49% 51%, transparent 52%),
+    repeating-linear-gradient(3deg, rgba(255, 235, 194, 0.025) 0 1px, transparent 1px 7px, rgba(17, 8, 6, 0.08) 8px 9px),
+    linear-gradient(90deg, #2f1d19, var(--timber) 50%, #2d1b17);
+  background-size:
+    210px 100%,
+    100% 100%,
+    100% 100%;
 }
 
 button,
@@ -1167,55 +1176,92 @@ button.definition-card:active,
   flex-direction: column;
 }
 
-.notice-strip {
+.notice-stack {
   position: fixed;
-  z-index: 50;
-  top: max(58px, env(safe-area-inset-top));
+  z-index: 70;
+  top: max(64px, calc(env(safe-area-inset-top) + 48px));
   left: 50%;
-  display: flex;
-  width: min(340px, calc(100vw - 24px));
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  border: 2px solid var(--pink);
-  background: var(--void-deep);
-  color: var(--paper);
-  box-shadow: 4px 4px 0 #000;
-  font-size: 10px;
+  display: grid;
+  width: min(360px, calc(100vw - 20px));
+  gap: 6px;
+  pointer-events: none;
   transform: translateX(-50%);
 }
 
-.notice-strip span {
-  color: var(--pink);
-}
-
-.hatch-notice {
+.notice-toast {
   display: grid;
-  flex: 0 0 auto;
-  grid-template-columns: auto 1fr auto;
+  min-height: 46px;
+  grid-template-columns: auto minmax(0, 1fr) 30px;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  padding: 7px 9px;
-  border: 1px solid var(--gold);
-  border-left: 5px solid var(--gold);
-  background: linear-gradient(90deg, rgba(242, 217, 139, 0.14), transparent 60%), var(--deck);
-}
-
-.hatch-notice > span {
-  color: var(--gold);
-  font-size: 7px;
-  letter-spacing: 0.1em;
-}
-
-.hatch-notice > strong {
+  gap: 9px;
+  padding: 7px 7px 7px 10px;
+  border: 1px solid #654536;
+  background: radial-gradient(circle at 22% 14%, rgba(255, 255, 255, 0.28), transparent 34%), var(--parchment);
+  color: var(--ink);
+  box-shadow: 3px 4px 0 rgba(17, 8, 6, 0.82);
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  font-size: 10px;
+  animation: notice-arrive 180ms steps(3, end) both;
 }
 
-.hatch-notice > small {
-  color: var(--muted);
-  font-size: 7px;
+.notice-toast > span {
+  display: grid;
+  min-width: 34px;
+  min-height: 24px;
+  place-items: center;
+  padding: 3px 6px;
+  background: var(--pink);
+  color: #fff4dc;
+  font-family: "Pixelify Sans", monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.notice-toast.is-hatch > span {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.notice-toast > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.notice-toast strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice-toast small {
+  color: #7e6753;
+  font-size: 8px;
+}
+
+.notice-toast > button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #755a47;
+  cursor: pointer;
+  font-size: 18px;
+  pointer-events: auto;
+}
+
+@keyframes notice-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hatch-reveal-dialog {
@@ -11059,5 +11105,569 @@ button.effect-skill-card {
   100% {
     filter: brightness(1.55);
     transform: translateY(-15px) scale(1.06);
+  }
+}
+
+/* Field journal material system: quiet parchment sheets pinned to a timber workbench. */
+.mode-select-screen::before,
+.online-connection-screen::before,
+.online-finished-screen::before,
+.draft-screen::before,
+.run-screen::before,
+.event-screen::before,
+.result-screen::before {
+  display: none;
+}
+
+.panel,
+.definition-card,
+.battle-launcher,
+.route-event-screen .event-choice-card {
+  --void: #fff7e2;
+  --void-deep: #241510;
+  --deck: #ead3aa;
+  --panel: #f1ddba;
+  --panel-high: #fae9c9;
+  --line: #6f4c3a;
+  --line-soft: #c5a77e;
+  --paper: var(--ink);
+  --muted: #796552;
+  --pixel-shadow: 4px 5px 0 #160c09;
+  color: var(--ink);
+}
+
+.panel,
+.battle-launcher {
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 14% 6%, rgba(255, 255, 255, 0.38), transparent 26%),
+    repeating-linear-gradient(2deg, transparent 0 15px, rgba(89, 57, 38, 0.025) 16px 17px), var(--panel);
+  box-shadow: var(--pixel-shadow);
+}
+
+.panel::before,
+.mode-route.is-pair::before,
+.catalog-archive::before,
+.recipe-archive::before {
+  top: -5px;
+  left: 18px;
+  width: 54px;
+  height: 9px;
+  background: var(--pink);
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);
+}
+
+.team-panel::before {
+  background: var(--mint);
+}
+
+.workbench::before {
+  background: var(--gold);
+}
+
+.brand-lockup h1,
+.workshop-title h2,
+.workshop-title h3,
+.mode-route h3,
+.event-stage h2,
+.result-hero h2 {
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.run-header,
+.battle-header,
+.draft-mast {
+  border-bottom: 1px solid rgba(246, 232, 201, 0.36);
+}
+
+.run-header .brand-lockup h1,
+.battle-header .brand-lockup h1,
+.draft-mast .brand-lockup h1 {
+  color: var(--paper);
+  font-size: 23px;
+}
+
+.run-metrics {
+  border: 1px solid #b9966d;
+  background: rgba(34, 20, 16, 0.72);
+  box-shadow: none;
+}
+
+.run-metrics span {
+  border-right-color: #715243;
+}
+
+.run-metrics b {
+  font-variant-numeric: tabular-nums;
+}
+
+.catalog-open-button {
+  border: 1px solid var(--gold);
+  background: #38231d;
+  box-shadow: none;
+}
+
+.cycle-rail::before {
+  height: 1px;
+  background: #735142;
+}
+
+.cycle-rail span {
+  border-color: #765445;
+  background: #2b1b17;
+  color: #b89671;
+}
+
+.cycle-rail span.is-complete {
+  border-color: var(--mint);
+  background: var(--mint);
+  color: #17100e;
+}
+
+.cycle-rail span.is-current {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: #241510;
+  box-shadow: 0 0 0 2px #241510;
+}
+
+.workbench-layout {
+  gap: 9px;
+}
+
+.panel-heading {
+  border-bottom-color: var(--line-soft);
+}
+
+.panel-heading strong {
+  color: #277c76;
+}
+
+.team-zone {
+  border-radius: 1px;
+}
+
+.team-zone.is-bench {
+  border-top-color: var(--line-soft);
+}
+
+.team-zone-label span {
+  color: #946c1f;
+}
+
+.roster-card,
+.definition-card,
+.equipment-offer,
+.equipment-card,
+.parent-choice,
+.recipe-card,
+.catalog-card,
+.result-monster-card {
+  border-width: 1px;
+  background: color-mix(in srgb, var(--panel-high) 86%, white);
+  box-shadow: none;
+}
+
+.starter-pedestal .definition-card {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--monster-color) 10%, transparent), transparent 42%), var(--panel);
+  color: var(--ink);
+}
+
+.starter-pedestal .definition-card-main {
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 18px;
+}
+
+.starter-pedestal .star-row,
+.starter-card-footer > span {
+  color: var(--ink);
+}
+
+.starter-card-footer > span small {
+  background: var(--parchment-shade);
+  color: #705a46;
+}
+
+.roster-card.is-selected,
+.parent-choice.is-selected {
+  background: #fff1d6;
+}
+
+.empty-roster-slot,
+.sold-slot {
+  border-color: #b89b72;
+  color: #92775c;
+}
+
+.workshop-tabs {
+  border-top: 1px solid var(--line);
+  background: #dbc092;
+}
+
+.workshop-tabs button {
+  border-right-color: var(--line-soft);
+  background: #ead3aa;
+  color: #75604e;
+}
+
+.workshop-tabs button.is-active {
+  background: var(--pink);
+  color: #fff7e2;
+  box-shadow: inset 0 3px rgba(255, 245, 221, 0.82);
+}
+
+.workshop-tabs button.is-active span {
+  color: #612a24;
+}
+
+.shop-actions {
+  gap: 5px;
+}
+
+.secondary-button,
+.text-button,
+.shop-actions button,
+.equipment-block button,
+.replay-controls button,
+.card-detail-button {
+  border-color: #9d7f5d;
+  background: #f7e6c5;
+  color: var(--ink);
+}
+
+.shop-luck-readout {
+  color: #91671d;
+}
+
+.shop-monsters {
+  gap: 7px;
+}
+
+.shop-monsters .definition-card {
+  grid-template-rows: minmax(0, 1fr) auto;
+  border-left-width: 1px;
+  border-bottom: 4px solid var(--monster-color);
+}
+
+.shop-monsters .definition-card-main {
+  align-content: center;
+}
+
+.shop-card-footer > span,
+.monster-card-copy > small {
+  color: #796552;
+}
+
+.buy-button {
+  min-height: 27px;
+  border: 0;
+  background: var(--monster-color);
+  color: #1f1512;
+}
+
+.buy-button b {
+  color: inherit;
+}
+
+.equipment-shelf {
+  border-top-color: var(--line-soft);
+}
+
+.equipment-rarity-readout {
+  display: none;
+}
+
+.equipment-offers {
+  gap: 7px;
+}
+
+.is-rarity-common {
+  --rarity-color: #6d6255;
+}
+
+.is-rarity-rare {
+  --rarity-color: #287f79;
+}
+
+.is-rarity-epic {
+  --rarity-color: #6d5a9e;
+}
+
+.is-rarity-legendary {
+  --rarity-color: #9b6d16;
+}
+
+.equipment-offer {
+  border-top: 3px solid var(--rarity-color);
+  background: #f7e6c5;
+}
+
+.equipment-offer header > small,
+.equipment-offer footer > span {
+  color: color-mix(in srgb, var(--rarity-color) 66%, #3a241c);
+}
+
+.equipment-offer small {
+  color: #715e4c;
+}
+
+.equipment-offer button {
+  min-width: 48px;
+  min-height: 24px;
+  border: 0;
+  background: var(--rarity-color);
+  color: #211612;
+}
+
+.battle-launcher {
+  margin-top: 9px;
+}
+
+.battle-launcher > div span {
+  color: #a34238;
+}
+
+.launch-button {
+  border: 0;
+  background: var(--pink);
+  color: #251713;
+  box-shadow: 3px 3px 0 #6e342c;
+}
+
+.launch-button span {
+  color: #612a24;
+}
+
+.mode-route.is-pair {
+  border-color: var(--mint);
+  background: radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.36), transparent 28%), var(--panel);
+}
+
+.mode-route > header,
+.invite-entry {
+  border-color: var(--line-soft);
+}
+
+.mode-route-mark span,
+.paired-seals span {
+  background: #f9e8c7;
+  box-shadow: 4px 4px 0 #2b1a15;
+}
+
+.paired-seals i::before,
+.paired-seals i::after {
+  background: #f1ddba;
+}
+
+.online-connection-ledger h1,
+.online-finished-ledger h1,
+.mode-route h3 {
+  color: var(--ink);
+}
+
+.route-event-screen .event-choice-card {
+  border: 1px solid var(--line);
+  border-bottom: 5px solid var(--route-accent);
+  background: var(--panel);
+  box-shadow: 4px 5px 0 var(--void-deep);
+}
+
+.route-event-screen .event-choice-card :is(strong, p, small) {
+  color: var(--ink);
+}
+
+.route-event-screen .event-choice-card .event-commit {
+  border-color: var(--route-accent);
+  background: var(--route-accent);
+  color: #2a1a15;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.result-stage {
+  background: radial-gradient(circle at 12% 6%, rgba(255, 255, 255, 0.4), transparent 28%), var(--panel);
+}
+
+.dialog-close {
+  border-color: var(--line);
+  background: var(--pink);
+  color: #fff3d7;
+}
+
+@media (max-width: 800px) {
+  .run-screen {
+    padding-right: max(8px, env(safe-area-inset-right));
+    padding-left: max(8px, env(safe-area-inset-left));
+  }
+
+  .run-header {
+    min-height: 46px;
+  }
+
+  .run-header .brand-lockup h1 {
+    font-size: 21px;
+  }
+
+  .catalog-open-button {
+    width: 60px;
+    border-width: 1px;
+  }
+
+  .run-header-tools .run-metrics {
+    width: min(196px, 52vw);
+  }
+
+  .cycle-rail {
+    min-height: 10px;
+    flex-basis: 10px;
+    gap: 3px;
+    margin: 5px 0 8px;
+  }
+
+  .cycle-rail::before {
+    display: none;
+  }
+
+  .cycle-rail span {
+    min-height: 4px;
+    align-self: center;
+    border: 0;
+    background: #67483b;
+    color: transparent;
+    font-size: 0;
+  }
+
+  .cycle-rail span.is-complete {
+    background: var(--mint);
+  }
+
+  .cycle-rail span.is-current {
+    background: var(--gold);
+    box-shadow: none;
+    transform: scaleY(1.75);
+  }
+
+  .team-panel {
+    grid-template-rows: 18px minmax(0, 1fr) 50px;
+    padding: 6px;
+  }
+
+  .team-panel .panel-heading {
+    padding-bottom: 2px;
+  }
+
+  .workbench {
+    grid-template-rows: minmax(0, 1fr) 46px;
+  }
+
+  .shop-view {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .workshop-title {
+    min-height: 37px;
+    margin: 0;
+  }
+
+  .workshop-title h2 {
+    font-size: 17px;
+  }
+
+  .shop-monsters {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  .shop-monsters .definition-card {
+    padding: 5px 4px;
+  }
+
+  .shop-monsters .monster-card-copy .eyebrow {
+    font-size: 6px;
+  }
+
+  .shop-card-actions {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  }
+
+  .equipment-shelf {
+    min-height: 84px;
+    grid-template-columns: 48px minmax(0, 1fr);
+    margin: 0;
+    padding-top: 7px;
+  }
+
+  .equipment-offer {
+    min-height: 78px;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 6px;
+    padding: 5px;
+  }
+
+  .equipment-offer header {
+    grid-row: 1 / -1;
+    align-self: center;
+  }
+
+  .equipment-offer header > small {
+    display: none;
+  }
+
+  .equipment-offer .equipment-glyph {
+    width: 32px;
+    height: 32px;
+  }
+
+  .equipment-copy {
+    align-self: end;
+  }
+
+  .equipment-offer footer {
+    align-self: start;
+  }
+
+  .equipment-offer button {
+    min-height: 26px;
+  }
+
+  .battle-launcher {
+    min-height: 62px;
+    flex-basis: 62px;
+  }
+
+  .battle-launcher > div strong {
+    font-size: 11px;
+  }
+
+  .launch-button {
+    min-width: min(178px, 48vw);
+    min-height: 44px;
+    font-size: 12px;
+  }
+
+  .notice-stack {
+    top: max(57px, calc(env(safe-area-inset-top) + 45px));
+  }
+}
+
+@media (max-height: 700px) {
+  .workshop-title {
+    min-height: 30px;
+  }
+
+  .equipment-shelf {
+    min-height: 72px;
+  }
+
+  .equipment-offer {
+    min-height: 66px;
   }
 }

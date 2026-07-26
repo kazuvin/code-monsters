@@ -1249,6 +1249,23 @@ await hatchPage.screenshot({ path: '/tmp/code-monsters-hatch-reveal-2-mobile.png
 await hatchPage.getByRole('button', { name: '旅へ戻る' }).click();
 await hatchDialog.waitFor({ state: 'hidden' });
 await hatchPage.getByRole('heading', { name: '旅商人の棚' }).waitFor();
+const hatchNotice = hatchPage.locator('.notice-toast.is-hatch');
+await hatchNotice.waitFor();
+const equipmentPurchase = hatchPage.locator('.equipment-offer').getByRole('button', { name: '購入' }).first();
+const equipmentPurchaseTarget = await equipmentPurchase.evaluate((button) => {
+  const bounds = button.getBoundingClientRect();
+  const hitTarget = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+  return {
+    visible: bounds.width > 0 && bounds.height > 0 && bounds.top >= 0 && bounds.bottom <= window.innerHeight,
+    receivesPointer: hitTarget === button || button.contains(hitTarget),
+  };
+});
+if (!equipmentPurchaseTarget.visible || !equipmentPurchaseTarget.receivesPointer) {
+  throw new Error(`Hatch notice blocks equipment purchase: ${JSON.stringify(equipmentPurchaseTarget)}`);
+}
+await equipmentPurchase.click();
+await hatchPage.locator('.notice-toast.is-command').waitFor();
+await hatchNotice.waitFor({ state: 'hidden', timeout: 7000 });
 await assertFitsViewport(hatchPage, 'Mobile workshop after sequential hatches');
 
 await browser.close();
