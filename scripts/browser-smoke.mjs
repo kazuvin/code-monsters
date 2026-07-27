@@ -33,6 +33,57 @@ const assertFitsViewport = async (page, label, allowVerticalScroll = false) => {
   }
 };
 
+const assertFullscreenCatalog = async (page, label, requireInternalScroll = false) => {
+  const layout = await page.locator('.catalog-dialog[open]').evaluate((dialog) => {
+    const body = dialog.querySelector('.catalog-body.is-index-only');
+    const index = dialog.querySelector('.catalog-index');
+    if (!(body instanceof HTMLElement) || !(index instanceof HTMLElement)) {
+      throw new Error('Catalog index layout is missing');
+    }
+
+    const dialogBox = dialog.getBoundingClientRect();
+    const bodyBox = body.getBoundingClientRect();
+    const indexBox = index.getBoundingClientRect();
+    return {
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      dialog: {
+        left: dialogBox.left,
+        top: dialogBox.top,
+        right: dialogBox.right,
+        bottom: dialogBox.bottom,
+      },
+      bodyHeight: bodyBox.height,
+      indexHeight: indexBox.height,
+      bodyBottom: bodyBox.bottom,
+      indexBottom: indexBox.bottom,
+      indexClientHeight: index.clientHeight,
+      indexScrollHeight: index.scrollHeight,
+      bodyRows: getComputedStyle(body).gridTemplateRows,
+    };
+  });
+
+  const fullscreenTolerance = 1;
+  if (
+    Math.abs(layout.dialog.left) > fullscreenTolerance ||
+    Math.abs(layout.dialog.top) > fullscreenTolerance ||
+    Math.abs(layout.viewportWidth - layout.dialog.right) > fullscreenTolerance ||
+    Math.abs(layout.viewportHeight - layout.dialog.bottom) > fullscreenTolerance
+  ) {
+    throw new Error(`${label} does not fill the viewport: ${JSON.stringify(layout)}`);
+  }
+  if (
+    layout.bodyHeight < 1 ||
+    layout.indexHeight < layout.bodyHeight - 1 ||
+    Math.abs(layout.bodyBottom - layout.indexBottom) > 1
+  ) {
+    throw new Error(`${label} leaves unused space below the index: ${JSON.stringify(layout)}`);
+  }
+  if (requireInternalScroll && layout.indexScrollHeight <= layout.indexClientHeight + 1) {
+    throw new Error(`${label} does not scroll inside the full-height index: ${JSON.stringify(layout)}`);
+  }
+};
+
 const assertReadableMonsterCards = async (page, label, cardSelector, nameSelector, minimumStarSize = 12) => {
   const cards = page.locator(`${cardSelector}:visible`);
   if ((await cards.count()) === 0) {
@@ -245,6 +296,7 @@ await assertReadableMonsterCards(
 );
 await desktop.getByRole('button', { name: /図鑑/ }).click();
 await desktop.locator('.catalog-dialog[open]').waitFor();
+await assertFullscreenCatalog(desktop, 'Desktop monster catalog');
 if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 34) {
   throw new Error('Monster catalog does not show all 27 MVP lineage-grid and seven standalone records');
 }
@@ -263,6 +315,7 @@ await assertReadableMonsterCards(
   '.catalog-card.is-unlocked',
   '.catalog-card-copy strong',
 );
+await desktop.screenshot({ path: '/tmp/code-monsters-catalog-index-desktop.png' });
 await desktop.locator('.catalog-card[data-catalog-id="light-dragon-2"]').click();
 await desktop.locator('.catalog-record-dialog[open]').waitFor();
 if ((await desktop.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
@@ -1098,6 +1151,7 @@ await assertFitsViewport(mobile, 'Mobile workshop');
 
 await mobile.getByRole('button', { name: /図鑑/ }).click();
 await mobile.locator('.catalog-dialog[open]').waitFor();
+await assertFullscreenCatalog(mobile, 'Mobile monster catalog', true);
 if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 34) {
   throw new Error('Mobile monster catalog does not show all 27 MVP lineage-grid and seven standalone records');
 }
@@ -1107,6 +1161,7 @@ await assertReadableMonsterCards(
   '.catalog-card.is-unlocked',
   '.catalog-card-copy strong',
 );
+await mobile.screenshot({ path: '/tmp/code-monsters-catalog-index-mobile.png' });
 await mobile.locator('.catalog-card[data-catalog-id="light-dragon-2"]').click();
 await mobile.locator('.catalog-record-dialog[open]').waitFor();
 if ((await mobile.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
