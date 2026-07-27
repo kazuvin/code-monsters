@@ -1,9 +1,10 @@
 {
   "schemaVersion": 4,
   "rules": {
-    "contentVersion": "casual-prototype-9",
+    "contentVersion": "casual-prototype-10",
     "maxCycles": 12,
     "maxLosses": 5,
+    "maxWhiteStars": 3,
     "rosterLimit": 7,
     "activeLimit": 3,
     "benchLimit": 4,
@@ -1936,6 +1937,7 @@
       "name": "鉄牙",
       "description": "攻撃 +5",
       "glyph": "牙",
+      "icon": "🦷",
       "price": 2,
       "statBonus": { "attack": 5 },
       "battleStartEffects": []
@@ -1946,6 +1948,7 @@
       "name": "甲羅留め",
       "description": "防御 +5 / HP +8",
       "glyph": "甲",
+      "icon": "🛡️",
       "price": 2,
       "statBonus": { "defense": 5, "maxHp": 8 },
       "battleStartEffects": []
@@ -1956,6 +1959,7 @@
       "name": "賢者飾り",
       "description": "知恵 +7 / MP +4",
       "glyph": "賢",
+      "icon": "🧿",
       "price": 4,
       "statBonus": { "wisdom": 7, "maxMp": 4 },
       "battleStartEffects": []
@@ -1966,6 +1970,7 @@
       "name": "風切羽",
       "description": "素早さ +8",
       "glyph": "羽",
+      "icon": "🪶",
       "price": 4,
       "statBonus": { "speed": 8 },
       "battleStartEffects": []
@@ -1976,6 +1981,7 @@
       "name": "紅の照準器",
       "description": "会心率 +8%",
       "glyph": "眼",
+      "icon": "🎯",
       "price": 6,
       "statBonus": { "crit": 8 },
       "battleStartEffects": []
@@ -1986,6 +1992,7 @@
       "name": "開戦太鼓",
       "description": "開戦時、行動ゲージ +18",
       "glyph": "鼓",
+      "icon": "🥁",
       "price": 6,
       "statBonus": {},
       "battleStartEffects": [{ "kind": "atb", "amount": 18, "target": "self" }]
@@ -1996,6 +2003,7 @@
       "name": "初陣の護符",
       "description": "開戦時、自分に最大HP18%の盾",
       "glyph": "護",
+      "icon": "🔰",
       "price": 4,
       "statBonus": {},
       "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 18, "target": "self" }]
@@ -2006,6 +2014,7 @@
       "name": "魔泉晶",
       "description": "MP +8 / 知恵 +3",
       "glyph": "晶",
+      "icon": "🔮",
       "price": 4,
       "statBonus": { "maxMp": 8, "wisdom": 3 },
       "battleStartEffects": []
@@ -2016,6 +2025,7 @@
       "name": "進軍旗",
       "description": "開戦時、味方全体の攻撃力 +10%",
       "glyph": "旗",
+      "icon": "🚩",
       "price": 6,
       "statBonus": {},
       "battleStartEffects": [
@@ -2034,6 +2044,7 @@
       "name": "静寂鐘",
       "description": "開戦時、敵全体の知恵 -8%",
       "glyph": "鐘",
+      "icon": "🔔",
       "price": 6,
       "statBonus": {},
       "battleStartEffects": [
@@ -2052,6 +2063,7 @@
       "name": "生命種",
       "description": "開戦時、自分に再生3%を10秒",
       "glyph": "種",
+      "icon": "🌱",
       "price": 4,
       "statBonus": {},
       "battleStartEffects": [
@@ -2070,6 +2082,7 @@
       "name": "水銀靴",
       "description": "素早さ +4 / 開戦時ATB +12",
       "glyph": "靴",
+      "icon": "👢",
       "price": 6,
       "statBonus": { "speed": 4 },
       "battleStartEffects": [{ "kind": "atb", "amount": 12, "target": "self" }]

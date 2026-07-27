@@ -55,6 +55,27 @@ describe('breeding', () => {
     );
   });
 
+  it('caps generic breeding results at the MVP maximum white stars', () => {
+    const first = createMonster(GAME_DATA, 'light-dragon-3', 'first', {
+      colorStars: 2,
+      xp: 10,
+    });
+    const second = createMonster(GAME_DATA, 'fire-demon-3', 'second', {
+      colorStars: 2,
+      xp: 10,
+    });
+
+    const candidates = listBreedingCandidates(GAME_DATA, first, second);
+
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(
+      candidates.every((candidate) => {
+        const definition = GAME_DATA.monsters.find((monster) => monster.id === candidate.definitionId);
+        return definition && definition.whiteStars <= GAME_DATA.rules.maxWhiteStars;
+      }),
+    ).toBe(true);
+  });
+
   it('lets every standalone monster use ordinary lineage and attribute breeding', () => {
     const firstCrow = createMonster(GAME_DATA, 'coin-crow-1', 'crow-1', { xp: 4 });
     const secondCrow = createMonster(GAME_DATA, 'coin-crow-1', 'crow-2', { xp: 4 });

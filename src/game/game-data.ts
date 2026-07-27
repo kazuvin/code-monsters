@@ -12,7 +12,7 @@ const scaleStats = (stats: StatBlock, multiplier: number): StatBlock =>
 const fileData = rawGameData as RawGameData;
 
 const catalogMonsters: MonsterDefinition[] = fileData.archetypes.flatMap((archetype) =>
-  archetype.forms.map((form, index) => {
+  archetype.forms.slice(0, fileData.rules.maxWhiteStars).map((form, index) => {
     const whiteStars = (index + 1) as WhiteStars;
     const statGrowthProfileId = form.statGrowthProfileId ?? 'steady';
     return {
@@ -91,15 +91,27 @@ export function validateGameData(data: GameData): string[] {
 
   if (data.lineages.length !== 3) errors.push('Validation catalog must contain exactly 3 lineages');
   if (data.attributes.length !== 3) errors.push('Validation catalog must contain exactly 3 attributes');
+  if (!Number.isInteger(data.rules.maxWhiteStars) || data.rules.maxWhiteStars < 1 || data.rules.maxWhiteStars > 5) {
+    errors.push('maxWhiteStars must be an integer between 1 and 5');
+  }
   const lineageGridIds = new Set(data.archetypes.map((archetype) => archetype.id));
   const lineageGridMonsters = data.monsters.filter((monster) => lineageGridIds.has(monster.archetypeId));
-  if (lineageGridMonsters.length !== 45) errors.push('Validation catalog must expand to exactly 45 grid monsters');
+  const expectedGridMonsterCount = data.lineages.length * data.attributes.length * data.rules.maxWhiteStars;
+  if (lineageGridMonsters.length !== expectedGridMonsterCount) {
+    errors.push(`Validation catalog must expand to exactly ${expectedGridMonsterCount} grid monsters`);
+  }
+  if (data.monsters.some((monster) => monster.whiteStars > data.rules.maxWhiteStars)) {
+    errors.push('Every MVP monster must be at or below maxWhiteStars');
+  }
   if (data.rules.activeLimit !== 3) errors.push('The validation battle format must be 3v3');
   if (data.rules.rosterLimit !== data.rules.activeLimit + data.rules.benchLimit) {
     errors.push('rosterLimit must equal activeLimit plus benchLimit');
   }
-  if (data.rules.breeding.minimumResultWhiteStars < 1 || data.rules.breeding.minimumResultWhiteStars > 5) {
-    errors.push('breeding.minimumResultWhiteStars must be between 1 and 5');
+  if (
+    data.rules.breeding.minimumResultWhiteStars < 1 ||
+    data.rules.breeding.minimumResultWhiteStars > data.rules.maxWhiteStars
+  ) {
+    errors.push('breeding.minimumResultWhiteStars must be between 1 and maxWhiteStars');
   }
   const equipmentRarityWeights = data.rules.shop.equipmentRarityWeights;
   if (
@@ -200,7 +212,7 @@ export function validateGameData(data: GameData): string[] {
       if (monster.hatch.maximumWhiteStars < monster.whiteStars) {
         errors.push(`${monster.id} hatch maximum cannot be below its egg rank`);
       }
-      if (monster.hatch.maximumWhiteStars > Math.min(5, monster.whiteStars + 1)) {
+      if (monster.hatch.maximumWhiteStars > Math.min(data.rules.maxWhiteStars, monster.whiteStars + 1)) {
         errors.push(`${monster.id} hatch maximum can be at most one rank above its egg rank`);
       }
       if (monster.hatch.upgradeChance < 0 || monster.hatch.upgradeChance > 1) {
@@ -224,6 +236,7 @@ export function validateGameData(data: GameData): string[] {
   }
   for (const equipment of data.equipment) {
     if (!RARITIES.includes(equipment.rarity)) errors.push(`${equipment.id} has an invalid rarity`);
+    if (!equipment.icon) errors.push(`${equipment.id} needs an icon`);
   }
   for (const trait of data.traits) {
     if (trait.stages.length !== 3) errors.push(`${trait.id} needs exactly three color-star stages`);

@@ -207,6 +207,7 @@ export type EquipmentDefinition = {
   name: string;
   description: string;
   glyph: string;
+  icon: string;
   price: number;
   statBonus: Partial<StatBlock>;
   battleStartEffects: EffectDefinition[];
@@ -247,6 +248,7 @@ export type GameRules = {
   contentVersion: string;
   maxCycles: number;
   maxLosses: number;
+  maxWhiteStars: WhiteStars;
   rosterLimit: number;
   activeLimit: number;
   benchLimit: number;

@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react';
 import { simulateBattle } from './core/battle';
 import { breedMonsters, inheritanceSkillChoices, listBreedingCandidates } from './core/breeding';
@@ -950,7 +951,9 @@ function EquipmentDetailDialog({ equipment, onClose }: { equipment?: EquipmentDe
           ×
         </button>
         <header className="equipment-detail-identity">
-          <span className="equipment-glyph">{equipment.glyph}</span>
+          <span className="equipment-glyph" aria-hidden="true">
+            {equipment.icon}
+          </span>
           <div>
             <small>{RARITY_LABELS[equipment.rarity]}装備</small>
             <h2>{equipment.name}</h2>
@@ -1450,6 +1453,9 @@ function RosterCard({
   monster,
   active,
   selected,
+  cardVariant = 'party',
+  ariaLabel,
+  allowDrag = true,
   zone,
   slotIndex,
   dropTarget,
@@ -1461,6 +1467,9 @@ function RosterCard({
   monster: MonsterInstance;
   active: boolean;
   selected: boolean;
+  cardVariant?: 'party' | 'breeding';
+  ariaLabel?: string;
+  allowDrag?: boolean;
   zone: 'active' | 'bench';
   slotIndex: number;
   dropTarget: boolean;
@@ -1485,6 +1494,7 @@ function RosterCard({
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if (!allowDrag) return;
     pointerIsDown.current = true;
     origin.current = { x: event.clientX, y: event.clientY };
     dragging.current = false;
@@ -1498,6 +1508,7 @@ function RosterCard({
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!allowDrag) return;
     if (!pointerIsDown.current) return;
     if (dragging.current) {
       onDragMove(event.clientX, event.clientY);
@@ -1515,6 +1526,7 @@ function RosterCard({
   };
 
   const finishPointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!allowDrag) return;
     pointerIsDown.current = false;
     clearHold();
     if (dragging.current) {
@@ -1526,7 +1538,9 @@ function RosterCard({
   return (
     <button
       type="button"
-      className={`roster-card${selected ? ' is-selected' : ''}${active ? ' is-active' : ''}${dropTarget ? ' is-drop-target' : ''}`}
+      className={`roster-card${cardVariant === 'breeding' ? ' is-breeding-choice' : ''}${
+        selected ? ' is-selected' : ''
+      }${active ? ' is-active' : ''}${dropTarget ? ' is-drop-target' : ''}`}
       style={monsterStyle(GAME_DATA, definition)}
       data-party-slot
       data-team-zone={zone}
@@ -1543,7 +1557,7 @@ function RosterCard({
       onPointerUp={finishPointer}
       onPointerCancel={finishPointer}
       aria-pressed={selected}
-      aria-label={`${definition.name}、${active ? '主力' : '控え'}。タップで詳細、長押しで移動`}
+      aria-label={ariaLabel ?? `${definition.name}、${active ? '主力' : '控え'}。タップで詳細、長押しで移動`}
     >
       <span className="roster-identity">
         <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="small" />
@@ -1825,7 +1839,9 @@ function ShopView({
                   onClick={() => setPreviewEquipmentId(equipment.id)}
                 >
                   <header>
-                    <span className="equipment-glyph">{equipment.glyph}</span>
+                    <span className="equipment-glyph" aria-hidden="true">
+                      {equipment.icon}
+                    </span>
                     <small>{RARITY_LABELS[equipment.rarity]} / 装備</small>
                   </header>
                   <span className="equipment-copy">
@@ -2395,11 +2411,19 @@ function BreedingView({
           </div>
           <div className="breeding-loom">
             <div className="parent-pool">
-              <h3>親を2体選択</h3>
+              <div className="parent-pool-heading">
+                <h3>親を2体選択</h3>
+                <span aria-live="polite">
+                  <b>A</b> {first ? definitionFor(GAME_DATA, first).name : '未選択'}
+                  <i>×</i>
+                  <b>B</b> {second ? definitionFor(GAME_DATA, second).name : '未選択'}
+                </span>
+              </div>
               {run.roster.map((monster) => {
                 const definition = definitionFor(GAME_DATA, monster);
                 const isStarUpGuide = starUpGuideIds.has(monster.id);
                 const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel;
+                const selectedIndex = parentIds.indexOf(monster.id);
                 return (
                   <button
                     type="button"
@@ -2412,6 +2436,11 @@ function BreedingView({
                     onClick={() => toggleParent(monster.id)}
                     style={monsterStyle(GAME_DATA, definition)}
                   >
+                    {selectedIndex >= 0 && (
+                      <span className="parent-selection-order" aria-hidden="true">
+                        ✓ {selectedIndex === 0 ? 'A' : 'B'}
+                      </span>
+                    )}
                     <MonsterSigil
                       data={GAME_DATA}
                       definition={definition}
@@ -2446,8 +2475,14 @@ function BreedingView({
               <b>↓</b>
             </div>
             <div className="candidate-pool">
-              <h3>配合先候補</h3>
-              <div className="candidate-scroll">
+              <div className="candidate-pool-heading">
+                <h3>誕生する子を選択</h3>
+                <span>{candidates.length > 0 ? `${candidates.length}体を比較` : '親の選択待ち'}</span>
+              </div>
+              <div
+                className="candidate-grid"
+                style={{ '--candidate-count': Math.max(1, candidates.length) } as CSSProperties}
+              >
                 {candidates.length === 0 && (
                   <div className="loom-placeholder">
                     <span>?</span>
@@ -2456,23 +2491,42 @@ function BreedingView({
                 )}
                 {candidates.map((entry) => {
                   const definition = definitionById(GAME_DATA, entry.definitionId);
+                  const optionChild =
+                    first && second
+                      ? breedMonsters(GAME_DATA, first, second, entry, undefined, `breeding-option-${entry.id}`)
+                      : undefined;
                   return (
                     <div className="breeding-candidate" key={entry.id}>
-                      <DefinitionCard
-                        data={GAME_DATA}
-                        definition={definition}
-                        colorStars={entry.colorStars}
-                        eyebrow={
-                          entry.kind === 'special'
-                            ? 'SPECIAL RECIPE'
+                      {optionChild && (
+                        <RosterCard
+                          monster={optionChild}
+                          active={false}
+                          selected={candidateId === entry.id}
+                          cardVariant="breeding"
+                          ariaLabel={`${definition.name}を誕生候補に選ぶ。${entry.label}`}
+                          allowDrag={false}
+                          zone="bench"
+                          slotIndex={0}
+                          dropTarget={false}
+                          onSelect={() => setCandidateId(entry.id)}
+                          onDragStart={() => undefined}
+                          onDragMove={() => undefined}
+                          onDragEnd={() => undefined}
+                        />
+                      )}
+                      <span
+                        className={`breeding-candidate-kind is-${entry.kind}${
+                          candidateId === entry.id ? ' is-selected' : ''
+                        }`}
+                      >
+                        {candidateId === entry.id
+                          ? '✓ 選択中'
+                          : entry.kind === 'special'
+                            ? '特殊配合'
                             : entry.kind === 'same-name'
-                              ? 'COLOR STAR'
-                              : 'RANK BREED'
-                        }
-                        selected={candidateId === entry.id}
-                        onClick={() => setCandidateId(entry.id)}
-                        footer={<span>{entry.label}</span>}
-                      />
+                              ? '色星強化'
+                              : '位階配合'}
+                      </span>
                     </div>
                   );
                 })}
@@ -3353,6 +3407,47 @@ function EventCatalogDetail({ entry }: { entry: EventCatalogEntry }) {
   );
 }
 
+function CatalogRecordDialog({
+  open,
+  label,
+  style,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  label: string;
+  style?: CSSProperties;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="catalog-record-dialog"
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}
+      aria-label={label}
+    >
+      <section className="catalog-record-panel panel" style={style}>
+        <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+          ×
+        </button>
+        {children}
+      </section>
+    </dialog>
+  );
+}
+
 function FieldCatalogDialog({
   open,
   discoveredMonsterIds,
@@ -3379,18 +3474,9 @@ function FieldCatalogDialog({
   const eventEntries = eventCatalogEntries(GAME_DATA, discoveredEventIds, developerMode);
   const filteredEntries =
     filter === 'all' ? monsterEntries : monsterEntries.filter((entry) => entry.silhouette.lineageId === filter);
-  const selectedMonsterEntry =
-    filteredEntries.find((entry) => entry.id === selectedMonsterId) ??
-    filteredEntries.find((entry) => entry.state === 'unlocked') ??
-    filteredEntries[0];
-  const selectedSkillEntry =
-    skillEntries.find((entry) => entry.id === selectedSkillId) ??
-    skillEntries.find((entry) => entry.state === 'unlocked') ??
-    skillEntries[0];
-  const selectedEventEntry =
-    eventEntries.find((entry) => entry.id === selectedEventId) ??
-    eventEntries.find((entry) => entry.state === 'unlocked') ??
-    eventEntries[0];
+  const selectedMonsterEntry = filteredEntries.find((entry) => entry.id === selectedMonsterId);
+  const selectedSkillEntry = skillEntries.find((entry) => entry.id === selectedSkillId);
+  const selectedEventEntry = eventEntries.find((entry) => entry.id === selectedEventId);
   const sectionMeta = {
     monsters: {
       title: 'モンスター図鑑',
@@ -3420,155 +3506,205 @@ function FieldCatalogDialog({
   }, [open]);
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="catalog-dialog"
-      onClose={onClose}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) event.currentTarget.close();
-      }}
-      aria-label={sectionMeta.title}
-    >
-      <section className="catalog-archive panel">
-        <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
-          ×
-        </button>
-        <header className="catalog-archive-heading">
-          <div>
-            <span>CODE MONSTERS // FIELD ARCHIVE</span>
-            <h2>{sectionMeta.title}</h2>
-            <p>{developerMode ? `DEV OVERRIDE：全${sectionMeta.total}件を一時表示中。` : sectionMeta.description}</p>
-          </div>
-          <div className="catalog-progress" aria-label={`${sectionMeta.total}件中${sectionMeta.discovered}件発見`}>
-            <small>{developerMode ? 'DEV VIEW' : 'RECORDED'}</small>
-            <strong>
-              {String(sectionMeta.discovered).padStart(2, '0')}
-              <i>/</i>
-              {sectionMeta.total}
-            </strong>
-            <span
-              style={
-                {
-                  '--catalog-progress': `${(sectionMeta.discovered / sectionMeta.total) * 100}%`,
-                } as CSSProperties
-              }
-            />
-          </div>
-        </header>
-        <nav className="catalog-section-tabs" aria-label="図鑑の種類">
-          <button
-            type="button"
-            className={section === 'monsters' ? 'is-active' : ''}
-            onClick={() => setSection('monsters')}
-          >
-            モンスター <b>{developerMode ? CATALOG_MONSTER_COUNT : discoveredMonsterIds.size}</b>
+    <>
+      <dialog
+        ref={dialogRef}
+        className="catalog-dialog"
+        onClose={onClose}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+        aria-label={sectionMeta.title}
+      >
+        <section className="catalog-archive panel">
+          <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+            ×
           </button>
-          <button
-            type="button"
-            className={section === 'skills' ? 'is-active' : ''}
-            onClick={() => setSection('skills')}
-          >
-            スキル <b>{developerMode ? CATALOG_SKILL_COUNT : discoveredSkillIds.size}</b>
-          </button>
-          <button
-            type="button"
-            className={section === 'events' ? 'is-active' : ''}
-            onClick={() => setSection('events')}
-          >
-            イベント <b>{developerMode ? CATALOG_EVENT_COUNT : discoveredEventIds.size}</b>
-          </button>
-        </nav>
-        {section === 'monsters' && (
-          <>
-            <nav className="catalog-filters" aria-label="図鑑の系統絞り込み">
-              <button
-                type="button"
-                className={filter === 'all' ? 'is-active' : ''}
-                aria-pressed={filter === 'all'}
-                onClick={() => setFilter('all')}
-              >
-                すべて <b>{CATALOG_MONSTER_COUNT}</b>
-              </button>
-              {GAME_DATA.lineages.map((lineage) => (
+          <header className="catalog-archive-heading">
+            <div>
+              <span>CODE MONSTERS // FIELD ARCHIVE</span>
+              <h2>{sectionMeta.title}</h2>
+              <p>{developerMode ? `DEV OVERRIDE：全${sectionMeta.total}件を一時表示中。` : sectionMeta.description}</p>
+            </div>
+            <div className="catalog-progress" aria-label={`${sectionMeta.total}件中${sectionMeta.discovered}件発見`}>
+              <small>{developerMode ? 'DEV VIEW' : 'RECORDED'}</small>
+              <strong>
+                {String(sectionMeta.discovered).padStart(2, '0')}
+                <i>/</i>
+                {sectionMeta.total}
+              </strong>
+              <span
+                style={
+                  {
+                    '--catalog-progress': `${(sectionMeta.discovered / sectionMeta.total) * 100}%`,
+                  } as CSSProperties
+                }
+              />
+            </div>
+          </header>
+          <nav className="catalog-section-tabs" aria-label="図鑑の種類">
+            <button
+              type="button"
+              className={section === 'monsters' ? 'is-active' : ''}
+              onClick={() => {
+                setSection('monsters');
+                setSelectedSkillId(undefined);
+                setSelectedEventId(undefined);
+              }}
+            >
+              モンスター <b>{developerMode ? CATALOG_MONSTER_COUNT : discoveredMonsterIds.size}</b>
+            </button>
+            <button
+              type="button"
+              className={section === 'skills' ? 'is-active' : ''}
+              onClick={() => {
+                setSection('skills');
+                setSelectedMonsterId(undefined);
+                setSelectedEventId(undefined);
+              }}
+            >
+              スキル <b>{developerMode ? CATALOG_SKILL_COUNT : discoveredSkillIds.size}</b>
+            </button>
+            <button
+              type="button"
+              className={section === 'events' ? 'is-active' : ''}
+              onClick={() => {
+                setSection('events');
+                setSelectedMonsterId(undefined);
+                setSelectedSkillId(undefined);
+              }}
+            >
+              イベント <b>{developerMode ? CATALOG_EVENT_COUNT : discoveredEventIds.size}</b>
+            </button>
+          </nav>
+          {section === 'monsters' && (
+            <>
+              <nav className="catalog-filters" aria-label="図鑑の系統絞り込み">
                 <button
                   type="button"
-                  key={lineage.id}
-                  className={filter === lineage.id ? 'is-active' : ''}
-                  aria-pressed={filter === lineage.id}
-                  onClick={() => setFilter(lineage.id)}
+                  className={filter === 'all' ? 'is-active' : ''}
+                  aria-pressed={filter === 'all'}
+                  onClick={() => {
+                    setFilter('all');
+                    setSelectedMonsterId(undefined);
+                  }}
                 >
-                  {lineage.mark} {lineage.name} <b>15</b>
+                  すべて <b>{CATALOG_MONSTER_COUNT}</b>
                 </button>
-              ))}
-            </nav>
-            <div className="catalog-body">
-              <div className="catalog-index" aria-label="モンスター標本一覧">
-                {filteredEntries.map((entry) => (
-                  <MonsterCatalogCard
-                    key={entry.id}
-                    entry={entry}
-                    selected={selectedMonsterEntry?.id === entry.id}
-                    onSelect={() => setSelectedMonsterId(entry.id)}
-                  />
+                {GAME_DATA.lineages.map((lineage) => (
+                  <button
+                    type="button"
+                    key={lineage.id}
+                    className={filter === lineage.id ? 'is-active' : ''}
+                    aria-pressed={filter === lineage.id}
+                    onClick={() => {
+                      setFilter(lineage.id);
+                      setSelectedMonsterId(undefined);
+                    }}
+                  >
+                    {lineage.mark} {lineage.name}{' '}
+                    <b>{monsterEntries.filter((entry) => entry.silhouette.lineageId === lineage.id).length}</b>
+                  </button>
                 ))}
+              </nav>
+              <div className="catalog-body is-index-only">
+                <div className="catalog-index" aria-label="モンスター標本一覧">
+                  {filteredEntries.map((entry) => (
+                    <MonsterCatalogCard
+                      key={entry.id}
+                      entry={entry}
+                      selected={selectedMonsterEntry?.id === entry.id}
+                      onSelect={() => setSelectedMonsterId(entry.id)}
+                    />
+                  ))}
+                </div>
               </div>
-              {selectedMonsterEntry && (
-                <MonsterCatalogDetail
-                  key={selectedMonsterEntry.id}
-                  entry={selectedMonsterEntry}
-                  discoveredMonsterIds={
-                    developerMode ? new Set(GAME_DATA.monsters.map((monster) => monster.id)) : discoveredMonsterIds
-                  }
-                />
-              )}
-            </div>
-          </>
-        )}
-        {section === 'skills' && (
-          <>
-            <div className="catalog-context-bar">所持した時点で解放 · 所持者欄の未発見モンスターは伏せて表示</div>
-            <div className="catalog-body">
-              <div className="catalog-index catalog-text-index" aria-label="スキル記録一覧">
-                {skillEntries.map((entry) => (
-                  <SkillCatalogCard
-                    key={entry.id}
-                    entry={entry}
-                    selected={selectedSkillEntry?.id === entry.id}
-                    onSelect={() => setSelectedSkillId(entry.id)}
-                  />
-                ))}
+            </>
+          )}
+          {section === 'skills' && (
+            <>
+              <div className="catalog-context-bar">
+                所持した時点で解放 · カードを選ぶと詳細を表示 · 未発見の所持者は伏せて表示
               </div>
-              {selectedSkillEntry && (
-                <SkillCatalogDetail
-                  key={selectedSkillEntry.id}
-                  entry={selectedSkillEntry}
-                  discoveredMonsterIds={discoveredMonsterIds}
-                  revealAll={developerMode}
-                />
-              )}
-            </div>
-          </>
-        )}
-        {section === 'events' && (
-          <>
-            <div className="catalog-context-bar">選択して結果を確認した時点で解放 · レアリティなし・全候補同率</div>
-            <div className="catalog-body">
-              <div className="catalog-index catalog-text-index" aria-label="イベント記録一覧">
-                {eventEntries.map((entry) => (
-                  <EventCatalogCard
-                    key={entry.id}
-                    entry={entry}
-                    selected={selectedEventEntry?.id === entry.id}
-                    onSelect={() => setSelectedEventId(entry.id)}
-                  />
-                ))}
+              <div className="catalog-body is-index-only">
+                <div className="catalog-index catalog-text-index" aria-label="スキル記録一覧">
+                  {skillEntries.map((entry) => (
+                    <SkillCatalogCard
+                      key={entry.id}
+                      entry={entry}
+                      selected={selectedSkillEntry?.id === entry.id}
+                      onSelect={() => setSelectedSkillId(entry.id)}
+                    />
+                  ))}
+                </div>
               </div>
-              {selectedEventEntry && <EventCatalogDetail key={selectedEventEntry.id} entry={selectedEventEntry} />}
-            </div>
-          </>
+            </>
+          )}
+          {section === 'events' && (
+            <>
+              <div className="catalog-context-bar">
+                選択して結果を確認した時点で解放 · カードを選ぶと詳細を表示 · 全候補同率
+              </div>
+              <div className="catalog-body is-index-only">
+                <div className="catalog-index catalog-text-index" aria-label="イベント記録一覧">
+                  {eventEntries.map((entry) => (
+                    <EventCatalogCard
+                      key={entry.id}
+                      entry={entry}
+                      selected={selectedEventEntry?.id === entry.id}
+                      onSelect={() => setSelectedEventId(entry.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      </dialog>
+      <CatalogRecordDialog
+        open={Boolean(selectedMonsterEntry)}
+        label={
+          selectedMonsterEntry ? `${definitionById(GAME_DATA, selectedMonsterEntry.id).name}の図鑑詳細` : '図鑑詳細'
+        }
+        style={
+          selectedMonsterEntry ? monsterStyle(GAME_DATA, definitionById(GAME_DATA, selectedMonsterEntry.id)) : undefined
+        }
+        onClose={() => setSelectedMonsterId(undefined)}
+      >
+        {selectedMonsterEntry && (
+          <MonsterCatalogDetail
+            key={selectedMonsterEntry.id}
+            entry={selectedMonsterEntry}
+            discoveredMonsterIds={
+              developerMode ? new Set(GAME_DATA.monsters.map((monster) => monster.id)) : discoveredMonsterIds
+            }
+          />
         )}
-      </section>
-    </dialog>
+      </CatalogRecordDialog>
+      <CatalogRecordDialog
+        open={Boolean(selectedSkillEntry)}
+        label={selectedSkillEntry?.details ? `${selectedSkillEntry.details.name}の図鑑詳細` : '未確認スキルの図鑑詳細'}
+        onClose={() => setSelectedSkillId(undefined)}
+      >
+        {selectedSkillEntry && (
+          <SkillCatalogDetail
+            key={selectedSkillEntry.id}
+            entry={selectedSkillEntry}
+            discoveredMonsterIds={discoveredMonsterIds}
+            revealAll={developerMode}
+          />
+        )}
+      </CatalogRecordDialog>
+      <CatalogRecordDialog
+        open={Boolean(selectedEventEntry)}
+        label={
+          selectedEventEntry?.details ? `${selectedEventEntry.details.name}の図鑑詳細` : '未確認イベントの図鑑詳細'
+        }
+        onClose={() => setSelectedEventId(undefined)}
+      >
+        {selectedEventEntry && <EventCatalogDetail key={selectedEventEntry.id} entry={selectedEventEntry} />}
+      </CatalogRecordDialog>
+    </>
   );
 }
 
@@ -3648,7 +3784,7 @@ function Inspector({
               <section className="equipment-block">
                 <span>EQUIPMENT CARDS</span>
                 <article className={`equipped-row equipment-card${equipped ? '' : ' is-empty'}`}>
-                  <b>{equipped?.glyph ?? '—'}</b>
+                  <b aria-hidden="true">{equipped?.icon ?? '—'}</b>
                   <span>
                     <strong>{equipped?.name ?? '装備なし'}</strong>
                     <small>{equipped?.description ?? '装備カードを選ぶと能力を追加できます。'}</small>
@@ -3679,7 +3815,7 @@ function Inspector({
                             )
                           }
                         >
-                          <b>{equipment.glyph}</b>
+                          <b aria-hidden="true">{equipment.icon}</b>
                           <span>
                             <strong>{equipment.name}</strong>
                             <small>{equipment.description}</small>

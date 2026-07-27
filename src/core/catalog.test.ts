@@ -17,10 +17,10 @@ import {
 import { createMonster, skillIdsFor } from './monster';
 
 describe('monster catalog discovery', () => {
-  it('lists all 52 monsters without exposing locked details', () => {
+  it('lists all 34 MVP monsters without exposing locked details', () => {
     const entries = monsterCatalogEntries(GAME_DATA, new Set());
 
-    expect(entries).toHaveLength(52);
+    expect(entries).toHaveLength(34);
     expect(entries.filter((entry) => entry.id === 'buried-mole-1')).toHaveLength(1);
     expect(entries.every((entry) => entry.state === 'locked')).toBe(true);
     expect(entries.every((entry) => entry.details === undefined)).toBe(true);
@@ -65,7 +65,7 @@ describe('monster catalog discovery', () => {
   it('finds only special recipes that create or consume a selected species', () => {
     const resultRelations = specialRecipeRelationsFor(GAME_DATA, 'fire-spirit-3');
     const parentRelations = specialRecipeRelationsFor(GAME_DATA, 'light-dragon-2');
-    const unrelatedRelations = specialRecipeRelationsFor(GAME_DATA, 'fire-dragon-5');
+    const unrelatedRelations = specialRecipeRelationsFor(GAME_DATA, 'fire-dragon-1');
 
     expect(resultRelations.createdBy.map((recipe) => recipe.id)).toEqual(['dawn-chimera']);
     expect(resultRelations.usedBy).toEqual([]);

@@ -13400,3 +13400,324 @@ button.effect-skill-card {
     filter: brightness(1.025);
   }
 }
+
+/* MVP equipment uses a pictogram at every decision point while retaining the short kanji glyph in data. */
+.equipment-glyph,
+.equipment-card > b {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.equipment-detail-identity .equipment-glyph {
+  font-size: 32px;
+}
+
+/* The lineage loom reuses formation cards so every possible child reads like a real roster member. */
+.parent-pool-heading,
+.candidate-pool-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.parent-pool-heading h3,
+.candidate-pool-heading h3 {
+  margin: 0;
+}
+
+.parent-pool-heading > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  color: var(--paper);
+  font-family: "DotGothic16", monospace;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parent-pool-heading > span b {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  place-items: center;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+
+.parent-pool-heading > span i {
+  color: var(--pink);
+  font-style: normal;
+}
+
+.candidate-pool-heading > span {
+  color: var(--gold);
+  font-size: 7px;
+}
+
+.parent-choice {
+  position: relative;
+}
+
+.parent-selection-order {
+  position: absolute;
+  z-index: 2;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  min-width: 27px;
+  height: 19px;
+  place-items: center;
+  padding: 0 4px;
+  border: 1px solid var(--monster-color);
+  background: var(--monster-color);
+  color: var(--void-deep);
+  font-size: 8px;
+  box-shadow: 2px 2px 0 var(--void-deep);
+}
+
+.parent-choice.is-selected {
+  box-shadow:
+    inset 0 0 0 2px var(--monster-color),
+    3px 3px 0 var(--void-deep);
+}
+
+.candidate-grid {
+  display: grid;
+  min-width: 0;
+  min-height: 122px;
+  flex: 0 0 122px;
+  grid-template-columns: repeat(var(--candidate-count), minmax(0, 1fr));
+  gap: 6px;
+  overflow: visible;
+}
+
+.candidate-grid > .loom-placeholder {
+  grid-column: 1 / -1;
+}
+
+.candidate-grid .breeding-candidate {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) 23px;
+}
+
+.prep-board .candidate-grid .roster-card.is-breeding-choice {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+  padding: 6px;
+  border: 1px solid var(--monster-color);
+  border-bottom-width: 4px;
+  background:
+    radial-gradient(circle at 25% 45%, color-mix(in srgb, var(--monster-color) 14%, transparent), transparent 31%),
+    var(--prep-sheet-high);
+  box-shadow: 2px 2px 0 var(--void-deep);
+  color: var(--prep-ink);
+}
+
+.prep-board .candidate-grid .roster-card.is-breeding-choice:hover,
+.prep-board .candidate-grid .roster-card.is-breeding-choice:focus-visible,
+.prep-board .candidate-grid .roster-card.is-breeding-choice.is-selected {
+  border-color: var(--monster-color);
+  background:
+    radial-gradient(circle at 25% 45%, color-mix(in srgb, var(--monster-color) 22%, transparent), transparent 35%),
+    #fff0cf;
+  box-shadow:
+    inset 0 0 0 2px var(--monster-color),
+    2px 2px 0 var(--void-deep);
+}
+
+.prep-board .candidate-grid .roster-card.is-breeding-choice .roster-identity {
+  display: grid;
+  height: 100%;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-rows: 1fr 1fr;
+  justify-items: start;
+  gap: 2px 8px;
+  text-align: left;
+}
+
+.prep-board .candidate-grid .roster-card.is-breeding-choice .monster-sigil {
+  width: 58px;
+  height: 58px;
+  grid-row: 1 / -1;
+  margin: 0;
+}
+
+.prep-board .candidate-grid .roster-card.is-breeding-choice .monster-sigil > span {
+  font-size: 34px;
+}
+
+.prep-board .candidate-grid .roster-card.is-breeding-choice strong {
+  align-self: end;
+  color: var(--prep-ink);
+  font-size: 11px;
+  text-align: left;
+}
+
+.prep-board .candidate-grid .roster-card.is-breeding-choice i {
+  align-self: start;
+  color: #6d513e;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.breeding-candidate-kind {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-top: 0;
+  background: var(--void);
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.breeding-candidate-kind.is-selected {
+  border-color: var(--mint);
+  background: var(--mint);
+  color: var(--void-deep);
+  font-weight: 800;
+}
+
+/* The archive stays a dense index; record sheets open above it only when requested. */
+.catalog-body.is-index-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.catalog-body.is-index-only .catalog-index {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.catalog-record-dialog {
+  width: min(840px, calc(100vw - 20px));
+  height: min(720px, calc(100dvh - 20px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+}
+
+.catalog-record-dialog::backdrop {
+  background: rgba(5, 6, 10, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.catalog-record-panel {
+  --monster-color: var(--gold);
+  width: 100%;
+  height: 100%;
+  padding: 42px 14px 14px;
+  overflow: hidden;
+  border: 2px solid var(--monster-color);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 8%, transparent), transparent 36%),
+    repeating-linear-gradient(0deg, transparent 0 47px, rgba(255, 255, 255, 0.014) 48px), var(--panel);
+  box-shadow:
+    inset 0 0 0 1px var(--line-soft),
+    7px 7px 0 var(--void-deep);
+}
+
+.catalog-record-panel::before {
+  background: var(--monster-color);
+}
+
+.catalog-record-panel > .dialog-close {
+  z-index: 3;
+  top: 10px;
+  right: 10px;
+}
+
+.catalog-record-panel > .catalog-detail {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 800px) {
+  .parent-pool-heading {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .parent-pool-heading > span {
+    width: 100%;
+  }
+
+  .candidate-grid {
+    min-height: 102px;
+    flex-basis: 102px;
+    gap: 3px;
+  }
+
+  .prep-board .candidate-grid .roster-card.is-breeding-choice {
+    padding: 4px 2px;
+  }
+
+  .prep-board .candidate-grid .roster-card.is-breeding-choice .roster-identity {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 43px auto auto;
+    justify-items: center;
+    gap: 1px;
+    text-align: center;
+  }
+
+  .prep-board .candidate-grid .roster-card.is-breeding-choice .monster-sigil {
+    width: 41px;
+    height: 41px;
+    grid-row: auto;
+  }
+
+  .prep-board .candidate-grid .roster-card.is-breeding-choice .monster-sigil > span {
+    font-size: 24px;
+  }
+
+  .prep-board .candidate-grid .roster-card.is-breeding-choice strong {
+    align-self: center;
+    font-size: 8px;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .prep-board .candidate-grid .roster-card.is-breeding-choice i {
+    font-size: 7px;
+  }
+
+  .breeding-candidate-kind {
+    font-size: 6px;
+  }
+
+  .catalog-body.is-index-only .catalog-index {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-record-dialog {
+    width: calc(100vw - 8px);
+    height: calc(100dvh - 8px);
+  }
+
+  .catalog-record-panel {
+    padding: 38px 6px 6px;
+    border-width: 1px;
+    box-shadow: none;
+  }
+
+  .catalog-record-panel > .catalog-detail {
+    padding: 9px;
+  }
+}

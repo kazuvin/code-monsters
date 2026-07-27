@@ -19,7 +19,7 @@ export function listBreedingCandidates(
   const secondDefinition = definitionFor(data, second);
   const candidates: BreedingCandidate[] = [];
   const averagedWhiteStars = Math.min(
-    5,
+    data.rules.maxWhiteStars,
     Math.ceil((effectiveStarsFor(data, first) + effectiveStarsFor(data, second)) / 2),
   ) as WhiteStars;
   const resultWhiteStars = Math.max(data.rules.breeding.minimumResultWhiteStars, averagedWhiteStars) as WhiteStars;

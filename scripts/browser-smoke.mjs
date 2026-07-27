@@ -205,6 +205,13 @@ if ((await desktop.locator('.shop-monsters .definition-card, .shop-monsters .sol
 if ((await desktop.locator('.equipment-offers > *').count()) !== 2) {
   throw new Error('Equipment shop does not have two slots');
 }
+if (
+  !(await desktop.locator('.equipment-offers .equipment-glyph').allTextContents()).every((icon) =>
+    /\p{Extended_Pictographic}/u.test(icon),
+  )
+) {
+  throw new Error('Equipment shop does not show a pictogram for every available item');
+}
 if (!(await desktop.locator('.equipment-rarity-readout').innerText()).includes('C 55% · R 28% · E 13% · L 4%')) {
   throw new Error('Equipment shop does not expose all rarity rates');
 }
@@ -238,8 +245,11 @@ await assertReadableMonsterCards(
 );
 await desktop.getByRole('button', { name: /図鑑/ }).click();
 await desktop.locator('.catalog-dialog[open]').waitFor();
-if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 52) {
-  throw new Error('Monster catalog does not show all 45 lineage-grid and seven standalone records');
+if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 34) {
+  throw new Error('Monster catalog does not show all 27 MVP lineage-grid and seven standalone records');
+}
+if ((await desktop.locator('.catalog-dialog .catalog-detail').count()) !== 0) {
+  throw new Error('Monster catalog still pins a detail sheet beside the index');
 }
 if ((await desktop.locator('.catalog-card[data-catalog-id="training-lynx-1"]').count()) !== 1) {
   throw new Error('Attack-experience monster is missing from the catalog');
@@ -254,6 +264,7 @@ await assertReadableMonsterCards(
   '.catalog-card-copy strong',
 );
 await desktop.locator('.catalog-card[data-catalog-id="light-dragon-2"]').click();
+await desktop.locator('.catalog-record-dialog[open]').waitFor();
 if ((await desktop.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
   throw new Error('Undiscovered monster does not open a locked silhouette record');
 }
@@ -274,7 +285,9 @@ if ((await desktop.locator('.catalog-detail .recipe-card:not(.is-special)').coun
   throw new Error('Catalog detail recipe tab contains a non-special recipe');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-recipes-desktop.png', fullPage: true });
+await desktop.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.catalog-card[data-catalog-id="buried-mole-1"]').click();
+await desktop.locator('.catalog-record-dialog[open]').waitFor();
 if ((await desktop.locator('.catalog-detail[data-catalog-detail-state="unlocked"]').count()) !== 1) {
   throw new Error('Discovered standalone monster does not open as a complete catalog record');
 }
@@ -289,7 +302,9 @@ if (
   throw new Error('Standalone catalog record does not explain both unavailable special breeding directions');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-standalone-desktop.png', fullPage: true });
+await desktop.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.catalog-card.is-unlocked').first().click();
+await desktop.locator('.catalog-record-dialog[open]').waitFor();
 if ((await desktop.locator('.catalog-detail.is-unlocked .stat-bar-row').count()) !== 7) {
   throw new Error('Discovered catalog record does not graph all seven base stats');
 }
@@ -307,6 +322,7 @@ if (!(await desktop.locator('.catalog-detail.is-unlocked .growth-scan-reading').
   throw new Error('Catalog growth scan does not expose the selected level reading');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-desktop.png', fullPage: true });
+await desktop.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await desktop
   .locator('.catalog-section-tabs')
   .getByRole('button', { name: /スキル/ })
@@ -315,6 +331,7 @@ if ((await desktop.locator('.catalog-text-index .catalog-card').count()) !== 39)
   throw new Error('Skill catalog does not show all skill records');
 }
 await desktop.locator('[data-skill-catalog-id="tail-swipe"]').click();
+await desktop.locator('.catalog-record-dialog[open]').waitFor();
 if ((await desktop.locator('.catalog-skill-detail .effect-skill-card').count()) !== 1) {
   throw new Error('Discovered skill does not expose its complete effect record');
 }
@@ -325,6 +342,7 @@ if ((await desktop.locator('.catalog-skill-detail .catalog-holder').count()) ===
   throw new Error('Skill catalog does not show base monster holders');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-skill-catalog-desktop.png', fullPage: true });
+await desktop.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await desktop
   .locator('.catalog-section-tabs')
   .getByRole('button', { name: /イベント/ })
@@ -333,10 +351,12 @@ if ((await desktop.locator('.catalog-text-index .catalog-card').count()) !== 9) 
   throw new Error('Event catalog does not show all event records');
 }
 await desktop.locator('[data-event-catalog-id="merchant-gift"]').click();
+await desktop.locator('.catalog-record-dialog[open]').waitFor();
 if (!(await desktop.locator('.catalog-event-copy').innerText()).includes('コインを5枚受け取る')) {
   throw new Error('Experienced event does not expose its route effect');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-event-catalog-desktop.png', fullPage: true });
+await desktop.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
 const discoveryBeforeDeveloperMode = await desktop.evaluate(() => ({
   monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v4'),
@@ -350,7 +370,7 @@ await desktop
   .locator('.catalog-section-tabs')
   .getByRole('button', { name: /モンスター/ })
   .click();
-if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 52) {
+if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 34) {
   throw new Error('Developer mode does not reveal every monster catalog record');
 }
 await desktop
@@ -802,6 +822,40 @@ await assertReadableMonsterCards(desktop, 'Desktop breeding parent cards', '.par
 await eligibleParents.first().click();
 await eligibleParents.nth(1).click();
 await desktop.locator('.breeding-outcome').waitFor();
+const breedingCandidateLayout = await desktop.locator('.candidate-grid').evaluate((grid) => {
+  const box = grid.getBoundingClientRect();
+  const cards = [...grid.querySelectorAll('.roster-card.is-breeding-choice')].map((card) => {
+    const cardBox = card.getBoundingClientRect();
+    return { left: cardBox.left, right: cardBox.right, top: cardBox.top };
+  });
+  return {
+    cardCount: cards.length,
+    cards,
+    left: box.left,
+    right: box.right,
+    clientWidth: grid.clientWidth,
+    scrollWidth: grid.scrollWidth,
+  };
+});
+if (
+  breedingCandidateLayout.cardCount < 1 ||
+  breedingCandidateLayout.cards.some(
+    ({ left, right, top }) =>
+      left < breedingCandidateLayout.left - 1 ||
+      right > breedingCandidateLayout.right + 1 ||
+      Math.abs(top - breedingCandidateLayout.cards[0].top) > 1,
+  ) ||
+  breedingCandidateLayout.scrollWidth > breedingCandidateLayout.clientWidth + 1
+) {
+  throw new Error(`Breeding candidates are not fully visible in one row: ${JSON.stringify(breedingCandidateLayout)}`);
+}
+if (
+  (await desktop.locator('.candidate-grid .roster-card.is-selected').count()) !== 1 ||
+  (await desktop.locator('.breeding-candidate-kind.is-selected').count()) !== 1 ||
+  (await desktop.locator('.parent-selection-order').count()) !== 2
+) {
+  throw new Error('Breeding parent and child selections are not visibly marked');
+}
 if ((await desktop.locator('.breeding-outcome .breeding-stat-row').count()) !== 7) {
   throw new Error('Selected breeding result does not prominently list all seven stats');
 }
@@ -1044,8 +1098,8 @@ await assertFitsViewport(mobile, 'Mobile workshop');
 
 await mobile.getByRole('button', { name: /図鑑/ }).click();
 await mobile.locator('.catalog-dialog[open]').waitFor();
-if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 52) {
-  throw new Error('Mobile monster catalog does not show all 45 lineage-grid and seven standalone records');
+if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 34) {
+  throw new Error('Mobile monster catalog does not show all 27 MVP lineage-grid and seven standalone records');
 }
 await assertReadableMonsterCards(
   mobile,
@@ -1054,6 +1108,7 @@ await assertReadableMonsterCards(
   '.catalog-card-copy strong',
 );
 await mobile.locator('.catalog-card[data-catalog-id="light-dragon-2"]').click();
+await mobile.locator('.catalog-record-dialog[open]').waitFor();
 if ((await mobile.locator('.catalog-detail[data-catalog-detail-state="locked"]').count()) !== 1) {
   throw new Error('Mobile undiscovered monster does not remain locked');
 }
@@ -1064,11 +1119,14 @@ if ((await mobile.locator('[data-recipe-relation="used-by"] .recipe-card.is-spec
 if ((await mobile.locator('.catalog-detail [data-recipe-focus="true"].is-locked').count()) !== 3) {
   throw new Error('Mobile catalog exposes an undiscovered monster in special breeding relations');
 }
+await mobile.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await mobile.locator('.catalog-card.is-unlocked').first().click();
+await mobile.locator('.catalog-record-dialog[open]').waitFor();
 if ((await mobile.locator('.catalog-detail.is-unlocked .growth-scan-row').count()) !== 2) {
   throw new Error('Mobile catalog does not show both growth scan rows');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png' });
+await mobile.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await mobile.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
 
 const mobileActiveCard = mobile.locator('.team-zone.is-active .roster-card').first();

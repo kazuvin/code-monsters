@@ -22,7 +22,7 @@
 
 ## Game invariants
 
-- Validation content is exactly 45 species: 3 lineages × 3 attributes × white stars 1–5.
+- MVP validation content is exactly 27 grid species: 3 lineages × 3 attributes × white stars 1–3.
 - Attributes have no damage, resistance, accuracy, or type-advantage rules.
 - A party has 3 active and up to 4 bench monsters.
 - A casual run lasts at most 12 cycles and ends early at 5 losses.

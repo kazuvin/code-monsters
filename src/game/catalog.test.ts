@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { GAME_DATA, validateGameData } from './game-data';
 
 describe('DQM run game data', () => {
-  it('keeps the 45 lineage-grid species and seven ordinary standalone species without a monster-kind category', () => {
+  it('keeps the 27 MVP lineage-grid species and seven ordinary standalone species without a monster-kind category', () => {
     const lineageGridIds = new Set(GAME_DATA.archetypes.map((archetype) => archetype.id));
     const lineageGridMonsters = GAME_DATA.monsters.filter((monster) => lineageGridIds.has(monster.archetypeId));
 
-    expect(lineageGridMonsters).toHaveLength(45);
+    expect(GAME_DATA.rules.maxWhiteStars).toBe(3);
+    expect(lineageGridMonsters).toHaveLength(27);
     expect(GAME_DATA.standaloneMonsters).toHaveLength(7);
-    expect(new Set(GAME_DATA.monsters.map((monster) => monster.id)).size).toBe(52);
-    expect(new Set(GAME_DATA.monsters.map((monster) => monster.name)).size).toBe(52);
+    expect(new Set(GAME_DATA.monsters.map((monster) => monster.id)).size).toBe(34);
+    expect(new Set(GAME_DATA.monsters.map((monster) => monster.name)).size).toBe(34);
+    expect(GAME_DATA.monsters.every((monster) => monster.whiteStars <= GAME_DATA.rules.maxWhiteStars)).toBe(true);
     expect(GAME_DATA.monsters.every((monster) => !('kind' in monster) && !('breedingMode' in monster))).toBe(true);
     expect(GAME_DATA.monsters.find((monster) => monster.id === 'slumbering-grove-1')?.roleTagIds).toContain(
       'late-bloom',
@@ -41,7 +43,7 @@ describe('DQM run game data', () => {
   it('contains every lineage, attribute, and white-star combination', () => {
     for (const lineage of GAME_DATA.lineages) {
       for (const attribute of GAME_DATA.attributes) {
-        for (let whiteStars = 1; whiteStars <= 5; whiteStars += 1) {
+        for (let whiteStars = 1; whiteStars <= GAME_DATA.rules.maxWhiteStars; whiteStars += 1) {
           expect(
             GAME_DATA.monsters.some(
               (monster) =>
@@ -62,11 +64,17 @@ describe('DQM run game data', () => {
         [...monster.intrinsicSkillIds, monster.defaultSkillId].sort().join('|'),
       );
 
-      expect(species, archetype.id).toHaveLength(5);
-      expect(new Set(species.map((monster) => monster.glyph)).size, `${archetype.id} silhouette`).toBe(5);
-      expect(new Set(species.map((monster) => monster.appearance.attire)).size, `${archetype.id} attire`).toBe(5);
-      expect(new Set(skillLoadouts).size, `${archetype.id} skill loadout`).toBe(5);
-      expect(new Set(species.map((monster) => monster.traitId)).size, `${archetype.id} trait`).toBe(5);
+      expect(species, archetype.id).toHaveLength(GAME_DATA.rules.maxWhiteStars);
+      expect(new Set(species.map((monster) => monster.glyph)).size, `${archetype.id} silhouette`).toBe(
+        GAME_DATA.rules.maxWhiteStars,
+      );
+      expect(new Set(species.map((monster) => monster.appearance.attire)).size, `${archetype.id} attire`).toBe(
+        GAME_DATA.rules.maxWhiteStars,
+      );
+      expect(new Set(skillLoadouts).size, `${archetype.id} skill loadout`).toBe(GAME_DATA.rules.maxWhiteStars);
+      expect(new Set(species.map((monster) => monster.traitId)).size, `${archetype.id} trait`).toBe(
+        GAME_DATA.rules.maxWhiteStars,
+      );
     }
   });
 
@@ -92,12 +100,13 @@ describe('DQM run game data', () => {
       epic: 13,
       legendary: 4,
     });
+    expect(GAME_DATA.equipment.every((equipment) => /\p{Extended_Pictographic}/u.test(equipment.icon))).toBe(true);
   });
 
   it('rejects an invalid minimum breeding rank', () => {
     const invalid = structuredClone(GAME_DATA);
     invalid.rules.breeding.minimumResultWhiteStars = 0 as typeof invalid.rules.breeding.minimumResultWhiteStars;
 
-    expect(validateGameData(invalid)).toContain('breeding.minimumResultWhiteStars must be between 1 and 5');
+    expect(validateGameData(invalid)).toContain('breeding.minimumResultWhiteStars must be between 1 and maxWhiteStars');
   });
 });
