@@ -32,6 +32,8 @@ import {
   experienceProfileFor,
   experienceThresholdsFor,
   farewellCoinBreakdownFor,
+  MAX_GAMBIT_RULES,
+  MIN_GAMBIT_RULES,
   permanentStatsFor,
   skillIdsFor,
   statBreakdownFor,
@@ -42,6 +44,7 @@ import { createPlaytestReport, serializePlaytestReport } from './core/playtest-r
 import { deriveSeed } from './core/rng';
 import type { OnlineSeat } from './core/online-match';
 import {
+  addGambit,
   applyBattleResult,
   breedInRun,
   breedingCandidatesForRun,
@@ -56,8 +59,10 @@ import {
   equipItem,
   eventIsAvailable,
   eventRequiresTarget,
+  moveGambit,
   moveMonsterToPartySlot,
   rerollShop,
+  removeGambit,
   sellMonster,
   toggleActiveMonster,
   toggleShopFreeze,
@@ -715,7 +720,6 @@ function MonsterDetailCard({
 }) {
   const definition = definitionFor(GAME_DATA, monster);
   const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
-  const farewell = farewellCoinBreakdownFor(GAME_DATA, monster);
   const progress = xpProgressFor(monster);
   return (
     <div className="monster-detail-card">
@@ -741,20 +745,13 @@ function MonsterDetailCard({
         <h3>{trait?.name}</h3>
         <p>{trait?.stages[monster.colorStars].description}</p>
       </section>
-      <section className="farewell-value detail-card">
-        <span>FAREWELL VALUE</span>
-        <h3>別れで {farewell.total} コイン</h3>
-        <p>
-          白星 {farewell.whiteStars} + レベル {farewell.level} + 色星 {farewell.colorStars}
-          {farewell.trait > 0 ? ` + 特性 ${farewell.trait}` : ''}
-        </p>
-        {definition.hatch && (
-          <small>
-            あと{Math.max(0, definition.hatch.afterHeldCycles - monster.cyclesHeld)}戦で孵化 · 最大
-            {starText(definition.hatch.maximumWhiteStars)}
-          </small>
-        )}
-      </section>
+      {definition.hatch && (
+        <section className="hatch-status detail-card">
+          <span>HATCH STATUS</span>
+          <h3>あと{Math.max(0, definition.hatch.afterHeldCycles - monster.cyclesHeld)}戦で孵化</h3>
+          <small>孵化先は最大 {starText(definition.hatch.maximumWhiteStars)}</small>
+        </section>
+      )}
       <section className="skill-list">
         <span>SKILL CARDS</span>
         <div className="skill-card-grid">
@@ -2402,16 +2399,7 @@ function BreedingView({
               {run.roster.map((monster) => {
                 const definition = definitionFor(GAME_DATA, monster);
                 const isStarUpGuide = starUpGuideIds.has(monster.id);
-                const eggBreedingEligible = Boolean(
-                  definition.hatch &&
-                    GAME_DATA.monsters.some(
-                      (entry) =>
-                        entry.archetypeId === definition.archetypeId &&
-                        entry.whiteStars === definition.whiteStars + 1 &&
-                        Boolean(entry.hatch),
-                    ),
-                );
-                const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel || eggBreedingEligible;
+                const eligible = monster.level >= GAME_DATA.rules.breeding.minimumLevel;
                 return (
                   <button
                     type="button"
@@ -2441,15 +2429,11 @@ function BreedingView({
                     </span>
                     <b>
                       {eligible
-                        ? eggBreedingEligible && monster.level < GAME_DATA.rules.breeding.minimumLevel
-                          ? parentIds.includes(monster.id)
-                            ? '卵配合に選択中'
-                            : '卵配合可'
-                          : rankUp && parentIds.includes(monster.id)
-                            ? '位階上昇の核'
-                            : parentIds.includes(monster.id)
-                              ? '選択中'
-                              : '選ぶ'
+                        ? rankUp && parentIds.includes(monster.id)
+                          ? '位階上昇の核'
+                          : parentIds.includes(monster.id)
+                            ? '選択中'
+                            : '選ぶ'
                         : 'Lv.3必要'}
                     </b>
                   </button>
@@ -2481,11 +2465,9 @@ function BreedingView({
                         eyebrow={
                           entry.kind === 'special'
                             ? 'SPECIAL RECIPE'
-                            : entry.kind === 'egg-upgrade'
-                              ? 'EGG FUSION'
-                              : entry.kind === 'same-name'
-                                ? 'COLOR STAR'
-                                : 'RANK BREED'
+                            : entry.kind === 'same-name'
+                              ? 'COLOR STAR'
+                              : 'RANK BREED'
                         }
                         selected={candidateId === entry.id}
                         onClick={() => setCandidateId(entry.id)}
@@ -2647,12 +2629,39 @@ function TacticsView({
   }
   const definition = definitionFor(GAME_DATA, monster);
   const skills = ['normal-attack', ...skillIdsFor(GAME_DATA, monster)];
-  const changeRule = (index: 0 | 1 | 2, rule: GambitRule) => onChange(updateGambit(run, monster.id, index, rule));
+  const changeRule = (index: number, rule: GambitRule) => onChange(updateGambit(run, monster.id, index, rule));
+  const addRule = () => {
+    const skillId = skillIdsFor(GAME_DATA, monster)[0] ?? 'normal-attack';
+    const skill = GAME_DATA.skills.find((entry) => entry.id === skillId);
+    const targets = targetRulesForSkill(GAME_DATA, skillId);
+    onChange(
+      addGambit(
+        run,
+        monster.id,
+        {
+          condition: skill && skill.mpCost > 0 ? { kind: 'self-mp-above', threshold: 25 } : { kind: 'always' },
+          action: { skillId, target: targets[0] ?? 'random-enemy' },
+        },
+        Math.max(0, monster.gambits.length - 1),
+      ),
+    );
+  };
+  const remainingAdds = MAX_GAMBIT_RULES - monster.gambits.length;
   return (
     <section className="tactics-view" aria-label={`${definition.name}のガンビット`}>
       <div className="gambit-guide">
-        <span>GAMBIT ORDER</span>
-        <p>上から判定し、最初に成立した行動を実行します。</p>
+        <div>
+          <span>GAMBIT ORDER</span>
+          <b>
+            {monster.gambits.length} / {MAX_GAMBIT_RULES} 条件
+          </b>
+          <p>上から判定し、最初に成立した行動を実行します。</p>
+        </div>
+        <button type="button" onClick={addRule} disabled={remainingAdds === 0}>
+          <span aria-hidden="true">＋</span>
+          条件を追加
+          <small>{remainingAdds > 0 ? `あと${remainingAdds}つ` : '上限'}</small>
+        </button>
       </div>
       <div className="gambit-stack">
         {monster.gambits.map((rule, index) => {
@@ -2663,64 +2672,101 @@ function TacticsView({
               : GAME_DATA.skills.find((skill) => skill.id === rule.action.skillId);
           return (
             <article className="gambit-row" key={`${monster.id}-gambit-${index}`}>
-              <b className="priority-number">{String(index + 1).padStart(2, '0')}</b>
-              <div>
-                <label>条件</label>
-                <ConditionEditor
-                  condition={rule.condition}
-                  onChange={(condition) => changeRule(index as 0 | 1 | 2, { ...rule, condition })}
-                />
-              </div>
-              <span className="gambit-arrow" aria-hidden="true">
-                →
-              </span>
-              <div>
-                <label>行動</label>
-                <div className="action-editor">
-                  <select
-                    aria-label="スキル"
-                    value={rule.action.skillId}
-                    onChange={(event) => {
-                      const skillId = event.target.value;
-                      const validTargets = targetRulesForSkill(GAME_DATA, skillId);
-                      changeRule(index as 0 | 1 | 2, {
-                        ...rule,
-                        action: {
-                          skillId,
-                          target: validTargets[0] ?? 'random-enemy',
-                        },
-                      });
-                    }}
+              <header className="gambit-row-header">
+                <span className="priority-number">
+                  <small>PRIORITY</small>
+                  <b>{String(index + 1).padStart(2, '0')}</b>
+                </span>
+                <div className="gambit-order-controls">
+                  <button
+                    type="button"
+                    aria-label={`条件${index + 1}を上へ`}
+                    title="上へ移動"
+                    onClick={() => onChange(moveGambit(run, monster.id, index, index - 1))}
+                    disabled={index === 0}
                   >
-                    {skills.map((skillId) => (
-                      <option key={skillId} value={skillId}>
-                        {skillId === 'normal-attack'
-                          ? '通常攻撃'
-                          : (GAME_DATA.skills.find((skill) => skill.id === skillId)?.name ?? skillId)}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="対象"
-                    value={targets.includes(rule.action.target) ? rule.action.target : (targets[0] ?? '')}
-                    onChange={(event) =>
-                      changeRule(index as 0 | 1 | 2, {
-                        ...rule,
-                        action: { ...rule.action, target: event.target.value as TargetRule },
-                      })
-                    }
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`条件${index + 1}を下へ`}
+                    title="下へ移動"
+                    onClick={() => onChange(moveGambit(run, monster.id, index, index + 1))}
+                    disabled={index === monster.gambits.length - 1}
                   >
-                    {targets.map((target) => (
-                      <option key={target} value={target}>
-                        {TARGET_LABELS[target]}
-                      </option>
-                    ))}
-                  </select>
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="is-remove"
+                    aria-label={`条件${index + 1}を削除`}
+                    title="削除"
+                    onClick={() => onChange(removeGambit(run, monster.id, index))}
+                    disabled={monster.gambits.length <= MIN_GAMBIT_RULES}
+                  >
+                    ×
+                  </button>
                 </div>
-                <p className="gambit-skill-note">
-                  <b>{rule.action.skillId === 'normal-attack' ? 'MP 0' : `MP ${selectedSkill?.mpCost ?? 0}`}</b>
-                  {skillSummaryText(selectedSkill)}
-                </p>
+              </header>
+              <div className="gambit-rule-grid">
+                <section className="gambit-rule-part is-condition">
+                  <label>IF / 条件</label>
+                  <ConditionEditor
+                    condition={rule.condition}
+                    onChange={(condition) => changeRule(index, { ...rule, condition })}
+                  />
+                </section>
+                <span className="gambit-arrow" aria-hidden="true">
+                  →
+                </span>
+                <section className="gambit-rule-part is-action">
+                  <label>THEN / 行動</label>
+                  <div className="action-editor">
+                    <select
+                      aria-label="スキル"
+                      value={rule.action.skillId}
+                      onChange={(event) => {
+                        const skillId = event.target.value;
+                        const validTargets = targetRulesForSkill(GAME_DATA, skillId);
+                        changeRule(index, {
+                          ...rule,
+                          action: {
+                            skillId,
+                            target: validTargets[0] ?? 'random-enemy',
+                          },
+                        });
+                      }}
+                    >
+                      {skills.map((skillId) => (
+                        <option key={skillId} value={skillId}>
+                          {skillId === 'normal-attack'
+                            ? '通常攻撃'
+                            : (GAME_DATA.skills.find((skill) => skill.id === skillId)?.name ?? skillId)}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label="対象"
+                      value={targets.includes(rule.action.target) ? rule.action.target : (targets[0] ?? '')}
+                      onChange={(event) =>
+                        changeRule(index, {
+                          ...rule,
+                          action: { ...rule.action, target: event.target.value as TargetRule },
+                        })
+                      }
+                    >
+                      {targets.map((target) => (
+                        <option key={target} value={target}>
+                          {TARGET_LABELS[target]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="gambit-skill-note">
+                    <b>{rule.action.skillId === 'normal-attack' ? 'MP 0' : `MP ${selectedSkill?.mpCost ?? 0}`}</b>
+                    {skillSummaryText(selectedSkill)}
+                  </p>
+                </section>
               </div>
             </article>
           );

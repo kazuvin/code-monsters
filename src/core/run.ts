@@ -1,5 +1,14 @@
 import { breedMonsters, listBreedingCandidates } from './breeding';
-import { definitionFor, farewellCoinsFor, gainMonsterXp, setMonsterGambit, skillIdsFor } from './monster';
+import {
+  definitionFor,
+  farewellCoinsFor,
+  gainMonsterXp,
+  MAX_GAMBIT_RULES,
+  MIN_GAMBIT_RULES,
+  replaceMonsterGambits,
+  setMonsterGambit,
+  skillIdsFor,
+} from './monster';
 import { deriveSeed, createSeededRandom } from './rng';
 import { createShop, pickEquipmentByRarity } from './shop';
 import type {
@@ -329,9 +338,11 @@ export function equipItem(
 export function updateGambit(
   run: CasualRunState,
   monsterId: string,
-  index: 0 | 1 | 2,
+  index: number,
   gambit: GambitRule,
 ): CasualRunState {
+  const monster = run.roster.find((entry) => entry.id === monsterId);
+  if (!monster || index < 0 || index >= monster.gambits.length) return run;
   const commandIndex = run.commandIndex + 1;
   return {
     ...run,
@@ -341,6 +352,73 @@ export function updateGambit(
     ),
   };
 }
+
+const replaceGambitsInRun = (run: CasualRunState, monsterId: string, gambits: GambitRule[]): CasualRunState => {
+  const monster = run.roster.find((entry) => entry.id === monsterId);
+  if (!monster) return run;
+  const updated = replaceMonsterGambits(monster, gambits);
+  if (updated === monster) return run;
+  const commandIndex = run.commandIndex + 1;
+  return {
+    ...run,
+    ...commandUpdate(run, commandIndex, {
+      kind: 'replace-gambits',
+      monsterId,
+      gambits: updated.gambits,
+    }),
+    roster: run.roster.map((entry) => (entry.id === monsterId ? updated : entry)),
+  };
+};
+
+export const addGambit = (
+  run: CasualRunState,
+  monsterId: string,
+  gambit: GambitRule,
+  index?: number,
+): CasualRunState => {
+  const monster = run.roster.find((entry) => entry.id === monsterId);
+  if (!monster || monster.gambits.length >= MAX_GAMBIT_RULES) return run;
+  const insertionIndex = Math.max(0, Math.min(monster.gambits.length, index ?? monster.gambits.length));
+  const gambits = [...monster.gambits];
+  gambits.splice(insertionIndex, 0, gambit);
+  return replaceGambitsInRun(run, monsterId, gambits);
+};
+
+export const removeGambit = (run: CasualRunState, monsterId: string, index: number): CasualRunState => {
+  const monster = run.roster.find((entry) => entry.id === monsterId);
+  if (!monster || monster.gambits.length <= MIN_GAMBIT_RULES || index < 0 || index >= monster.gambits.length) {
+    return run;
+  }
+  return replaceGambitsInRun(
+    run,
+    monsterId,
+    monster.gambits.filter((_, ruleIndex) => ruleIndex !== index),
+  );
+};
+
+export const moveGambit = (
+  run: CasualRunState,
+  monsterId: string,
+  fromIndex: number,
+  toIndex: number,
+): CasualRunState => {
+  const monster = run.roster.find((entry) => entry.id === monsterId);
+  if (
+    !monster ||
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    fromIndex >= monster.gambits.length ||
+    toIndex < 0 ||
+    toIndex >= monster.gambits.length
+  ) {
+    return run;
+  }
+  const gambits = [...monster.gambits];
+  const [moved] = gambits.splice(fromIndex, 1);
+  if (!moved) return run;
+  gambits.splice(toIndex, 0, moved);
+  return replaceGambitsInRun(run, monsterId, gambits);
+};
 
 export function breedInRun(
   data: GameData,
@@ -357,10 +435,7 @@ export function breedInRun(
   if (!first || !second) return failure(run, '親モンスターが見つかりません');
   const candidate = listBreedingCandidates(data, first, second).find((entry) => entry.id === candidateId);
   if (!candidate) return failure(run, '配合先候補が見つかりません');
-  if (
-    candidate.kind !== 'egg-upgrade' &&
-    (first.level < data.rules.breeding.minimumLevel || second.level < data.rules.breeding.minimumLevel)
-  ) {
+  if (first.level < data.rules.breeding.minimumLevel || second.level < data.rules.breeding.minimumLevel) {
     return failure(run, `配合にはレベル${data.rules.breeding.minimumLevel}が必要です`);
   }
   const commandIndex = run.commandIndex + 1;
@@ -761,5 +836,5 @@ export const breedingCandidatesForRun = (
   const candidates = listBreedingCandidates(data, first, second);
   const bothMeetMinimum =
     first.level >= data.rules.breeding.minimumLevel && second.level >= data.rules.breeding.minimumLevel;
-  return bothMeetMinimum ? candidates : candidates.filter((candidate) => candidate.kind === 'egg-upgrade');
+  return bothMeetMinimum ? candidates : [];
 };

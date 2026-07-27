@@ -101,6 +101,7 @@ const summarizeActivity = (commands: RunCommand[]) =>
         activity.equipmentChanges += 1;
         break;
       case 'change-gambit':
+      case 'replace-gambits':
         activity.gambitChanges += 1;
         break;
       case 'breed':

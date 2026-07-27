@@ -324,11 +324,11 @@ export type MonsterInstance = {
   journeySeed: number;
   inheritedStats: StatBlock;
   inheritedSkillId?: string;
-  gambits: [GambitRule, GambitRule, GambitRule];
+  gambits: GambitRule[];
   equipmentId?: string;
 };
 
-export type BreedingCandidateKind = 'generic' | 'egg-upgrade' | 'same-name' | 'special';
+export type BreedingCandidateKind = 'generic' | 'same-name' | 'special';
 
 export type BreedingCandidate = {
   id: string;
@@ -400,7 +400,8 @@ export type RunCommandPayload =
       targetIndex: number;
     }
   | { kind: 'change-equipment'; monsterId: string; fromEquipmentId?: string; toEquipmentId?: string }
-  | { kind: 'change-gambit'; monsterId: string; slot: 0 | 1 | 2; gambit: GambitRule }
+  | { kind: 'change-gambit'; monsterId: string; slot: number; gambit: GambitRule }
+  | { kind: 'replace-gambits'; monsterId: string; gambits: GambitRule[] }
   | {
       kind: 'breed';
       firstParentId: string;

@@ -3,6 +3,7 @@ import { GAME_DATA } from '../game/game-data';
 import { createMonster } from './monster';
 import type { MonsterBattleReport } from './types';
 import {
+  addGambit,
   applyBattleResult,
   breedInRun,
   buyMonster,
@@ -12,7 +13,9 @@ import {
   continueRun,
   createCasualRun,
   createOnlineRun,
+  moveGambit,
   moveMonsterToPartySlot,
+  removeGambit,
   sellMonster,
   skipEvent,
 } from './run';
@@ -356,7 +359,7 @@ describe('casual run', () => {
     expect([...rankOneResults, ...rankTwoResults].every((definition) => definition && !definition.hatch)).toBe(true);
   });
 
-  it('allows two level-one rank-one eggs to breed into the rank-two egg', () => {
+  it('does not allow two level-one rank-one eggs to breed into the rank-two egg', () => {
     const run = finishDraft();
     const first = createMonster(GAME_DATA, 'mystery-egg-1', 'first-egg');
     const second = createMonster(GAME_DATA, 'mystery-egg-1', 'second-egg');
@@ -369,9 +372,40 @@ describe('casual run', () => {
 
     const result = breedInRun(GAME_DATA, prepared, first.id, second.id, 'egg-upgrade:mystery-egg-2:0');
 
-    expect(result.ok).toBe(true);
-    expect(result.state.roster).toContainEqual(expect.objectContaining({ definitionId: candidate.id, level: 1 }));
-    expect(result.state.roster.some((monster) => monster.id === first.id || monster.id === second.id)).toBe(false);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('Expected breeding to fail');
+    expect(result.error).toBe('配合先候補が見つかりません');
+    expect(result.state.roster).toContainEqual(first);
+    expect(result.state.roster).toContainEqual(second);
+  });
+
+  it('adds three gambits, reorders them, and keeps at least two rules', () => {
+    let run = finishDraft();
+    const monsterId = run.roster[0]?.id;
+    if (!monsterId) throw new Error('Expected a drafted monster');
+
+    for (const threshold of [25, 50, 75] as const) {
+      run = addGambit(run, monsterId, {
+        condition: { kind: 'self-hp-below', threshold },
+        action: { skillId: 'normal-attack', target: 'random-enemy' },
+      });
+    }
+    run = addGambit(run, monsterId, {
+      condition: { kind: 'always' },
+      action: { skillId: 'normal-attack', target: 'random-enemy' },
+    });
+
+    expect(run.roster.find((monster) => monster.id === monsterId)?.gambits).toHaveLength(6);
+
+    run = moveGambit(run, monsterId, 5, 0);
+    expect(run.roster.find((monster) => monster.id === monsterId)?.gambits[0]?.condition.kind).toBe('self-hp-below');
+    expect(run.roster.find((monster) => monster.id === monsterId)?.gambits[0]?.condition).toMatchObject({
+      threshold: 75,
+    });
+
+    for (let index = 0; index < 5; index += 1) run = removeGambit(run, monsterId, 0);
+
+    expect(run.roster.find((monster) => monster.id === monsterId)?.gambits).toHaveLength(2);
   });
 
   it('ends immediately on the fifth loss', () => {

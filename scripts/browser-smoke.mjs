@@ -392,8 +392,8 @@ if ((await desktop.locator('.prospect-dialog .effect-skill-card').count()) !== 3
 if ((await desktop.locator('.prospect-dialog .skill-effect-fact').count()) < 3) {
   throw new Error('Monster detail skill cards do not expose concrete effect values');
 }
-if ((await desktop.locator('.prospect-dialog .farewell-value').count()) !== 1) {
-  throw new Error('Monster detail does not expose the common farewell coin value');
+if ((await desktop.locator('.prospect-dialog .farewell-value').count()) !== 0) {
+  throw new Error('Monster detail still exposes the removed farewell value');
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-prospect-desktop.png', fullPage: true });
 await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
@@ -1077,8 +1077,8 @@ await mobile.locator('dialog[open]').waitFor();
 if ((await mobile.locator('.monster-dialog .stat-bar-row').count()) !== 7) {
   throw new Error('Monster detail dialog does not graph all seven stats');
 }
-if ((await mobile.locator('.monster-dialog .farewell-value').count()) !== 1) {
-  throw new Error('Mobile monster detail does not show the farewell coin value');
+if ((await mobile.locator('.monster-dialog .farewell-value').count()) !== 0) {
+  throw new Error('Mobile monster detail still shows the removed farewell value');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-stat-breakdown-mobile.png' });
 await mobile.getByRole('button', { name: 'ガンビット' }).click();
@@ -1286,7 +1286,7 @@ await playtest.locator('.playtest-ledger').scrollIntoViewIfNeeded();
 await playtest.screenshot({ path: '/tmp/code-monsters-playtest-report-mobile.png' });
 
 const hatchTarget = new URL(target);
-hatchTarget.searchParams.set('seed', '1638');
+hatchTarget.searchParams.set('seed', '1087');
 const hatchPage = await browser.newPage({
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 1,
@@ -1300,7 +1300,7 @@ for (let round = 0; round < 3; round += 1) {
 }
 await hatchPage.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 if ((await hatchPage.locator('.shop-monsters .definition-card').filter({ hasText: 'まだら卵' }).count()) !== 2) {
-  throw new Error('Seed 1638 no longer exposes the two-egg hatch smoke fixture');
+  throw new Error('Seed 1087 no longer exposes the two-egg hatch smoke fixture');
 }
 for (let egg = 0; egg < 2; egg += 1) {
   await hatchPage
@@ -1314,25 +1314,19 @@ await hatchPage.locator('.workshop-tabs').getByRole('button', { name: /配合/ }
 await hatchPage.locator('.breeding-lab-dialog[open]').waitFor();
 const eggParentChoices = hatchPage.locator('.breeding-lab-dialog .parent-choice').filter({ hasText: 'まだら卵' });
 if ((await eggParentChoices.count()) !== 2) {
-  throw new Error('Level-one eggs are not available as egg-breeding parents');
+  throw new Error('Level-one egg fixtures are missing from the breeding lab');
 }
-const guidedEggParents = eggParentChoices.filter({ has: hatchPage.locator('.parent-star-up-badge') });
-if ((await guidedEggParents.count()) !== 2) {
-  throw new Error('Breeding parents with an available white-star upgrade are not highlighted before selection');
+if ((await eggParentChoices.filter({ has: hatchPage.locator('.parent-star-up-badge') }).count()) !== 0) {
+  throw new Error('Rank-one eggs still advertise a rank-two breeding route');
 }
 if (
-  (await eggParentChoices.nth(0).getAttribute('data-star-up-guide')) !== 'true' ||
-  (await eggParentChoices.nth(1).getAttribute('data-star-up-guide')) !== 'true'
+  (await hatchPage.locator('.breeding-lab-dialog .parent-choice:disabled').filter({ hasText: 'まだら卵' }).count()) !==
+  2
 ) {
-  throw new Error('White-star upgrade parent guidance is missing its accessible state');
+  throw new Error('Level-one eggs are still enabled as breeding parents');
 }
-await eggParentChoices.nth(0).click();
-if ((await eggParentChoices.nth(1).getAttribute('data-star-up-guide')) !== 'true') {
-  throw new Error('Selecting the first parent does not keep its white-star upgrade partner highlighted');
-}
-await eggParentChoices.nth(1).click();
-if ((await hatchPage.locator('.breeding-candidate').filter({ hasText: '星殻の卵' }).count()) !== 1) {
-  throw new Error('Two rank-one eggs do not expose the rank-two egg breeding route');
+if ((await hatchPage.locator('.breeding-candidate').filter({ hasText: '星殻の卵' }).count()) !== 0) {
+  throw new Error('Two rank-one eggs still expose the rank-two egg breeding route');
 }
 await hatchPage.getByRole('button', { name: '配合ラボを閉じる' }).click();
 const ownedEgg = hatchPage.locator('.team-zone.is-bench .roster-card').filter({ hasText: 'まだら卵' }).first();
@@ -1387,6 +1381,35 @@ await hatchPage.locator('.notice-toast.is-command').waitFor();
 await hatchNotice.waitFor({ state: 'hidden', timeout: 7000 });
 await assertFitsViewport(hatchPage, 'Mobile workshop after sequential hatches');
 
+const gambitPage = await browser.newPage({ viewport: { width: 1100, height: 900 }, deviceScaleFactor: 1 });
+watchErrors(gambitPage);
+await gambitPage.goto(target.toString(), { waitUntil: 'networkidle' });
+for (let round = 0; round < 3; round += 1) await chooseFirstStarter(gambitPage);
+await gambitPage.locator('.team-zone.is-active .roster-card').first().click();
+await gambitPage.locator('.monster-dialog[open]').waitFor();
+await gambitPage.getByRole('button', { name: 'ガンビット' }).click();
+await gambitPage.getByRole('button', { name: /条件を追加/ }).click();
+if ((await gambitPage.locator('.gambit-row').count()) !== 4) {
+  throw new Error('Gambit editor does not add a fourth condition');
+}
+const addedCondition = await gambitPage.locator('.gambit-row').nth(2).locator('select[aria-label="条件"]').inputValue();
+await gambitPage.getByRole('button', { name: '条件3を上へ' }).click();
+if (
+  (await gambitPage.locator('.gambit-row').nth(1).locator('select[aria-label="条件"]').inputValue()) !== addedCondition
+) {
+  throw new Error('Gambit editor does not reorder conditions');
+}
+await gambitPage.getByRole('button', { name: '条件2を削除' }).click();
+if ((await gambitPage.locator('.gambit-row').count()) !== 3) {
+  throw new Error('Gambit editor does not delete a condition');
+}
+await gambitPage.screenshot({ path: '/tmp/code-monsters-gambit-editor-desktop.png', fullPage: true });
+await gambitPage.setViewportSize({ width: 390, height: 844 });
+if (await gambitPage.locator('.monster-dialog').evaluate((dialog) => dialog.scrollWidth > dialog.clientWidth + 1)) {
+  throw new Error('Mobile gambit editor overflows horizontally');
+}
+await gambitPage.screenshot({ path: '/tmp/code-monsters-gambit-editor-mobile.png', fullPage: true });
+
 await browser.close();
 if (errors.length > 0) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
@@ -1403,6 +1426,8 @@ console.log(
       '/tmp/code-monsters-catalog-recipes-desktop.png',
       '/tmp/code-monsters-catalog-standalone-desktop.png',
       '/tmp/code-monsters-stat-breakdown-desktop.png',
+      '/tmp/code-monsters-gambit-editor-desktop.png',
+      '/tmp/code-monsters-gambit-editor-mobile.png',
       '/tmp/code-monsters-monster-recipes-desktop.png',
       '/tmp/code-monsters-battle-desktop.png',
       '/tmp/code-monsters-critical-desktop.png',

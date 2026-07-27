@@ -53,24 +53,6 @@ export function listBreedingCandidates(
     });
   }
 
-  if (firstDefinition.id === secondDefinition.id && firstDefinition.hatch) {
-    const upgradedEgg = data.monsters.find(
-      (entry) =>
-        entry.archetypeId === firstDefinition.archetypeId &&
-        entry.whiteStars === firstDefinition.whiteStars + 1 &&
-        Boolean(entry.hatch),
-    );
-    if (upgradedEgg) {
-      pushUnique(candidates, {
-        id: candidateId('egg-upgrade', upgradedEgg.id, 0),
-        kind: 'egg-upgrade',
-        definitionId: upgradedEgg.id,
-        colorStars: 0,
-        label: `卵配合 → ${upgradedEgg.name}`,
-      });
-    }
-  }
-
   if (first.definitionId === second.definitionId) {
     const nextColor = Math.min(2, Math.max(first.colorStars, second.colorStars) + 1) as ColorStars;
     if (nextColor > Math.max(first.colorStars, second.colorStars)) {
@@ -102,7 +84,7 @@ export function listBreedingCandidates(
   }
 
   return candidates.sort((left, right) => {
-    const order = { special: 0, 'egg-upgrade': 1, 'same-name': 2, generic: 3 };
+    const order = { special: 0, 'same-name': 1, generic: 2 };
     return order[left.kind] - order[right.kind] || left.definitionId.localeCompare(right.definitionId);
   });
 }

@@ -1,4 +1,5 @@
 import { simulateBattle } from './battle';
+import { MAX_GAMBIT_RULES, MIN_GAMBIT_RULES } from './monster';
 import type { BattleResult, GameData, MonsterInstance, Team } from './types';
 
 export type OnlineSeat = 'a' | 'b';
@@ -50,7 +51,7 @@ const cloneBuild = (build: OnlineBuild): OnlineBuild => ({
     gambits: monster.gambits.map((gambit) => ({
       condition: { ...gambit.condition },
       action: { ...gambit.action },
-    })) as MonsterInstance['gambits'],
+    })),
   })),
 });
 
@@ -118,7 +119,13 @@ const monsterShapeIsValid = (data: GameData, value: unknown): value is MonsterIn
   ) {
     return false;
   }
-  if (!Array.isArray(value.gambits) || value.gambits.length !== 3) return false;
+  if (
+    !Array.isArray(value.gambits) ||
+    value.gambits.length < MIN_GAMBIT_RULES ||
+    value.gambits.length > MAX_GAMBIT_RULES
+  ) {
+    return false;
+  }
   return value.gambits.every((gambit) => {
     if (!isRecord(gambit) || !isRecord(gambit.condition) || !isRecord(gambit.action)) return false;
     const { skillId, target } = gambit.action;

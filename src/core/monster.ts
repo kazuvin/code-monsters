@@ -23,6 +23,9 @@ export type StatValueBreakdown = {
 
 export type MonsterStatBreakdown = Record<StatId, StatValueBreakdown>;
 
+export const MIN_GAMBIT_RULES = 2;
+export const MAX_GAMBIT_RULES = 6;
+
 export const definitionFor = (data: GameData, monster: MonsterInstance) => {
   const definition = data.monsters.find((entry) => entry.id === monster.definitionId);
   if (!definition) throw new Error(`Unknown monster definition: ${monster.definitionId}`);
@@ -67,7 +70,7 @@ export const levelForXp = (data: GameData, definition: MonsterDefinition, xp: nu
 export const effectiveStarsFor = (data: GameData, monster: MonsterInstance) =>
   definitionFor(data, monster).whiteStars + monster.colorStars;
 
-export const defaultGambitsFor = (definition: MonsterDefinition): [GambitRule, GambitRule, GambitRule] => [
+export const defaultGambitsFor = (definition: MonsterDefinition): GambitRule[] => [
   {
     condition: { kind: 'ally-hp-below', threshold: 50 },
     action: { skillId: definition.intrinsicSkillIds[1], target: 'lowest-hp-ally' },
@@ -91,7 +94,7 @@ export function createMonster(
     xp?: number;
     inheritedStats?: StatBlock;
     inheritedSkillId?: string;
-    gambits?: [GambitRule, GambitRule, GambitRule];
+    gambits?: GambitRule[];
     equipmentId?: string;
     cyclesHeld?: number;
     journeySeed?: number;
@@ -211,10 +214,16 @@ export const skillIdsFor = (data: GameData, monster: MonsterInstance) => {
   ];
 };
 
-export const setMonsterGambit = (monster: MonsterInstance, index: 0 | 1 | 2, rule: GambitRule): MonsterInstance => {
-  const gambits = [...monster.gambits] as [GambitRule, GambitRule, GambitRule];
+export const setMonsterGambit = (monster: MonsterInstance, index: number, rule: GambitRule): MonsterInstance => {
+  if (index < 0 || index >= monster.gambits.length) return monster;
+  const gambits = [...monster.gambits];
   gambits[index] = rule;
   return { ...monster, gambits };
+};
+
+export const replaceMonsterGambits = (monster: MonsterInstance, gambits: GambitRule[]): MonsterInstance => {
+  if (gambits.length < MIN_GAMBIT_RULES || gambits.length > MAX_GAMBIT_RULES) return monster;
+  return { ...monster, gambits: [...gambits] };
 };
 
 export const targetRulesForSkill = (data: GameData, skillId: string): TargetRule[] => {

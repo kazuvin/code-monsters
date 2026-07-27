@@ -10,12 +10,22 @@ describe('rare shop offers', () => {
     expect(offerIds).toContain('study-owl-1');
   });
 
-  it('does not stock the rank-two egg through lucky shop promotion', () => {
-    const offers = createShop(GAME_DATA, 1, 1).monsters.filter((offer): offer is NonNullable<typeof offer> =>
+  it('stocks the rank-two egg directly in the rare shop pool', () => {
+    const eggOnlyRare = structuredClone(GAME_DATA);
+    for (const monster of eggOnlyRare.monsters) {
+      if (monster.shopAvailability === 'rare') monster.shopAvailability = 'upgrade-only';
+    }
+    const rankTwoEgg = eggOnlyRare.monsters.find((monster) => monster.id === 'mystery-egg-2');
+    if (!rankTwoEgg) throw new Error('Expected the rank-two egg definition');
+    rankTwoEgg.shopAvailability = 'rare';
+    eggOnlyRare.rules.shop.rareOfferChance = 1;
+
+    const offers = createShop(eggOnlyRare, 1, 0).monsters.filter((offer): offer is NonNullable<typeof offer> =>
       Boolean(offer),
     );
 
-    expect(offers.every((offer) => offer.definitionId !== 'mystery-egg-2')).toBe(true);
+    expect(GAME_DATA.monsters.find((monster) => monster.id === 'mystery-egg-2')?.shopAvailability).toBe('rare');
+    expect(offers.every((offer) => offer.definitionId === 'mystery-egg-2')).toBe(true);
   });
 
   it('uses the configured rarity weights when stocking equipment', () => {

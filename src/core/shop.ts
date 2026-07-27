@@ -33,7 +33,7 @@ export function createShop(
 ): ShopState {
   const random = createSeededRandom(seed);
   const common = data.monsters.filter((monster) => monster.shopAvailability === 'common' && monster.whiteStars === 1);
-  const rare = data.monsters.filter((monster) => monster.shopAvailability === 'rare' && monster.whiteStars === 1);
+  const rare = data.monsters.filter((monster) => monster.shopAvailability === 'rare');
   const counts = new Map<string, number>();
   const monsters = Array.from({ length: data.rules.shop.monsterSlots }, (_, index) => {
     const pool = rare.length > 0 && random.next() < data.rules.shop.rareOfferChance ? rare : common;

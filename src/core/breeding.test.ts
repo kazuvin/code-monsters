@@ -29,16 +29,12 @@ describe('breeding', () => {
     );
   });
 
-  it('combines two rank-one eggs into a rank-two egg', () => {
+  it('does not combine two rank-one eggs into a rank-two egg', () => {
     const first = createMonster(GAME_DATA, 'mystery-egg-1', 'first-egg');
     const second = createMonster(GAME_DATA, 'mystery-egg-1', 'second-egg');
 
-    expect(listBreedingCandidates(GAME_DATA, first, second)).toContainEqual(
-      expect.objectContaining({
-        definitionId: 'mystery-egg-2',
-        colorStars: 0,
-        kind: 'egg-upgrade',
-      }),
+    expect(listBreedingCandidates(GAME_DATA, first, second)).not.toContainEqual(
+      expect.objectContaining({ definitionId: 'mystery-egg-2' }),
     );
   });
 

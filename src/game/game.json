@@ -1,7 +1,7 @@
 {
   "schemaVersion": 4,
   "rules": {
-    "contentVersion": "casual-prototype-8",
+    "contentVersion": "casual-prototype-9",
     "maxCycles": 12,
     "maxLosses": 5,
     "rosterLimit": 7,
@@ -630,7 +630,7 @@
     {
       "id": "mystery-egg-2",
       "archetypeId": "mystery-egg",
-      "shopAvailability": "upgrade-only",
+      "shopAvailability": "rare",
       "lineageId": "spirit",
       "attributeId": "light",
       "name": "星殻の卵",
