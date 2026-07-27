@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -127,8 +128,8 @@ type BattleViewState = {
 
 const REPLAY_STEP_MS = 920;
 const BATTLE_PULSE_MS = 760;
-const BATTLE_START_STEP_MS = 560;
-const BATTLE_START_PULSE_MS = 500;
+const BATTLE_START_STEP_MS = 720;
+const BATTLE_START_PULSE_MS = 680;
 const HP_REVEAL_PROGRESS = 0.58;
 const HP_TRANSITION_MS = 140;
 const query = new URLSearchParams(window.location.search);
@@ -4357,7 +4358,7 @@ function BattleMonster({
       data-hp-reveal-delay-ms={hpRevealDelayMs}
       style={monsterStyle(GAME_DATA, definition)}
     >
-      {(acting || hpDelta !== 0 || feedback.length > 0) && (
+      {((acting && actionLabel) || hpDelta !== 0 || feedback.length > 0) && (
         <div className="battle-feedback" key={pulseKey}>
           {acting && actionLabel && (
             <span className="skill-callout">
@@ -4420,6 +4421,160 @@ function BattleMonster({
       </div>
       {fighter.shield > 0 && <i className="shield-badge">盾 {fighter.shield}</i>}
     </article>
+  );
+}
+
+type BattleOpeningPoint = {
+  id: string;
+  x: number;
+  y: number;
+};
+
+type BattleOpeningLayout = {
+  height: number;
+  source: BattleOpeningPoint;
+  targets: BattleOpeningPoint[];
+  width: number;
+};
+
+function BattleOpeningSequence({
+  frame,
+  icon,
+  order,
+  source,
+  sourceActorName,
+  total,
+}: {
+  frame: BattleResult['frames'][number];
+  icon: string;
+  order: number;
+  source: NonNullable<BattleResult['frames'][number]['battleStartSource']>;
+  sourceActorName: string;
+  total: number;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [layout, setLayout] = useState<BattleOpeningLayout>();
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const root = rootRef.current;
+      const battlefield = root?.closest('.battlefield');
+      if (!(battlefield instanceof HTMLElement)) return;
+      const battlefieldBox = battlefield.getBoundingClientRect();
+      const fighters = [...battlefield.querySelectorAll<HTMLElement>('[data-fighter-id]')];
+      const pointFor = (id: string): BattleOpeningPoint | undefined => {
+        const fighter = fighters.find((candidate) => candidate.dataset.fighterId === id);
+        const anchor = fighter?.querySelector('.monster-sigil') ?? fighter;
+        if (!(anchor instanceof HTMLElement)) return undefined;
+        const box = anchor.getBoundingClientRect();
+        return {
+          id,
+          x: box.left + box.width / 2 - battlefieldBox.left,
+          y: box.top + box.height / 2 - battlefieldBox.top,
+        };
+      };
+      const actor = frame.actorId ? pointFor(frame.actorId) : undefined;
+      if (!actor) return;
+      setLayout({
+        height: battlefieldBox.height,
+        source: actor,
+        targets: frame.targetIds.flatMap((id) => {
+          const point = pointFor(id);
+          return point ? [point] : [];
+        }),
+        width: battlefieldBox.width,
+      });
+    };
+
+    const animationFrame = window.requestAnimationFrame(measure);
+    const resizeObserver = new ResizeObserver(measure);
+    const battlefield = rootRef.current?.closest('.battlefield');
+    if (battlefield) resizeObserver.observe(battlefield);
+    window.addEventListener('resize', measure);
+    measure();
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [frame.actorId, frame.targetIds]);
+
+  const badgeHalfWidth = (layout?.width ?? 0) < 600 ? 62 : 86;
+  const badgeX = layout ? Math.max(badgeHalfWidth, Math.min(layout.width - badgeHalfWidth, layout.source.x)) : 0;
+
+  return (
+    <div
+      className={`battle-opening-sequence is-${source.kind}`}
+      data-opening-actor={frame.actorId}
+      data-opening-order={order}
+      data-opening-source={source.kind}
+      data-opening-source-id={source.id}
+      data-opening-speed={source.speed}
+      data-opening-target-count={frame.targetIds.length}
+      data-opening-total={total}
+      key={`${frame.actorId}-${source.kind}-${source.id}-${order}`}
+      ref={rootRef}
+      aria-live="polite"
+    >
+      {layout && (
+        <>
+          <svg
+            className="battle-opening-routes"
+            viewBox={`0 0 ${layout.width} ${layout.height}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <circle
+              className="battle-opening-origin"
+              cx={layout.source.x}
+              cy={layout.source.y}
+              r="8"
+              vectorEffect="non-scaling-stroke"
+            />
+            {layout.targets.map((target) => (
+              <path
+                className="battle-opening-transfer"
+                d={`M ${layout.source.x} ${layout.source.y} L ${target.x} ${target.y}`}
+                key={`route-${target.id}`}
+                pathLength="1"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+          <aside
+            className="battle-opening-source"
+            style={
+              {
+                left: `${badgeX}px`,
+                top: `${layout.source.y}px`,
+              } as CSSProperties
+            }
+          >
+            <span aria-hidden="true">{icon}</span>
+            <div>
+              <small>
+                OPENING {String(order).padStart(2, '0')} / {String(total).padStart(2, '0')} · SPD {source.speed}
+              </small>
+              <strong>{source.name}</strong>
+              <b>
+                {source.kind === 'equipment' ? '装備' : '特性'} · {sourceActorName}
+              </b>
+            </div>
+          </aside>
+          {layout.targets.map((target) => (
+            <span
+              className="battle-opening-target"
+              key={`target-${target.id}`}
+              style={{ left: `${target.x}px`, top: `${target.y}px` }}
+              aria-hidden="true"
+            >
+              <i />
+              <i />
+            </span>
+          ))}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -4603,7 +4758,7 @@ function BattleScreen({
                 acting={frame.actorId === fighter.id}
                 targeted={frame.targetIds.includes(fighter.id)}
                 hpDelta={hpDeltaFor(fighter)}
-                actionLabel={frame.actorId === fighter.id ? actionLabel : undefined}
+                actionLabel={frame.actorId === fighter.id && !startSource ? actionLabel : undefined}
                 feedback={feedbackFor(fighter)}
                 skillFx={skillFx}
                 pulseKey={battle.frameIndex}
@@ -4630,7 +4785,7 @@ function BattleScreen({
                 acting={frame.actorId === fighter.id}
                 targeted={frame.targetIds.includes(fighter.id)}
                 hpDelta={hpDeltaFor(fighter)}
-                actionLabel={frame.actorId === fighter.id ? actionLabel : undefined}
+                actionLabel={frame.actorId === fighter.id && !startSource ? actionLabel : undefined}
                 feedback={feedbackFor(fighter)}
                 skillFx={skillFx}
                 pulseKey={battle.frameIndex}
@@ -4642,33 +4797,22 @@ function BattleScreen({
           </div>
         </div>
         {startSource && (
-          <aside className={`battle-start-source-card is-${startSource.kind}`} aria-live="polite">
-            <span className="battle-start-order">
-              <small>OPENING ORDER</small>
-              <b>
-                {String(startSourceOrder).padStart(2, '0')}
-                <i>/ {String(startSourceFrames.length).padStart(2, '0')}</i>
-              </b>
-            </span>
-            <span className="battle-start-glyph" aria-hidden="true">
-              {startSourceDefinition?.icon ?? '✦'}
-            </span>
-            <div>
-              <small>
-                {startSource.kind === 'equipment' ? 'EQUIPMENT / 装備' : 'TRAIT / 特性'} · SPD {startSource.speed}
-              </small>
-              <strong>{startSource.name}</strong>
-              <b>{startActor?.name} が発動</b>
-            </div>
-            <em>ACTIVATE</em>
-          </aside>
+          <BattleOpeningSequence
+            frame={frame}
+            icon={startSourceDefinition?.icon ?? '✦'}
+            key={`opening-${battle.frameIndex}`}
+            order={startSourceOrder}
+            source={startSource}
+            sourceActorName={startActor?.name ?? 'UNKNOWN'}
+            total={startSourceFrames.length}
+          />
         )}
         <div
           className={`battle-fx is-${frame.kind}${impact ? ' is-impact' : ''}`}
           key={battle.frameIndex}
           aria-hidden="true"
         >
-          {frame.kind !== 'action' && (
+          {frame.kind !== 'action' && frame.kind !== 'battle-start-effect' && (
             <>
               <div className="fx-burst" />
               {Array.from({ length: 10 }, (_, index) => (

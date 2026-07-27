@@ -557,6 +557,31 @@ await desktop.getByRole('button', { name: '配合ラボを閉じる' }).click();
 await desktop.screenshot({ path: '/tmp/code-monsters-casual-desktop.png', fullPage: true });
 await desktop.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
 await desktop.getByRole('heading', { name: '非同期ゴースト戦' }).waitFor();
+await desktop.evaluate(() => {
+  window.__battleOpeningAudit = [];
+  const captureOpening = () => {
+    const sequence = document.querySelector('.battle-opening-sequence');
+    if (!(sequence instanceof HTMLElement)) return;
+    const entry = {
+      order: Number(sequence.dataset.openingOrder),
+      total: Number(sequence.dataset.openingTotal),
+      speed: Number(sequence.dataset.openingSpeed),
+      actor: sequence.dataset.openingActor,
+      source: sequence.dataset.openingSource,
+    };
+    const key = `${entry.order}:${entry.actor}:${entry.source}`;
+    if (!window.__battleOpeningAudit.some((record) => record.key === key)) {
+      window.__battleOpeningAudit.push({ ...entry, key });
+    }
+  };
+  window.__battleOpeningObserver = new MutationObserver(captureOpening);
+  window.__battleOpeningObserver.observe(document.body, {
+    attributes: true,
+    childList: true,
+    subtree: true,
+  });
+  captureOpening();
+});
 if ((await desktop.locator('.battle-sprite').count()) !== 6) throw new Error('Battle field is not 3v3');
 if ((await desktop.locator('.battle-fx').count()) !== 1) throw new Error('Battle effect layer is missing');
 await assertReadableMonsterCards(desktop, 'Desktop battle', '.battle-sprite', '.battle-monster-copy > strong');
@@ -567,24 +592,52 @@ if (criticalFrameCount < 1) {
 const openingFrame = desktop.locator('.battle-screen.is-frame-battle-start-effect');
 await openingFrame.waitFor({ timeout: 4000 });
 const openingPresentation = await openingFrame.evaluate((screen) => {
-  const card = screen.querySelector('.battle-start-source-card');
+  const sequence = screen.querySelector('.battle-opening-sequence');
+  const badge = sequence?.querySelector('.battle-opening-source');
+  const transfer = sequence?.querySelector('.battle-opening-transfer');
+  const targetImpact = sequence?.querySelector('.battle-opening-target');
   const actor = screen.querySelector('.battle-sprite.is-acting');
+  const actorBox = actor?.getBoundingClientRect();
+  const badgeBox = badge?.getBoundingClientRect();
   return {
     source: screen.getAttribute('data-start-source'),
     replayDelay: screen.getAttribute('data-replay-delay-ms'),
-    cardText: card?.textContent?.replace(/\s+/g, ' ').trim(),
+    badgeText: badge?.textContent?.replace(/\s+/g, ' ').trim(),
+    order: sequence?.getAttribute('data-opening-order'),
+    targetCount: Number(sequence?.getAttribute('data-opening-target-count')),
+    transferCount: sequence?.querySelectorAll('.battle-opening-transfer').length,
+    targetImpactCount: sequence?.querySelectorAll('.battle-opening-target').length,
+    badgeDistance:
+      actorBox && badgeBox
+        ? Math.hypot(
+            actorBox.left + actorBox.width / 2 - (badgeBox.left + badgeBox.width / 2),
+            actorBox.top + actorBox.height / 2 - (badgeBox.top + badgeBox.height / 2),
+          )
+        : undefined,
+    badgeAnimation: badge ? getComputedStyle(badge).animationName : '',
+    transferAnimation: transfer ? getComputedStyle(transfer).animationName : '',
+    targetAnimation: targetImpact ? getComputedStyle(targetImpact).animationName : '',
     actorAnimation: actor ? getComputedStyle(actor).animationName : '',
   };
 });
 if (
   !['trait', 'equipment'].includes(openingPresentation.source ?? '') ||
-  openingPresentation.replayDelay !== '560' ||
-  !openingPresentation.cardText?.includes('OPENING ORDER') ||
-  !openingPresentation.cardText.includes('SPD') ||
+  openingPresentation.replayDelay !== '720' ||
+  openingPresentation.order !== '1' ||
+  !openingPresentation.badgeText?.includes('OPENING 01') ||
+  !openingPresentation.badgeText.includes('SPD') ||
+  openingPresentation.targetCount < 1 ||
+  openingPresentation.transferCount !== openingPresentation.targetCount ||
+  openingPresentation.targetImpactCount !== openingPresentation.targetCount ||
+  openingPresentation.badgeDistance === undefined ||
+  openingPresentation.badgeDistance > 180 ||
+  !openingPresentation.badgeAnimation.includes('battle-opening-source') ||
+  !openingPresentation.transferAnimation.includes('battle-opening-transfer') ||
+  !openingPresentation.targetAnimation.includes('battle-opening-target') ||
   !openingPresentation.actorAnimation.includes('battle-start-actor')
 ) {
   throw new Error(
-    `Battle-start activation is not presented as an ordered source card: ${JSON.stringify(openingPresentation)}`,
+    `Battle-start activation does not travel from its actor to every target: ${JSON.stringify(openingPresentation)}`,
   );
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-battle-opening-desktop.png', fullPage: true });
@@ -633,6 +686,20 @@ if (
 }
 const pendingHpHit = desktop.locator('.battle-sprite.is-hit[data-hp-pending="true"]').first();
 await pendingHpHit.waitFor({ timeout: 8000 });
+const openingAudit = await desktop.evaluate(() => {
+  window.__battleOpeningObserver?.disconnect();
+  return window.__battleOpeningAudit;
+});
+const expectedOpeningTotal = openingAudit[0]?.total ?? 0;
+if (
+  expectedOpeningTotal < 1 ||
+  openingAudit.length !== expectedOpeningTotal ||
+  openingAudit.some((entry, index) => entry.order !== index + 1 || entry.total !== expectedOpeningTotal) ||
+  openingAudit.some((entry) => !entry.actor || !entry.source || !Number.isFinite(entry.speed)) ||
+  openingAudit.some((entry, index) => index > 0 && openingAudit[index - 1].speed < entry.speed)
+) {
+  throw new Error(`Opening effects skipped a source or ignored speed order: ${JSON.stringify(openingAudit)}`);
+}
 if ((await desktop.locator('.battle-screen').getAttribute('data-replay-delay-ms')) !== '920') {
   throw new Error('Normal replay speed is not using the readable 920ms step interval');
 }
@@ -1304,6 +1371,32 @@ await mobile.locator('.team-zone.is-bench .roster-card').first().click();
 await mobile.getByRole('button', { name: '主力へ出す' }).click();
 await mobile.getByRole('button', { name: '閉じる', exact: true }).click();
 await mobile.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
+const mobileOpening = mobile.locator('.battle-opening-sequence');
+await mobileOpening.waitFor({ timeout: 4000 });
+const mobileOpeningLayout = await mobileOpening.evaluate((sequence) => {
+  const field = sequence.closest('.battlefield');
+  const badge = sequence.querySelector('.battle-opening-source');
+  if (!field || !badge) return undefined;
+  const fieldBox = field.getBoundingClientRect();
+  const badgeBox = badge.getBoundingClientRect();
+  return {
+    fieldLeft: fieldBox.left,
+    fieldRight: fieldBox.right,
+    badgeLeft: badgeBox.left,
+    badgeRight: badgeBox.right,
+    transferCount: sequence.querySelectorAll('.battle-opening-transfer').length,
+    targetCount: Number(sequence.getAttribute('data-opening-target-count')),
+  };
+});
+if (
+  !mobileOpeningLayout ||
+  mobileOpeningLayout.badgeLeft < mobileOpeningLayout.fieldLeft - 1 ||
+  mobileOpeningLayout.badgeRight > mobileOpeningLayout.fieldRight + 1 ||
+  mobileOpeningLayout.transferCount !== mobileOpeningLayout.targetCount
+) {
+  throw new Error(`Mobile opening effect is clipped or incomplete: ${JSON.stringify(mobileOpeningLayout)}`);
+}
+await mobile.screenshot({ path: '/tmp/code-monsters-battle-opening-mobile.png' });
 await mobile.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 8000 });
 if ((await mobile.locator('.battle-sprite.is-acting .skill-callout').count()) !== 1) {
   throw new Error('Mobile battle does not show the acting monster beside its skill');
@@ -1613,6 +1706,7 @@ console.log(
       '/tmp/code-monsters-stat-breakdown-mobile.png',
       '/tmp/code-monsters-recipes-mobile.png',
       '/tmp/code-monsters-workshop-mobile.png',
+      '/tmp/code-monsters-battle-opening-mobile.png',
       '/tmp/code-monsters-battle-mobile.png',
       '/tmp/code-monsters-result-mobile.png',
       '/tmp/code-monsters-playtest-report-desktop.png',
