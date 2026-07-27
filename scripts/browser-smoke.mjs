@@ -1112,6 +1112,32 @@ await mobile.mouse.up();
 if ((await mobile.locator('.team-zone.is-active .roster-card').count()) !== 2) {
   throw new Error('Long-press drag did not move a monster from active to bench');
 }
+const mobileBenchLayout = await mobile.locator('.team-zone.is-bench .roster-list').evaluate((list) => {
+  const listBox = list.getBoundingClientRect();
+  return {
+    listTop: listBox.top,
+    listBottom: listBox.bottom,
+    cards: [...list.querySelectorAll('.roster-card')].map((card) => {
+      const box = card.getBoundingClientRect();
+      return {
+        top: box.top,
+        bottom: box.bottom,
+        clientHeight: card.clientHeight,
+        scrollHeight: card.scrollHeight,
+      };
+    }),
+  };
+});
+if (
+  mobileBenchLayout.cards.some(
+    ({ top, bottom, clientHeight, scrollHeight }) =>
+      top < mobileBenchLayout.listTop - 1 ||
+      bottom > mobileBenchLayout.listBottom + 1 ||
+      scrollHeight > clientHeight + 1,
+  )
+) {
+  throw new Error(`Mobile bench monsters are clipped: ${JSON.stringify(mobileBenchLayout)}`);
+}
 await mobile.screenshot({ path: '/tmp/code-monsters-workshop-mobile.png' });
 
 await mobile.locator('.team-zone.is-bench .roster-card').first().click();
@@ -1281,7 +1307,20 @@ const eggParentChoices = hatchPage.locator('.breeding-lab-dialog .parent-choice'
 if ((await eggParentChoices.count()) !== 2) {
   throw new Error('Level-one eggs are not available as egg-breeding parents');
 }
+const guidedEggParents = eggParentChoices.filter({ has: hatchPage.locator('.parent-star-up-badge') });
+if ((await guidedEggParents.count()) !== 2) {
+  throw new Error('Breeding parents with an available white-star upgrade are not highlighted before selection');
+}
+if (
+  (await eggParentChoices.nth(0).getAttribute('data-star-up-guide')) !== 'true' ||
+  (await eggParentChoices.nth(1).getAttribute('data-star-up-guide')) !== 'true'
+) {
+  throw new Error('White-star upgrade parent guidance is missing its accessible state');
+}
 await eggParentChoices.nth(0).click();
+if ((await eggParentChoices.nth(1).getAttribute('data-star-up-guide')) !== 'true') {
+  throw new Error('Selecting the first parent does not keep its white-star upgrade partner highlighted');
+}
 await eggParentChoices.nth(1).click();
 if ((await hatchPage.locator('.breeding-candidate').filter({ hasText: '星殻の卵' }).count()) !== 1) {
   throw new Error('Two rank-one eggs do not expose the rank-two egg breeding route');

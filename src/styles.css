@@ -12551,7 +12551,7 @@ button.effect-skill-card {
   }
 
   .prep-board .team-panel {
-    grid-template-rows: 23px minmax(0, 1fr) 64px;
+    grid-template-rows: 23px minmax(0, 1fr) 100px;
     gap: 4px;
     padding: 6px;
   }
@@ -13145,5 +13145,42 @@ button.effect-skill-card {
   .prep-board .equipment-detail-button header > small,
   .prep-board .equipment-detail-button .equipment-copy small {
     display: none;
+  }
+}
+
+/* A quiet gold signal links parents that can produce a higher white-star child. */
+.parent-choice.is-star-up-guide {
+  border-color: #b47a18;
+  background:
+    linear-gradient(90deg, rgba(241, 184, 55, 0.2), transparent 42%), color-mix(in srgb, var(--panel-high) 90%, #fff4bd);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 229, 143, 0.72),
+    0 0 9px rgba(224, 155, 26, 0.38);
+  animation: parent-star-up-guide 1.8s steps(4, end) infinite;
+}
+
+.parent-choice.is-star-up-guide.is-selected {
+  background: linear-gradient(90deg, rgba(241, 184, 55, 0.28), transparent 48%), #fff1d6;
+}
+
+.parent-choice .parent-star-up-badge {
+  margin-left: auto;
+  flex: 0 0 auto;
+  padding: 1px 4px;
+  border: 1px solid #a96f12;
+  background: #f4c85d;
+  color: #3a2512;
+  font-size: 7px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+@keyframes parent-star-up-guide {
+  50% {
+    border-color: #e5ad35;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 236, 172, 0.92),
+      0 0 13px rgba(235, 175, 48, 0.55);
+    filter: brightness(1.025);
   }
 }

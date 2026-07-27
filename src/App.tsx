@@ -2194,6 +2194,45 @@ function BreedingView({
   const [recipeArchiveOpen, setRecipeArchiveOpen] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [revealedChild, setRevealedChild] = useState<MonsterInstance>();
+  const starUpPartnersByParent = useMemo(() => {
+    const partners = new Map<string, Set<string>>();
+    for (let firstIndex = 0; firstIndex < run.roster.length; firstIndex += 1) {
+      const firstParent = run.roster[firstIndex];
+      if (!firstParent) continue;
+      for (let secondIndex = firstIndex + 1; secondIndex < run.roster.length; secondIndex += 1) {
+        const secondParent = run.roster[secondIndex];
+        if (!secondParent) continue;
+        const parentWhiteStars = Math.max(
+          definitionFor(GAME_DATA, firstParent).whiteStars,
+          definitionFor(GAME_DATA, secondParent).whiteStars,
+        );
+        const hasStarUpRoute = breedingCandidatesForRun(GAME_DATA, run, firstParent.id, secondParent.id).some(
+          (entry) => definitionById(GAME_DATA, entry.definitionId).whiteStars > parentWhiteStars,
+        );
+        if (!hasStarUpRoute) continue;
+        const firstPartners = partners.get(firstParent.id) ?? new Set<string>();
+        const secondPartners = partners.get(secondParent.id) ?? new Set<string>();
+        firstPartners.add(secondParent.id);
+        secondPartners.add(firstParent.id);
+        partners.set(firstParent.id, firstPartners);
+        partners.set(secondParent.id, secondPartners);
+      }
+    }
+    return partners;
+  }, [run]);
+  const starUpGuideIds = useMemo(() => {
+    if (parentIds.length === 0) return new Set(starUpPartnersByParent.keys());
+    if (parentIds.length === 1) {
+      const firstParentId = parentIds[0] as string;
+      const partnerIds = starUpPartnersByParent.get(firstParentId);
+      return partnerIds ? new Set([firstParentId, ...partnerIds]) : new Set<string>();
+    }
+    const firstParentId = parentIds[0] as string;
+    const secondParentId = parentIds[1] as string;
+    return starUpPartnersByParent.get(firstParentId)?.has(secondParentId)
+      ? new Set([firstParentId, secondParentId])
+      : new Set<string>();
+  }, [parentIds, starUpPartnersByParent]);
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -2263,6 +2302,7 @@ function BreedingView({
               <h3>親を2体選択</h3>
               {run.roster.map((monster) => {
                 const definition = definitionFor(GAME_DATA, monster);
+                const isStarUpGuide = starUpGuideIds.has(monster.id);
                 const eggBreedingEligible = Boolean(
                   definition.hatch &&
                     GAME_DATA.monsters.some(
@@ -2279,7 +2319,8 @@ function BreedingView({
                     key={monster.id}
                     className={`parent-choice${parentIds.includes(monster.id) ? ' is-selected' : ''}${
                       rankUp && parentIds.includes(monster.id) ? ' is-rank-catalyst' : ''
-                    }`}
+                    }${isStarUpGuide ? ' is-star-up-guide' : ''}`}
+                    data-star-up-guide={isStarUpGuide ? 'true' : undefined}
                     disabled={!eligible}
                     onClick={() => toggleParent(monster.id)}
                     style={monsterStyle(GAME_DATA, definition)}
@@ -2293,7 +2334,10 @@ function BreedingView({
                     <span>
                       <strong>{definition.name}</strong>
                       <small>
-                        Lv.{monster.level} · {starText(definition.whiteStars, monster.colorStars)}
+                        <span>
+                          Lv.{monster.level} · {starText(definition.whiteStars, monster.colorStars)}
+                        </span>
+                        {isStarUpGuide && <span className="parent-star-up-badge">★ 星UP</span>}
                       </small>
                     </span>
                     <b>
