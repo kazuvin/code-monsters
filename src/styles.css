@@ -3037,6 +3037,7 @@ button.definition-card:active,
 }
 
 .trait-block,
+.combat-identity,
 .hatch-status,
 .skill-list,
 .equipment-block {
@@ -3068,6 +3069,54 @@ button.definition-card:active,
 
 .trait-block p {
   margin: 0;
+  color: var(--muted);
+  font-family: "DotGothic16", monospace;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.combat-identity {
+  margin-top: 10px;
+}
+
+.combat-identity header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.combat-identity header span,
+.combat-identity article span {
+  color: var(--monster-color);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.combat-identity header strong {
+  color: var(--gold);
+  font-family: "DotGothic16", monospace;
+  font-size: 12px;
+}
+
+.combat-identity > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1px;
+  margin-top: 6px;
+  background: var(--line-soft);
+}
+
+.combat-identity article {
+  min-width: 0;
+  padding: 7px;
+  background: var(--deck);
+}
+
+.combat-identity article p {
+  margin: 3px 0 0;
   color: var(--muted);
   font-family: "DotGothic16", monospace;
   font-size: 9px;
@@ -14076,6 +14125,10 @@ button.effect-skill-card {
 
   .catalog-record-panel > .catalog-detail {
     padding: 9px;
+  }
+
+  .combat-identity > div {
+    grid-template-columns: 1fr;
   }
 }
 

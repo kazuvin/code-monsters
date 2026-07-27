@@ -72,6 +72,11 @@ describe('deterministic 3v3 battle', () => {
     const criticalData = structuredClone(GAME_DATA);
     criticalData.rules.battle.criticalCap = 100;
     for (const monster of criticalData.monsters) monster.baseStats.crit = 100;
+    for (const skill of criticalData.skills) {
+      for (const effect of skill.effects) {
+        if (effect.kind === 'damage') effect.canCrit = true;
+      }
+    }
     const result = simulateBattle(criticalData, {
       player: team('p', ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1']),
       enemy: team('e', ['dark-dragon-1', 'fire-demon-1', 'light-spirit-1']),
@@ -182,7 +187,12 @@ describe('deterministic 3v3 battle', () => {
   });
 
   it('executes the configured matching skill and records it in battle reports', () => {
-    const caster = createMonster(GAME_DATA, 'dark-demon-1', 'configured-caster', {
+    const configuredData = structuredClone(GAME_DATA);
+    const casterDefinition = configuredData.monsters.find((monster) => monster.id === 'dark-demon-2');
+    if (!casterDefinition) throw new Error('Expected dark-demon-2');
+    casterDefinition.baseStats.maxHp = 1_000;
+    casterDefinition.baseStats.speed = 1_000;
+    const caster = createMonster(configuredData, 'dark-demon-2', 'configured-caster', {
       gambits: [
         {
           condition: { kind: 'enemy-lacks-status', statusId: 'silence' },
@@ -194,7 +204,7 @@ describe('deterministic 3v3 battle', () => {
         },
       ],
     });
-    const result = simulateBattle(GAME_DATA, {
+    const result = simulateBattle(configuredData, {
       player: [caster, ...team('p', ['light-dragon-1', 'fire-spirit-1'], 0)],
       enemy: team('e', ['dark-dragon-1', 'fire-demon-1', 'light-spirit-1'], 0),
       seed: 1337,
@@ -207,5 +217,45 @@ describe('deterministic 3v3 battle', () => {
         (frame) => frame.kind === 'action' && frame.actorId === caster.id && frame.skillId === 'silence-mark',
       ),
     ).toBe(true);
+  });
+
+  it('supports shield-spending attacks and explicit recoil as reusable effects', () => {
+    const peakData = structuredClone(GAME_DATA);
+    const haloBite = peakData.skills.find((skill) => skill.id === 'halo-bite');
+    const haku = peakData.monsters.find((monster) => monster.id === 'light-dragon-1');
+    const trait = peakData.traits.find((entry) => entry.id === haku?.traitId);
+    if (!haloBite || !haku || !trait) throw new Error('Expected Haku peak mechanics');
+    haloBite.mpCost = 0;
+    haloBite.effects = [
+      { kind: 'shield-burst', power: 160, target: 'action-target' },
+      { kind: 'recoil', maxHpPercent: 10, target: 'self' },
+    ] as typeof haloBite.effects;
+    trait.stages[0].battleStartEffects = [{ kind: 'shield', maxHpPercent: 30, target: 'self' }];
+    haku.baseStats.speed = 200;
+    const caster = createMonster(peakData, haku.id, 'peak-caster', {
+      gambits: [
+        {
+          condition: { kind: 'self-shield-above', threshold: 25 },
+          action: { skillId: 'halo-bite', target: 'highest-hp-enemy' },
+        },
+        {
+          condition: { kind: 'always' },
+          action: { skillId: 'normal-attack', target: 'random-enemy' },
+        },
+      ],
+    });
+    const result = simulateBattle(peakData, {
+      player: [caster, ...team('p', ['light-dragon-1', 'light-dragon-1'], 0)],
+      enemy: team('e', ['light-dragon-1', 'light-dragon-1', 'light-dragon-1'], 0),
+      seed: 144,
+    });
+    const actionFrame = result.frames.find(
+      (frame) => frame.kind === 'action' && frame.actorId === caster.id && frame.skillId === 'halo-bite',
+    );
+    const report = result.monsterReports.find((entry) => entry.id === caster.id);
+
+    expect(actionFrame?.text).toContain('盾');
+    expect(actionFrame?.text).toContain('反動');
+    expect(report?.skillBreakdown['halo-bite']?.damage).toBeGreaterThan(0);
   });
 });

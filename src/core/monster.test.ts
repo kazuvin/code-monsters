@@ -94,6 +94,16 @@ describe('monster growth profiles', () => {
 });
 
 describe('default gambits', () => {
+  it('configures all three owned skills before relying on the automatic normal-attack fallback', () => {
+    const base = createMonster(GAME_DATA, 'light-spirit-1', 'base-gambits');
+    const inherited = createMonster(GAME_DATA, 'light-spirit-1', 'inherited-gambits', {
+      inheritedSkillId: 'arc-shot',
+    });
+
+    expect(base.gambits.map((rule) => rule.action.skillId)).toEqual(['gentle-ray', 'veil-step', 'spirit-spark']);
+    expect(inherited.gambits.map((rule) => rule.action.skillId)).toEqual(['gentle-ray', 'veil-step', 'arc-shot']);
+  });
+
   it('gives every species executable target rules for all configured skills', () => {
     for (const definition of GAME_DATA.monsters) {
       const monster = createMonster(GAME_DATA, definition.id, `default-gambit-${definition.id}`);

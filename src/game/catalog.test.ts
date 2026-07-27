@@ -78,6 +78,56 @@ describe('DQM run game data', () => {
     }
   });
 
+  it('gives every grid species one exclusive signature, trait, stat peak, weakness, and gambit plan', () => {
+    type PeakIdentity = {
+      signatureSkillId: string;
+      winCondition: string;
+      weakness: string;
+      gambitHint: string;
+      recommendedCondition: unknown;
+    };
+    const gridArchetypeIds = new Set(GAME_DATA.archetypes.map((archetype) => archetype.id));
+    const gridMonsters = GAME_DATA.monsters.filter((monster) => gridArchetypeIds.has(monster.archetypeId));
+    const identities = gridMonsters.map((monster) => Reflect.get(monster, 'identity') as PeakIdentity | undefined);
+    const signatureIds = identities.flatMap((identity) => (identity ? [identity.signatureSkillId] : []));
+    const traitIds = gridMonsters.map((monster) => monster.traitId);
+    const signatureUsage = new Map<string, number>();
+
+    for (const monster of gridMonsters) {
+      for (const skillId of [...monster.intrinsicSkillIds, monster.defaultSkillId]) {
+        signatureUsage.set(skillId, (signatureUsage.get(skillId) ?? 0) + 1);
+      }
+    }
+
+    expect(identities.every(Boolean)).toBe(true);
+    expect(new Set(signatureIds).size).toBe(gridMonsters.length);
+    expect(new Set(traitIds).size).toBe(gridMonsters.length);
+    for (const [index, monster] of gridMonsters.entries()) {
+      const identity = identities[index];
+      expect(identity, monster.id).toEqual(
+        expect.objectContaining({
+          signatureSkillId: expect.any(String),
+          winCondition: expect.any(String),
+          weakness: expect.any(String),
+          gambitHint: expect.any(String),
+          recommendedCondition: expect.any(Object),
+        }),
+      );
+      expect(monster.intrinsicSkillIds, `${monster.id} signature slot`).toContain(identity?.signatureSkillId);
+      expect(signatureUsage.get(identity?.signatureSkillId ?? ''), `${monster.id} signature exclusivity`).toBe(1);
+    }
+
+    for (const archetype of GAME_DATA.archetypes) {
+      for (const [index, form] of archetype.forms.slice(0, GAME_DATA.rules.maxWhiteStars).entries()) {
+        const multipliers = Object.values(
+          (Reflect.get(form, 'statMultipliers') as Partial<Record<string, number>> | undefined) ?? {},
+        ).filter((value): value is number => value !== undefined);
+        expect(Math.max(...multipliers), `${archetype.id} white-star ${index + 1} peak`).toBeGreaterThanOrEqual(1.2);
+        expect(Math.min(...multipliers), `${archetype.id} white-star ${index + 1} weakness`).toBeLessThanOrEqual(0.85);
+      }
+    }
+  });
+
   it('passes referential and tuning validation', () => {
     expect(validateGameData(GAME_DATA)).toEqual([]);
   });

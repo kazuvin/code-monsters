@@ -169,20 +169,30 @@ const applyEffect = (
   const targets = targetsForEffect(effect, actor, actionTargets, fighters);
   const notes: string[] = [];
   const criticalTargetIds: string[] = [];
+  const shieldSpent = effect.kind === 'shield-burst' && targets.length > 0 ? actor.shield : 0;
+  if (effect.kind === 'shield-burst' && targets.length > 0) actor.shield = 0;
   for (const target of targets) {
     switch (effect.kind) {
       case 'damage': {
-        const offense = effectiveStat(
-          actor,
-          effect.scaling === 'physical' ? 'attack' : 'wisdom',
-          data.rules.battle.criticalCap,
-        );
-        const defense = effectiveStat(
-          target,
-          effect.scaling === 'physical' ? 'defense' : 'wisdom',
-          data.rules.battle.criticalCap,
-        );
-        const reduction = effect.scaling === 'physical' ? 0.42 : 0.25;
+        const offenseStat: StatId =
+          effect.scaling === 'physical'
+            ? 'attack'
+            : effect.scaling === 'magic'
+              ? 'wisdom'
+              : effect.scaling === 'defense'
+                ? 'defense'
+                : 'speed';
+        const defenseStat: StatId = effect.scaling === 'magic' ? 'wisdom' : 'defense';
+        const offense = effectiveStat(actor, offenseStat, data.rules.battle.criticalCap);
+        const defense = effectiveStat(target, defenseStat, data.rules.battle.criticalCap);
+        const reduction =
+          effect.scaling === 'physical'
+            ? 0.42
+            : effect.scaling === 'magic'
+              ? 0.25
+              : effect.scaling === 'defense'
+                ? 0.34
+                : 0.3;
         let damage = Math.max(1, offense * (effect.power / 100) - defense * reduction);
         const critical =
           effect.canCrit && random.next() * 100 < effectiveStat(actor, 'crit', data.rules.battle.criticalCap);
@@ -199,6 +209,25 @@ const applyEffect = (
           criticalTargetIds.push(target.id);
         }
         notes.push(`${target.name}に${applied.total}${critical ? ' 会心' : ''}`);
+        break;
+      }
+      case 'shield-burst': {
+        const damage = Math.max(0, Math.floor(shieldSpent * (effect.power / 100)));
+        const applied = applyDamage(target, damage);
+        actor.report.damageDealt += applied.total;
+        actor.report.hpDamageDealt += applied.hp;
+        contributionFor(actor, sourceSkillId).damage += applied.total;
+        target.report.damageTaken += applied.total;
+        target.report.shieldAbsorbed += applied.absorbed;
+        notes.push(`${actor.name}の盾${shieldSpent}を消費し${target.name}に${applied.total}`);
+        break;
+      }
+      case 'recoil': {
+        const amount = Math.max(1, Math.floor(target.stats.maxHp * (effect.maxHpPercent / 100)));
+        const hpDamage = Math.min(target.hp, amount);
+        target.hp -= hpDamage;
+        target.report.damageTaken += hpDamage;
+        notes.push(`${target.name}に反動${hpDamage}`);
         break;
       }
       case 'heal': {
@@ -306,6 +335,7 @@ const toGambitView = (fighter: BattleFighter): GambitFighterView => ({
   maxHp: fighter.stats.maxHp,
   mp: fighter.mp,
   maxMp: fighter.stats.maxMp,
+  shield: fighter.shield,
   attack: fighter.stats.attack,
   alive: alive(fighter),
   statuses: fighter.statuses.map((status) => status.id),

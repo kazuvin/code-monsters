@@ -221,14 +221,20 @@ const CONDITION_LABELS: Record<GambitCondition['kind'], string> = {
   'self-hp-above': '自分のHPが以上',
   'self-mp-below': '自分のMPが以下',
   'self-mp-above': '自分のMPが以上',
+  'self-shield-below': '自分の盾が以下',
+  'self-shield-above': '自分の盾が以上',
   'ally-hp-below': '味方のHPが以下',
   'ally-hp-above': '味方のHPが以上',
   'ally-mp-below': '味方のMPが以下',
   'ally-mp-above': '味方のMPが以上',
+  'ally-shield-below': '味方の盾が以下',
+  'ally-shield-above': '味方の盾が以上',
   'enemy-hp-below': '敵のHPが以下',
   'enemy-hp-above': '敵のHPが以上',
   'enemy-mp-below': '敵のMPが以下',
   'enemy-mp-above': '敵のMPが以上',
+  'enemy-shield-below': '敵の盾が以下',
+  'enemy-shield-above': '敵の盾が以上',
   'self-has-status': '自分に状態がある',
   'self-lacks-status': '自分に状態がない',
   'ally-has-status': '味方に状態がある',
@@ -246,11 +252,29 @@ const CONDITION_GROUPS: Array<{
   { label: '基本', kinds: ['always'] },
   {
     label: '自分',
-    kinds: ['self-hp-below', 'self-hp-above', 'self-mp-below', 'self-mp-above', 'self-has-status', 'self-lacks-status'],
+    kinds: [
+      'self-hp-below',
+      'self-hp-above',
+      'self-mp-below',
+      'self-mp-above',
+      'self-shield-below',
+      'self-shield-above',
+      'self-has-status',
+      'self-lacks-status',
+    ],
   },
   {
     label: '味方',
-    kinds: ['ally-hp-below', 'ally-hp-above', 'ally-mp-below', 'ally-mp-above', 'ally-has-status', 'ally-lacks-status'],
+    kinds: [
+      'ally-hp-below',
+      'ally-hp-above',
+      'ally-mp-below',
+      'ally-mp-above',
+      'ally-shield-below',
+      'ally-shield-above',
+      'ally-has-status',
+      'ally-lacks-status',
+    ],
   },
   {
     label: '敵',
@@ -259,6 +283,8 @@ const CONDITION_GROUPS: Array<{
       'enemy-hp-above',
       'enemy-mp-below',
       'enemy-mp-above',
+      'enemy-shield-below',
+      'enemy-shield-above',
       'enemy-has-status',
       'enemy-lacks-status',
     ],
@@ -350,14 +376,20 @@ const emptyCondition = (kind: GambitCondition['kind']): GambitCondition => {
     case 'self-hp-above':
     case 'self-mp-below':
     case 'self-mp-above':
+    case 'self-shield-below':
+    case 'self-shield-above':
     case 'ally-hp-below':
     case 'ally-hp-above':
     case 'ally-mp-below':
     case 'ally-mp-above':
+    case 'ally-shield-below':
+    case 'ally-shield-above':
     case 'enemy-hp-below':
     case 'enemy-hp-above':
     case 'enemy-mp-below':
     case 'enemy-mp-above':
+    case 'enemy-shield-below':
+    case 'enemy-shield-above':
       return { kind, threshold: 50 };
     case 'self-has-status':
     case 'self-lacks-status':
@@ -530,6 +562,10 @@ const effectFactFor = (effect: EffectDefinition) => {
   switch (effect.kind) {
     case 'damage':
       return `威力 ${effect.power}${effect.canCrit ? ' · 会心可能' : ''}`;
+    case 'shield-burst':
+      return `自分の盾を全消費 · 盾値×${effect.power}%のダメージ`;
+    case 'recoil':
+      return `自分に最大HP ${effect.maxHpPercent}%の反動`;
     case 'heal':
       return `${target}を回復 · 回復力 ${effect.power}`;
     case 'shield':
@@ -558,11 +594,22 @@ const runRewardTextFor = (skill: SkillDefinition) => {
 
 const skillTagsFor = (skill: SkillDefinition) => {
   const damage = skill.effects.find((effect) => effect.kind === 'damage');
+  const shieldBurst = skill.effects.some((effect) => effect.kind === 'shield-burst');
   const healing = skill.effects.some((effect) => effect.kind === 'heal');
   const tags = [SKILL_TARGET_LABELS[skill.targetScope]];
   if (damage?.kind === 'damage') {
-    tags.unshift(damage.scaling === 'physical' ? '物理' : '魔法');
-    tags.push(damage.scaling === 'physical' ? '攻撃力参照' : '賢さ参照');
+    const scalingLabels = {
+      physical: ['物理', '攻撃力参照'],
+      magic: ['魔法', '賢さ参照'],
+      defense: ['防護', '守備力参照'],
+      speed: ['先手', '素早さ参照'],
+    } as const;
+    const [category, scaling] = scalingLabels[damage.scaling];
+    tags.unshift(category);
+    tags.push(scaling);
+  } else if (shieldBurst) {
+    tags.unshift('盾撃');
+    tags.push('盾値参照');
   } else if (healing) {
     tags.unshift('回復');
     tags.push('賢さ参照');
@@ -789,6 +836,34 @@ function GrowthProfilePanel({ definition, currentLevel }: { definition: MonsterD
   );
 }
 
+function CombatIdentityPanel({ definition }: { definition: MonsterDefinition }) {
+  const identity = definition.identity;
+  if (!identity) return null;
+  const signature = GAME_DATA.skills.find((skill) => skill.id === identity.signatureSkillId);
+  return (
+    <section className="combat-identity detail-card" data-signature-skill={identity.signatureSkillId}>
+      <header>
+        <span>COMBAT IDENTITY</span>
+        <strong>{signature?.name ?? identity.signatureSkillId}</strong>
+      </header>
+      <div>
+        <article>
+          <span>勝ち筋</span>
+          <p>{identity.winCondition}</p>
+        </article>
+        <article>
+          <span>弱点</span>
+          <p>{identity.weakness}</p>
+        </article>
+        <article>
+          <span>推奨ガンビット</span>
+          <p>{identity.gambitHint}</p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function MonsterDetailCard({
   monster,
   showExperience = false,
@@ -818,6 +893,7 @@ function MonsterDetailCard({
       </div>
       <StatBreakdownGrid monster={monster} />
       <GrowthProfilePanel definition={definition} currentLevel={monster.level} />
+      <CombatIdentityPanel definition={definition} />
       <section className="trait-block detail-card">
         <span>TRAIT / COLOR STAGE {monster.colorStars}</span>
         <h3>{trait?.name}</h3>
@@ -3220,6 +3296,7 @@ function MonsterCatalogProfile({ entry }: { entry: MonsterCatalogEntry }) {
         ariaLabel={`${definition.name}のレベル1基礎能力`}
       />
       <GrowthProfilePanel definition={definition} />
+      <CombatIdentityPanel definition={definition} />
       <section className="catalog-trait">
         <span>TRAIT / 色星0</span>
         <strong>{trait?.name ?? '特性なし'}</strong>

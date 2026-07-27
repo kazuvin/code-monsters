@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
 const target = new URL(requestedTarget);
-target.searchParams.set('seed', target.searchParams.get('seed') ?? '7261');
+target.searchParams.set('seed', target.searchParams.get('seed') ?? '7278');
 target.searchParams.set('mode', 'casual');
 
 const browser = await chromium.launch({
@@ -163,9 +163,9 @@ const chooseFirstStarter = async (page) => {
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
 await desktop.addInitScript(() => {
-  window.localStorage.setItem('code-monsters:recipe-discovery:v4', JSON.stringify(['fire-spirit-3', 'buried-mole-1']));
-  window.localStorage.setItem('code-monsters:skill-discovery:v4', JSON.stringify(['tail-swipe']));
-  window.localStorage.setItem('code-monsters:event-discovery:v4', JSON.stringify(['merchant-gift']));
+  window.localStorage.setItem('code-monsters:recipe-discovery:v5', JSON.stringify(['fire-spirit-3', 'buried-mole-1']));
+  window.localStorage.setItem('code-monsters:skill-discovery:v5', JSON.stringify(['tail-swipe']));
+  window.localStorage.setItem('code-monsters:event-discovery:v5', JSON.stringify(['merchant-gift']));
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
@@ -374,6 +374,15 @@ await desktop
 if (!(await desktop.locator('.catalog-detail.is-unlocked .growth-scan-reading').innerText()).includes('LV.10')) {
   throw new Error('Catalog growth scan does not expose the selected level reading');
 }
+const desktopCombatIdentity = desktop.locator('.catalog-detail.is-unlocked .combat-identity');
+if (
+  (await desktopCombatIdentity.count()) !== 1 ||
+  (await desktopCombatIdentity.locator('article').count()) !== 3 ||
+  !(await desktopCombatIdentity.getAttribute('data-signature-skill'))
+) {
+  throw new Error('Discovered catalog record does not show its complete combat identity');
+}
+await desktopCombatIdentity.scrollIntoViewIfNeeded();
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-desktop.png', fullPage: true });
 await desktop.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await desktop
@@ -412,9 +421,9 @@ await desktop.screenshot({ path: '/tmp/code-monsters-event-catalog-desktop.png',
 await desktop.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
 const discoveryBeforeDeveloperMode = await desktop.evaluate(() => ({
-  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v4'),
-  skills: window.localStorage.getItem('code-monsters:skill-discovery:v4'),
-  events: window.localStorage.getItem('code-monsters:event-discovery:v4'),
+  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v5'),
+  skills: window.localStorage.getItem('code-monsters:skill-discovery:v5'),
+  events: window.localStorage.getItem('code-monsters:event-discovery:v5'),
 }));
 await desktop.locator('.developer-mode-switch').click();
 await desktop.getByRole('button', { name: /図鑑/ }).click();
@@ -444,9 +453,9 @@ await desktop.screenshot({ path: '/tmp/code-monsters-developer-catalog-desktop.p
 await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.developer-mode-switch').click();
 const discoveryAfterDeveloperMode = await desktop.evaluate(() => ({
-  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v4'),
-  skills: window.localStorage.getItem('code-monsters:skill-discovery:v4'),
-  events: window.localStorage.getItem('code-monsters:event-discovery:v4'),
+  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v5'),
+  skills: window.localStorage.getItem('code-monsters:skill-discovery:v5'),
+  events: window.localStorage.getItem('code-monsters:event-discovery:v5'),
 }));
 if (JSON.stringify(discoveryAfterDeveloperMode) !== JSON.stringify(discoveryBeforeDeveloperMode)) {
   throw new Error('Developer mode mutated persistent catalog discovery');
@@ -1285,6 +1294,11 @@ await mobile.locator('.catalog-record-dialog[open]').waitFor();
 if ((await mobile.locator('.catalog-detail.is-unlocked .growth-scan-row').count()) !== 2) {
   throw new Error('Mobile catalog does not show both growth scan rows');
 }
+const mobileCombatIdentity = mobile.locator('.catalog-detail.is-unlocked .combat-identity');
+if ((await mobileCombatIdentity.locator('article').count()) !== 3) {
+  throw new Error('Mobile catalog does not show the complete combat identity');
+}
+await mobileCombatIdentity.scrollIntoViewIfNeeded();
 await mobile.screenshot({ path: '/tmp/code-monsters-catalog-mobile.png' });
 await mobile.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await mobile.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
@@ -1653,10 +1667,16 @@ const gambitConditionKinds = await gambitPage
   .locator('select[aria-label="条件"] option')
   .evaluateAll((options) => options.map((option) => option.value));
 if (
-  gambitConditionKinds.length !== 21 ||
-  !['self-hp-above', 'ally-mp-below', 'enemy-lacks-status', 'living-count-at-least'].every((kind) =>
-    gambitConditionKinds.includes(kind),
-  )
+  gambitConditionKinds.length !== 27 ||
+  ![
+    'self-hp-above',
+    'self-shield-below',
+    'ally-mp-below',
+    'ally-shield-above',
+    'enemy-shield-below',
+    'enemy-lacks-status',
+    'living-count-at-least',
+  ].every((kind) => gambitConditionKinds.includes(kind))
 ) {
   throw new Error(`Gambit editor does not expose all expanded condition families: ${gambitConditionKinds.join(',')}`);
 }

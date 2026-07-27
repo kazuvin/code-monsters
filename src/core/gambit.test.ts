@@ -16,6 +16,7 @@ const fighterView = (
   maxHp: 100,
   mp: 20,
   maxMp: 40,
+  shield: 0,
   attack: 20,
   alive: true,
   statuses: [],
@@ -46,6 +47,10 @@ describe('gambit conditions', () => {
     [{ kind: 'ally-hp-above', threshold: 75 }, {}, { hp: 75 }, {}, true],
     [{ kind: 'enemy-hp-below', threshold: 25 }, {}, {}, { hp: 25 }, true],
     [{ kind: 'enemy-hp-above', threshold: 75 }, {}, {}, { hp: 75 }, true],
+    [{ kind: 'self-shield-below', threshold: 25 }, { shield: 25 }, {}, {}, true],
+    [{ kind: 'self-shield-above', threshold: 25 }, { shield: 25 }, {}, {}, true],
+    [{ kind: 'ally-shield-below', threshold: 25 }, {}, { shield: 20 }, {}, true],
+    [{ kind: 'enemy-shield-above', threshold: 25 }, {}, {}, { shield: 30 }, true],
   ] as const)('matches inclusive percentage boundaries for %o', (condition, self, ally, enemy, expected) => {
     expect(matches(condition as GambitCondition, self, ally, enemy)).toBe(expected);
   });

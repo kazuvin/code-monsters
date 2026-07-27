@@ -80,6 +80,10 @@ const defaultConditionForSkill = (data: GameData, skillId: string): GambitRule['
     skill.targetScope === 'self' ? 'self' : skill.targetScope.includes('all') ? 'ally' : 'action-target';
   const restorative = skill.effects.find((effect) => effect.kind === 'heal' || effect.kind === 'shield');
   if (restorative) {
+    if (restorative.kind === 'shield') {
+      if (skill.targetScope === 'self') return { kind: 'self-shield-below', threshold: 25 };
+      if (skill.targetScope.includes('ally')) return { kind: 'ally-shield-below', threshold: 25 };
+    }
     if (skill.targetScope === 'self') return { kind: 'self-hp-below', threshold: 50 };
     if (skill.targetScope.includes('ally')) return { kind: 'ally-hp-below', threshold: 50 };
   }
@@ -99,21 +103,30 @@ const defaultConditionForSkill = (data: GameData, skillId: string): GambitRule['
   return { kind: 'enemy-hp-below', threshold: 50 };
 };
 
-export const defaultGambitsFor = (data: GameData, definition: MonsterDefinition): GambitRule[] => {
-  const utilitySkillId = definition.intrinsicSkillIds[1];
-  const primarySkillId = definition.intrinsicSkillIds[0];
+export const defaultGambitsFor = (
+  data: GameData,
+  definition: MonsterDefinition,
+  inheritedSkillId?: string,
+): GambitRule[] => {
+  const signatureSkillId = definition.identity?.signatureSkillId ?? definition.intrinsicSkillIds[0];
+  const secondarySkillId =
+    definition.intrinsicSkillIds.find((skillId) => skillId !== signatureSkillId) ?? definition.intrinsicSkillIds[1];
+  const slotSkillId =
+    inheritedSkillId && !definition.intrinsicSkillIds.includes(inheritedSkillId)
+      ? inheritedSkillId
+      : definition.defaultSkillId;
   return [
     {
-      condition: defaultConditionForSkill(data, utilitySkillId),
-      action: { skillId: utilitySkillId, target: defaultTargetForSkill(data, utilitySkillId) },
+      condition: definition.identity?.recommendedCondition ?? defaultConditionForSkill(data, signatureSkillId),
+      action: { skillId: signatureSkillId, target: defaultTargetForSkill(data, signatureSkillId) },
     },
     {
-      condition: { kind: 'always' },
-      action: { skillId: primarySkillId, target: defaultTargetForSkill(data, primarySkillId) },
+      condition: defaultConditionForSkill(data, secondarySkillId),
+      action: { skillId: secondarySkillId, target: defaultTargetForSkill(data, secondarySkillId) },
     },
     {
-      condition: { kind: 'always' },
-      action: { skillId: 'normal-attack', target: 'random-enemy' },
+      condition: defaultConditionForSkill(data, slotSkillId),
+      action: { skillId: slotSkillId, target: defaultTargetForSkill(data, slotSkillId) },
     },
   ];
 };
@@ -146,7 +159,7 @@ export function createMonster(
     journeySeed: Math.floor(options.journeySeed ?? 0),
     inheritedStats: { ...(options.inheritedStats ?? EMPTY_STATS) },
     inheritedSkillId: options.inheritedSkillId,
-    gambits: options.gambits ?? defaultGambitsFor(data, definition),
+    gambits: options.gambits ?? defaultGambitsFor(data, definition, options.inheritedSkillId),
     equipmentId: options.equipmentId,
   };
 }

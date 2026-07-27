@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "rules": {
-    "contentVersion": "casual-prototype-10",
+    "contentVersion": "casual-prototype-11",
     "maxCycles": 12,
     "maxLosses": 5,
     "maxWhiteStars": 3,
@@ -99,23 +99,47 @@
           "intrinsicSkillIds": ["halo-bite", "scale-wall"],
           "defaultSkillId": "tail-swipe",
           "traitId": "whelp-instinct",
-          "statGrowthProfileId": "late-surge"
+          "statGrowthProfileId": "late-surge",
+          "statMultipliers": { "defense": 1.35, "speed": 0.85 },
+          "identity": {
+            "signatureSkillId": "halo-bite",
+            "winCondition": "盾を厚くしてから噛み砕き、守備力と蓄えた盾を火力へ変える。",
+            "weakness": "素早さが低く、盾を剥がされた直後は攻守ともに鈍る。",
+            "gambitHint": "盾25%以上でハローバイト。足りない時はスケイルウォール。",
+            "recommendedCondition": { "kind": "self-shield-above", "threshold": 25 }
+          }
         },
         {
           "name": "曙光ドレイク",
           "glyph": "◇",
           "appearance": { "body": "🐲", "attire": "☀", "form": "scout" },
-          "intrinsicSkillIds": ["halo-bite", "guard-break"],
-          "defaultSkillId": "ward-roar",
-          "traitId": "sunscale"
+          "intrinsicSkillIds": ["ward-roar", "scale-wall"],
+          "defaultSkillId": "tail-swipe",
+          "traitId": "sunscale",
+          "statMultipliers": { "maxHp": 1.25, "maxMp": 0.75 },
+          "identity": {
+            "signatureSkillId": "ward-roar",
+            "winCondition": "高いHPで時間を稼ぎ、全体防御を切らさず味方の勝ち筋を通す。",
+            "weakness": "MPが少なく、咆哮の空撃ちが続くと通常攻撃しか残らない。",
+            "gambitHint": "味方に防御上昇がない時だけ守護の咆哮。",
+            "recommendedCondition": { "kind": "ally-lacks-status", "statusId": "defense-up" }
+          }
         },
         {
           "name": "天環ワイバーン",
           "glyph": "✧",
           "appearance": { "body": "🐉", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["ward-roar", "wing-gale"],
-          "defaultSkillId": "guard-break",
-          "traitId": "sky-hunter"
+          "intrinsicSkillIds": ["solar-breath", "wing-gale"],
+          "defaultSkillId": "scale-wall",
+          "traitId": "sky-hunter",
+          "statMultipliers": { "speed": 1.3, "defense": 0.8 },
+          "identity": {
+            "signatureSkillId": "solar-breath",
+            "winCondition": "先手の全体ブレスで削りながら、同時に味方へ薄い盾を配る。",
+            "weakness": "守備力が低く、ブレス前に集中攻撃を受けると崩れやすい。",
+            "gambitHint": "敵が複数かつ高HPのうちに天陽のブレス。",
+            "recommendedCondition": { "kind": "enemy-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "白耀竜レグナ",
@@ -147,25 +171,49 @@
           "name": "ヨイヤモリ",
           "glyph": "•",
           "appearance": { "body": "🦎", "attire": "·", "form": "whelp" },
-          "intrinsicSkillIds": ["night-claw", "blood-focus"],
-          "defaultSkillId": "tail-swipe",
-          "traitId": "whelp-instinct"
+          "intrinsicSkillIds": ["night-claw", "tail-swipe"],
+          "defaultSkillId": "veil-step",
+          "traitId": "dusk-whelp-instinct",
+          "statMultipliers": { "maxHp": 0.78, "defense": 0.78, "speed": 1.3, "crit": 1.35 },
+          "identity": {
+            "signatureSkillId": "night-claw",
+            "winCondition": "開幕の高速会心で無傷の敵を一気に落とし、人数差を作る。",
+            "weakness": "HPと守備力が低く、先制撃破に失敗すると反動込みで倒されやすい。",
+            "gambitHint": "HP75%以上の敵へナイトクロー。傷ついた敵には通常攻撃。",
+            "recommendedCondition": { "kind": "enemy-hp-above", "threshold": 75 }
+          }
         },
         {
           "name": "黒月ドレイク",
           "glyph": "◆",
           "appearance": { "body": "🐉", "attire": "☾", "form": "scout" },
-          "intrinsicSkillIds": ["night-claw", "guard-break"],
-          "defaultSkillId": "blood-focus",
-          "traitId": "eclipse-fang"
+          "intrinsicSkillIds": ["blood-focus", "tail-swipe"],
+          "defaultSkillId": "wing-gale",
+          "traitId": "eclipse-fang",
+          "statMultipliers": { "attack": 1.3, "defense": 0.78 },
+          "identity": {
+            "signatureSkillId": "blood-focus",
+            "winCondition": "防御を捨てた集中状態から、高攻撃力の会心を連続で叩き込む。",
+            "weakness": "集中中はさらに脆く、強化を更新しすぎると攻撃回数を失う。",
+            "gambitHint": "会心上昇がない時だけブラッドフォーカス。",
+            "recommendedCondition": { "kind": "self-lacks-status", "statusId": "crit-up" }
+          }
         },
         {
           "name": "蝕影ワイバーン",
           "glyph": "✦",
           "appearance": { "body": "🐲", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["blood-focus", "wing-gale"],
-          "defaultSkillId": "guard-break",
-          "traitId": "sky-hunter"
+          "intrinsicSkillIds": ["eclipse-dive", "wing-gale"],
+          "defaultSkillId": "tail-swipe",
+          "traitId": "eclipse-sky-hunter",
+          "statMultipliers": { "maxHp": 0.75, "attack": 1.25, "speed": 1.35 },
+          "identity": {
+            "signatureSkillId": "eclipse-dive",
+            "winCondition": "削れた敵を最速で処刑し、敵の会心反撃も同時に封じる。",
+            "weakness": "HPが極端に低く、処刑圏まで待つ間の範囲攻撃に弱い。",
+            "gambitHint": "HP50%以下の敵へ蝕影急襲。圏外ではウイングゲイル。",
+            "recommendedCondition": { "kind": "enemy-hp-below", "threshold": 50 }
+          }
         },
         {
           "name": "冥鱗竜ノクス",
@@ -199,23 +247,47 @@
           "appearance": { "body": "🦎", "attire": "·", "form": "whelp" },
           "intrinsicSkillIds": ["ember-drive", "scale-wall"],
           "defaultSkillId": "tail-swipe",
-          "traitId": "whelp-instinct"
+          "traitId": "ember-whelp-instinct",
+          "statMultipliers": { "attack": 1.35, "defense": 0.78 },
+          "identity": {
+            "signatureSkillId": "ember-drive",
+            "winCondition": "高攻撃力の突進を重ね、守りを捨てて行動速度まで引き上げる。",
+            "weakness": "守備力が低く、加速中の反撃を受け止められない。",
+            "gambitHint": "HP50%以上ならエンバードライブ。危険域では通常攻撃。",
+            "recommendedCondition": { "kind": "self-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "熾火ドレイク",
           "glyph": "▲",
           "appearance": { "body": "🐲", "attire": "✹", "form": "scout" },
-          "intrinsicSkillIds": ["ember-drive", "guard-break"],
-          "defaultSkillId": "scale-wall",
-          "traitId": "furnace-heart"
+          "intrinsicSkillIds": ["guard-break", "tail-swipe"],
+          "defaultSkillId": "wing-gale",
+          "traitId": "furnace-heart",
+          "statMultipliers": { "maxMp": 0.75, "attack": 1.15, "crit": 1.25 },
+          "identity": {
+            "signatureSkillId": "guard-break",
+            "winCondition": "少ないMPで守備低下を通し、自身と味方の物理火力を集中させる。",
+            "weakness": "MPが少なく、同じ敵へ弱体を重ねるとすぐ息切れする。",
+            "gambitHint": "守備低下がない敵だけにガードブレイク。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "defense-down" }
+          }
         },
         {
           "name": "炎脈ワイバーン",
           "glyph": "✺",
           "appearance": { "body": "🐉", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["scale-wall", "wing-gale"],
-          "defaultSkillId": "ember-drive",
-          "traitId": "sky-hunter"
+          "intrinsicSkillIds": ["volcanic-roar", "wing-gale"],
+          "defaultSkillId": "scale-wall",
+          "traitId": "blaze-sky-hunter",
+          "statMultipliers": { "maxHp": 1.2, "attack": 1.2, "defense": 0.75, "wisdom": 0.75 },
+          "identity": {
+            "signatureSkillId": "volcanic-roar",
+            "winCondition": "自傷する火山王の咆哮で全体を焼き、残った高HPを攻撃力へ変える。",
+            "weakness": "守備と賢さが低く、継続反動を回復できない編成では自滅する。",
+            "gambitHint": "HP50%以上かつ敵が複数なら火山王の咆哮。",
+            "recommendedCondition": { "kind": "self-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "爆鱗竜イグナ",
@@ -247,25 +319,49 @@
           "name": "ランプインプ",
           "glyph": "·",
           "appearance": { "body": "🧞", "attire": "·", "form": "whelp" },
-          "intrinsicSkillIds": ["lumen-bolt", "mend"],
+          "intrinsicSkillIds": ["lumen-bolt", "pact-flow"],
           "defaultSkillId": "arc-shot",
-          "traitId": "impish-opening"
+          "traitId": "impish-opening",
+          "statMultipliers": { "defense": 0.75, "wisdom": 1.35 },
+          "identity": {
+            "signatureSkillId": "lumen-bolt",
+            "winCondition": "極端な賢さから高効率の光弾を連射し、短期戦で押し切る。",
+            "weakness": "守備力が低く、敵の物理アタッカーに狙われると詠唱回数を稼げない。",
+            "gambitHint": "HP50%以上の敵へルーメンボルト。MP不足時はアークショット。",
+            "recommendedCondition": { "kind": "enemy-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "聖灯グレムリン",
           "glyph": "✦",
           "appearance": { "body": "👼", "attire": "☀", "form": "scout" },
-          "intrinsicSkillIds": ["lumen-bolt", "mischief-bolt"],
-          "defaultSkillId": "mend",
-          "traitId": "merciful-contract"
+          "intrinsicSkillIds": ["mend", "mischief-bolt"],
+          "defaultSkillId": "pact-flow",
+          "traitId": "merciful-contract",
+          "statMultipliers": { "maxMp": 1.35, "speed": 0.75 },
+          "identity": {
+            "signatureSkillId": "mend",
+            "winCondition": "巨大なMP槽から高回復を繰り返し、環境崩壊まで味方を維持する。",
+            "weakness": "遅いため致死ダメージへの割り込みができず、回復対象の予測が必要。",
+            "gambitHint": "味方HP50%以下でメンド。平時は契約循環でMPを配る。",
+            "recommendedCondition": { "kind": "ally-hp-below", "threshold": 50 }
+          }
         },
         {
           "name": "白翼アークデーモン",
           "glyph": "♢",
           "appearance": { "body": "🧞", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["mend", "pact-flow"],
-          "defaultSkillId": "mischief-bolt",
-          "traitId": "winged-covenant"
+          "intrinsicSkillIds": ["seraphic-verdict", "pact-flow"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "winged-covenant",
+          "statMultipliers": { "maxHp": 1.2, "defense": 0.75, "wisdom": 1.3 },
+          "identity": {
+            "signatureSkillId": "seraphic-verdict",
+            "winCondition": "単体への裁定と味方全体回復を一手にまとめ、攻防のテンポを奪う。",
+            "weakness": "守備力が低く、重いMP消費と反動で長期戦ほど本人が危険になる。",
+            "gambitHint": "味方HP50%以下で熾天の裁定。回復不要時は温存する。",
+            "recommendedCondition": { "kind": "ally-hp-below", "threshold": 50 }
+          }
         },
         {
           "name": "戒光魔ラディウス",
@@ -297,26 +393,50 @@
           "name": "スミインプ",
           "glyph": "◦",
           "appearance": { "body": "👹", "attire": "·", "form": "whelp" },
-          "intrinsicSkillIds": ["void-needle", "silence-mark"],
+          "intrinsicSkillIds": ["void-needle", "mischief-bolt"],
           "defaultSkillId": "arc-shot",
-          "traitId": "impish-opening",
-          "statGrowthProfileId": "late-surge"
+          "traitId": "ink-imp-opening",
+          "statGrowthProfileId": "late-surge",
+          "statMultipliers": { "attack": 0.7, "speed": 1.3 },
+          "identity": {
+            "signatureSkillId": "void-needle",
+            "winCondition": "先手で賢さとMPを削り、魔法主体の敵を機能不全へ追い込む。",
+            "weakness": "物理攻撃力がほぼなく、弱体が刺さらない敵には決定力を持てない。",
+            "gambitHint": "賢さ低下がない敵へヴォイドニードル。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "wisdom-down" }
+          }
         },
         {
           "name": "夜帳グレムリン",
           "glyph": "✧",
           "appearance": { "body": "👿", "attire": "☾", "form": "scout" },
-          "intrinsicSkillIds": ["void-needle", "mischief-bolt"],
-          "defaultSkillId": "silence-mark",
-          "traitId": "black-covenant"
+          "intrinsicSkillIds": ["silence-mark", "mischief-bolt"],
+          "defaultSkillId": "pact-flow",
+          "traitId": "black-covenant",
+          "statMultipliers": { "maxMp": 1.3, "defense": 0.75 },
+          "identity": {
+            "signatureSkillId": "silence-mark",
+            "winCondition": "潤沢なMPで敵の高コスト行動だけを沈黙させ、行動価値を交換する。",
+            "weakness": "守備力が低く、通常攻撃中心の相手にはMPを使うほど不利になる。",
+            "gambitHint": "MP50%以上かつ沈黙していない敵へ沈黙の印。",
+            "recommendedCondition": { "kind": "enemy-mp-above", "threshold": 50 }
+          }
         },
         {
           "name": "影翼アークデーモン",
           "glyph": "♠",
           "appearance": { "body": "🧞", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["silence-mark", "pact-flow"],
-          "defaultSkillId": "mischief-bolt",
-          "traitId": "winged-covenant"
+          "intrinsicSkillIds": ["nightmare-court", "pact-flow"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "night-winged-covenant",
+          "statMultipliers": { "maxHp": 0.75, "speed": 1.2, "wisdom": 1.15 },
+          "identity": {
+            "signatureSkillId": "nightmare-court",
+            "winCondition": "敵が3体いるうちに全体沈黙を通し、味方の初動を一方的に通す。",
+            "weakness": "HPが低く、敵が減った後は重い全体技の効率が急落する。",
+            "gambitHint": "敵2体以上で夢魔の宮廷。単体にはアークショット。",
+            "recommendedCondition": { "kind": "living-count-at-least", "team": "enemy", "count": 2 }
+          }
         },
         {
           "name": "禁呪魔アビス",
@@ -348,25 +468,49 @@
           "name": "アカインプ",
           "glyph": "×",
           "appearance": { "body": "👾", "attire": "·", "form": "whelp" },
-          "intrinsicSkillIds": ["fury-orb", "battle-chant"],
+          "intrinsicSkillIds": ["fury-orb", "mischief-bolt"],
           "defaultSkillId": "arc-shot",
-          "traitId": "impish-opening"
+          "traitId": "spark-imp-opening",
+          "statMultipliers": { "maxHp": 0.78, "wisdom": 1.35 },
+          "identity": {
+            "signatureSkillId": "fury-orb",
+            "winCondition": "低HPを代償に最大級の単体魔法を撃ち、反撃前に標的を消す。",
+            "weakness": "HPが低いうえ反動を受けるため、標的を倒せないとほぼ生き残れない。",
+            "gambitHint": "HP50%以上の敵へフューリーオーブ。危険域では軽い魔弾。",
+            "recommendedCondition": { "kind": "self-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "火遊グレムリン",
           "glyph": "✷",
           "appearance": { "body": "👺", "attire": "✹", "form": "scout" },
-          "intrinsicSkillIds": ["fury-orb", "mischief-bolt"],
-          "defaultSkillId": "battle-chant",
-          "traitId": "riot-pact"
+          "intrinsicSkillIds": ["battle-chant", "mischief-bolt"],
+          "defaultSkillId": "pact-flow",
+          "traitId": "riot-pact",
+          "statMultipliers": { "defense": 0.75, "speed": 1.3 },
+          "identity": {
+            "signatureSkillId": "battle-chant",
+            "winCondition": "先手の全体攻撃・賢さ強化で、混成パーティーの初動を倍化する。",
+            "weakness": "守備力が低く、自分は強化中に攻撃できないため単独性能が低い。",
+            "gambitHint": "味方に賢さ上昇がない時だけ闘争の詠唱。",
+            "recommendedCondition": { "kind": "ally-lacks-status", "statusId": "wisdom-up" }
+          }
         },
         {
           "name": "炎翼アークデーモン",
           "glyph": "♣",
           "appearance": { "body": "🧞", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["battle-chant", "pact-flow"],
-          "defaultSkillId": "mischief-bolt",
-          "traitId": "winged-covenant"
+          "intrinsicSkillIds": ["hellfire-rite", "pact-flow"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "riot-winged-covenant",
+          "statMultipliers": { "maxMp": 1.2, "defense": 0.7, "wisdom": 1.2 },
+          "identity": {
+            "signatureSkillId": "hellfire-rite",
+            "winCondition": "全体火力と味方全体の賢さ強化を同時に行い、魔法連鎖を始動する。",
+            "weakness": "守備力が極端に低く、自身への灼熱反動で短期決着を強制される。",
+            "gambitHint": "敵2体以上なら獄炎儀式。単体戦では温存する。",
+            "recommendedCondition": { "kind": "living-count-at-least", "team": "enemy", "count": 2 }
+          }
         },
         {
           "name": "灼契魔フレア",
@@ -398,25 +542,49 @@
           "name": "ヒカリノコ",
           "glyph": "○",
           "appearance": { "body": "✦", "attire": "·", "form": "whelp" },
-          "intrinsicSkillIds": ["gentle-ray", "aegis-dust"],
+          "intrinsicSkillIds": ["gentle-ray", "veil-step"],
           "defaultSkillId": "spirit-spark",
-          "traitId": "mote-awakening"
+          "traitId": "mote-awakening",
+          "statMultipliers": { "maxHp": 1.25, "attack": 0.7, "wisdom": 1.2 },
+          "identity": {
+            "signatureSkillId": "gentle-ray",
+            "winCondition": "多いHPを反動へ換え、敵を照らしながら味方全体を立て直す。",
+            "weakness": "攻撃力がほぼなく、回復対象がいない時間は火力へ貢献しにくい。",
+            "gambitHint": "味方HP75%以下で敵へジェントルレイ。平時は身を守る。",
+            "recommendedCondition": { "kind": "ally-hp-below", "threshold": 75 }
+          }
         },
         {
           "name": "朝露ピクシー",
           "glyph": "✧",
           "appearance": { "body": "🧚", "attire": "☀", "form": "scout" },
-          "intrinsicSkillIds": ["gentle-ray", "mote-dart"],
-          "defaultSkillId": "aegis-dust",
-          "traitId": "morning-dew"
+          "intrinsicSkillIds": ["aegis-dust", "mote-dart"],
+          "defaultSkillId": "veil-step",
+          "traitId": "morning-dew",
+          "statMultipliers": { "maxHp": 0.75, "wisdom": 1.3 },
+          "identity": {
+            "signatureSkillId": "aegis-dust",
+            "winCondition": "高賢さの味方を薄い全体盾で守り、再生が働く時間を作る。",
+            "weakness": "本人のHPが低く、全体盾を張る前の集中攻撃に耐えられない。",
+            "gambitHint": "味方の盾が25%以下ならイージスダスト。",
+            "recommendedCondition": { "kind": "ally-shield-below", "threshold": 25 }
+          }
         },
         {
           "name": "陽だまりシルフ",
           "glyph": "❋",
           "appearance": { "body": "🧚", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["aegis-dust", "veil-step"],
+          "intrinsicSkillIds": ["starlight-bloom", "veil-step"],
           "defaultSkillId": "mote-dart",
-          "traitId": "wind-veil"
+          "traitId": "wind-veil",
+          "statMultipliers": { "defense": 0.72, "speed": 1.25, "wisdom": 1.25 },
+          "identity": {
+            "signatureSkillId": "starlight-bloom",
+            "winCondition": "先手の全体回復と再生で、瀕死の3体をまとめて戦線へ戻す。",
+            "weakness": "守備力が低く、重いMP消費後に狙われると二度目の開花が間に合わない。",
+            "gambitHint": "味方HP50%以下で星明かりの開花。",
+            "recommendedCondition": { "kind": "ally-hp-below", "threshold": 50 }
+          }
         },
         {
           "name": "光庭精ルーチェ",
@@ -448,25 +616,49 @@
           "name": "カゲノコ",
           "glyph": "●",
           "appearance": { "body": "•", "attire": "·", "form": "whelp" },
-          "intrinsicSkillIds": ["dusk-pulse", "wither"],
+          "intrinsicSkillIds": ["dusk-pulse", "mote-dart"],
           "defaultSkillId": "spirit-spark",
-          "traitId": "mote-awakening"
+          "traitId": "shadow-mote-awakening",
+          "statMultipliers": { "maxHp": 0.75, "wisdom": 1.3 },
+          "identity": {
+            "signatureSkillId": "dusk-pulse",
+            "winCondition": "全体へ夕闇と継続ダメージを撒き、敵3体のHPを同時に処刑圏へ運ぶ。",
+            "weakness": "HPが低く、単体戦では全体技と継続ダメージの効率が落ちる。",
+            "gambitHint": "敵2体以上でダスクパルス。単体には精霊弾。",
+            "recommendedCondition": { "kind": "living-count-at-least", "team": "enemy", "count": 2 }
+          }
         },
         {
           "name": "宵露ピクシー",
           "glyph": "☾",
           "appearance": { "body": "👻", "attire": "☾", "form": "scout" },
-          "intrinsicSkillIds": ["dusk-pulse", "mote-dart"],
-          "defaultSkillId": "wither",
-          "traitId": "moon-mist"
+          "intrinsicSkillIds": ["wither", "mote-dart"],
+          "defaultSkillId": "veil-step",
+          "traitId": "moon-mist",
+          "statMultipliers": { "attack": 0.7, "speed": 1.3 },
+          "identity": {
+            "signatureSkillId": "wither",
+            "winCondition": "最速で敵の主力攻撃を萎縮させ、低火力の長期戦へ引きずり込む。",
+            "weakness": "物理攻撃力がなく、弱体済みの敵へ重ねても戦闘を終わらせられない。",
+            "gambitHint": "攻撃低下がない敵だけにウィザー。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "attack-down" }
+          }
         },
         {
           "name": "夜凪シルフ",
           "glyph": "❈",
           "appearance": { "body": "🧚", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["wither", "veil-step"],
+          "intrinsicSkillIds": ["dream-tide", "veil-step"],
           "defaultSkillId": "mote-dart",
-          "traitId": "wind-veil"
+          "traitId": "dream-wind-veil",
+          "statMultipliers": { "maxMp": 1.2, "defense": 0.72, "speed": 1.35 },
+          "identity": {
+            "signatureSkillId": "dream-tide",
+            "winCondition": "敵全体の速度とMPを奪い、自軍だけが連続行動する盤面を作る。",
+            "weakness": "守備力が低く、速度低下を入れる前の一撃に耐えにくい。",
+            "gambitHint": "速度低下がない敵がいる時に夢渡りの潮。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "speed-down" }
+          }
         },
         {
           "name": "月庭精ウンブラ",
@@ -498,26 +690,50 @@
           "name": "ホムラノコ",
           "glyph": "◎",
           "appearance": { "body": "🔥", "attire": "·", "form": "whelp" },
-          "intrinsicSkillIds": ["quick-flare", "haste-song"],
+          "intrinsicSkillIds": ["quick-flare", "mote-dart"],
           "defaultSkillId": "spirit-spark",
-          "traitId": "mote-awakening",
-          "statGrowthProfileId": "late-surge"
+          "traitId": "flame-mote-awakening",
+          "statGrowthProfileId": "late-surge",
+          "statMultipliers": { "defense": 0.7, "speed": 1.2 },
+          "identity": {
+            "signatureSkillId": "quick-flare",
+            "winCondition": "素早さ参照の一撃からATBを回収し、行動回数で低耐久を補う。",
+            "weakness": "守備力が極端に低く、加速中の反動と敵の一撃が重なると止まる。",
+            "gambitHint": "HP50%以上ならクイックフレア。危険域では精霊弾。",
+            "recommendedCondition": { "kind": "self-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "火花ピクシー",
           "glyph": "✦",
           "appearance": { "body": "🧚", "attire": "✹", "form": "scout" },
-          "intrinsicSkillIds": ["quick-flare", "mote-dart"],
-          "defaultSkillId": "haste-song",
-          "traitId": "wildfire-dance"
+          "intrinsicSkillIds": ["haste-song", "mote-dart"],
+          "defaultSkillId": "veil-step",
+          "traitId": "wildfire-dance",
+          "statMultipliers": { "maxHp": 0.75, "maxMp": 1.25, "speed": 1.25 },
+          "identity": {
+            "signatureSkillId": "haste-song",
+            "winCondition": "高MPから全体速度上昇を維持し、味方3体の行動回数を底上げする。",
+            "weakness": "HPが低く、自身の直接火力も低いため味方が倒れるほど弱くなる。",
+            "gambitHint": "味方に速度上昇がない時だけ早駆けの歌。",
+            "recommendedCondition": { "kind": "ally-lacks-status", "statusId": "speed-up" }
+          }
         },
         {
           "name": "焔風シルフ",
           "glyph": "❊",
           "appearance": { "body": "🧚", "attire": "⌁", "form": "winged" },
-          "intrinsicSkillIds": ["haste-song", "veil-step"],
+          "intrinsicSkillIds": ["sunwheel-dance", "veil-step"],
           "defaultSkillId": "mote-dart",
-          "traitId": "wind-veil"
+          "traitId": "sun-wind-veil",
+          "statMultipliers": { "defense": 0.7, "speed": 1.2, "wisdom": 1.15 },
+          "identity": {
+            "signatureSkillId": "sunwheel-dance",
+            "winCondition": "最速の日輪で敵を叩きつつ味方全体のATBを押し上げ、連続行動を作る。",
+            "weakness": "守備力が極端に低く、反動込みの長期戦では支援前に倒れやすい。",
+            "gambitHint": "HP50%以上で日輪の舞。危険域ではヴェイルステップ。",
+            "recommendedCondition": { "kind": "self-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "火庭精エンバー",
@@ -775,53 +991,64 @@
       "id": "halo-bite",
       "rarity": "common",
       "name": "ハローバイト",
-      "description": "噛みつきと同時に防護を得る。",
+      "description": "蓄えた盾を噛撃へ変え、守備力で追撃して新しい盾を得る。",
       "mpCost": 5,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "damage", "scaling": "physical", "power": 125, "target": "action-target", "canCrit": true },
-        { "kind": "shield", "maxHpPercent": 7, "target": "self" }
+        { "kind": "shield-burst", "power": 170, "target": "action-target" },
+        { "kind": "damage", "scaling": "defense", "power": 125, "target": "action-target" },
+        { "kind": "shield", "maxHpPercent": 12, "target": "self" }
       ]
     },
     {
       "id": "ward-roar",
       "rarity": "rare",
       "name": "守護の咆哮",
-      "description": "味方全体の守りを固める。",
+      "description": "自分の足を止める代わりに、味方全体の守りと盾を大きく固める。",
       "mpCost": 7,
       "targetScope": "all-allies",
       "effects": [
-        { "kind": "status", "statusId": "defense-up", "amount": 20, "durationSeconds": 9, "target": "all-allies" }
+        { "kind": "status", "statusId": "defense-up", "amount": 24, "durationSeconds": 9, "target": "all-allies" },
+        { "kind": "shield", "maxHpPercent": 8, "target": "all-allies" },
+        { "kind": "status", "statusId": "speed-down", "amount": 12, "durationSeconds": 9, "target": "self" }
       ]
     },
     {
       "id": "night-claw",
       "rarity": "common",
       "name": "ナイトクロー",
-      "description": "会心を狙う鋭い一撃。",
+      "description": "身体を傷つけるほど深く踏み込み、開幕の敵を狩る会心技。",
       "mpCost": 5,
       "targetScope": "single-enemy",
-      "effects": [{ "kind": "damage", "scaling": "physical", "power": 138, "target": "action-target", "canCrit": true }]
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 175, "target": "action-target", "canCrit": true },
+        { "kind": "recoil", "maxHpPercent": 8, "target": "self" }
+      ]
     },
     {
       "id": "blood-focus",
       "rarity": "common",
       "name": "ブラッドフォーカス",
-      "description": "自分の会心率を高める。",
+      "description": "守りを捨て、自分の攻撃力と会心率を同時に高める。",
       "mpCost": 5,
       "targetScope": "self",
-      "effects": [{ "kind": "status", "statusId": "crit-up", "amount": 18, "durationSeconds": 10, "target": "self" }]
+      "effects": [
+        { "kind": "status", "statusId": "crit-up", "amount": 26, "durationSeconds": 10, "target": "self" },
+        { "kind": "status", "statusId": "attack-up", "amount": 18, "durationSeconds": 10, "target": "self" },
+        { "kind": "status", "statusId": "defense-down", "amount": 15, "durationSeconds": 10, "target": "self" }
+      ]
     },
     {
       "id": "ember-drive",
       "rarity": "common",
       "name": "エンバードライブ",
-      "description": "勢いをつける物理攻撃。",
+      "description": "守りを削りながら速度を上げる、止まれない灼熱の突進。",
       "mpCost": 6,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "damage", "scaling": "physical", "power": 132, "target": "action-target", "canCrit": true },
-        { "kind": "status", "statusId": "speed-up", "amount": 15, "durationSeconds": 8, "target": "self" }
+        { "kind": "damage", "scaling": "physical", "power": 135, "target": "action-target", "canCrit": true },
+        { "kind": "status", "statusId": "speed-up", "amount": 20, "durationSeconds": 8, "target": "self" },
+        { "kind": "status", "statusId": "defense-down", "amount": 18, "durationSeconds": 8, "target": "self" }
       ]
     },
     {
@@ -837,141 +1064,176 @@
       "id": "lumen-bolt",
       "rarity": "common",
       "name": "ルーメンボルト",
-      "description": "知恵で貫く魔弾。",
+      "description": "極端な賢さを一点へ集め、短期決着を狙う光の魔弾。",
       "mpCost": 6,
       "targetScope": "single-enemy",
-      "effects": [{ "kind": "damage", "scaling": "magic", "power": 132, "target": "action-target" }]
+      "effects": [{ "kind": "damage", "scaling": "magic", "power": 155, "target": "action-target" }]
     },
     {
       "id": "mend",
       "rarity": "common",
       "name": "メンド",
-      "description": "最も傷ついた味方を癒す。",
+      "description": "大量のMPを注ぎ、最も傷ついた味方を大きく癒す。",
       "mpCost": 7,
       "targetScope": "single-ally",
-      "effects": [{ "kind": "heal", "power": 115, "target": "action-target" }]
+      "effects": [
+        { "kind": "heal", "power": 155, "target": "action-target" },
+        { "kind": "shield", "maxHpPercent": 8, "target": "action-target" },
+        { "kind": "atb", "amount": 20, "target": "action-target" }
+      ]
     },
     {
       "id": "void-needle",
       "rarity": "common",
       "name": "ヴォイドニードル",
-      "description": "知恵を削る魔針。",
+      "description": "知恵とMPを同時に抜き取り、魔法行動を鈍らせる魔針。",
       "mpCost": 6,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "damage", "scaling": "magic", "power": 110, "target": "action-target" },
-        { "kind": "status", "statusId": "wisdom-down", "amount": 18, "durationSeconds": 8, "target": "action-target" }
+        { "kind": "damage", "scaling": "magic", "power": 135, "target": "action-target" },
+        { "kind": "status", "statusId": "wisdom-down", "amount": 25, "durationSeconds": 8, "target": "action-target" },
+        { "kind": "mp", "amount": -6, "target": "action-target" }
       ]
     },
     {
       "id": "silence-mark",
       "rarity": "common",
       "name": "沈黙の印",
-      "description": "一時的にスキルを封じる。",
+      "description": "敵のMPを削りながら、一時的にスキルを封じる。",
       "mpCost": 8,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 5, "target": "action-target" }
+        { "kind": "damage", "scaling": "magic", "power": 70, "target": "action-target" },
+        { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 4, "target": "action-target" },
+        { "kind": "mp", "amount": -6, "target": "action-target" }
       ]
     },
     {
       "id": "fury-orb",
       "rarity": "common",
       "name": "フューリーオーブ",
-      "description": "攻撃的な高威力魔弾。",
+      "description": "自分の生命を燃料にする、破格の単体魔弾。",
       "mpCost": 7,
       "targetScope": "single-enemy",
-      "effects": [{ "kind": "damage", "scaling": "magic", "power": 145, "target": "action-target" }]
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 180, "target": "action-target" },
+        { "kind": "recoil", "maxHpPercent": 10, "target": "self" }
+      ]
     },
     {
       "id": "battle-chant",
       "rarity": "common",
       "name": "闘争の詠唱",
-      "description": "味方全体の攻撃と知恵を高める。",
+      "description": "自分の守りを捨て、味方全体の攻撃と知恵を大きく高める。",
       "mpCost": 8,
       "targetScope": "all-allies",
       "effects": [
-        { "kind": "status", "statusId": "attack-up", "amount": 16, "durationSeconds": 9, "target": "all-allies" },
-        { "kind": "status", "statusId": "wisdom-up", "amount": 16, "durationSeconds": 9, "target": "all-allies" }
+        { "kind": "status", "statusId": "attack-up", "amount": 22, "durationSeconds": 9, "target": "all-allies" },
+        { "kind": "status", "statusId": "wisdom-up", "amount": 22, "durationSeconds": 9, "target": "all-allies" },
+        { "kind": "status", "statusId": "defense-down", "amount": 12, "durationSeconds": 9, "target": "self" }
       ]
     },
     {
       "id": "gentle-ray",
       "rarity": "common",
       "name": "ジェントルレイ",
-      "description": "やわらかな光で味方を癒す。",
+      "description": "自分の生命を分け、敵を照らしながら味方全体を癒して守る。",
       "mpCost": 6,
-      "targetScope": "single-ally",
-      "effects": [{ "kind": "heal", "power": 108, "target": "action-target" }]
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 90, "target": "action-target" },
+        { "kind": "heal", "power": 65, "target": "all-allies" },
+        { "kind": "shield", "maxHpPercent": 4, "target": "all-allies" },
+        { "kind": "atb", "amount": 10, "target": "all-allies" },
+        { "kind": "recoil", "maxHpPercent": 5, "target": "self" }
+      ]
     },
     {
       "id": "aegis-dust",
       "rarity": "common",
       "name": "イージスダスト",
-      "description": "味方全体へ薄い盾をまく。",
+      "description": "自分の足を止め、味方全体へ厚い盾をまく。",
       "mpCost": 8,
       "targetScope": "all-allies",
-      "effects": [{ "kind": "shield", "maxHpPercent": 10, "target": "all-allies" }]
+      "effects": [
+        { "kind": "shield", "maxHpPercent": 14, "target": "all-allies" },
+        { "kind": "status", "statusId": "speed-down", "amount": 12, "durationSeconds": 8, "target": "self" }
+      ]
     },
     {
       "id": "dusk-pulse",
       "rarity": "common",
       "name": "ダスクパルス",
-      "description": "敵全体を包む夕闇の波。",
+      "description": "敵全体を夕闇で包み、継続ダメージを刻む。",
       "mpCost": 9,
       "targetScope": "all-enemies",
-      "effects": [{ "kind": "damage", "scaling": "magic", "power": 72, "target": "all-enemies" }]
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 70, "target": "all-enemies" },
+        {
+          "kind": "status",
+          "statusId": "damage-over-time",
+          "amount": 1,
+          "durationSeconds": 8,
+          "target": "all-enemies"
+        }
+      ]
     },
     {
       "id": "wither",
       "rarity": "common",
       "name": "ウィザー",
-      "description": "敵の攻撃力をしぼませる。",
+      "description": "敵の攻撃力と素早さをまとめてしぼませる。",
       "mpCost": 6,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "status", "statusId": "attack-down", "amount": 20, "durationSeconds": 8, "target": "action-target" }
+        { "kind": "damage", "scaling": "magic", "power": 65, "target": "action-target" },
+        { "kind": "status", "statusId": "attack-down", "amount": 28, "durationSeconds": 8, "target": "action-target" },
+        { "kind": "status", "statusId": "speed-down", "amount": 10, "durationSeconds": 8, "target": "action-target" }
       ]
     },
     {
       "id": "quick-flare",
       "rarity": "common",
       "name": "クイックフレア",
-      "description": "攻撃後に行動ゲージを取り戻す。",
+      "description": "守りを削って最速で突撃し、大量の行動ゲージを取り戻す。",
       "mpCost": 5,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "damage", "scaling": "magic", "power": 105, "target": "action-target" },
-        { "kind": "atb", "amount": 28, "target": "self" }
+        { "kind": "damage", "scaling": "speed", "power": 115, "target": "action-target" },
+        { "kind": "atb", "amount": 25, "target": "self" },
+        { "kind": "status", "statusId": "defense-down", "amount": 18, "durationSeconds": 8, "target": "self" }
       ]
     },
     {
       "id": "haste-song",
       "rarity": "common",
       "name": "早駆けの歌",
-      "description": "味方全体の素早さを高める。",
+      "description": "自分の守りを削り、味方全体の素早さを大きく高める。",
       "mpCost": 8,
       "targetScope": "all-allies",
       "effects": [
-        { "kind": "status", "statusId": "speed-up", "amount": 20, "durationSeconds": 9, "target": "all-allies" }
+        { "kind": "status", "statusId": "speed-up", "amount": 28, "durationSeconds": 9, "target": "all-allies" },
+        { "kind": "atb", "amount": 10, "target": "all-allies" },
+        { "kind": "status", "statusId": "defense-down", "amount": 12, "durationSeconds": 9, "target": "self" }
       ]
     },
     {
       "id": "guard-break",
       "rarity": "rare",
       "name": "ガードブレイク",
-      "description": "装甲の継ぎ目を砕き、守備力を下げる。",
+      "description": "自分の構えも崩す捨て身の一撃で、敵の守備力を大きく下げる。",
       "mpCost": 5,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "damage", "scaling": "physical", "power": 110, "target": "action-target", "canCrit": true },
+        { "kind": "damage", "scaling": "physical", "power": 115, "target": "action-target", "canCrit": true },
         {
           "kind": "status",
           "statusId": "defense-down",
-          "amount": 12,
+          "amount": 16,
           "durationSeconds": 7,
           "target": "action-target"
-        }
+        },
+        { "kind": "status", "statusId": "defense-down", "amount": 8, "durationSeconds": 7, "target": "self" }
       ]
     },
     {
@@ -991,8 +1253,8 @@
       "mpCost": 10,
       "targetScope": "all-enemies",
       "effects": [
-        { "kind": "damage", "scaling": "physical", "power": 92, "target": "all-enemies", "canCrit": true },
-        { "kind": "shield", "maxHpPercent": 6, "target": "all-allies" }
+        { "kind": "damage", "scaling": "physical", "power": 100, "target": "all-enemies", "canCrit": true },
+        { "kind": "shield", "maxHpPercent": 8, "target": "all-allies" }
       ]
     },
     {
@@ -1003,11 +1265,11 @@
       "mpCost": 8,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "damage", "scaling": "physical", "power": 150, "target": "action-target", "canCrit": true },
+        { "kind": "damage", "scaling": "physical", "power": 170, "target": "action-target", "canCrit": true },
         {
           "kind": "status",
           "statusId": "crit-down",
-          "amount": 15,
+          "amount": 20,
           "durationSeconds": 10,
           "target": "action-target"
         }
@@ -1017,12 +1279,19 @@
       "id": "volcanic-roar",
       "rarity": "legendary",
       "name": "火山王の咆哮",
-      "description": "敵全体を灼きながら、自らの攻撃力を上げる。",
+      "description": "敵全体を灼いて攻撃力を上げる代わりに、自らも燃え続ける。",
       "mpCost": 10,
       "targetScope": "all-enemies",
       "effects": [
-        { "kind": "damage", "scaling": "physical", "power": 88, "target": "all-enemies", "canCrit": true },
-        { "kind": "status", "statusId": "attack-up", "amount": 15, "durationSeconds": 9, "target": "self" }
+        { "kind": "damage", "scaling": "physical", "power": 75, "target": "all-enemies", "canCrit": true },
+        { "kind": "status", "statusId": "attack-up", "amount": 15, "durationSeconds": 9, "target": "self" },
+        {
+          "kind": "status",
+          "statusId": "damage-over-time",
+          "amount": 1,
+          "durationSeconds": 10,
+          "target": "self"
+        }
       ]
     },
     {
@@ -1050,41 +1319,50 @@
       "id": "seraphic-verdict",
       "rarity": "legendary",
       "name": "熾天の裁定",
-      "description": "敵を裁く光が、同時に味方の傷を癒す。",
+      "description": "自分の生命を代償に、敵への裁定と味方全体の回復を同時に行う。",
       "mpCost": 10,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "damage", "scaling": "magic", "power": 155, "target": "action-target" },
-        { "kind": "heal", "power": 55, "target": "all-allies" }
+        { "kind": "damage", "scaling": "magic", "power": 175, "target": "action-target" },
+        { "kind": "heal", "power": 65, "target": "all-allies" },
+        { "kind": "recoil", "maxHpPercent": 8, "target": "self" }
       ]
     },
     {
       "id": "nightmare-court",
       "rarity": "legendary",
       "name": "夢魔の宮廷",
-      "description": "悪夢で敵全体を包み、短く沈黙させる。",
+      "description": "敵全体を短く沈黙させる代わりに、自分の速度も落ちる悪夢。",
       "mpCost": 11,
       "targetScope": "all-enemies",
       "effects": [
-        { "kind": "damage", "scaling": "magic", "power": 75, "target": "all-enemies" },
-        { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 2, "target": "all-enemies" }
+        { "kind": "damage", "scaling": "magic", "power": 65, "target": "all-enemies" },
+        { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 1.5, "target": "all-enemies" },
+        { "kind": "status", "statusId": "speed-down", "amount": 10, "durationSeconds": 8, "target": "self" }
       ]
     },
     {
       "id": "hellfire-rite",
       "rarity": "legendary",
       "name": "獄炎儀式",
-      "description": "敵全体を焼き、味方全体の知恵を高める。",
+      "description": "敵全体と自分を焼き、味方全体の知恵を大きく高める儀式。",
       "mpCost": 10,
       "targetScope": "all-enemies",
       "effects": [
-        { "kind": "damage", "scaling": "magic", "power": 85, "target": "all-enemies" },
+        { "kind": "damage", "scaling": "magic", "power": 80, "target": "all-enemies" },
         {
           "kind": "status",
           "statusId": "wisdom-up",
-          "amount": 12,
+          "amount": 14,
           "durationSeconds": 8,
           "target": "all-allies"
+        },
+        {
+          "kind": "status",
+          "statusId": "damage-over-time",
+          "amount": 1,
+          "durationSeconds": 10,
+          "target": "self"
         }
       ]
     },
@@ -1120,11 +1398,11 @@
       "mpCost": 10,
       "targetScope": "all-allies",
       "effects": [
-        { "kind": "heal", "power": 95, "target": "all-allies" },
+        { "kind": "heal", "power": 110, "target": "all-allies" },
         {
           "kind": "status",
           "statusId": "regeneration",
-          "amount": 2,
+          "amount": 3,
           "durationSeconds": 9,
           "target": "all-allies"
         }
@@ -1134,30 +1412,32 @@
       "id": "dream-tide",
       "rarity": "legendary",
       "name": "夢渡りの潮",
-      "description": "敵全体を夢の潮へ沈め、素早さを奪う。",
+      "description": "敵全体を夢の潮へ沈め、素早さとMPをまとめて奪う。",
       "mpCost": 10,
       "targetScope": "all-enemies",
       "effects": [
-        { "kind": "damage", "scaling": "magic", "power": 76, "target": "all-enemies" },
+        { "kind": "damage", "scaling": "magic", "power": 65, "target": "all-enemies" },
         {
           "kind": "status",
           "statusId": "speed-down",
-          "amount": 12,
+          "amount": 14,
           "durationSeconds": 8,
           "target": "all-enemies"
-        }
+        },
+        { "kind": "mp", "amount": -2, "target": "all-enemies" }
       ]
     },
     {
       "id": "sunwheel-dance",
       "rarity": "legendary",
       "name": "日輪の舞",
-      "description": "火輪をぶつけ、味方全体の行動を早める。",
+      "description": "反動を受ける最速の火輪で、味方全体の行動を大きく早める。",
       "mpCost": 9,
       "targetScope": "single-enemy",
       "effects": [
-        { "kind": "damage", "scaling": "magic", "power": 115, "target": "action-target" },
-        { "kind": "atb", "amount": 12, "target": "all-allies" }
+        { "kind": "damage", "scaling": "speed", "power": 125, "target": "action-target" },
+        { "kind": "atb", "amount": 12, "target": "all-allies" },
+        { "kind": "recoil", "maxHpPercent": 9, "target": "self" }
       ]
     }
   ],
@@ -1489,19 +1769,19 @@
       "name": "幼竜の勘",
       "stages": [
         {
-          "description": "開戦時、行動ゲージを少し得る。",
-          "battleStartEffects": [{ "kind": "atb", "amount": 12, "target": "self" }]
+          "description": "開戦時、噛撃へ使える厚い盾を得る。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 30, "target": "self" }]
         },
         {
-          "description": "行動ゲージを得て、短時間攻撃力が上がる。",
+          "description": "開戦時、厚い盾と守備力上昇を得る。",
           "battleStartEffects": [
-            { "kind": "atb", "amount": 18, "target": "self" },
-            { "kind": "status", "statusId": "attack-up", "amount": 8, "durationSeconds": 10, "target": "self" }
+            { "kind": "shield", "maxHpPercent": 25, "target": "self" },
+            { "kind": "status", "statusId": "defense-up", "amount": 12, "durationSeconds": 60, "target": "self" }
           ]
         },
         {
-          "description": "先駆けの気配が味方全体へ伝わる。",
-          "battleStartEffects": [{ "kind": "atb", "amount": 8, "target": "all-allies" }]
+          "description": "幼竜の鱗が味方全体へ盾を配る。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 12, "target": "all-allies" }]
         }
       ]
     },
@@ -1925,6 +2205,414 @@
               "durationSeconds": 60,
               "target": "all-allies"
             }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dusk-whelp-instinct",
+      "name": "宵狩りの勘",
+      "stages": [
+        {
+          "description": "開戦時、会心率を上げて行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 14, "target": "self" }
+          ]
+        },
+        {
+          "description": "会心率と行動ゲージがさらに上がる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 16, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 20, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体へ会心率と行動ゲージを配る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "atb", "amount": 8, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ember-whelp-instinct",
+      "name": "火走りの勘",
+      "stages": [
+        {
+          "description": "開戦時、攻撃力と素早さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 10, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 8, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "攻撃力と素早さをさらに上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 14, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 12, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体の攻撃力と素早さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "speed-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eclipse-sky-hunter",
+      "name": "蝕空狩り",
+      "stages": [
+        {
+          "description": "開戦時、素早さと会心率を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "crit-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "素早さと会心率に加え、行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 15, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "crit-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "敵全体の会心率を奪い、自分を加速する。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-down", "amount": 10, "durationSeconds": 60, "target": "all-enemies" },
+            { "kind": "atb", "amount": 18, "target": "self" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "blaze-sky-hunter",
+      "name": "灼空狩り",
+      "stages": [
+        {
+          "description": "開戦時、攻撃力と行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "攻撃力と行動ゲージをさらに得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 16, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 18, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体へ攻撃力と行動ゲージを配る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "atb", "amount": 10, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ink-imp-opening",
+      "name": "墨契の先手",
+      "stages": [
+        {
+          "description": "開戦時、行動ゲージを得て敵一体の知恵を下げる。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 14, "target": "self" },
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "action-target"
+            }
+          ]
+        },
+        {
+          "description": "行動ゲージを得て敵一体の知恵と素早さを下げる。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 18, "target": "self" },
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "action-target"
+            },
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "action-target"
+            }
+          ]
+        },
+        {
+          "description": "敵全体の知恵を下げ、味方全体を少し早める。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "atb", "amount": 8, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spark-imp-opening",
+      "name": "火遊びの先手",
+      "stages": [
+        {
+          "description": "開戦時、知恵と行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 14, "target": "self" }
+          ]
+        },
+        {
+          "description": "知恵と行動ゲージをさらに得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 16, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 20, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体へ知恵と行動ゲージを配る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "atb", "amount": 8, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "night-winged-covenant",
+      "name": "夜翼契",
+      "stages": [
+        {
+          "description": "開戦時、自分の知恵を上げ、敵一体の素早さを下げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "action-target"
+            }
+          ]
+        },
+        {
+          "description": "知恵を上げ、敵一体の知恵と素早さを下げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 15, "durationSeconds": 60, "target": "self" },
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "action-target"
+            },
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "action-target"
+            }
+          ]
+        },
+        {
+          "description": "味方全体の知恵を上げ、敵全体の素早さを下げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "speed-down", "amount": 8, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "riot-winged-covenant",
+      "name": "炎翼契",
+      "stages": [
+        {
+          "description": "開戦時、自分の知恵と素早さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "知恵と素早さをさらに上げ、行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 16, "durationSeconds": 60, "target": "self" },
+            { "kind": "status", "statusId": "speed-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体の知恵と素早さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "speed-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shadow-mote-awakening",
+      "name": "影精の目覚め",
+      "stages": [
+        {
+          "description": "開戦時、行動ゲージを得て敵一体の攻撃力を下げる。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 14, "target": "self" },
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "action-target"
+            }
+          ]
+        },
+        {
+          "description": "行動ゲージを得て敵一体の攻撃力と素早さを下げる。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 18, "target": "self" },
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "action-target"
+            },
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "action-target"
+            }
+          ]
+        },
+        {
+          "description": "敵全体の攻撃力を下げ、味方全体を少し早める。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "atb", "amount": 8, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flame-mote-awakening",
+      "name": "火精の目覚め",
+      "stages": [
+        {
+          "description": "開戦時、素早さと行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 8, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 8, "target": "self" }
+          ]
+        },
+        {
+          "description": "素早さと行動ゲージをさらに得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 14, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体へ素早さと行動ゲージを配る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "atb", "amount": 8, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dream-wind-veil",
+      "name": "夢凪の衣",
+      "stages": [
+        {
+          "description": "開戦時、素早さを上げて敵一体の素早さを下げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "action-target"
+            }
+          ]
+        },
+        {
+          "description": "速度差を広げ、行動ゲージも得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 15, "durationSeconds": 60, "target": "self" },
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 12,
+              "durationSeconds": 12,
+              "target": "action-target"
+            },
+            { "kind": "atb", "amount": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体を早め、敵全体を遅くする。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "speed-down", "amount": 8, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sun-wind-veil",
+      "name": "日輪の風衣",
+      "stages": [
+        {
+          "description": "開戦時、素早さと行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 14, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 14, "target": "self" }
+          ]
+        },
+        {
+          "description": "素早さと行動ゲージをさらに得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 18, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 20, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体へ素早さと行動ゲージを配る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "atb", "amount": 12, "target": "all-allies" }
           ]
         }
       ]

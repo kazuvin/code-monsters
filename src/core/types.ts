@@ -40,14 +40,20 @@ export type GambitCondition =
   | { kind: 'self-hp-above'; threshold: 25 | 50 | 75 }
   | { kind: 'self-mp-below'; threshold: 25 | 50 | 75 }
   | { kind: 'self-mp-above'; threshold: 25 | 50 | 75 }
+  | { kind: 'self-shield-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'self-shield-above'; threshold: 25 | 50 | 75 }
   | { kind: 'ally-hp-below'; threshold: 25 | 50 | 75 }
   | { kind: 'ally-hp-above'; threshold: 25 | 50 | 75 }
   | { kind: 'ally-mp-below'; threshold: 25 | 50 | 75 }
   | { kind: 'ally-mp-above'; threshold: 25 | 50 | 75 }
+  | { kind: 'ally-shield-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'ally-shield-above'; threshold: 25 | 50 | 75 }
   | { kind: 'enemy-hp-below'; threshold: 25 | 50 | 75 }
   | { kind: 'enemy-hp-above'; threshold: 25 | 50 | 75 }
   | { kind: 'enemy-mp-below'; threshold: 25 | 50 | 75 }
   | { kind: 'enemy-mp-above'; threshold: 25 | 50 | 75 }
+  | { kind: 'enemy-shield-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'enemy-shield-above'; threshold: 25 | 50 | 75 }
   | { kind: 'self-has-status'; statusId: StatusId }
   | { kind: 'self-lacks-status'; statusId: StatusId }
   | { kind: 'ally-has-status'; statusId: StatusId }
@@ -72,11 +78,13 @@ export type EffectTarget = 'action-target' | 'self' | 'all-allies' | 'all-enemie
 export type EffectDefinition =
   | {
       kind: 'damage';
-      scaling: 'physical' | 'magic';
+      scaling: 'physical' | 'magic' | 'defense' | 'speed';
       power: number;
       target: EffectTarget;
       canCrit?: boolean;
     }
+  | { kind: 'shield-burst'; power: number; target: EffectTarget }
+  | { kind: 'recoil'; maxHpPercent: number; target: 'self' }
   | { kind: 'heal'; power: number; target: EffectTarget }
   | { kind: 'shield'; maxHpPercent: number; target: EffectTarget }
   | { kind: 'status'; statusId: StatusId; amount: number; durationSeconds: number; target: EffectTarget }
@@ -161,6 +169,14 @@ export type MonsterAppearance = {
   form: MonsterForm;
 };
 
+export type MonsterIdentityDefinition = {
+  signatureSkillId: string;
+  winCondition: string;
+  weakness: string;
+  gambitHint: string;
+  recommendedCondition: GambitCondition;
+};
+
 export type MonsterFormDefinition = {
   name: string;
   glyph: string;
@@ -169,6 +185,8 @@ export type MonsterFormDefinition = {
   defaultSkillId: string;
   traitId: string;
   statGrowthProfileId?: string;
+  statMultipliers?: Partial<StatBlock>;
+  identity?: MonsterIdentityDefinition;
 };
 
 export type MonsterArchetypeDefinition = {
@@ -205,6 +223,7 @@ export type MonsterDefinition = {
   intrinsicSkillIds: [string, string];
   defaultSkillId: string;
   traitId: string;
+  identity?: MonsterIdentityDefinition;
   price: number;
   sellPrice: number;
   hatch?: {

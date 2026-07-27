@@ -9,6 +9,11 @@ const RARITIES: Rarity[] = ['common', 'rare', 'epic', 'legendary'];
 const scaleStats = (stats: StatBlock, multiplier: number): StatBlock =>
   Object.fromEntries(STAT_IDS.map((statId) => [statId, Math.round(stats[statId] * multiplier)])) as StatBlock;
 
+const applyStatMultipliers = (stats: StatBlock, multipliers: Partial<StatBlock> | undefined): StatBlock =>
+  Object.fromEntries(
+    STAT_IDS.map((statId) => [statId, Math.max(0, Math.round(stats[statId] * (multipliers?.[statId] ?? 1)))]),
+  ) as StatBlock;
+
 const fileData = rawGameData as RawGameData;
 
 const catalogMonsters: MonsterDefinition[] = fileData.archetypes.flatMap((archetype) =>
@@ -25,8 +30,14 @@ const catalogMonsters: MonsterDefinition[] = fileData.archetypes.flatMap((archet
       whiteStars,
       glyph: form.glyph,
       appearance: form.appearance,
-      baseStats: scaleStats(archetype.baseStats, fileData.rankStatMultipliers[index] ?? 1),
-      growthPerLevel: scaleStats(archetype.growthPerLevel, 1 + index * 0.08),
+      baseStats: applyStatMultipliers(
+        scaleStats(archetype.baseStats, fileData.rankStatMultipliers[index] ?? 1),
+        form.statMultipliers,
+      ),
+      growthPerLevel: applyStatMultipliers(
+        scaleStats(archetype.growthPerLevel, 1 + index * 0.08),
+        form.statMultipliers,
+      ),
       experienceProfileId: fileData.rules.experienceProfileIdsByWhiteStars[index] ?? 'standard',
       statGrowthProfileId,
       roleTagIds:
@@ -36,6 +47,7 @@ const catalogMonsters: MonsterDefinition[] = fileData.archetypes.flatMap((archet
       intrinsicSkillIds: form.intrinsicSkillIds,
       defaultSkillId: form.defaultSkillId,
       traitId: form.traitId,
+      identity: form.identity,
       price: PRICES[index] ?? PRICES[0],
       sellPrice: SELL_PRICES[index] ?? SELL_PRICES[0],
     };
@@ -192,6 +204,53 @@ export function validateGameData(data: GameData): string[] {
     if (formAttires.size !== 5) errors.push(`${archetype.id} must change attire at every white star`);
     if (formTraits.size !== 5) errors.push(`${archetype.id} must change trait at every white star`);
   }
+  const mvpForms = data.archetypes.flatMap((archetype) =>
+    archetype.forms.slice(0, data.rules.maxWhiteStars).map((form, index) => ({
+      archetypeId: archetype.id,
+      whiteStars: index + 1,
+      form,
+    })),
+  );
+  const mvpTraitIds = mvpForms.map(({ form }) => form.traitId);
+  if (new Set(mvpTraitIds).size !== mvpForms.length) {
+    errors.push('Every MVP grid species must have an exclusive trait');
+  }
+  const signatureIds: string[] = [];
+  const loadoutUsage = new Map<string, number>();
+  for (const { archetypeId, whiteStars, form } of mvpForms) {
+    const label = `${archetypeId} white-star ${whiteStars}`;
+    const identity = form.identity;
+    for (const skillId of [...form.intrinsicSkillIds, form.defaultSkillId]) {
+      loadoutUsage.set(skillId, (loadoutUsage.get(skillId) ?? 0) + 1);
+    }
+    if (!identity) {
+      errors.push(`${label} needs a peak identity`);
+      continue;
+    }
+    signatureIds.push(identity.signatureSkillId);
+    if (!form.intrinsicSkillIds.includes(identity.signatureSkillId)) {
+      errors.push(`${label} signature skill must occupy an intrinsic slot`);
+    }
+    if (!identity.winCondition.trim() || !identity.weakness.trim() || !identity.gambitHint.trim()) {
+      errors.push(`${label} needs a win condition, weakness, and gambit hint`);
+    }
+    const multipliers = Object.values(form.statMultipliers ?? {});
+    if (multipliers.length === 0 || Math.max(...multipliers) < 1.2 || Math.min(...multipliers) > 0.85) {
+      errors.push(`${label} needs both a stat multiplier peak of 1.2+ and weakness of 0.85 or less`);
+    }
+    if (multipliers.some((multiplier) => !Number.isFinite(multiplier) || multiplier <= 0 || multiplier > 1.5)) {
+      errors.push(`${label} has a stat multiplier outside the 0-1.5 range`);
+    }
+  }
+  if (new Set(signatureIds).size !== mvpForms.length) {
+    errors.push('Every MVP grid species must have an exclusive signature skill');
+  }
+  for (const { archetypeId, whiteStars, form } of mvpForms) {
+    const signatureSkillId = form.identity?.signatureSkillId;
+    if (signatureSkillId && loadoutUsage.get(signatureSkillId) !== 1) {
+      errors.push(`${archetypeId} white-star ${whiteStars} signature skill must appear in exactly one MVP loadout`);
+    }
+  }
   for (const recipe of data.specialRecipes) {
     for (const parentId of recipe.parentDefinitionIds) {
       if (!monsterIds.has(parentId)) errors.push(`${recipe.id} references unknown parent "${parentId}"`);
@@ -224,6 +283,20 @@ export function validateGameData(data: GameData): string[] {
     if (!RARITIES.includes(skill.rarity)) errors.push(`${skill.id} has an invalid rarity`);
     if (skill.mpCost < 0) errors.push(`${skill.id} has a negative MP cost`);
     if (skill.effects.length === 0) errors.push(`${skill.id} needs at least one effect`);
+    for (const effect of skill.effects) {
+      if (
+        (effect.kind === 'damage' || effect.kind === 'shield-burst') &&
+        (!Number.isFinite(effect.power) || effect.power <= 0)
+      ) {
+        errors.push(`${skill.id} needs positive damage power`);
+      }
+      if (
+        effect.kind === 'recoil' &&
+        (!Number.isFinite(effect.maxHpPercent) || effect.maxHpPercent <= 0 || effect.maxHpPercent >= 100)
+      ) {
+        errors.push(`${skill.id} recoil must be between 0 and 100 percent`);
+      }
+    }
     if (skill.runReward?.amountsByColorStars.some((amount) => amount <= 0)) {
       errors.push(`${skill.id} needs positive run-reward amounts`);
     }

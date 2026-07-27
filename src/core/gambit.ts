@@ -9,6 +9,7 @@ export type GambitFighterView = {
   maxHp: number;
   mp: number;
   maxMp: number;
+  shield: number;
   attack: number;
   alive: boolean;
   statuses: StatusId[];
@@ -36,6 +37,10 @@ export function conditionMatches(condition: GambitCondition, fighter: GambitFigh
       return percentage(fighter.mp, fighter.maxMp) <= condition.threshold;
     case 'self-mp-above':
       return percentage(fighter.mp, fighter.maxMp) >= condition.threshold;
+    case 'self-shield-below':
+      return percentage(fighter.shield, fighter.maxHp) <= condition.threshold;
+    case 'self-shield-above':
+      return percentage(fighter.shield, fighter.maxHp) >= condition.threshold;
     case 'ally-hp-below':
       return allies.some((ally) => percentage(ally.hp, ally.maxHp) <= condition.threshold);
     case 'ally-hp-above':
@@ -44,6 +49,10 @@ export function conditionMatches(condition: GambitCondition, fighter: GambitFigh
       return allies.some((ally) => percentage(ally.mp, ally.maxMp) <= condition.threshold);
     case 'ally-mp-above':
       return allies.some((ally) => percentage(ally.mp, ally.maxMp) >= condition.threshold);
+    case 'ally-shield-below':
+      return allies.some((ally) => percentage(ally.shield, ally.maxHp) <= condition.threshold);
+    case 'ally-shield-above':
+      return allies.some((ally) => percentage(ally.shield, ally.maxHp) >= condition.threshold);
     case 'enemy-hp-below':
       return enemies.some((enemy) => percentage(enemy.hp, enemy.maxHp) <= condition.threshold);
     case 'enemy-hp-above':
@@ -52,6 +61,10 @@ export function conditionMatches(condition: GambitCondition, fighter: GambitFigh
       return enemies.some((enemy) => percentage(enemy.mp, enemy.maxMp) <= condition.threshold);
     case 'enemy-mp-above':
       return enemies.some((enemy) => percentage(enemy.mp, enemy.maxMp) >= condition.threshold);
+    case 'enemy-shield-below':
+      return enemies.some((enemy) => percentage(enemy.shield, enemy.maxHp) <= condition.threshold);
+    case 'enemy-shield-above':
+      return enemies.some((enemy) => percentage(enemy.shield, enemy.maxHp) >= condition.threshold);
     case 'self-has-status':
       return fighter.statuses.includes(condition.statusId);
     case 'self-lacks-status':
