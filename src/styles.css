@@ -5867,7 +5867,7 @@ button.definition-card:active,
   display: block;
 }
 
-.monster-detail-card > .stat-grid {
+.monster-detail-card > .stat-bar-chart {
   margin-top: 9px;
 }
 
@@ -6833,47 +6833,173 @@ button.definition-card:active,
   font-size: 6px;
 }
 
-.stat-grid.is-breakdown {
+.stat-bar-chart {
   margin-top: 4px;
+  padding: 6px 8px 7px;
+  border: 1px solid var(--line-soft);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--monster-color) 8%, transparent), transparent 36%), var(--deck);
 }
 
-.stat-grid.is-breakdown > .stat-cell {
-  min-height: 70px;
-  justify-content: flex-start;
-  padding: 5px;
+.stat-bar-legend {
+  display: flex;
+  min-height: 15px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  padding-bottom: 4px;
 }
 
-.stat-grid.is-breakdown .stat-label {
+.stat-bar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   color: var(--muted);
   font-size: 6px;
-  letter-spacing: 0.04em;
+  line-height: 1;
 }
 
-.stat-grid.is-breakdown > .stat-cell > b {
-  margin: 1px 0 4px;
+.stat-bar-legend i {
+  display: block;
+  width: 8px;
+  height: 5px;
+  background: var(--line);
+}
+
+.stat-bar-legend .is-base i,
+.stat-bar-segment.is-base {
+  background: color-mix(in srgb, var(--monster-color) 72%, var(--paper));
+}
+
+.stat-bar-legend .is-growth i,
+.stat-bar-segment.is-growth {
+  background: var(--mint);
+}
+
+.stat-bar-legend .is-individual i,
+.stat-bar-segment.is-individual {
+  background: var(--gold);
+}
+
+.stat-bar-legend .is-equipment i,
+.stat-bar-segment.is-equipment {
+  background: var(--iris);
+}
+
+.stat-bar-rows {
+  border-top: 1px solid var(--line-soft);
+}
+
+.stat-bar-row {
+  display: grid;
+  min-width: 0;
+  min-height: 39px;
+  grid-template-columns: minmax(68px, 0.28fr) minmax(110px, 1fr) minmax(38px, auto);
+  align-items: center;
+  gap: 7px;
+  padding: 5px 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
+}
+
+.stat-bar-row:last-child {
+  border-bottom: 0;
+}
+
+.stat-bar-label {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 21px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-bar-label small {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--monster-color) 60%, var(--line));
+  background: color-mix(in srgb, var(--monster-color) 12%, var(--void));
+  color: var(--monster-color);
+  font-size: 7px;
+}
+
+.stat-bar-label b {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-bar-body {
+  min-width: 0;
+}
+
+.stat-bar-track {
+  position: relative;
+  height: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(25% - 1px),
+      color-mix(in srgb, var(--line) 45%, transparent) calc(25% - 1px) 25%
+    ),
+    var(--void);
+  box-shadow: inset 0 1px 2px var(--void-deep);
+}
+
+.stat-bar-fill {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.stat-bar-segment {
+  width: var(--stat-segment-width);
+  min-width: 1px;
+  height: 100%;
+  flex: 0 0 var(--stat-segment-width);
+  border-right: 1px solid color-mix(in srgb, var(--void-deep) 62%, transparent);
+}
+
+.stat-bar-row.is-over-reference .stat-bar-track {
+  border-right-color: var(--gold);
+  box-shadow:
+    inset -3px 0 var(--gold),
+    inset 0 1px 2px var(--void-deep);
+}
+
+.stat-bar-row > strong {
+  min-width: 0;
   color: var(--paper);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
+  text-align: right;
 }
 
 .stat-bonus-list {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 2px 6px;
+  margin-top: 3px;
 }
 
 .stat-bonus {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 2px;
-  padding: 2px 3px;
-  border-left: 2px solid currentColor;
-  background: var(--void);
+  gap: 1px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   font-family: "DotGothic16", monospace;
-  font-size: 6px;
+  font-size: 5px;
   font-style: normal;
   line-height: 1;
   white-space: nowrap;
@@ -6884,6 +7010,10 @@ button.definition-card:active,
   font-family: "DotGothic16", monospace;
   font-size: 5px;
   font-style: normal;
+}
+
+.stat-bonus.is-base {
+  color: color-mix(in srgb, var(--monster-color) 72%, var(--paper));
 }
 
 .stat-bonus.is-growth {
@@ -6900,12 +7030,6 @@ button.definition-card:active,
 
 .stat-bonus.is-cap {
   color: var(--pink);
-}
-
-.stat-bonus.is-base {
-  border-left-color: var(--line);
-  background: transparent;
-  color: var(--muted);
 }
 
 .breeding-lab-dialog {
@@ -6967,20 +7091,37 @@ button.definition-card:active,
 }
 
 @media (max-width: 800px) {
-  .stat-grid.is-breakdown > .stat-cell {
-    min-height: 64px;
+  .stat-bar-chart {
+    padding-inline: 6px;
   }
 
-  .stat-grid.is-breakdown > .stat-cell > b {
-    font-size: 13px;
+  .stat-bar-row {
+    min-height: 37px;
+    grid-template-columns: 62px minmax(0, 1fr) 35px;
+    gap: 5px;
   }
 
-  .stat-bonus {
-    font-size: 5px;
+  .stat-bar-label {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 4px;
   }
 
-  .stat-bonus em {
-    font-size: 5px;
+  .stat-bar-label small {
+    width: 18px;
+    height: 18px;
+    font-size: 6px;
+  }
+
+  .stat-bar-label b {
+    font-size: 7px;
+  }
+
+  .stat-bar-track {
+    height: 10px;
+  }
+
+  .stat-bar-row > strong {
+    font-size: 11px;
   }
 }
 
@@ -8441,33 +8582,6 @@ button.effect-skill-card {
   font-size: 9px;
 }
 
-.catalog-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 1px;
-  margin: 10px 0;
-  background: var(--line-soft);
-}
-
-.catalog-stat-grid span {
-  display: flex;
-  min-width: 0;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  background: var(--deck);
-}
-
-.catalog-stat-grid small {
-  color: var(--muted);
-  font-size: 7px;
-}
-
-.catalog-stat-grid b {
-  font-size: 15px;
-}
-
 .catalog-trait,
 .catalog-skills {
   margin-top: 10px;
@@ -8868,18 +8982,6 @@ button.effect-skill-card {
 
   .catalog-detail-identity h3 {
     font-size: 17px;
-  }
-
-  .catalog-stat-grid {
-    margin: 7px 0;
-  }
-
-  .catalog-stat-grid span {
-    min-height: 36px;
-  }
-
-  .catalog-stat-grid b {
-    font-size: 12px;
   }
 
   .catalog-trait,

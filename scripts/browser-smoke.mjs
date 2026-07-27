@@ -153,6 +153,15 @@ for (let round = 0; round < 3; round += 1) {
     if ((await desktop.locator('.prospect-dialog .monster-detail-card').count()) !== 1) {
       throw new Error('Draft monster does not open the shared detail card');
     }
+    if ((await desktop.locator('.prospect-dialog .stat-bar-row').count()) !== 7) {
+      throw new Error('Draft monster detail does not graph all seven stats as horizontal bars');
+    }
+    if ((await desktop.locator('.prospect-dialog .stat-bar-track[aria-valuenow]').count()) !== 7) {
+      throw new Error('Draft monster stat bars do not expose their numeric totals');
+    }
+    if ((await desktop.locator('.prospect-dialog .stat-bar-segment.is-base').count()) !== 7) {
+      throw new Error('Draft monster stat bars do not expose their base-value segments');
+    }
     await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
   }
   await chooseFirstStarter(desktop);
@@ -281,8 +290,8 @@ if (
 }
 await desktop.screenshot({ path: '/tmp/code-monsters-catalog-standalone-desktop.png', fullPage: true });
 await desktop.locator('.catalog-card.is-unlocked').first().click();
-if ((await desktop.locator('.catalog-detail.is-unlocked .catalog-stat-grid span').count()) !== 7) {
-  throw new Error('Discovered catalog record does not show all seven base stats');
+if ((await desktop.locator('.catalog-detail.is-unlocked .stat-bar-row').count()) !== 7) {
+  throw new Error('Discovered catalog record does not graph all seven base stats');
 }
 if ((await desktop.locator('.catalog-detail.is-unlocked .effect-skill-card').count()) !== 3) {
   throw new Error('Discovered catalog record does not show all three skill effects');
@@ -371,8 +380,8 @@ if (JSON.stringify(discoveryAfterDeveloperMode) !== JSON.stringify(discoveryBefo
 }
 await desktop.locator('.shop-monsters .definition-card-main').first().click();
 await desktop.locator('.prospect-dialog[open]').waitFor();
-if ((await desktop.locator('.prospect-dialog .stat-grid span').count()) !== 7) {
-  throw new Error('Shop prospect detail does not show all seven stats');
+if ((await desktop.locator('.prospect-dialog .stat-bar-row').count()) !== 7) {
+  throw new Error('Shop prospect detail does not graph all seven stats');
 }
 if ((await desktop.locator('.prospect-dialog .stat-bonus.is-base').count()) !== 7) {
   throw new Error('Base shop prospect stats do not expose their baseline breakdown');
@@ -1065,8 +1074,8 @@ await mobile.locator('.catalog-dialog').getByRole('button', { name: '閉じる' 
 const mobileActiveCard = mobile.locator('.team-zone.is-active .roster-card').first();
 await mobileActiveCard.click();
 await mobile.locator('dialog[open]').waitFor();
-if ((await mobile.locator('.monster-dialog .stat-grid span').count()) !== 7) {
-  throw new Error('Monster detail dialog does not show all seven stats');
+if ((await mobile.locator('.monster-dialog .stat-bar-row').count()) !== 7) {
+  throw new Error('Monster detail dialog does not graph all seven stats');
 }
 if ((await mobile.locator('.monster-dialog .farewell-value').count()) !== 1) {
   throw new Error('Mobile monster detail does not show the farewell coin value');

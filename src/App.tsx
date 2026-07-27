@@ -236,6 +236,48 @@ const STAT_NAMES: Record<StatId, string> = {
   crit: '会心率',
 };
 
+const STAT_SOURCE_LABELS = {
+  base: '基礎',
+  growth: '成長',
+  individual: '個体値',
+  equipment: '装備',
+} as const;
+
+type StatSourceId = keyof typeof STAT_SOURCE_LABELS;
+
+type StatChartValue = {
+  base: number;
+  growth: number;
+  individual: number;
+  equipment: number;
+  total: number;
+  capped: boolean;
+};
+
+const STAT_CHART_MAXIMUMS = Object.fromEntries(
+  STAT_LABELS.map(([statId]) => {
+    if (statId === 'crit') return [statId, GAME_DATA.rules.battle.criticalCap];
+    const maximumColorGrowth = Math.max(...GAME_DATA.rules.breeding.colorGrowthBonus);
+    const maximumEquipmentBonus = Math.max(
+      0,
+      ...GAME_DATA.equipment.map((equipment) => equipment.statBonus[statId] ?? 0),
+    );
+    const contentMaximum = Math.max(
+      ...GAME_DATA.monsters.map((definition) => {
+        const growthUnits = statGrowthProfileFor(GAME_DATA, definition).incrementsByLevel.reduce(
+          (total, increment) => total + increment,
+          0,
+        );
+        return (
+          definition.baseStats[statId] +
+          Math.floor(definition.growthPerLevel[statId] * growthUnits * maximumColorGrowth)
+        );
+      }),
+    );
+    return [statId, Math.max(1, contentMaximum + maximumEquipmentBonus)];
+  }),
+) as Record<StatId, number>;
+
 const SKILL_TARGET_LABELS: Record<SkillDefinition['targetScope'], string> = {
   'single-enemy': '敵単体',
   'single-ally': '味方単体',
@@ -689,8 +731,8 @@ function MonsterDetailCard({
         </>
       )}
       <div className="stat-grid-heading">
-        <span>STATUS TOTAL</span>
-        <small>最終値 / 成長・個体値・装備</small>
+        <span>PARAMETER PROFILE</span>
+        <small>能力別の図鑑基準 / 色は上昇内訳</small>
       </div>
       <StatBreakdownGrid monster={monster} />
       <GrowthProfilePanel definition={definition} currentLevel={monster.level} />
@@ -732,39 +774,96 @@ function MonsterDetailCard({
   );
 }
 
+function StatBarChart({ values, ariaLabel }: { values: Record<StatId, StatChartValue>; ariaLabel: string }) {
+  const sourceIds = (Object.keys(STAT_SOURCE_LABELS) as StatSourceId[]).filter((sourceId) =>
+    STAT_LABELS.some(([statId]) => values[statId][sourceId] > 0),
+  );
+  return (
+    <section className="stat-bar-chart" aria-label={ariaLabel}>
+      <div className="stat-bar-legend" aria-label="棒グラフの色分け">
+        {sourceIds.map((sourceId) => (
+          <span className={`is-${sourceId}`} key={sourceId}>
+            <i aria-hidden="true" />
+            {STAT_SOURCE_LABELS[sourceId]}
+          </span>
+        ))}
+      </div>
+      <div className="stat-bar-rows">
+        {STAT_LABELS.map(([id, shortLabel]) => {
+          const stat = values[id];
+          const suffix = id === 'crit' ? '%' : '';
+          const referenceMaximum = STAT_CHART_MAXIMUMS[id];
+          const segments = (Object.keys(STAT_SOURCE_LABELS) as StatSourceId[])
+            .map((sourceId) => ({
+              id: sourceId,
+              label: STAT_SOURCE_LABELS[sourceId],
+              value: stat[sourceId],
+            }))
+            .filter(({ value }) => value > 0);
+          const valueDescription = segments
+            .map(({ label, value }, index) => `${label}${index === 0 ? ' ' : 'プラス'}${value}${suffix}`)
+            .join('、');
+          return (
+            <div
+              className={`stat-bar-row${stat.total > referenceMaximum ? ' is-over-reference' : ''}`}
+              data-stat-id={id}
+              key={id}
+            >
+              <span className="stat-bar-label">
+                <small aria-hidden="true">{shortLabel}</small>
+                <b>{STAT_NAMES[id]}</b>
+              </span>
+              <div className="stat-bar-body">
+                <div
+                  className="stat-bar-track"
+                  role="meter"
+                  aria-label={`${STAT_NAMES[id]}の最終値`}
+                  aria-valuemin={0}
+                  aria-valuemax={Math.max(referenceMaximum, stat.total)}
+                  aria-valuenow={stat.total}
+                  aria-valuetext={`${stat.total}${suffix}。${valueDescription}${stat.capped ? `、上限${GAME_DATA.rules.battle.criticalCap}%` : ''}`}
+                >
+                  <div className="stat-bar-fill" aria-hidden="true">
+                    {segments.map((segment) => (
+                      <i
+                        className={`stat-bar-segment is-${segment.id}`}
+                        style={
+                          {
+                            '--stat-segment-width': `${(segment.value / referenceMaximum) * 100}%`,
+                          } as CSSProperties
+                        }
+                        key={segment.id}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="stat-bonus-list" aria-hidden="true">
+                  {segments.map((segment) => (
+                    <i className={`stat-bonus is-${segment.id}`} data-bonus-source={segment.id} key={segment.id}>
+                      <em>{segment.label}</em>
+                      {segment.id === 'base' ? ' ' : ' +'}
+                      {segment.value}
+                      {suffix}
+                    </i>
+                  ))}
+                  {stat.capped && <i className="stat-bonus is-cap">上限 {GAME_DATA.rules.battle.criticalCap}%</i>}
+                </div>
+              </div>
+              <strong data-stat-total={stat.total}>
+                {stat.total}
+                {suffix}
+              </strong>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function StatBreakdownGrid({ monster }: { monster: MonsterInstance }) {
   const breakdown = statBreakdownFor(GAME_DATA, monster);
-  return (
-    <div className="stat-grid is-breakdown" aria-label="能力の最終値と上昇内訳">
-      {STAT_LABELS.map(([id, label]) => {
-        const stat = breakdown[id];
-        const bonuses = [
-          ['growth', '成長', stat.growth],
-          ['individual', '個体値', stat.individual],
-          ['equipment', '装備', stat.equipment],
-        ] as const;
-        const visibleBonuses = bonuses.filter(([, , value]) => value > 0);
-        return (
-          <span className="stat-cell" data-stat-id={id} key={id}>
-            <small className="stat-label">{label}</small>
-            <b data-stat-total={stat.total}>
-              {stat.total}
-              {id === 'crit' ? '%' : ''}
-            </b>
-            <div className="stat-bonus-list">
-              {visibleBonuses.length === 0 && <i className="stat-bonus is-base">基礎値</i>}
-              {visibleBonuses.map(([source, sourceLabel, value]) => (
-                <i className={`stat-bonus is-${source}`} data-bonus-source={source} key={source}>
-                  <em>{sourceLabel}</em> +{value}
-                </i>
-              ))}
-              {stat.capped && <i className="stat-bonus is-cap">上限 {GAME_DATA.rules.battle.criticalCap}%</i>}
-            </div>
-          </span>
-        );
-      })}
-    </div>
-  );
+  return <StatBarChart values={breakdown} ariaLabel="能力の最終値と上昇内訳" />;
 }
 
 function MonsterProspectDialog({
@@ -2923,14 +3022,28 @@ function MonsterCatalogProfile({ entry }: { entry: MonsterCatalogEntry }) {
           </p>
         </div>
       </header>
-      <div className="catalog-stat-grid" aria-label={`${definition.name}のレベル1基礎能力`}>
-        {STAT_LABELS.map(([id, label]) => (
-          <span key={id}>
-            <small>{label}</small>
-            <b>{definition.baseStats[id]}</b>
-          </span>
-        ))}
+      <div className="stat-grid-heading">
+        <span>LEVEL 1 PARAMETERS</span>
+        <small>基礎値 / 能力別の図鑑基準</small>
       </div>
+      <StatBarChart
+        values={
+          Object.fromEntries(
+            STAT_LABELS.map(([id]) => [
+              id,
+              {
+                base: definition.baseStats[id],
+                growth: 0,
+                individual: 0,
+                equipment: 0,
+                total: definition.baseStats[id],
+                capped: false,
+              },
+            ]),
+          ) as Record<StatId, StatChartValue>
+        }
+        ariaLabel={`${definition.name}のレベル1基礎能力`}
+      />
       <GrowthProfilePanel definition={definition} />
       <section className="catalog-trait">
         <span>TRAIT / 色星0</span>
