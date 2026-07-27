@@ -70,20 +70,53 @@ export const levelForXp = (data: GameData, definition: MonsterDefinition, xp: nu
 export const effectiveStarsFor = (data: GameData, monster: MonsterInstance) =>
   definitionFor(data, monster).whiteStars + monster.colorStars;
 
-export const defaultGambitsFor = (definition: MonsterDefinition): GambitRule[] => [
-  {
-    condition: { kind: 'ally-hp-below', threshold: 50 },
-    action: { skillId: definition.intrinsicSkillIds[1], target: 'lowest-hp-ally' },
-  },
-  {
-    condition: { kind: 'always' },
-    action: { skillId: definition.intrinsicSkillIds[0], target: 'lowest-hp-enemy' },
-  },
-  {
-    condition: { kind: 'always' },
-    action: { skillId: 'normal-attack', target: 'random-enemy' },
-  },
-];
+const defaultTargetForSkill = (data: GameData, skillId: string) =>
+  targetRulesForSkill(data, skillId)[0] ?? 'random-enemy';
+
+const defaultConditionForSkill = (data: GameData, skillId: string): GambitRule['condition'] => {
+  const skill = data.skills.find((entry) => entry.id === skillId);
+  if (!skill) return { kind: 'always' };
+  const targetGroup =
+    skill.targetScope === 'self' ? 'self' : skill.targetScope.includes('all') ? 'ally' : 'action-target';
+  const restorative = skill.effects.find((effect) => effect.kind === 'heal' || effect.kind === 'shield');
+  if (restorative) {
+    if (skill.targetScope === 'self') return { kind: 'self-hp-below', threshold: 50 };
+    if (skill.targetScope.includes('ally')) return { kind: 'ally-hp-below', threshold: 50 };
+  }
+  if (skill.effects.some((effect) => effect.kind === 'mp')) {
+    return targetGroup === 'self' ? { kind: 'self-mp-below', threshold: 50 } : { kind: 'ally-mp-below', threshold: 50 };
+  }
+  const status = skill.effects.find((effect) => effect.kind === 'status');
+  if (status?.kind === 'status') {
+    const beneficial = status.statusId.endsWith('-up') || status.statusId === 'regeneration';
+    if (beneficial) {
+      return targetGroup === 'self'
+        ? { kind: 'self-lacks-status', statusId: status.statusId }
+        : { kind: 'ally-lacks-status', statusId: status.statusId };
+    }
+    return { kind: 'enemy-lacks-status', statusId: status.statusId };
+  }
+  return { kind: 'enemy-hp-below', threshold: 50 };
+};
+
+export const defaultGambitsFor = (data: GameData, definition: MonsterDefinition): GambitRule[] => {
+  const utilitySkillId = definition.intrinsicSkillIds[1];
+  const primarySkillId = definition.intrinsicSkillIds[0];
+  return [
+    {
+      condition: defaultConditionForSkill(data, utilitySkillId),
+      action: { skillId: utilitySkillId, target: defaultTargetForSkill(data, utilitySkillId) },
+    },
+    {
+      condition: { kind: 'always' },
+      action: { skillId: primarySkillId, target: defaultTargetForSkill(data, primarySkillId) },
+    },
+    {
+      condition: { kind: 'always' },
+      action: { skillId: 'normal-attack', target: 'random-enemy' },
+    },
+  ];
+};
 
 export function createMonster(
   data: GameData,
@@ -113,7 +146,7 @@ export function createMonster(
     journeySeed: Math.floor(options.journeySeed ?? 0),
     inheritedStats: { ...(options.inheritedStats ?? EMPTY_STATS) },
     inheritedSkillId: options.inheritedSkillId,
-    gambits: options.gambits ?? defaultGambitsFor(definition),
+    gambits: options.gambits ?? defaultGambitsFor(data, definition),
     equipmentId: options.equipmentId,
   };
 }

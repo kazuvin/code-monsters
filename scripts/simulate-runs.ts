@@ -112,9 +112,10 @@ for (let runIndex = 0; runIndex < simulationRuns; runIndex += 1) {
     const player = playerJourney[cycleIndex];
     const enemy = enemyJourney[cycleIndex];
     if (!player || !enemy) continue;
+    const reverseSides = (runIndex + cycleIndex) % 2 === 1;
     const battle = simulateBattle(GAME_DATA, {
-      player: player.team,
-      enemy: enemy.team,
+      player: reverseSides ? enemy.team : player.team,
+      enemy: reverseSides ? player.team : enemy.team,
       seed: deriveSeed(runSeed, (cycleIndex + 1) * 10_007),
     });
     const cycle = cycles[cycleIndex]!;

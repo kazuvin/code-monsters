@@ -1,5 +1,5 @@
 import type { GameData, GambitAction, GambitCondition, MonsterInstance, StatusId, TargetRule, Team } from './types';
-import { skillIdsFor } from './monster';
+import { skillIdsFor, targetRulesForSkill } from './monster';
 
 export type GambitFighterView = {
   id: string;
@@ -30,34 +30,53 @@ export function conditionMatches(condition: GambitCondition, fighter: GambitFigh
       return true;
     case 'self-hp-below':
       return percentage(fighter.hp, fighter.maxHp) <= condition.threshold;
+    case 'self-hp-above':
+      return percentage(fighter.hp, fighter.maxHp) >= condition.threshold;
+    case 'self-mp-below':
+      return percentage(fighter.mp, fighter.maxMp) <= condition.threshold;
     case 'self-mp-above':
       return percentage(fighter.mp, fighter.maxMp) >= condition.threshold;
     case 'ally-hp-below':
       return allies.some((ally) => percentage(ally.hp, ally.maxHp) <= condition.threshold);
+    case 'ally-hp-above':
+      return allies.some((ally) => percentage(ally.hp, ally.maxHp) >= condition.threshold);
+    case 'ally-mp-below':
+      return allies.some((ally) => percentage(ally.mp, ally.maxMp) <= condition.threshold);
+    case 'ally-mp-above':
+      return allies.some((ally) => percentage(ally.mp, ally.maxMp) >= condition.threshold);
     case 'enemy-hp-below':
       return enemies.some((enemy) => percentage(enemy.hp, enemy.maxHp) <= condition.threshold);
+    case 'enemy-hp-above':
+      return enemies.some((enemy) => percentage(enemy.hp, enemy.maxHp) >= condition.threshold);
+    case 'enemy-mp-below':
+      return enemies.some((enemy) => percentage(enemy.mp, enemy.maxMp) <= condition.threshold);
+    case 'enemy-mp-above':
+      return enemies.some((enemy) => percentage(enemy.mp, enemy.maxMp) >= condition.threshold);
+    case 'self-has-status':
+      return fighter.statuses.includes(condition.statusId);
+    case 'self-lacks-status':
+      return !fighter.statuses.includes(condition.statusId);
     case 'ally-has-status':
       return allies.some((ally) => ally.statuses.includes(condition.statusId));
+    case 'ally-lacks-status':
+      return allies.some((ally) => !ally.statuses.includes(condition.statusId));
     case 'enemy-has-status':
       return enemies.some((enemy) => enemy.statuses.includes(condition.statusId));
+    case 'enemy-lacks-status':
+      return enemies.some((enemy) => !enemy.statuses.includes(condition.statusId));
     case 'living-count-at-most':
       return (condition.team === 'ally' ? allies : enemies).length <= condition.count;
+    case 'living-count-at-least':
+      return (condition.team === 'ally' ? allies : enemies).length >= condition.count;
   }
 }
 
-const validTargetRule = (scope: string, target: TargetRule) => {
-  if (scope === 'self') return target === 'self';
-  if (scope === 'single-ally') return ['self', 'lowest-hp-ally', 'highest-hp-ally'].includes(target);
-  if (scope === 'single-enemy') return target.includes('enemy');
-  if (scope === 'all-allies') return target.includes('ally') || target === 'self';
-  return target.includes('enemy');
-};
-
 const actionIsUsable = (data: GameData, fighter: GambitFighterView, action: GambitAction) => {
-  if (action.skillId === 'normal-attack') return action.target.includes('enemy');
+  if (!targetRulesForSkill(data, action.skillId).includes(action.target)) return false;
+  if (action.skillId === 'normal-attack') return true;
   if (!skillIdsFor(data, fighter.monster).includes(action.skillId)) return false;
   const skill = data.skills.find((entry) => entry.id === action.skillId);
-  return Boolean(skill && fighter.mp >= skill.mpCost && validTargetRule(skill.targetScope, action.target));
+  return Boolean(skill && fighter.mp >= skill.mpCost);
 };
 
 export type GambitDecision = {

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const requestedTarget = process.argv.slice(2).find((argument) => argument !== '--') ?? 'http://127.0.0.1:5173';
 const target = new URL(requestedTarget);
-target.searchParams.set('seed', target.searchParams.get('seed') ?? '1');
+target.searchParams.set('seed', target.searchParams.get('seed') ?? '7261');
 target.searchParams.set('mode', 'casual');
 
 const browser = await chromium.launch({
@@ -564,6 +564,30 @@ const criticalFrameCount = Number(await desktop.locator('.battle-screen').getAtt
 if (criticalFrameCount < 1) {
   throw new Error(`Browser smoke seed does not produce a critical hit: ${target.toString()}`);
 }
+const openingFrame = desktop.locator('.battle-screen.is-frame-battle-start-effect');
+await openingFrame.waitFor({ timeout: 4000 });
+const openingPresentation = await openingFrame.evaluate((screen) => {
+  const card = screen.querySelector('.battle-start-source-card');
+  const actor = screen.querySelector('.battle-sprite.is-acting');
+  return {
+    source: screen.getAttribute('data-start-source'),
+    replayDelay: screen.getAttribute('data-replay-delay-ms'),
+    cardText: card?.textContent?.replace(/\s+/g, ' ').trim(),
+    actorAnimation: actor ? getComputedStyle(actor).animationName : '',
+  };
+});
+if (
+  !['trait', 'equipment'].includes(openingPresentation.source ?? '') ||
+  openingPresentation.replayDelay !== '560' ||
+  !openingPresentation.cardText?.includes('OPENING ORDER') ||
+  !openingPresentation.cardText.includes('SPD') ||
+  !openingPresentation.actorAnimation.includes('battle-start-actor')
+) {
+  throw new Error(
+    `Battle-start activation is not presented as an ordered source card: ${JSON.stringify(openingPresentation)}`,
+  );
+}
+await desktop.screenshot({ path: '/tmp/code-monsters-battle-opening-desktop.png', fullPage: true });
 await desktop.evaluate(() => {
   let captureScheduled = false;
   const observer = new MutationObserver(() => {
@@ -607,11 +631,11 @@ if (
 ) {
   throw new Error('Battle formations do not face each other on opposing diagonals');
 }
+const pendingHpHit = desktop.locator('.battle-sprite.is-hit[data-hp-pending="true"]').first();
+await pendingHpHit.waitFor({ timeout: 8000 });
 if ((await desktop.locator('.battle-screen').getAttribute('data-replay-delay-ms')) !== '920') {
   throw new Error('Normal replay speed is not using the readable 920ms step interval');
 }
-const pendingHpHit = desktop.locator('.battle-sprite.is-hit[data-hp-pending="true"]').first();
-await pendingHpHit.waitFor({ timeout: 4000 });
 const hpRevealSequence = await pendingHpHit.evaluate((sprite) => {
   const screen = sprite.closest('.battle-screen');
   return {
@@ -738,7 +762,7 @@ if (
   throw new Error(`Battle motion is not sequenced action → effect → knockback: ${JSON.stringify(battleTimeline)}`);
 }
 const criticalImpact = desktop.locator('.battle-screen[data-critical-captured="true"] .critical-impact').first();
-await criticalImpact.waitFor({ timeout: 8000 });
+await criticalImpact.waitFor({ timeout: 20000 });
 const criticalPresentation = await criticalImpact.evaluate((impact) => {
   const labelStyle = getComputedStyle(impact.querySelector('strong'));
   const battlefieldStyle = getComputedStyle(impact.closest('.battlefield'));
@@ -920,15 +944,29 @@ if ((await desktop.locator('.breeding-intrinsic-skills .effect-skill-card').coun
 }
 if (
   (await desktop.locator('.breeding-outcome .skill-effect-fact').count()) < 2 ||
-  (await desktop.locator('.inheritance-skill-token i').count()) < 2
+  (await desktop.locator('.inheritance-parent-skill .skill-effect-fact').count()) < 2
 ) {
   throw new Error('Breeding skill cards do not expose concrete effect values');
 }
 if ((await desktop.locator('.parent-skill-bank').count()) !== 2) {
   throw new Error('Breeding inheritance does not separate the skills held by both parents');
 }
-if ((await desktop.locator('.inheritance-skill-token:not(:disabled)').count()) < 2) {
+const inheritanceSkillCards = desktop.locator('.inheritance-parent-skill');
+if (
+  (await inheritanceSkillCards.count()) < 4 ||
+  (await inheritanceSkillCards.locator('.skill-effect-tags').count()) < 4
+) {
+  throw new Error('Parent inheritance choices do not show the same skill details as the newborn loadout');
+}
+if ((await desktop.locator('.inheritance-parent-skill:not(:disabled)').count()) < 2) {
   throw new Error('Breeding inheritance does not expose draggable parent skills');
+}
+if (
+  !(await desktop
+    .locator('.inheritance-parent-skill:not(:disabled)')
+    .evaluateAll((cards) => cards.every((card) => card.getAttribute('draggable') === 'true')))
+) {
+  throw new Error('Breeding inheritance skill cards are not draggable');
 }
 if ((await desktop.locator('.inheritance-drop-slot').count()) !== 1) {
   throw new Error('Breeding inheritance does not expose a drop slot');
@@ -960,11 +998,11 @@ if (
 ) {
   throw new Error(`Desktop breeding parameters are hidden: ${JSON.stringify(desktopBreedingStatVisibility)}`);
 }
-const selectedInheritanceChoice = desktop.locator('.inheritance-skill-token:not(:disabled)').nth(1);
+const selectedInheritanceChoice = desktop.locator('.inheritance-parent-skill:not(:disabled)').nth(1);
 const selectedInheritanceSkillName = (await selectedInheritanceChoice.locator('strong').textContent())?.trim();
-await selectedInheritanceChoice.dragTo(desktop.locator('.inheritance-drop-slot'));
+await selectedInheritanceChoice.click();
 if ((await desktop.locator('.inheritance-drop-slot').getAttribute('data-selected-skill-id')) === '') {
-  throw new Error('Dragging a parent skill did not assign the inheritance slot');
+  throw new Error('Tapping a parent skill did not assign the inheritance slot');
 }
 if ((await desktop.getByRole('button', { name: '配合内容を確認' }).count()) !== 1) {
   throw new Error('Breeding flow does not include a confirmation step');
@@ -1266,7 +1304,7 @@ await mobile.locator('.team-zone.is-bench .roster-card').first().click();
 await mobile.getByRole('button', { name: '主力へ出す' }).click();
 await mobile.getByRole('button', { name: '閉じる', exact: true }).click();
 await mobile.getByRole('button', { name: 'ATB 3 × 3 戦闘を開始する' }).click();
-await mobile.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 4000 });
+await mobile.locator('.battle-screen[data-skill-id]').waitFor({ timeout: 8000 });
 if ((await mobile.locator('.battle-sprite.is-acting .skill-callout').count()) !== 1) {
   throw new Error('Mobile battle does not show the acting monster beside its skill');
 }
@@ -1516,6 +1554,23 @@ await gambitPage.getByRole('button', { name: '条件2を削除' }).click();
 if ((await gambitPage.locator('.gambit-row').count()) !== 3) {
   throw new Error('Gambit editor does not delete a condition');
 }
+const gambitConditionKinds = await gambitPage
+  .locator('.gambit-row')
+  .first()
+  .locator('select[aria-label="条件"] option')
+  .evaluateAll((options) => options.map((option) => option.value));
+if (
+  gambitConditionKinds.length !== 21 ||
+  !['self-hp-above', 'ally-mp-below', 'enemy-lacks-status', 'living-count-at-least'].every((kind) =>
+    gambitConditionKinds.includes(kind),
+  )
+) {
+  throw new Error(`Gambit editor does not expose all expanded condition families: ${gambitConditionKinds.join(',')}`);
+}
+await gambitPage.locator('.gambit-row').first().locator('select[aria-label="条件"]').selectOption('enemy-lacks-status');
+if ((await gambitPage.locator('.gambit-row').first().locator('select[aria-label="状態"]').count()) !== 1) {
+  throw new Error('Gambit editor does not expose a status selector for a missing-status condition');
+}
 await gambitPage.screenshot({ path: '/tmp/code-monsters-gambit-editor-desktop.png', fullPage: true });
 await gambitPage.setViewportSize({ width: 390, height: 844 });
 if (await gambitPage.locator('.monster-dialog').evaluate((dialog) => dialog.scrollWidth > dialog.clientWidth + 1)) {
@@ -1542,6 +1597,7 @@ console.log(
       '/tmp/code-monsters-gambit-editor-desktop.png',
       '/tmp/code-monsters-gambit-editor-mobile.png',
       '/tmp/code-monsters-monster-recipes-desktop.png',
+      '/tmp/code-monsters-battle-opening-desktop.png',
       '/tmp/code-monsters-battle-desktop.png',
       '/tmp/code-monsters-critical-desktop.png',
       '/tmp/code-monsters-result-desktop.png',

@@ -127,4 +127,85 @@ describe('deterministic 3v3 battle', () => {
       3 + enemyReports.reduce((total, report) => total + report.shieldAbsorbed, 0),
     );
   });
+
+  it('emits trait and equipment start effects in descending initial-speed order', () => {
+    const startData = structuredClone(GAME_DATA);
+    const playerIds = ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1'];
+    const enemyIds = ['dark-dragon-1', 'fire-demon-1', 'light-spirit-1'];
+    const allIds = [...playerIds, ...enemyIds];
+    const speeds = [12, 52, 22, 42, 32, 62];
+    for (const [index, definitionId] of allIds.entries()) {
+      const monster = startData.monsters.find((entry) => entry.id === definitionId);
+      if (!monster) throw new Error(`Expected ${definitionId}`);
+      monster.baseStats.speed = speeds[index] as number;
+      const trait = startData.traits.find((entry) => entry.id === monster.traitId);
+      if (!trait) throw new Error(`Expected ${monster.traitId}`);
+      trait.stages[0].battleStartEffects = [{ kind: 'shield', maxHpPercent: 5, target: 'self' }];
+    }
+    const result = simulateBattle(startData, {
+      player: team('p', playerIds, 0).map((monster) => ({ ...monster, equipmentId: 'opening-drum' })),
+      enemy: team('e', enemyIds, 0).map((monster) => ({ ...monster, equipmentId: 'opening-drum' })),
+      seed: 902,
+    });
+    const startFrames = result.frames.filter((frame) => frame.kind === 'battle-start-effect');
+
+    expect(result.frames[0]?.kind).toBe('start');
+    expect(startFrames.map((frame) => frame.actorId)).toEqual([
+      'e-2',
+      'e-2',
+      'p-1',
+      'p-1',
+      'e-0',
+      'e-0',
+      'e-1',
+      'e-1',
+      'p-2',
+      'p-2',
+      'p-0',
+      'p-0',
+    ]);
+    expect(startFrames.map((frame) => frame.battleStartSource?.kind)).toEqual([
+      'trait',
+      'equipment',
+      'trait',
+      'equipment',
+      'trait',
+      'equipment',
+      'trait',
+      'equipment',
+      'trait',
+      'equipment',
+      'trait',
+      'equipment',
+    ]);
+    expect(startFrames.every((frame) => frame.targetIds.length > 0 && frame.text.includes('発動'))).toBe(true);
+  });
+
+  it('executes the configured matching skill and records it in battle reports', () => {
+    const caster = createMonster(GAME_DATA, 'dark-demon-1', 'configured-caster', {
+      gambits: [
+        {
+          condition: { kind: 'enemy-lacks-status', statusId: 'silence' },
+          action: { skillId: 'silence-mark', target: 'highest-attack-enemy' },
+        },
+        {
+          condition: { kind: 'always' },
+          action: { skillId: 'normal-attack', target: 'random-enemy' },
+        },
+      ],
+    });
+    const result = simulateBattle(GAME_DATA, {
+      player: [caster, ...team('p', ['light-dragon-1', 'fire-spirit-1'], 0)],
+      enemy: team('e', ['dark-dragon-1', 'fire-demon-1', 'light-spirit-1'], 0),
+      seed: 1337,
+    });
+    const report = result.monsterReports.find((entry) => entry.id === caster.id);
+
+    expect(report?.skillUses['silence-mark']).toBeGreaterThan(0);
+    expect(
+      result.frames.some(
+        (frame) => frame.kind === 'action' && frame.actorId === caster.id && frame.skillId === 'silence-mark',
+      ),
+    ).toBe(true);
+  });
 });

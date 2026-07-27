@@ -37,12 +37,25 @@ export type StatusId =
 export type GambitCondition =
   | { kind: 'always' }
   | { kind: 'self-hp-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'self-hp-above'; threshold: 25 | 50 | 75 }
+  | { kind: 'self-mp-below'; threshold: 25 | 50 | 75 }
   | { kind: 'self-mp-above'; threshold: 25 | 50 | 75 }
   | { kind: 'ally-hp-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'ally-hp-above'; threshold: 25 | 50 | 75 }
+  | { kind: 'ally-mp-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'ally-mp-above'; threshold: 25 | 50 | 75 }
   | { kind: 'enemy-hp-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'enemy-hp-above'; threshold: 25 | 50 | 75 }
+  | { kind: 'enemy-mp-below'; threshold: 25 | 50 | 75 }
+  | { kind: 'enemy-mp-above'; threshold: 25 | 50 | 75 }
+  | { kind: 'self-has-status'; statusId: StatusId }
+  | { kind: 'self-lacks-status'; statusId: StatusId }
   | { kind: 'ally-has-status'; statusId: StatusId }
+  | { kind: 'ally-lacks-status'; statusId: StatusId }
   | { kind: 'enemy-has-status'; statusId: StatusId }
-  | { kind: 'living-count-at-most'; team: 'ally' | 'enemy'; count: 1 | 2 };
+  | { kind: 'enemy-lacks-status'; statusId: StatusId }
+  | { kind: 'living-count-at-most'; team: 'ally' | 'enemy'; count: 1 | 2 | 3 }
+  | { kind: 'living-count-at-least'; team: 'ally' | 'enemy'; count: 1 | 2 | 3 };
 
 export type GambitAction = {
   skillId: string | 'normal-attack';
@@ -486,9 +499,15 @@ export type FighterSnapshot = {
 
 export type BattleFrame = {
   atSeconds: number;
-  kind: 'start' | 'action' | 'environment' | 'defeat' | 'finish';
+  kind: 'start' | 'battle-start-effect' | 'action' | 'environment' | 'defeat' | 'finish';
   actorId?: string;
   skillId?: string | 'normal-attack';
+  battleStartSource?: {
+    kind: 'trait' | 'equipment';
+    id: string;
+    name: string;
+    speed: number;
+  };
   targetIds: string[];
   criticalTargetIds: string[];
   text: string;

@@ -4069,6 +4069,137 @@ button.definition-card:active,
   color: var(--danger);
 }
 
+.battle-fx.is-battle-start-effect strong {
+  display: none;
+}
+
+.battle-start-source-card {
+  --source-accent: var(--mint);
+  position: absolute;
+  z-index: 12;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: min(380px, 88%);
+  min-height: 76px;
+  grid-template-columns: 68px 52px minmax(0, 1fr) auto;
+  align-items: stretch;
+  overflow: hidden;
+  border: 2px solid var(--source-accent);
+  border-left-width: 7px;
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--source-accent) 20%, transparent), transparent 48%),
+    rgba(17, 21, 33, 0.97);
+  color: var(--paper);
+  box-shadow:
+    5px 6px 0 rgba(0, 0, 0, 0.78),
+    0 0 24px color-mix(in srgb, var(--source-accent) 36%, transparent);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: battle-start-card var(--battle-pulse-duration, 760ms) steps(7) both;
+}
+
+.battle-start-source-card.is-equipment {
+  --source-accent: var(--gold);
+}
+
+.battle-start-order {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  border-right: 1px solid color-mix(in srgb, var(--source-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--source-accent) 12%, transparent);
+}
+
+.battle-start-order small {
+  color: var(--source-accent);
+  font-size: 5px;
+  letter-spacing: 0.08em;
+}
+
+.battle-start-order b {
+  color: var(--source-accent);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.battle-start-order i {
+  color: var(--muted);
+  font-size: 8px;
+  font-style: normal;
+}
+
+.battle-start-glyph {
+  display: grid;
+  place-items: center;
+  color: var(--source-accent);
+  font-size: 28px;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--source-accent) 70%, transparent));
+}
+
+.battle-start-source-card > div {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 2px;
+  padding: 7px 5px;
+}
+
+.battle-start-source-card > div small {
+  color: var(--source-accent);
+  font-size: 6px;
+  letter-spacing: 0.07em;
+}
+
+.battle-start-source-card > div strong,
+.battle-start-source-card > div b {
+  overflow: hidden;
+  font-family: "DotGothic16", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-start-source-card > div strong {
+  font-size: 15px;
+}
+
+.battle-start-source-card > div b {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.battle-start-source-card > em {
+  display: grid;
+  padding: 6px;
+  place-items: center;
+  background: var(--source-accent);
+  color: var(--void-deep);
+  font-size: 6px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  writing-mode: vertical-rl;
+}
+
+.battle-screen.is-frame-battle-start-effect .battle-sprite.is-acting {
+  animation: battle-start-actor var(--battle-pulse-duration, 760ms) steps(6) both;
+}
+
+.battle-target-fx.is-opening {
+  border-color: var(--mint);
+  box-shadow:
+    0 0 0 5px rgba(124, 224, 189, 0.2),
+    0 0 24px var(--mint);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.battle-screen[data-start-source="equipment"] .battle-target-fx.is-opening {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 5px rgba(245, 202, 107, 0.2),
+    0 0 24px var(--gold);
+}
+
 .fx-burst {
   position: absolute;
   width: 24px;
@@ -4294,6 +4425,41 @@ button.definition-card:active,
   100% {
     opacity: 0;
     transform: scale(1);
+  }
+}
+
+@keyframes battle-start-card {
+  0% {
+    opacity: 0;
+    filter: brightness(2);
+    transform: translate(-50%, -50%) scaleX(0.2);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scaleX(1.04);
+  }
+  28%,
+  78% {
+    opacity: 1;
+    filter: brightness(1);
+    transform: translate(-50%, -50%) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -54%) scaleX(0.96);
+  }
+}
+
+@keyframes battle-start-actor {
+  0%,
+  100% {
+    filter: brightness(1);
+    transform: translate(0, var(--formation-y)) scale(1);
+  }
+  24%,
+  62% {
+    filter: brightness(1.8) drop-shadow(0 0 10px var(--monster-color));
+    transform: translate(0, var(--formation-y)) scale(1.12);
   }
 }
 
@@ -7609,6 +7775,30 @@ button.effect-skill-card {
   gap: 4px;
 }
 
+.parent-skill-bank .inheritance-parent-skill {
+  min-height: 154px;
+  cursor: grab;
+}
+
+.parent-skill-bank .inheritance-parent-skill:active {
+  cursor: grabbing;
+}
+
+.parent-skill-bank .inheritance-parent-skill:disabled {
+  cursor: not-allowed;
+}
+
+@media (min-width: 801px) {
+  .parent-skill-banks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .parent-skill-bank > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+}
+
 .inheritance-skill-token {
   display: grid;
   min-width: 0;
@@ -8110,6 +8300,10 @@ button.effect-skill-card {
 
   .inheritance-skill-token {
     min-height: 54px;
+  }
+
+  .parent-skill-bank .inheritance-parent-skill {
+    min-height: 142px;
   }
 
   .inheritance-drop-slot {

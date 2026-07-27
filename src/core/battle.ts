@@ -107,11 +107,13 @@ const makeFrame = (
   targetIds: string[] = [],
   skillId?: BattleFrame['skillId'],
   criticalTargetIds: string[] = [],
+  battleStartSource?: BattleFrame['battleStartSource'],
 ): BattleFrame => ({
   atSeconds: round(atSeconds),
   kind,
   actorId,
   skillId,
+  battleStartSource,
   targetIds,
   criticalTargetIds,
   text,
@@ -338,30 +340,82 @@ const determineTimeoutWinner = (fighters: BattleFighter[]) => {
   return 'draw';
 };
 
-const startEffectsFor = (data: GameData, fighter: BattleFighter) => {
+const startActivationsFor = (data: GameData, fighter: BattleFighter) => {
   const definition = definitionFor(data, fighter.monster);
   const trait = data.traits.find((entry) => entry.id === definition.traitId);
   const equipment = data.equipment.find((entry) => entry.id === fighter.monster.equipmentId);
   return [
-    ...(trait?.stages[fighter.monster.colorStars].battleStartEffects ?? []),
-    ...(equipment?.battleStartEffects ?? []),
+    ...(trait && trait.stages[fighter.monster.colorStars].battleStartEffects.length > 0
+      ? [
+          {
+            source: { kind: 'trait' as const, id: trait.id, name: trait.name, speed: fighter.stats.speed },
+            effects: trait.stages[fighter.monster.colorStars].battleStartEffects,
+          },
+        ]
+      : []),
+    ...(equipment && equipment.battleStartEffects.length > 0
+      ? [
+          {
+            source: { kind: 'equipment' as const, id: equipment.id, name: equipment.name, speed: fighter.stats.speed },
+            effects: equipment.battleStartEffects,
+          },
+        ]
+      : []),
   ];
 };
 
-const applyBattleStart = (data: GameData, fighters: BattleFighter[], random: ReturnType<typeof createSeededRandom>) => {
-  for (const fighter of fighters) {
-    for (const effect of startEffectsFor(data, fighter)) {
-      const positiveStatus =
-        effect.kind === 'status' && (effect.statusId.endsWith('-up') || effect.statusId === 'regeneration');
-      const defaultTarget =
-        effect.kind === 'heal' ||
-        effect.kind === 'shield' ||
-        effect.kind === 'mp' ||
-        effect.kind === 'atb' ||
-        positiveStatus
-          ? fighter
-          : chooseTarget(data, fighter, 'random-enemy', fighters, random);
-      applyEffect(data, effect, fighter, defaultTarget ? [defaultTarget] : [], fighters, random);
+const applyBattleStart = (
+  data: GameData,
+  fighters: BattleFighter[],
+  random: ReturnType<typeof createSeededRandom>,
+  frames: BattleFrame[],
+) => {
+  const orderedFighters = [...fighters].sort(
+    (left, right) => right.stats.speed - left.stats.speed || left.tieOrder - right.tieOrder,
+  );
+  for (const fighter of orderedFighters) {
+    for (const activation of startActivationsFor(data, fighter)) {
+      const notes: string[] = [];
+      const targetIds = new Set<string>();
+      const criticalTargetIds = new Set<string>();
+      for (const effect of activation.effects) {
+        const positiveStatus =
+          effect.kind === 'status' && (effect.statusId.endsWith('-up') || effect.statusId === 'regeneration');
+        const defaultTarget =
+          effect.kind === 'heal' ||
+          effect.kind === 'shield' ||
+          effect.kind === 'mp' ||
+          effect.kind === 'atb' ||
+          positiveStatus
+            ? fighter
+            : chooseTarget(data, fighter, 'random-enemy', fighters, random);
+        const applied = applyEffect(
+          data,
+          effect,
+          fighter,
+          defaultTarget ? [defaultTarget] : [],
+          fighters,
+          random,
+          activation.source.id,
+        );
+        applied.notes.forEach((note) => notes.push(note));
+        applied.targets.forEach((target) => targetIds.add(target.id));
+        applied.criticalTargetIds.forEach((targetId) => criticalTargetIds.add(targetId));
+      }
+      frames.push(
+        makeFrame(
+          data,
+          fighters,
+          0,
+          'battle-start-effect',
+          `${fighter.name}の${activation.source.name}発動｜${notes.join(' / ')}`,
+          fighter.id,
+          [...targetIds],
+          undefined,
+          [...criticalTargetIds],
+          activation.source,
+        ),
+      );
     }
   }
 };
@@ -453,8 +507,8 @@ export function simulateBattle(data: GameData, input: BattleInput): BattleResult
     ...input.enemy.map((monster) => createFighter(data, monster, 'enemy', random.next())),
   ];
   const frames: BattleFrame[] = [];
-  applyBattleStart(data, fighters, random);
   frames.push(makeFrame(data, fighters, 0, 'start', '両チーム、戦闘開始'));
+  applyBattleStart(data, fighters, random, frames);
 
   let time = 0;
   let nextPeriodicSecond = 1;

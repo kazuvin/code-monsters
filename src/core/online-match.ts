@@ -67,12 +67,25 @@ const targetRules = new Set([
 const conditionKinds = new Set([
   'always',
   'self-hp-below',
+  'self-hp-above',
+  'self-mp-below',
   'self-mp-above',
   'ally-hp-below',
+  'ally-hp-above',
+  'ally-mp-below',
+  'ally-mp-above',
   'enemy-hp-below',
+  'enemy-hp-above',
+  'enemy-mp-below',
+  'enemy-mp-above',
+  'self-has-status',
+  'self-lacks-status',
   'ally-has-status',
+  'ally-lacks-status',
   'enemy-has-status',
+  'enemy-lacks-status',
   'living-count-at-most',
+  'living-count-at-least',
 ]);
 const statIds = ['maxHp', 'maxMp', 'attack', 'defense', 'speed', 'wisdom', 'crit'] as const;
 const isRecord = (value: unknown): value is Record<string, unknown> =>

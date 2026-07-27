@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type DragEventHandler,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
@@ -126,6 +127,8 @@ type BattleViewState = {
 
 const REPLAY_STEP_MS = 920;
 const BATTLE_PULSE_MS = 760;
+const BATTLE_START_STEP_MS = 560;
+const BATTLE_START_PULSE_MS = 500;
 const HP_REVEAL_PROGRESS = 0.58;
 const HP_TRANSITION_MS = 140;
 const query = new URLSearchParams(window.location.search);
@@ -214,13 +217,53 @@ const TARGET_LABELS: Record<TargetRule, string> = {
 const CONDITION_LABELS: Record<GambitCondition['kind'], string> = {
   always: '常に',
   'self-hp-below': '自分のHPが以下',
+  'self-hp-above': '自分のHPが以上',
+  'self-mp-below': '自分のMPが以下',
   'self-mp-above': '自分のMPが以上',
   'ally-hp-below': '味方のHPが以下',
+  'ally-hp-above': '味方のHPが以上',
+  'ally-mp-below': '味方のMPが以下',
+  'ally-mp-above': '味方のMPが以上',
   'enemy-hp-below': '敵のHPが以下',
+  'enemy-hp-above': '敵のHPが以上',
+  'enemy-mp-below': '敵のMPが以下',
+  'enemy-mp-above': '敵のMPが以上',
+  'self-has-status': '自分に状態がある',
+  'self-lacks-status': '自分に状態がない',
   'ally-has-status': '味方に状態がある',
+  'ally-lacks-status': '味方に状態がない',
   'enemy-has-status': '敵に状態がある',
+  'enemy-lacks-status': '敵に状態がない',
   'living-count-at-most': '生存数が以下',
+  'living-count-at-least': '生存数が以上',
 };
+
+const CONDITION_GROUPS: Array<{
+  label: string;
+  kinds: GambitCondition['kind'][];
+}> = [
+  { label: '基本', kinds: ['always'] },
+  {
+    label: '自分',
+    kinds: ['self-hp-below', 'self-hp-above', 'self-mp-below', 'self-mp-above', 'self-has-status', 'self-lacks-status'],
+  },
+  {
+    label: '味方',
+    kinds: ['ally-hp-below', 'ally-hp-above', 'ally-mp-below', 'ally-mp-above', 'ally-has-status', 'ally-lacks-status'],
+  },
+  {
+    label: '敵',
+    kinds: [
+      'enemy-hp-below',
+      'enemy-hp-above',
+      'enemy-mp-below',
+      'enemy-mp-above',
+      'enemy-has-status',
+      'enemy-lacks-status',
+    ],
+  },
+  { label: '生存数', kinds: ['living-count-at-most', 'living-count-at-least'] },
+];
 
 const STAT_LABELS: Array<[keyof StatBlock, string]> = [
   ['maxHp', 'HP'],
@@ -299,15 +342,34 @@ const LINEAGE_SILHOUETTE: Record<LineageId, string> = {
 };
 
 const emptyCondition = (kind: GambitCondition['kind']): GambitCondition => {
-  if (kind === 'always') return { kind };
-  if (kind === 'self-hp-below' || kind === 'ally-hp-below' || kind === 'enemy-hp-below') {
-    return { kind, threshold: 50 };
+  switch (kind) {
+    case 'always':
+      return { kind };
+    case 'self-hp-below':
+    case 'self-hp-above':
+    case 'self-mp-below':
+    case 'self-mp-above':
+    case 'ally-hp-below':
+    case 'ally-hp-above':
+    case 'ally-mp-below':
+    case 'ally-mp-above':
+    case 'enemy-hp-below':
+    case 'enemy-hp-above':
+    case 'enemy-mp-below':
+    case 'enemy-mp-above':
+      return { kind, threshold: 50 };
+    case 'self-has-status':
+    case 'self-lacks-status':
+    case 'ally-has-status':
+    case 'ally-lacks-status':
+    case 'enemy-has-status':
+    case 'enemy-lacks-status':
+      return { kind, statusId: 'silence' };
+    case 'living-count-at-most':
+      return { kind, team: 'enemy', count: 1 };
+    case 'living-count-at-least':
+      return { kind, team: 'enemy', count: 2 };
   }
-  if (kind === 'self-mp-above') return { kind, threshold: 25 };
-  if (kind === 'ally-has-status' || kind === 'enemy-has-status') {
-    return { kind, statusId: 'silence' };
-  }
-  return { kind, team: 'enemy', count: 1 };
 };
 
 const definitionById = (data: GameData, id: string) => {
@@ -524,11 +586,21 @@ function SkillEffectCard({
   badge,
   selected = false,
   onSelect,
+  className = '',
+  disabled = false,
+  draggable,
+  onDragStart,
+  onDragEnd,
 }: {
   skill: SkillDefinition;
   badge: string;
   selected?: boolean;
   onSelect?: () => void;
+  className?: string;
+  disabled?: boolean;
+  draggable?: boolean;
+  onDragStart?: DragEventHandler<HTMLButtonElement>;
+  onDragEnd?: DragEventHandler<HTMLButtonElement>;
 }) {
   const content = (
     <>
@@ -560,9 +632,13 @@ function SkillEffectCard({
     return (
       <button
         type="button"
-        className={`effect-skill-card effect-skill-choice is-rarity-${skill.rarity}${selected ? ' is-selected' : ''}`}
+        className={`effect-skill-card effect-skill-choice is-rarity-${skill.rarity}${selected ? ' is-selected' : ''}${className ? ` ${className}` : ''}`}
         aria-pressed={selected}
+        disabled={disabled}
+        draggable={draggable}
         onClick={onSelect}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
       >
         {content}
       </button>
@@ -1952,14 +2028,14 @@ function BreedingOutcome({
                 {skills.map((skill) => {
                   const inheritable = skillChoices.includes(skill.id);
                   return (
-                    <button
-                      type="button"
-                      className={`inheritance-skill-token${selectedSkillId === skill.id ? ' is-selected' : ''}`}
-                      data-skill-id={skill.id}
+                    <SkillEffectCard
+                      skill={skill}
+                      badge={inheritable ? 'DRAG / TAP' : '固有と重複'}
+                      className="inheritance-parent-skill"
+                      selected={selectedSkillId === skill.id}
                       draggable={inheritable}
                       disabled={!inheritable}
-                      aria-pressed={selectedSkillId === skill.id}
-                      onClick={() => acceptInheritedSkill(skill.id)}
+                      onSelect={() => acceptInheritedSkill(skill.id)}
                       onDragStart={(event) => {
                         event.dataTransfer.effectAllowed = 'copy';
                         event.dataTransfer.setData('text/plain', skill.id);
@@ -1967,14 +2043,7 @@ function BreedingOutcome({
                       }}
                       onDragEnd={() => setDropActive(false)}
                       key={`${parent.id}-${skill.id}`}
-                    >
-                      <span>
-                        <small>{inheritable ? 'DRAG / TAP' : '固有と重複'}</small>
-                        <strong>{skill.name}</strong>
-                      </span>
-                      <b>MP {skill.mpCost}</b>
-                      <i>{effectFactFor(skill.effects[0] as EffectDefinition)}</i>
-                    </button>
+                    />
                   );
                 })}
               </div>
@@ -2609,10 +2678,14 @@ function ConditionEditor({
         value={condition.kind}
         onChange={(event) => onChange(emptyCondition(event.target.value as GambitCondition['kind']))}
       >
-        {Object.entries(CONDITION_LABELS).map(([kind, label]) => (
-          <option key={kind} value={kind}>
-            {label}
-          </option>
+        {CONDITION_GROUPS.map((group) => (
+          <optgroup label={group.label} key={group.label}>
+            {group.kinds.map((kind) => (
+              <option key={kind} value={kind}>
+                {CONDITION_LABELS[kind]}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
       {'threshold' in condition && (
@@ -2641,7 +2714,7 @@ function ConditionEditor({
           ))}
         </select>
       )}
-      {condition.kind === 'living-count-at-most' && (
+      {(condition.kind === 'living-count-at-most' || condition.kind === 'living-count-at-least') && (
         <>
           <select
             aria-label="生存チーム"
@@ -2654,10 +2727,11 @@ function ConditionEditor({
           <select
             aria-label="生存数"
             value={condition.count}
-            onChange={(event) => onChange({ ...condition, count: Number(event.target.value) as 1 | 2 })}
+            onChange={(event) => onChange({ ...condition, count: Number(event.target.value) as 1 | 2 | 3 })}
           >
             <option value={1}>1体</option>
             <option value={2}>2体</option>
+            <option value={3}>3体</option>
           </select>
         </>
       )}
@@ -4360,14 +4434,15 @@ function BattleScreen({
 }) {
   const frame = battle.result.frames[battle.frameIndex] ?? battle.result.frames[0];
   const lastIndex = battle.result.frames.length - 1;
+  const replayStepMs = frame?.kind === 'battle-start-effect' ? BATTLE_START_STEP_MS : REPLAY_STEP_MS;
   useEffect(() => {
     if (!battle.playing || battle.frameIndex >= lastIndex) return;
     const timer = window.setTimeout(
       () => onChange({ ...battle, frameIndex: Math.min(lastIndex, battle.frameIndex + 1) }),
-      REPLAY_STEP_MS / battle.speed,
+      replayStepMs / battle.speed,
     );
     return () => window.clearTimeout(timer);
-  }, [battle, lastIndex, onChange]);
+  }, [battle, lastIndex, onChange, replayStepMs]);
   if (!frame) return null;
   const previousFrame = battle.result.frames[Math.max(0, battle.frameIndex - 1)] ?? frame;
   const previousFighters = new Map(previousFrame.fighters.map((fighter) => [fighter.id, fighter]));
@@ -4384,38 +4459,77 @@ function BattleScreen({
           : 'buff') as BattleFeedback['tone'],
       }));
     const shieldDelta = fighter.shield - previous.shield;
-    return shieldDelta === 0
-      ? statuses
-      : [
-          ...statuses,
-          {
-            label: `盾 ${shieldDelta > 0 ? '+' : ''}${shieldDelta}`,
-            tone: 'shield' as const,
-          },
-        ];
+    const shield =
+      shieldDelta === 0
+        ? []
+        : [
+            {
+              label: `盾 ${shieldDelta > 0 ? '+' : ''}${shieldDelta}`,
+              tone: 'shield' as const,
+            },
+          ];
+    const startResources =
+      frame.kind !== 'battle-start-effect'
+        ? []
+        : [
+            ...(fighter.gauge === previous.gauge
+              ? []
+              : [
+                  {
+                    label: `ATB ${fighter.gauge - previous.gauge > 0 ? '+' : ''}${Math.round(fighter.gauge - previous.gauge)}`,
+                    tone: 'buff' as const,
+                  },
+                ]),
+            ...(fighter.mp === previous.mp
+              ? []
+              : [
+                  {
+                    label: `MP ${fighter.mp - previous.mp > 0 ? '+' : ''}${fighter.mp - previous.mp}`,
+                    tone: 'buff' as const,
+                  },
+                ]),
+          ];
+    return [...statuses, ...shield, ...startResources];
   };
   const players = frame.fighters.filter((fighter) => fighter.team === 'player');
   const enemies = frame.fighters.filter((fighter) => fighter.team === 'enemy');
   const complete = battle.frameIndex >= lastIndex;
-  const battlePulseDuration = Math.max(200, Math.round(BATTLE_PULSE_MS / battle.speed));
+  const battlePulseDuration = Math.max(
+    160,
+    Math.round((frame.kind === 'battle-start-effect' ? BATTLE_START_PULSE_MS : BATTLE_PULSE_MS) / battle.speed),
+  );
   const hpRevealDelayMs = Math.round(battlePulseDuration * HP_REVEAL_PROGRESS);
   const hpTransitionDuration = Math.max(70, Math.round(HP_TRANSITION_MS / battle.speed));
   const activeSkill =
     frame.skillId && frame.skillId !== 'normal-attack'
       ? GAME_DATA.skills.find((skill) => skill.id === frame.skillId)
       : undefined;
-  const actionLabel = frame.skillId === 'normal-attack' ? '通常攻撃' : activeSkill?.name;
-  const skillFx = activeSkill?.effects.some((effect) => effect.kind === 'heal')
-    ? 'heal'
-    : activeSkill?.effects.some((effect) => effect.kind === 'status' || effect.kind === 'atb' || effect.kind === 'mp')
-      ? 'status'
-      : activeSkill?.effects.some((effect) => effect.kind === 'shield')
-        ? 'shield'
-        : activeSkill?.effects.some((effect) => effect.kind === 'damage' && effect.scaling === 'magic')
-          ? 'magic'
-          : frame.kind === 'action'
-            ? 'physical'
-            : 'none';
+  const startSource = frame.battleStartSource;
+  const startSourceDefinition =
+    startSource?.kind === 'equipment'
+      ? GAME_DATA.equipment.find((equipment) => equipment.id === startSource.id)
+      : undefined;
+  const startSourceFrames = battle.result.frames.filter((event) => event.kind === 'battle-start-effect');
+  const startSourceOrder =
+    frame.kind === 'battle-start-effect'
+      ? battle.result.frames.slice(0, battle.frameIndex + 1).filter((event) => event.kind === 'battle-start-effect')
+          .length
+      : 0;
+  const startActor = startSource ? frame.fighters.find((fighter) => fighter.id === frame.actorId) : undefined;
+  const actionLabel = frame.skillId === 'normal-attack' ? '通常攻撃' : (activeSkill?.name ?? startSource?.name);
+  const skillFx = startSource
+    ? 'opening'
+    : activeSkill?.effects.some((effect) => effect.kind === 'heal')
+      ? 'heal'
+      : activeSkill?.effects.some((effect) => effect.kind === 'status' || effect.kind === 'atb' || effect.kind === 'mp')
+        ? 'status'
+        : activeSkill?.effects.some((effect) => effect.kind === 'shield')
+          ? 'shield'
+          : activeSkill?.effects.some((effect) => effect.kind === 'damage' && effect.scaling === 'magic')
+            ? 'magic'
+            : frame.kind === 'action'
+              ? 'physical'
+              : 'none';
   const damagedTargetCount = frame.targetIds.filter((id) => {
     const current = frame.fighters.find((fighter) => fighter.id === id);
     return current ? hpDeltaFor(current) > 0 : false;
@@ -4434,7 +4548,13 @@ function BattleScreen({
             : 'DRAW'
         : frame.kind === 'action'
           ? (actionLabel ?? 'SKILL!')
-          : 'BATTLE START';
+          : frame.kind === 'battle-start-effect'
+            ? (startSource?.name ?? 'OPENING EFFECT')
+            : 'BATTLE START';
+  const frameLabel =
+    frame.kind === 'battle-start-effect'
+      ? `OPENING / ${startSource?.kind === 'equipment' ? '装備' : '特性'}`
+      : frame.kind.toUpperCase();
   return (
     <main
       className={`battle-screen${impact ? ` is-impact is-impact-${impactScope}` : ''}${critical ? ' is-critical' : ''} is-frame-${frame.kind} is-skill-${skillFx}`}
@@ -4442,7 +4562,8 @@ function BattleScreen({
       data-critical-frame-count={battle.result.frames.filter((event) => event.criticalTargetIds.length > 0).length}
       data-impact-scope={impactScope}
       data-skill-id={frame.skillId}
-      data-replay-delay-ms={Math.round(REPLAY_STEP_MS / battle.speed)}
+      data-start-source={startSource?.kind}
+      data-replay-delay-ms={Math.round(replayStepMs / battle.speed)}
       style={
         {
           '--battle-pulse-duration': `${battlePulseDuration}ms`,
@@ -4520,6 +4641,28 @@ function BattleScreen({
             ))}
           </div>
         </div>
+        {startSource && (
+          <aside className={`battle-start-source-card is-${startSource.kind}`} aria-live="polite">
+            <span className="battle-start-order">
+              <small>OPENING ORDER</small>
+              <b>
+                {String(startSourceOrder).padStart(2, '0')}
+                <i>/ {String(startSourceFrames.length).padStart(2, '0')}</i>
+              </b>
+            </span>
+            <span className="battle-start-glyph" aria-hidden="true">
+              {startSourceDefinition?.icon ?? '✦'}
+            </span>
+            <div>
+              <small>
+                {startSource.kind === 'equipment' ? 'EQUIPMENT / 装備' : 'TRAIT / 特性'} · SPD {startSource.speed}
+              </small>
+              <strong>{startSource.name}</strong>
+              <b>{startActor?.name} が発動</b>
+            </div>
+            <em>ACTIVATE</em>
+          </aside>
+        )}
         <div
           className={`battle-fx is-${frame.kind}${impact ? ' is-impact' : ''}`}
           key={battle.frameIndex}
@@ -4539,7 +4682,7 @@ function BattleScreen({
       <section className="battle-console">
         <div>
           <span>
-            {frame.kind.toUpperCase()}
+            {frameLabel}
             {actionLabel ? ` / ${actionLabel}` : ''}
           </span>
           <strong>{frame.text}</strong>

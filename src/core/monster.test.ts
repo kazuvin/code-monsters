@@ -6,6 +6,7 @@ import {
   experienceThresholdsFor,
   statBreakdownFor,
   statGrowthUnitsForLevel,
+  targetRulesForSkill,
 } from './monster';
 
 const inheritedStats = {
@@ -88,6 +89,21 @@ describe('monster growth profiles', () => {
       expect(definition.experienceProfileId, definitionId).toBe('early');
       expect(definition.statGrowthProfileId, definitionId).toBe('late-surge');
       expect(definition.roleTagIds, definitionId).toContain('late-bloom');
+    }
+  });
+});
+
+describe('default gambits', () => {
+  it('gives every species executable target rules for all configured skills', () => {
+    for (const definition of GAME_DATA.monsters) {
+      const monster = createMonster(GAME_DATA, definition.id, `default-gambit-${definition.id}`);
+
+      for (const [index, rule] of monster.gambits.entries()) {
+        expect(
+          targetRulesForSkill(GAME_DATA, rule.action.skillId),
+          `${definition.id} gambit ${index + 1}: ${rule.action.skillId} -> ${rule.action.target}`,
+        ).toContain(rule.action.target);
+      }
     }
   });
 });
