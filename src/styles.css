@@ -1,7 +1,7 @@
 :root {
   color: #f6e8c9;
   background: #241713;
-  font-family: "Pixelify Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --void: #241713;
@@ -134,7 +134,7 @@ input:focus-visible {
   max-width: 620px;
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 13px;
   line-height: 1.7;
 }
@@ -246,7 +246,7 @@ input:focus-visible {
   min-height: 44px;
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -257,7 +257,7 @@ input:focus-visible {
   margin: 14px 0 18px;
   padding: 0;
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 11px;
   list-style: none;
 }
@@ -284,7 +284,7 @@ input:focus-visible {
 .invite-entry label,
 .invite-entry small {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -328,7 +328,7 @@ input:focus-visible {
 .online-connection-ledger > p,
 .online-finished-ledger > p {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 12px;
   line-height: 1.7;
 }
@@ -474,7 +474,7 @@ input:focus-visible {
 .online-room-copy strong {
   overflow: hidden;
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -634,7 +634,7 @@ button:not(:disabled) {
 .workshop-tabs span,
 .battle-clock small {
   color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -644,7 +644,7 @@ button:not(:disabled) {
 .brand-lockup h1 {
   margin: 0;
   color: var(--paper);
-  font-family: "Pixelify Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 21px;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -702,7 +702,7 @@ button:not(:disabled) {
   padding: 3px 4px 2px;
   border-right: 1px solid var(--line);
   color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   letter-spacing: 0.08em;
 }
@@ -751,7 +751,7 @@ button:not(:disabled) {
   border: 1px solid var(--line-soft);
   background: var(--void);
   color: #77819f;
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
 }
 
@@ -787,7 +787,7 @@ button:not(:disabled) {
 
 .white-stars,
 .color-stars {
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   letter-spacing: -0.08em;
   text-shadow: 1px 1px var(--void-deep);
 }
@@ -852,7 +852,7 @@ button:not(:disabled) {
 .event-stage > p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   line-height: 1.45;
 }
@@ -1014,7 +1014,7 @@ button.definition-card:active,
   border: 1px solid var(--monster-color);
   background: var(--void-deep);
   color: var(--monster-accent);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   font-style: normal;
   line-height: 1;
@@ -1124,7 +1124,7 @@ button.definition-card:active,
   overflow: hidden;
   width: 100%;
   margin-top: 2px;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 13px;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -1143,7 +1143,7 @@ button.definition-card:active,
 .monster-card-copy > small {
   margin-top: 2px;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -1199,7 +1199,7 @@ button.definition-card:active,
   background: radial-gradient(circle at 22% 14%, rgba(255, 255, 255, 0.28), transparent 34%), var(--parchment);
   color: var(--ink);
   box-shadow: 3px 4px 0 rgba(17, 8, 6, 0.82);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   animation: notice-arrive 180ms steps(3, end) both;
 }
 
@@ -1211,7 +1211,7 @@ button.definition-card:active,
   padding: 3px 6px;
   background: var(--pink);
   color: #fff4dc;
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   letter-spacing: 0.08em;
 }
@@ -1600,7 +1600,7 @@ button.definition-card:active,
 
 .hatched-monster h2 {
   margin: 2px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: clamp(25px, 6vw, 40px);
 }
 
@@ -1644,7 +1644,7 @@ button.definition-card:active,
 
 .hatch-reveal-result small {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -1912,7 +1912,7 @@ button.definition-card:active,
 
 .roster-card strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2000,7 +2000,7 @@ button.definition-card:active,
   background: var(--deck);
   color: var(--muted);
   cursor: pointer;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
 }
 
@@ -2036,7 +2036,7 @@ button.definition-card:active,
 
 .workshop-title h2 {
   margin: 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 15px;
   line-height: 1.15;
 }
@@ -2055,13 +2055,13 @@ button.definition-card:active,
   background: rgba(245, 202, 107, 0.08);
   color: var(--paper);
   cursor: pointer;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
 .recipe-archive-button span {
   color: var(--gold);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
 }
 
@@ -2345,7 +2345,7 @@ button.definition-card:active,
   display: -webkit-box;
   overflow: hidden;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
   line-height: 1.35;
   -webkit-box-orient: vertical;
@@ -2545,7 +2545,7 @@ button.definition-card:active,
 
 .loom-placeholder p {
   margin: 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   line-height: 1.4;
 }
@@ -2575,7 +2575,7 @@ button.definition-card:active,
   border-radius: 0;
   background: var(--void);
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -2717,7 +2717,7 @@ button.definition-card:active,
 
 .prospect-identity h2 {
   margin: 2px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 20px;
 }
 
@@ -2729,14 +2729,14 @@ button.definition-card:active,
 .prospect-summary {
   padding: 8px 0 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   line-height: 1.5;
 }
 
 .breeding-confirm-panel h2 {
   margin: 5px 38px 12px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 18px;
 }
 
@@ -2754,7 +2754,7 @@ button.definition-card:active,
 .breeding-equation span,
 .breeding-equation strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2774,7 +2774,7 @@ button.definition-card:active,
   margin: 12px 0;
   padding-left: 18px;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   line-height: 1.4;
 }
@@ -2812,14 +2812,14 @@ button.definition-card:active,
 
 .recipe-archive-heading h2 {
   margin: 1px 0 3px;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 18px;
 }
 
 .recipe-archive-heading p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   line-height: 1.4;
 }
@@ -2883,7 +2883,7 @@ button.definition-card:active,
   background: var(--void);
   color: var(--muted);
   cursor: pointer;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -2921,7 +2921,7 @@ button.definition-card:active,
 
 .inspector-identity h2 {
   margin: 2px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 18px;
   line-height: 1.2;
 }
@@ -3009,7 +3009,7 @@ button.definition-card:active,
 .trait-block p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   line-height: 1.5;
 }
@@ -3024,7 +3024,7 @@ button.definition-card:active,
 .farewell-value small {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   line-height: 1.5;
 }
@@ -3080,7 +3080,7 @@ button.definition-card:active,
   display: -webkit-box;
   overflow: hidden;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   line-height: 1.35;
   -webkit-box-orient: vertical;
@@ -3147,7 +3147,7 @@ button.definition-card:active,
   max-width: 250px;
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   line-height: 1.4;
   text-align: right;
@@ -3278,7 +3278,7 @@ button.definition-card:active,
 
 .recipe-token strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3337,7 +3337,7 @@ button.definition-card:active,
   max-width: 250px;
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   line-height: 1.45;
   text-align: right;
@@ -3375,14 +3375,14 @@ button.definition-card:active,
 
 .monster-recipe-relation > header h3 {
   margin: 1px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 12px;
 }
 
 .monster-recipe-relation > header p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
 }
 
@@ -3415,7 +3415,7 @@ button.definition-card:active,
 .monster-recipe-empty p {
   margin: 3px 0 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
 }
 
@@ -3448,7 +3448,7 @@ button.definition-card:active,
 }
 
 .battle-launcher > div strong {
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -3464,7 +3464,7 @@ button.definition-card:active,
   background: var(--pink);
   color: var(--void-deep);
   cursor: pointer;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 11px;
   font-weight: 700;
   box-shadow: 3px 3px 0 var(--void-deep);
@@ -3473,7 +3473,7 @@ button.definition-card:active,
 
 .launch-button span {
   color: #5a2234;
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   letter-spacing: 0.06em;
 }
@@ -3542,7 +3542,7 @@ button.definition-card:active,
 
 .event-grid strong {
   margin-top: 3px;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   line-height: 1.3;
 }
@@ -3551,7 +3551,7 @@ button.definition-card:active,
   flex: 1;
   margin: 5px 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   line-height: 1.4;
 }
@@ -3841,7 +3841,7 @@ button.definition-card:active,
   overflow: hidden;
   width: 100%;
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   text-overflow: ellipsis;
   text-shadow: 1px 1px #000;
@@ -4377,7 +4377,7 @@ button.definition-card:active,
 
 .battle-monster-copy > strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4476,7 +4476,7 @@ button.definition-card:active,
   display: -webkit-box;
   margin-top: 2px;
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -4576,7 +4576,7 @@ button.definition-card:active,
   max-width: 600px;
   margin: 5px 0 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   line-height: 1.45;
 }
@@ -4675,7 +4675,7 @@ button.definition-card:active,
 
 .result-section-heading h3 {
   margin: 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 12px;
 }
 
@@ -4727,7 +4727,7 @@ button.definition-card:active,
 
 .battle-report-metric small {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
 }
 
@@ -4806,7 +4806,7 @@ button.definition-card:active,
 
 .result-monster-identity strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4900,7 +4900,7 @@ button.definition-card:active,
 .result-actions p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
 }
 
@@ -5038,7 +5038,7 @@ button.definition-card:active,
 
 .finished-screen h1 {
   margin: 4px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: clamp(24px, 6vw, 42px);
 }
 
@@ -5072,7 +5072,7 @@ button.definition-card:active,
 .final-lineage strong {
   overflow: hidden;
   max-width: 100%;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5118,14 +5118,14 @@ button.definition-card:active,
 
 .playtest-ledger header span {
   color: var(--mint);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   letter-spacing: 0.08em;
 }
 
 .playtest-ledger h2 {
   margin: 1px 0 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 20px;
 }
 
@@ -5133,7 +5133,7 @@ button.definition-card:active,
   padding: 5px 7px;
   border: 1px solid var(--gold);
   color: var(--gold);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   white-space: nowrap;
 }
@@ -5161,7 +5161,7 @@ button.definition-card:active,
   overflow: hidden;
   margin: 2px 0 0;
   color: var(--paper);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5187,13 +5187,13 @@ button.definition-card:active,
 .playtest-ledger-grid span {
   grid-column: 1 / -1;
   color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
 }
 
 .playtest-ledger-grid b {
   color: var(--mint);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 19px;
   line-height: 1;
 }
@@ -5228,7 +5228,7 @@ button.definition-card:active,
   background: var(--deck);
   color: var(--paper);
   cursor: pointer;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   font-weight: 700;
   box-shadow: 2px 2px 0 #000;
@@ -5242,7 +5242,7 @@ button.definition-card:active,
 
 .playtest-export-actions button span {
   color: var(--gold);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
 }
 
@@ -5429,7 +5429,7 @@ button.definition-card:active,
     width: min(300px, 42%);
     margin: 0;
     color: var(--muted);
-    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    font-family: "DotGothic16", monospace;
     font-size: 9px;
     line-height: 1.5;
     text-align: right;
@@ -5479,7 +5479,7 @@ button.definition-card:active,
   .equipment-offer small {
     display: block;
     color: var(--muted);
-    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    font-family: "DotGothic16", monospace;
     font-size: 8px;
   }
 
@@ -5846,7 +5846,7 @@ button.definition-card:active,
   background: var(--monster-color);
   color: var(--void-deep);
   cursor: pointer;
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -5950,7 +5950,7 @@ button.definition-card:active,
 
 .rank-up-signal small {
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
 }
 
@@ -5987,7 +5987,7 @@ button.definition-card:active,
   gap: 4px;
   margin: 4px 0 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
   line-height: 1.35;
 }
@@ -5997,7 +5997,7 @@ button.definition-card:active,
   padding: 2px 3px;
   background: var(--void);
   color: var(--mint);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
   white-space: nowrap;
 }
@@ -6122,14 +6122,14 @@ button.definition-card:active,
 .breeding-reveal-stage p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
 }
 
 .breeding-reveal-stage h2 {
   margin: 0;
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: clamp(24px, 6vw, 38px);
 }
 
@@ -6321,7 +6321,7 @@ button.definition-card:active,
   border: 1px solid var(--paper);
   background: var(--void-deep);
   color: var(--gold);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   text-align: left;
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
   animation: battle-action-callout var(--battle-pulse-duration, 760ms) cubic-bezier(0.2, 0.9, 0.28, 1) both;
@@ -6361,7 +6361,7 @@ button.definition-card:active,
   padding: 2px 4px;
   border-left: 2px solid currentColor;
   background: rgba(5, 6, 10, 0.92);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   font-style: normal;
   line-height: 1;
@@ -6545,7 +6545,7 @@ button.definition-card:active,
 @media (min-width: 801px) {
   .draft-party-rail b {
     display: block;
-    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    font-family: "DotGothic16", monospace;
     font-size: 8px;
   }
 
@@ -6829,7 +6829,7 @@ button.definition-card:active,
 
 .stat-grid-heading small {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
 }
 
@@ -6872,7 +6872,7 @@ button.definition-card:active,
   border-left: 2px solid currentColor;
   background: var(--void);
   color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
   font-style: normal;
   line-height: 1;
@@ -6881,7 +6881,7 @@ button.definition-card:active,
 
 .stat-bonus em {
   color: currentColor;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 5px;
   font-style: normal;
 }
@@ -6962,7 +6962,7 @@ button.definition-card:active,
 .breeding-lab-title p {
   margin: 4px 0 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -7034,7 +7034,7 @@ button.definition-card:active,
 
 .breeding-outcome-identity h3 {
   margin: 2px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 22px;
 }
 
@@ -7069,14 +7069,14 @@ button.definition-card:active,
 .breeding-stat-ledger > header strong,
 .breeding-skill-workbench > header strong,
 .breeding-final-skills > header strong {
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 11px;
 }
 
 .breeding-stat-ledger > header small,
 .breeding-skill-workbench > header small {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   text-align: right;
 }
@@ -7106,7 +7106,7 @@ button.definition-card:active,
 
 .breeding-stat-row > span {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 12px;
 }
 
@@ -7122,7 +7122,7 @@ button.definition-card:active,
   padding: 5px 6px;
   border-left: 3px solid var(--line);
   background: var(--deck);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 11px;
   font-style: normal;
   font-weight: 600;
@@ -7218,7 +7218,7 @@ button.effect-skill-card {
 
 .effect-skill-card > strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7236,7 +7236,7 @@ button.effect-skill-card {
   border: 1px solid var(--line);
   background: var(--void);
   color: var(--mint);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   font-style: normal;
 }
@@ -7254,7 +7254,7 @@ button.effect-skill-card {
   border-left: 2px solid var(--gold);
   background: var(--void);
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   line-height: 1.35;
 }
@@ -7267,7 +7267,7 @@ button.effect-skill-card {
 .effect-skill-card > p {
   margin: auto 0 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   line-height: 1.45;
 }
@@ -7284,14 +7284,14 @@ button.effect-skill-card {
 
 .inheritance-heading span {
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   font-weight: 700;
 }
 
 .inheritance-heading small {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -7343,7 +7343,7 @@ button.effect-skill-card {
 
 .parent-skill-bank > header strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7400,7 +7400,7 @@ button.effect-skill-card {
 
 .inheritance-skill-token strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7416,7 +7416,7 @@ button.effect-skill-card {
   grid-column: 1 / -1;
   overflow: hidden;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   font-style: normal;
   text-overflow: ellipsis;
@@ -7485,7 +7485,7 @@ button.effect-skill-card {
 
 .inheritance-drop-slot > strong {
   margin: 4px 0 2px;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 17px;
 }
 
@@ -7493,7 +7493,7 @@ button.effect-skill-card {
 .inheritance-drop-slot > small {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -7593,13 +7593,13 @@ button.effect-skill-card {
 .newborn-identity p {
   margin: 2px 0 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
 }
 
 .newborn-identity h2 {
   margin: 1px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 30px;
 }
 
@@ -7950,7 +7950,7 @@ button.effect-skill-card {
 
 .catalog-open-button i {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   font-style: normal;
   font-weight: 700;
@@ -8005,14 +8005,14 @@ button.effect-skill-card {
 
 .catalog-archive-heading h2 {
   margin: 2px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 24px;
 }
 
 .catalog-archive-heading p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -8077,14 +8077,14 @@ button.effect-skill-card {
   background: var(--void);
   color: var(--muted);
   cursor: pointer;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
 }
 
 .catalog-section-tabs button b {
   margin-left: 5px;
   color: var(--line);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
 }
 
 .catalog-section-tabs button.is-active {
@@ -8106,7 +8106,7 @@ button.effect-skill-card {
   border: 1px solid var(--line);
   background: var(--void);
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -8125,7 +8125,7 @@ button.effect-skill-card {
   background: var(--void);
   color: var(--muted);
   cursor: pointer;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -8136,7 +8136,7 @@ button.effect-skill-card {
 .catalog-filters button b {
   margin-left: 4px;
   color: var(--line);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
 }
 
 .catalog-filters button.is-active {
@@ -8232,7 +8232,7 @@ button.effect-skill-card {
 .catalog-card-copy strong {
   overflow: hidden;
   max-width: 100%;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -8292,7 +8292,7 @@ button.effect-skill-card {
     linear-gradient(135deg, color-mix(in srgb, var(--monster-color) 20%, transparent), transparent 60%),
     var(--void-deep);
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 24px;
   font-weight: 800;
   box-shadow: 2px 2px 0 var(--void-deep);
@@ -8398,7 +8398,7 @@ button.effect-skill-card {
 
 .catalog-profile.is-locked h3 {
   margin: 5px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 24px;
 }
 
@@ -8406,14 +8406,14 @@ button.effect-skill-card {
   max-width: 310px;
   margin: 6px 0;
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 11px;
   line-height: 1.7;
 }
 
 .catalog-profile.is-locked > small {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -8431,7 +8431,7 @@ button.effect-skill-card {
 
 .catalog-detail-identity h3 {
   margin: 2px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 23px;
 }
 
@@ -8485,14 +8485,14 @@ button.effect-skill-card {
 .catalog-trait strong {
   display: block;
   margin-top: 5px;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 13px;
 }
 
 .catalog-trait p {
   margin: 3px 0 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   line-height: 1.5;
 }
@@ -8522,14 +8522,14 @@ button.effect-skill-card {
 
 .catalog-text-identity h3 {
   margin: 2px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 23px;
 }
 
 .catalog-text-identity p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -8586,7 +8586,7 @@ button.effect-skill-card {
 }
 
 .catalog-holder strong {
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -8621,7 +8621,7 @@ button.effect-skill-card {
 
 .catalog-event-copy p {
   margin: 8px 0 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 13px;
   line-height: 1.65;
 }
@@ -8656,7 +8656,7 @@ button.effect-skill-card {
 }
 
 .developer-mode-switch > strong {
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
 }
 
@@ -9239,7 +9239,7 @@ button.effect-skill-card {
   border: 0;
   background: transparent;
   color: inherit;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   text-overflow: ellipsis;
 }
@@ -9307,14 +9307,14 @@ button.effect-skill-card {
 
 .event-result-stage h2 {
   margin: 5px 0;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: clamp(22px, 7vw, 38px);
 }
 
 .event-result-stage > p {
   margin: 2px 0 14px;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
 }
 
@@ -9342,7 +9342,7 @@ button.effect-skill-card {
 }
 
 .event-result-target strong {
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 12px;
 }
 
@@ -9397,7 +9397,7 @@ button.effect-skill-card {
 
 .battle-insight-strip strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9443,7 +9443,7 @@ button.effect-skill-card {
 }
 
 .combat-ledger-team > header strong {
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 11px;
 }
 
@@ -9496,7 +9496,7 @@ button.effect-skill-card {
 
 .combat-ledger-card > header strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9536,7 +9536,7 @@ button.effect-skill-card {
 
 .combat-ledger-metrics i {
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 5px;
 }
 
@@ -9551,7 +9551,7 @@ button.effect-skill-card {
   padding: 2px 4px;
   border: 1px solid var(--line-soft);
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
 }
 
@@ -9583,7 +9583,7 @@ button.effect-skill-card {
 
 .skill-ledger strong {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9687,7 +9687,7 @@ button.effect-skill-card {
   border: 1px solid color-mix(in srgb, var(--monster-color, var(--gold)) 58%, var(--line));
   background: color-mix(in srgb, var(--monster-color, var(--gold)) 10%, var(--void));
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
   font-style: normal;
   line-height: 1;
@@ -9698,7 +9698,7 @@ button.effect-skill-card {
   overflow: hidden;
   margin-top: 2px;
   color: var(--monster-color);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 5px;
   font-style: normal;
   text-overflow: ellipsis;
@@ -9744,7 +9744,7 @@ button.effect-skill-card {
 
 .growth-profile-panel > header strong {
   margin-top: 2px;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 11px;
 }
 
@@ -9776,7 +9776,7 @@ button.effect-skill-card {
 }
 
 .growth-scan-row > span b {
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -9861,7 +9861,7 @@ button.effect-skill-card {
   padding-top: 6px;
   border-top: 1px dashed var(--line-soft);
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 7px;
 }
 
@@ -9869,7 +9869,7 @@ button.effect-skill-card {
   padding: 2px 4px;
   background: var(--paper);
   color: var(--void);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
 }
 
@@ -10197,7 +10197,7 @@ button.effect-skill-card {
   align-items: center;
   gap: 6px;
   color: var(--paper);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -10205,7 +10205,7 @@ button.effect-skill-card {
   padding: 2px 4px;
   background: var(--line-soft);
   color: var(--muted);
-  font-family: "Pixelify Sans", monospace;
+  font-family: "DotGothic16", monospace;
   font-size: 6px;
 }
 
@@ -10222,7 +10222,7 @@ button.effect-skill-card {
   background: var(--void);
   color: var(--muted);
   cursor: pointer;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
 }
 
@@ -10365,7 +10365,7 @@ button.effect-skill-card {
 .event-encounter-heading p {
   margin: 0;
   color: var(--muted);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   line-height: 1.5;
 }
@@ -11171,7 +11171,7 @@ button.effect-skill-card {
 .mode-route h3,
 .event-stage h2,
 .result-hero h2 {
-  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-family: "DotGothic16", monospace;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -11726,7 +11726,7 @@ button.effect-skill-card {
   padding: 0 4px 8px;
   border-bottom: 1px solid var(--prep-rule);
   color: var(--prep-ink);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 13px;
   font-weight: 800;
 }
@@ -11817,7 +11817,7 @@ button.effect-skill-card {
   padding: 4px 12px;
   background: var(--monster-color);
   color: #201510;
-  font-family: "Pixelify Sans", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 9px;
   letter-spacing: 0.05em;
 }
@@ -11859,7 +11859,7 @@ button.effect-skill-card {
 .prep-board .roster-identity > em,
 .prep-board .roster-role {
   color: #725c49;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   font-style: normal;
 }
@@ -11907,7 +11907,7 @@ button.effect-skill-card {
 .prep-board .roster-equipment-preview i {
   overflow: hidden;
   color: var(--prep-ink);
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 10px;
   font-style: normal;
   text-overflow: ellipsis;
@@ -11949,7 +11949,7 @@ button.effect-skill-card {
 .prep-board .roster-gambit-row > i,
 .prep-board .roster-gambit-row > small {
   overflow: hidden;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 8px;
   font-style: normal;
   text-overflow: ellipsis;
@@ -12418,7 +12418,7 @@ button.effect-skill-card {
 .prep-board .prep-readiness strong {
   overflow: hidden;
   color: #f3dfb9;
-  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: "DotGothic16", monospace;
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -12861,5 +12861,289 @@ button.effect-skill-card {
     min-width: 0;
     min-height: 0;
     font-size: 11px;
+  }
+}
+
+/* Workshop clarity pass: one glance for the whole party, one action for each purchase. */
+.starter-pedestal .monster-card-copy > strong {
+  min-height: 30px;
+  line-height: 1.35;
+}
+
+.prep-board .roster-card {
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+
+.prep-board .roster-identity {
+  height: 100%;
+  grid-template-rows: auto auto auto;
+  place-content: center;
+  gap: 6px;
+}
+
+.prep-board .roster-identity .monster-sigil {
+  align-self: center;
+  margin: 0;
+}
+
+.prep-board .roster-identity > strong {
+  align-self: center;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.prep-board .roster-identity > i {
+  align-self: center;
+}
+
+.prep-board .shop-card-footer {
+  display: block;
+}
+
+.prep-board .shop-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.prep-board .shop-card-actions .buy-button {
+  width: 100%;
+}
+
+.prep-board .equipment-offer {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.prep-board .equipment-detail-button {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--prep-ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.prep-board .equipment-detail-button header {
+  position: relative;
+  display: grid;
+  grid-row: auto;
+  place-items: center;
+}
+
+.prep-board .equipment-detail-button .equipment-copy {
+  align-self: center;
+}
+
+.equipment-detail-dialog {
+  width: min(380px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: #2c211d;
+}
+
+.equipment-detail-dialog::backdrop {
+  background: rgba(20, 11, 8, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.equipment-detail-panel {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 5px solid #3b2922;
+  background: repeating-linear-gradient(1deg, transparent 0 19px, rgba(67, 45, 32, 0.035) 20px 21px), #f2ddb6;
+  box-shadow:
+    inset 0 0 0 2px #75533d,
+    5px 6px 0 #140c09;
+}
+
+.equipment-detail-panel::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 5px;
+  background: var(--rarity-color);
+  content: "";
+}
+
+.equipment-detail-panel .dialog-close {
+  color: #3b2922;
+}
+
+.equipment-detail-identity {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding-right: 34px;
+}
+
+.equipment-detail-identity .equipment-glyph {
+  width: 58px;
+  height: 58px;
+  border: 2px solid var(--rarity-color);
+  background: #fae9c7;
+  color: var(--rarity-color);
+  font-size: 22px;
+}
+
+.equipment-detail-identity small {
+  color: var(--rarity-color);
+  font-size: 10px;
+}
+
+.equipment-detail-identity h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.equipment-detail-description {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #a98662;
+  background: #f9e7c4;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.equipment-detail-effects {
+  display: grid;
+  gap: 7px;
+}
+
+.equipment-detail-effects > span {
+  color: #7b6049;
+  font-size: 9px;
+}
+
+.equipment-detail-effects ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equipment-effect-fact {
+  padding: 9px 10px;
+  border-left: 4px solid var(--rarity-color);
+  background: #dfc69d;
+  font-size: 12px;
+}
+
+.equipment-detail-price {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 2px solid #6d513e;
+}
+
+.equipment-detail-price span {
+  color: #745945;
+  font-size: 10px;
+}
+
+.equipment-detail-price strong {
+  color: #7b5717;
+  font-size: 18px;
+}
+
+@media (max-width: 900px) {
+  .prep-board .team-zone.is-active .roster-list {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .prep-board .team-zone.is-active .roster-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0;
+    scroll-snap-align: none;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity {
+    grid-row: auto;
+    grid-template-rows: auto auto auto;
+    gap: 3px;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity .monster-sigil {
+    width: 54px;
+    height: 54px;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity .monster-sigil > span {
+    font-size: 30px;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity > strong {
+    font-size: 10px;
+  }
+
+  .prep-board .team-zone.is-active .roster-identity > i {
+    font-size: 8px;
+  }
+
+  .prep-board .team-zone.is-bench {
+    grid-template-rows: 18px minmax(0, 1fr);
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity {
+    grid-template-rows: auto auto auto;
+    gap: 1px;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity > strong {
+    align-self: center;
+    font-size: 9px;
+  }
+
+  .prep-board .team-zone.is-bench .roster-identity > i {
+    display: block;
+    font-size: 7px;
+  }
+
+  .prep-board .shop-card-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prep-board .shop-card-actions .buy-button {
+    min-height: 26px;
+  }
+
+  .prep-board .equipment-offer {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .prep-board .equipment-detail-button {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .prep-board .equipment-detail-button header > small,
+  .prep-board .equipment-detail-button .equipment-copy small {
+    display: none;
   }
 }

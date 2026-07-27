@@ -70,6 +70,7 @@ import type {
   CommandResult,
   EffectDefinition,
   EggHatchResult,
+  EquipmentDefinition,
   FighterSnapshot,
   GameData,
   GambitCondition,
@@ -820,6 +821,65 @@ function MonsterProspectDialog({
   );
 }
 
+function EquipmentDetailDialog({ equipment, onClose }: { equipment?: EquipmentDefinition; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const equipmentId = equipment?.id;
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !equipment) return;
+    dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [equipmentId]);
+  if (!equipment) return null;
+  const statFacts = STAT_LABELS.flatMap(([id]) => {
+    const value = equipment.statBonus[id];
+    if (!value) return [];
+    return [`${STAT_NAMES[id]} +${value}${id === 'crit' ? '%' : ''}`];
+  });
+  const effectFacts = equipment.battleStartEffects.map(effectFactFor);
+  return (
+    <dialog
+      ref={dialogRef}
+      className="equipment-detail-dialog"
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}
+      aria-label={`${equipment.name}の詳細`}
+    >
+      <section className={`equipment-detail-panel panel is-rarity-${equipment.rarity}`}>
+        <button type="button" className="dialog-close" onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+          ×
+        </button>
+        <header className="equipment-detail-identity">
+          <span className="equipment-glyph">{equipment.glyph}</span>
+          <div>
+            <small>{RARITY_LABELS[equipment.rarity]}装備</small>
+            <h2>{equipment.name}</h2>
+          </div>
+        </header>
+        <p className="equipment-detail-description">{equipment.description}</p>
+        <section className="equipment-detail-effects" aria-label="装備効果">
+          <span>EFFECT</span>
+          <ul>
+            {[...statFacts, ...effectFacts].map((fact, index) => (
+              <li className="equipment-effect-fact" key={`${equipment.id}-effect-${index}`}>
+                {fact}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <div className="equipment-detail-price">
+          <span>価格</span>
+          <strong>● {equipment.price}</strong>
+        </div>
+      </section>
+    </dialog>
+  );
+}
+
 function RunHeader({
   run,
   discoveredCount,
@@ -1290,51 +1350,6 @@ function DraftScreen({ run, onChoose }: { run: CasualRunState; onChoose: (defini
   );
 }
 
-const compactGambitCondition = (condition: GambitCondition) => {
-  switch (condition.kind) {
-    case 'always':
-      return 'いつでも';
-    case 'self-hp-below':
-      return `自HP ≤ ${condition.threshold}%`;
-    case 'self-mp-above':
-      return `自MP ≥ ${condition.threshold}%`;
-    case 'ally-hp-below':
-      return `味方HP ≤ ${condition.threshold}%`;
-    case 'enemy-hp-below':
-      return `敵HP ≤ ${condition.threshold}%`;
-    case 'ally-has-status':
-      return `味方：${STATUS_LABELS[condition.statusId]}`;
-    case 'enemy-has-status':
-      return `敵：${STATUS_LABELS[condition.statusId]}`;
-    case 'living-count-at-most':
-      return `${condition.team === 'ally' ? '味方' : '敵'}残り${condition.count}体`;
-  }
-};
-
-const gambitActionPreview = (rule: GambitRule) => {
-  if (rule.action.skillId === 'normal-attack') {
-    return { mark: '⚔', name: '通常攻撃', target: TARGET_LABELS[rule.action.target] };
-  }
-  const skill = GAME_DATA.skills.find((entry) => entry.id === rule.action.skillId);
-  const effects = skill?.effects ?? [];
-  const mark = effects.some((effect) => effect.kind === 'heal')
-    ? '♥'
-    : effects.some((effect) => effect.kind === 'shield')
-      ? '◆'
-      : effects.some((effect) => effect.kind === 'status')
-        ? '✦'
-        : effects.some((effect) => effect.kind === 'atb')
-          ? '↻'
-          : effects.some((effect) => effect.kind === 'mp')
-            ? 'MP'
-            : '⚔';
-  return {
-    mark,
-    name: skill?.name ?? rule.action.skillId,
-    target: TARGET_LABELS[rule.action.target],
-  };
-};
-
 function RosterCard({
   monster,
   active,
@@ -1359,9 +1374,6 @@ function RosterCard({
   onDragEnd: (x: number, y: number) => void;
 }) {
   const definition = definitionFor(GAME_DATA, monster);
-  const experienceProfile = experienceProfileFor(GAME_DATA, definition);
-  const primaryRole = GAME_DATA.roleTags.find((entry) => entry.id === definition.roleTagIds[0])?.label;
-  const equipment = GAME_DATA.equipment.find((entry) => entry.id === monster.equipmentId);
   const holdTimer = useRef<number | undefined>(undefined);
   const dragging = useRef(false);
   const pointerIsDown = useRef(false);
@@ -1438,49 +1450,12 @@ function RosterCard({
       aria-label={`${definition.name}、${active ? '主力' : '控え'}。タップで詳細、長押しで移動`}
     >
       <span className="roster-identity">
-        <small>{active ? `主力 ${slotIndex + 1}` : `控え ${slotIndex + 1}`}</small>
         <MonsterSigil data={GAME_DATA} definition={definition} colorStars={monster.colorStars} size="small" />
         <strong>{definition.name}</strong>
         <i>
           Lv.{monster.level} {starText(definition.whiteStars, monster.colorStars)}
         </i>
-        <em>
-          {lineageName(GAME_DATA, definition)} × {attributeName(GAME_DATA, definition)}
-        </em>
-        <span className="roster-role">
-          {experienceProfile.name}
-          {primaryRole ? ` · ${primaryRole}` : ''}
-        </span>
       </span>
-      {active && (
-        <>
-          <span className={`roster-equipment-preview${equipment ? '' : ' is-empty'}`}>
-            <b>{equipment?.glyph ?? '＋'}</b>
-            <span>
-              <small>装備</small>
-              <i>{equipment?.name ?? '装備なし'}</i>
-            </span>
-          </span>
-          <span className="roster-gambit-preview">
-            {monster.gambits.map((rule, index) => {
-              const action = gambitActionPreview(rule);
-              return (
-                <span
-                  className="roster-gambit-row"
-                  title={`${action.name} → ${action.target}`}
-                  key={`${monster.id}-${index}`}
-                >
-                  <b>{index + 1}</b>
-                  <i>{compactGambitCondition(rule.condition)}</i>
-                  <em>›</em>
-                  <span>{action.mark}</span>
-                  <small>{action.name}</small>
-                </span>
-              );
-            })}
-          </span>
-        </>
-      )}
     </button>
   );
 }
@@ -1642,9 +1617,11 @@ function ShopView({
   onFreeze: () => void;
 }) {
   const [previewDefinitionId, setPreviewDefinitionId] = useState<string>();
+  const [previewEquipmentId, setPreviewEquipmentId] = useState<string>();
   const previewMonster = previewDefinitionId
     ? createMonster(GAME_DATA, previewDefinitionId, 'shop-prospect')
     : undefined;
+  const previewEquipment = GAME_DATA.equipment.find((entry) => entry.id === previewEquipmentId);
   if (!run.shop) return null;
   return (
     <section className="workshop-view shop-view" aria-label="ショップ">
@@ -1679,7 +1656,6 @@ function ShopView({
               </div>
             );
           const definition = definitionById(GAME_DATA, offer.definitionId);
-          const trait = GAME_DATA.traits.find((entry) => entry.id === definition.traitId);
           const eyebrow = offer.lucky
             ? '星が多い'
             : definition.shopAvailability === 'rare'
@@ -1706,18 +1682,11 @@ function ShopView({
                 </span>
               </button>
               <div className="monster-card-footer shop-card-footer">
-                <span>{trait?.name}</span>
                 <div className="shop-card-actions">
                   <button
                     type="button"
-                    className="card-detail-button"
-                    onClick={() => setPreviewDefinitionId(definition.id)}
-                  >
-                    詳細
-                  </button>
-                  <button
-                    type="button"
                     className="buy-button"
+                    aria-label={`${definition.name}を${definition.price}コインで迎える`}
                     onClick={() =>
                       onCommand(buyMonster(GAME_DATA, run, offer.id), `${definition.name}が仲間になりました`)
                     }
@@ -1753,14 +1722,21 @@ function ShopView({
             if (!equipment) return null;
             return (
               <article className={`equipment-offer is-rarity-${equipment.rarity}`} key={offer.id}>
-                <header>
-                  <span className="equipment-glyph">{equipment.glyph}</span>
-                  <small>{RARITY_LABELS[equipment.rarity]} / 装備</small>
-                </header>
-                <div className="equipment-copy">
-                  <strong>{equipment.name}</strong>
-                  <small>{equipment.description}</small>
-                </div>
+                <button
+                  type="button"
+                  className="equipment-detail-button"
+                  aria-label={`${equipment.name}の詳細を見る`}
+                  onClick={() => setPreviewEquipmentId(equipment.id)}
+                >
+                  <header>
+                    <span className="equipment-glyph">{equipment.glyph}</span>
+                    <small>{RARITY_LABELS[equipment.rarity]} / 装備</small>
+                  </header>
+                  <span className="equipment-copy">
+                    <strong>{equipment.name}</strong>
+                    <small>{equipment.description}</small>
+                  </span>
+                </button>
                 <footer>
                   <button
                     type="button"
@@ -1782,6 +1758,7 @@ function ShopView({
         summary="購入時の初期能力です。属性は血統の分類で、戦闘上の有利不利はありません。"
         onClose={() => setPreviewDefinitionId(undefined)}
       />
+      <EquipmentDetailDialog equipment={previewEquipment} onClose={() => setPreviewEquipmentId(undefined)} />
     </section>
   );
 }

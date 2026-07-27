@@ -162,11 +162,18 @@ await desktop.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 if ((await desktop.locator('.team-panel .roster-card.is-active').count()) !== 3) {
   throw new Error('Initial draft did not create a three-monster active party');
 }
-if ((await desktop.locator('.team-zone.is-active .roster-equipment-preview').count()) !== 3) {
-  throw new Error('Active formation does not show one equipment slot per monster');
+if (
+  (await desktop
+    .locator(
+      '.team-panel .roster-identity > small, .team-panel .roster-identity > em, .team-panel .roster-role, .team-panel .roster-equipment-preview, .team-panel .roster-gambit-preview',
+    )
+    .count()) !== 0
+) {
+  throw new Error('Workshop roster cards expose more than name, stars, and level');
 }
-if ((await desktop.locator('.team-zone.is-active .roster-gambit-row').count()) !== 9) {
-  throw new Error('Active formation does not expose all three gambits for every monster');
+const workshopFontFamily = await desktop.locator('html').evaluate((element) => getComputedStyle(element).fontFamily);
+if (!workshopFontFamily.includes('DotGothic16')) {
+  throw new Error(`Workshop does not use the Japanese pixel font: ${workshopFontFamily}`);
 }
 const preparationBoardLayout = await desktop.evaluate(() => {
   const party = document.querySelector('.team-panel')?.getBoundingClientRect();
@@ -201,8 +208,17 @@ if (
 ) {
   throw new Error('Equipment offers do not display their rarity');
 }
-if ((await desktop.locator('.shop-monsters .card-detail-button').count()) !== 3) {
-  throw new Error('Shop monsters do not expose a detail action');
+if ((await desktop.locator('.shop-monsters .card-detail-button').count()) !== 0) {
+  throw new Error('Shop monsters still expose redundant detail buttons');
+}
+const shopPurchaseWidths = await desktop.locator('.shop-monsters .shop-card-actions').evaluateAll((actions) =>
+  actions.map((action) => ({
+    actionWidth: action.getBoundingClientRect().width,
+    buttonWidth: action.querySelector('.buy-button')?.getBoundingClientRect().width ?? 0,
+  })),
+);
+if (shopPurchaseWidths.some(({ actionWidth, buttonWidth }) => buttonWidth < actionWidth - 2)) {
+  throw new Error(`Shop purchase buttons do not span the card width: ${JSON.stringify(shopPurchaseWidths)}`);
 }
 await assertReadableMonsterCards(desktop, 'Desktop active formation', '.team-zone.is-active .roster-card', 'strong');
 await assertReadableMonsterCards(
@@ -373,6 +389,15 @@ if ((await desktop.locator('.prospect-dialog .farewell-value').count()) !== 1) {
 await desktop.screenshot({ path: '/tmp/code-monsters-prospect-desktop.png', fullPage: true });
 await desktop.locator('.prospect-dialog').getByRole('button', { name: '閉じる' }).click();
 
+await desktop.locator('.equipment-offers .equipment-detail-button').first().click();
+await desktop.locator('.equipment-detail-dialog[open]').waitFor();
+if ((await desktop.locator('.equipment-detail-dialog .equipment-effect-fact').count()) < 1) {
+  throw new Error('Equipment detail dialog does not explain its effects');
+}
+if ((await desktop.locator('.equipment-detail-dialog .equipment-detail-price').count()) !== 1) {
+  throw new Error('Equipment detail dialog does not show its price');
+}
+await desktop.locator('.equipment-detail-dialog').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.equipment-offers article footer button').first().click();
 const coinsBefore = Number((await desktop.locator('.coin-metric b').textContent())?.trim());
 const firstOfferPrice = Number((await desktop.locator('.shop-monsters .buy-button b').first().textContent())?.trim());
@@ -975,6 +1000,31 @@ for (let round = 0; round < 3; round += 1) {
 
 await mobile.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 await assertReadableMonsterCards(mobile, 'Mobile active formation', '.team-zone.is-active .roster-card', 'strong');
+const mobileActiveLayout = await mobile.locator('.team-zone.is-active .roster-list').evaluate((list) => {
+  const listBox = list.getBoundingClientRect();
+  const cards = [...list.querySelectorAll('.roster-card')].map((card) => {
+    const box = card.getBoundingClientRect();
+    return { left: box.left, right: box.right, top: box.top, width: box.width };
+  });
+  return {
+    cards,
+    listLeft: listBox.left,
+    listRight: listBox.right,
+    scrollWidth: list.scrollWidth,
+    clientWidth: list.clientWidth,
+  };
+});
+if (
+  mobileActiveLayout.cards.length !== 3 ||
+  mobileActiveLayout.cards.some(({ top }) => Math.abs(top - mobileActiveLayout.cards[0].top) > 1) ||
+  mobileActiveLayout.cards.some(
+    ({ left, right, width }) =>
+      left < mobileActiveLayout.listLeft - 1 || right > mobileActiveLayout.listRight + 1 || width < 84,
+  ) ||
+  mobileActiveLayout.scrollWidth > mobileActiveLayout.clientWidth + 1
+) {
+  throw new Error(`Mobile active party is not fully visible: ${JSON.stringify(mobileActiveLayout)}`);
+}
 await assertReadableMonsterCards(
   mobile,
   'Mobile monster shop',
