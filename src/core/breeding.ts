@@ -1,4 +1,4 @@
-import { createMonster, definitionFor, effectiveStarsFor, permanentStatsFor, skillIdsFor } from './monster';
+import { createMonster, definitionFor, permanentStatsFor, skillIdsFor } from './monster';
 import type { BreedingCandidate, ColorStars, GameData, MonsterInstance, StatBlock, StatId, WhiteStars } from './types';
 
 const STAT_IDS: StatId[] = ['maxHp', 'maxMp', 'attack', 'defense', 'speed', 'wisdom', 'crit'];
@@ -18,11 +18,7 @@ export function listBreedingCandidates(
   const firstDefinition = definitionFor(data, first);
   const secondDefinition = definitionFor(data, second);
   const candidates: BreedingCandidate[] = [];
-  const averagedWhiteStars = Math.min(
-    data.rules.maxWhiteStars,
-    Math.ceil((effectiveStarsFor(data, first) + effectiveStarsFor(data, second)) / 2),
-  ) as WhiteStars;
-  const resultWhiteStars = Math.max(data.rules.breeding.minimumResultWhiteStars, averagedWhiteStars) as WhiteStars;
+  const resultWhiteStars = Math.min(firstDefinition.whiteStars, secondDefinition.whiteStars) as WhiteStars;
 
   const genericPairs = [
     { lineageId: firstDefinition.lineageId, attributeId: secondDefinition.attributeId },
@@ -49,7 +45,7 @@ export function listBreedingCandidates(
       kind: 'generic',
       definitionId: definition.id,
       colorStars: 0,
-      label: `位階配合 → ${definition.name}`,
+      label: `系譜配合 → ${definition.name}`,
     });
   }
 

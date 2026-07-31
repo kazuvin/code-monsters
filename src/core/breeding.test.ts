@@ -4,18 +4,18 @@ import { breedMonsters, listBreedingCandidates } from './breeding';
 import { createMonster, permanentStatsFor } from './monster';
 
 describe('breeding', () => {
-  it('promotes two base white-star-one parents into white-star-two generic candidates', () => {
+  it('keeps two base white-star-one parents at white-star one in generic candidates', () => {
     const dragon = createMonster(GAME_DATA, 'light-dragon-1', 'dragon', { xp: 10 });
     const demon = createMonster(GAME_DATA, 'fire-demon-1', 'demon', { xp: 10 });
 
     const candidates = listBreedingCandidates(GAME_DATA, dragon, demon);
 
-    expect(candidates.map((candidate) => candidate.definitionId)).toEqual(
-      expect.arrayContaining(['fire-dragon-2', 'light-demon-2']),
-    );
+    expect(
+      candidates.filter((candidate) => candidate.kind === 'generic').map((candidate) => candidate.definitionId),
+    ).toEqual(expect.arrayContaining(['fire-dragon-1', 'light-demon-1']));
   });
 
-  it('offers both rank promotion and color-star growth for matching white-star-one parents', () => {
+  it('offers both special rank promotion and color-star growth for matching white-star-one parents', () => {
     const first = createMonster(GAME_DATA, 'light-dragon-1', 'first', { xp: 10 });
     const second = createMonster(GAME_DATA, 'light-dragon-1', 'second', { xp: 10 });
 
@@ -23,7 +23,7 @@ describe('breeding', () => {
 
     expect(candidates).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'light-dragon-2', colorStars: 0, kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'light-dragon-2', colorStars: 0, kind: 'special' }),
         expect.objectContaining({ definitionId: 'light-dragon-1', colorStars: 1, kind: 'same-name' }),
       ]),
     );
@@ -38,7 +38,7 @@ describe('breeding', () => {
     );
   });
 
-  it('offers both color-star and white-star routes when effective stars allow them', () => {
+  it('keeps color-star and special white-star routes separate', () => {
     const colored = createMonster(GAME_DATA, 'light-dragon-1', 'colored', {
       colorStars: 1,
       xp: 10,
@@ -50,7 +50,7 @@ describe('breeding', () => {
     expect(candidates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ definitionId: 'light-dragon-1', colorStars: 2, kind: 'same-name' }),
-        expect.objectContaining({ definitionId: 'light-dragon-2', colorStars: 0, kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'light-dragon-2', colorStars: 0, kind: 'special' }),
       ]),
     );
   });
@@ -87,25 +87,25 @@ describe('breeding', () => {
     expect(listBreedingCandidates(GAME_DATA, firstCrow, secondCrow)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ definitionId: 'coin-crow-1', colorStars: 1, kind: 'same-name' }),
-        expect.objectContaining({ definitionId: 'dark-demon-2', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'dark-demon-1', kind: 'generic' }),
       ]),
     );
     expect(listBreedingCandidates(GAME_DATA, firstCrow, owl)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'dark-spirit-2', kind: 'generic' }),
-        expect.objectContaining({ definitionId: 'light-demon-2', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'dark-spirit-1', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'light-demon-1', kind: 'generic' }),
       ]),
     );
     expect(listBreedingCandidates(GAME_DATA, mole, fireDragon)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'fire-spirit-2', kind: 'generic' }),
-        expect.objectContaining({ definitionId: 'dark-dragon-2', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'fire-spirit-1', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'dark-dragon-1', kind: 'generic' }),
       ]),
     );
     expect(listBreedingCandidates(GAME_DATA, egg, firstCrow)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'dark-spirit-2', kind: 'generic' }),
-        expect.objectContaining({ definitionId: 'light-demon-2', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'dark-spirit-1', kind: 'generic' }),
+        expect.objectContaining({ definitionId: 'light-demon-1', kind: 'generic' }),
       ]),
     );
   });
@@ -127,7 +127,7 @@ describe('breeding', () => {
     });
     const second = createMonster(GAME_DATA, 'fire-demon-1', 'second', { xp: 10 });
     const candidate = listBreedingCandidates(GAME_DATA, first, second).find(
-      (entry) => entry.definitionId === 'fire-dragon-2',
+      (entry) => entry.definitionId === 'fire-dragon-1' && entry.kind === 'generic',
     );
     if (!candidate) throw new Error('Expected generic breeding candidate');
 

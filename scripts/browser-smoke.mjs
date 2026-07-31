@@ -163,9 +163,9 @@ const chooseFirstStarter = async (page) => {
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
 watchErrors(desktop);
 await desktop.addInitScript(() => {
-  window.localStorage.setItem('code-monsters:recipe-discovery:v5', JSON.stringify(['fire-spirit-3', 'buried-mole-1']));
-  window.localStorage.setItem('code-monsters:skill-discovery:v5', JSON.stringify(['tail-swipe']));
-  window.localStorage.setItem('code-monsters:event-discovery:v5', JSON.stringify(['merchant-gift']));
+  window.localStorage.setItem('code-monsters:recipe-discovery:v6', JSON.stringify(['fire-spirit-3', 'buried-mole-1']));
+  window.localStorage.setItem('code-monsters:skill-discovery:v6', JSON.stringify(['tail-swipe']));
+  window.localStorage.setItem('code-monsters:event-discovery:v6', JSON.stringify(['merchant-gift']));
 });
 await desktop.goto(target.toString(), { waitUntil: 'networkidle' });
 await desktop.getByRole('heading', { name: '血統航路' }).waitFor();
@@ -253,6 +253,12 @@ if (preparationBoardLayout.partyWidth <= preparationBoardLayout.shopWidth || pre
 if ((await desktop.locator('.shop-monsters .definition-card, .shop-monsters .sold-slot').count()) !== 3) {
   throw new Error('Monster shop does not have three slots');
 }
+if ((await desktop.locator('.shop-monsters [data-special-recipe-signal]').count()) === 0) {
+  throw new Error('Monster shop does not highlight an available rank-up special recipe');
+}
+if ((await desktop.locator('.shop-monsters .shop-recipe-signal').count()) === 0) {
+  throw new Error('Monster shop special-recipe highlight does not include its specimen tag');
+}
 if ((await desktop.locator('.equipment-offers > *').count()) !== 2) {
   throw new Error('Equipment shop does not have two slots');
 }
@@ -297,8 +303,8 @@ await assertReadableMonsterCards(
 await desktop.getByRole('button', { name: /図鑑/ }).click();
 await desktop.locator('.catalog-dialog[open]').waitFor();
 await assertFullscreenCatalog(desktop, 'Desktop monster catalog');
-if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 34) {
-  throw new Error('Monster catalog does not show all 27 MVP lineage-grid and seven standalone records');
+if ((await desktop.locator('.catalog-index .catalog-card').count()) !== 52) {
+  throw new Error('Monster catalog does not show all 45 MVP lineage-grid and seven standalone records');
 }
 if ((await desktop.locator('.catalog-dialog .catalog-detail').count()) !== 0) {
   throw new Error('Monster catalog still pins a detail sheet beside the index');
@@ -328,10 +334,10 @@ if ((await desktop.locator('.catalog-detail-tabs button').count()) !== 2) {
   throw new Error('Catalog detail does not expose profile and special breeding tabs');
 }
 await desktop.locator('.catalog-detail-tabs').getByRole('button', { name: '特殊配合' }).click();
-if ((await desktop.locator('[data-recipe-relation="used-by"] .recipe-card.is-special').count()) !== 3) {
+if ((await desktop.locator('[data-recipe-relation="used-by"] .recipe-card.is-special').count()) !== 5) {
   throw new Error('Catalog detail does not show all special recipes that consume the selected monster');
 }
-if ((await desktop.locator('.catalog-detail [data-recipe-focus="true"].is-locked').count()) !== 3) {
+if ((await desktop.locator('.catalog-detail [data-recipe-focus="true"].is-locked').count()) !== 9) {
   throw new Error('Undiscovered selected monster is not silhouetted in its catalog recipe relations');
 }
 if ((await desktop.locator('.catalog-detail .recipe-card:not(.is-special)').count()) !== 0) {
@@ -389,7 +395,7 @@ await desktop
   .locator('.catalog-section-tabs')
   .getByRole('button', { name: /スキル/ })
   .click();
-if ((await desktop.locator('.catalog-text-index .catalog-card').count()) !== 39) {
+if ((await desktop.locator('.catalog-text-index .catalog-card').count()) !== 57) {
   throw new Error('Skill catalog does not show all skill records');
 }
 await desktop.locator('[data-skill-catalog-id="tail-swipe"]').click();
@@ -421,9 +427,9 @@ await desktop.screenshot({ path: '/tmp/code-monsters-event-catalog-desktop.png',
 await desktop.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
 const discoveryBeforeDeveloperMode = await desktop.evaluate(() => ({
-  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v5'),
-  skills: window.localStorage.getItem('code-monsters:skill-discovery:v5'),
-  events: window.localStorage.getItem('code-monsters:event-discovery:v5'),
+  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v6'),
+  skills: window.localStorage.getItem('code-monsters:skill-discovery:v6'),
+  events: window.localStorage.getItem('code-monsters:event-discovery:v6'),
 }));
 await desktop.locator('.developer-mode-switch').click();
 await desktop.getByRole('button', { name: /図鑑/ }).click();
@@ -432,14 +438,14 @@ await desktop
   .locator('.catalog-section-tabs')
   .getByRole('button', { name: /モンスター/ })
   .click();
-if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 34) {
+if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 52) {
   throw new Error('Developer mode does not reveal every monster catalog record');
 }
 await desktop
   .locator('.catalog-section-tabs')
   .getByRole('button', { name: /スキル/ })
   .click();
-if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 39) {
+if ((await desktop.locator('.catalog-card.is-unlocked').count()) !== 57) {
   throw new Error('Developer mode does not reveal every skill catalog record');
 }
 await desktop
@@ -453,9 +459,9 @@ await desktop.screenshot({ path: '/tmp/code-monsters-developer-catalog-desktop.p
 await desktop.locator('.catalog-dialog').getByRole('button', { name: '閉じる' }).click();
 await desktop.locator('.developer-mode-switch').click();
 const discoveryAfterDeveloperMode = await desktop.evaluate(() => ({
-  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v5'),
-  skills: window.localStorage.getItem('code-monsters:skill-discovery:v5'),
-  events: window.localStorage.getItem('code-monsters:event-discovery:v5'),
+  monsters: window.localStorage.getItem('code-monsters:recipe-discovery:v6'),
+  skills: window.localStorage.getItem('code-monsters:skill-discovery:v6'),
+  events: window.localStorage.getItem('code-monsters:event-discovery:v6'),
 }));
 if (JSON.stringify(discoveryAfterDeveloperMode) !== JSON.stringify(discoveryBeforeDeveloperMode)) {
   throw new Error('Developer mode mutated persistent catalog discovery');
@@ -551,13 +557,13 @@ await desktop.screenshot({ path: '/tmp/code-monsters-monster-recipes-desktop.png
 await desktop.getByRole('button', { name: '閉じる', exact: true }).click();
 await desktop.getByRole('button', { name: '02 配合' }).click();
 await desktop.getByRole('button', { name: /特殊配合図鑑/ }).click();
-if ((await desktop.locator('.recipe-card.is-special').count()) !== 9) {
-  throw new Error('Breeding archive does not show all nine special breeding recipes');
+if ((await desktop.locator('.recipe-card.is-special').count()) !== 90) {
+  throw new Error('Breeding archive does not show all 90 special breeding recipes');
 }
 if ((await desktop.locator('.recipe-card:not(.is-special)').count()) !== 0) {
   throw new Error('Breeding archive still shows non-special breeding recipes');
 }
-if ((await desktop.locator('[data-recipe-slot="result"].is-locked').count()) !== 8) {
+if ((await desktop.locator('[data-recipe-slot="result"].is-locked').count()) !== 87) {
   throw new Error('Previously discovered special result was not restored from persistent discovery');
 }
 await desktop.getByRole('button', { name: '閉じる', exact: true }).click();
@@ -1266,8 +1272,8 @@ await assertFitsViewport(mobile, 'Mobile workshop');
 await mobile.getByRole('button', { name: /図鑑/ }).click();
 await mobile.locator('.catalog-dialog[open]').waitFor();
 await assertFullscreenCatalog(mobile, 'Mobile monster catalog', true);
-if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 34) {
-  throw new Error('Mobile monster catalog does not show all 27 MVP lineage-grid and seven standalone records');
+if ((await mobile.locator('.catalog-index .catalog-card').count()) !== 52) {
+  throw new Error('Mobile monster catalog does not show all 45 MVP lineage-grid and seven standalone records');
 }
 await assertReadableMonsterCards(
   mobile,
@@ -1282,10 +1288,10 @@ if ((await mobile.locator('.catalog-detail[data-catalog-detail-state="locked"]')
   throw new Error('Mobile undiscovered monster does not remain locked');
 }
 await mobile.locator('.catalog-detail-tabs').getByRole('button', { name: '特殊配合' }).click();
-if ((await mobile.locator('[data-recipe-relation="used-by"] .recipe-card.is-special').count()) !== 3) {
+if ((await mobile.locator('[data-recipe-relation="used-by"] .recipe-card.is-special').count()) !== 5) {
   throw new Error('Mobile catalog does not show the selected monster special breeding descendants');
 }
-if ((await mobile.locator('.catalog-detail [data-recipe-focus="true"].is-locked').count()) !== 3) {
+if ((await mobile.locator('.catalog-detail [data-recipe-focus="true"].is-locked').count()) !== 9) {
   throw new Error('Mobile catalog exposes an undiscovered monster in special breeding relations');
 }
 await mobile.locator('.catalog-record-dialog[open]').getByRole('button', { name: '閉じる' }).click();
@@ -1329,10 +1335,10 @@ await mobile.getByRole('button', { name: '閉じる', exact: true }).click();
 await mobile.getByRole('button', { name: '02 配合' }).click();
 await mobile.locator('.breeding-lab-dialog[open]').waitFor();
 await mobile.getByRole('button', { name: /特殊配合図鑑/ }).click();
-if ((await mobile.locator('.recipe-dialog .recipe-card.is-special').count()) !== 9) {
-  throw new Error('Mobile breeding archive does not show all nine special breeding recipes');
+if ((await mobile.locator('.recipe-dialog .recipe-card.is-special').count()) !== 90) {
+  throw new Error('Mobile breeding archive does not show all 90 special breeding recipes');
 }
-if ((await mobile.locator('.recipe-dialog [data-recipe-slot="result"].is-locked').count()) !== 9) {
+if ((await mobile.locator('.recipe-dialog [data-recipe-slot="result"].is-locked').count()) !== 90) {
   throw new Error('Undiscovered special breeding results are not silhouetted on mobile');
 }
 await mobile.screenshot({ path: '/tmp/code-monsters-recipes-mobile.png' });
@@ -1544,7 +1550,7 @@ await playtest.locator('.playtest-ledger').scrollIntoViewIfNeeded();
 await playtest.screenshot({ path: '/tmp/code-monsters-playtest-report-mobile.png' });
 
 const hatchTarget = new URL(target);
-hatchTarget.searchParams.set('seed', '1087');
+hatchTarget.searchParams.set('seed', '339');
 const hatchPage = await browser.newPage({
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 1,
@@ -1558,7 +1564,7 @@ for (let round = 0; round < 3; round += 1) {
 }
 await hatchPage.getByRole('heading', { name: '旅商人の棚' }).waitFor();
 if ((await hatchPage.locator('.shop-monsters .definition-card').filter({ hasText: 'まだら卵' }).count()) !== 2) {
-  throw new Error('Seed 1087 no longer exposes the two-egg hatch smoke fixture');
+  throw new Error('Seed 339 no longer exposes the two-egg hatch smoke fixture');
 }
 for (let egg = 0; egg < 2; egg += 1) {
   await hatchPage

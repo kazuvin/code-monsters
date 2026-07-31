@@ -119,12 +119,6 @@ export function validateGameData(data: GameData): string[] {
   if (data.rules.rosterLimit !== data.rules.activeLimit + data.rules.benchLimit) {
     errors.push('rosterLimit must equal activeLimit plus benchLimit');
   }
-  if (
-    data.rules.breeding.minimumResultWhiteStars < 1 ||
-    data.rules.breeding.minimumResultWhiteStars > data.rules.maxWhiteStars
-  ) {
-    errors.push('breeding.minimumResultWhiteStars must be between 1 and maxWhiteStars');
-  }
   const equipmentRarityWeights = data.rules.shop.equipmentRarityWeights;
   if (
     !equipmentRarityWeights ||
@@ -258,6 +252,15 @@ export function validateGameData(data: GameData): string[] {
     if (!monsterIds.has(recipe.resultDefinitionId)) {
       errors.push(`${recipe.id} references unknown result "${recipe.resultDefinitionId}"`);
     }
+    const result = data.monsters.find((monster) => monster.id === recipe.resultDefinitionId);
+    const parents = recipe.parentDefinitionIds.map((parentId) =>
+      data.monsters.find((monster) => monster.id === parentId),
+    );
+    if (result && parents.every((parent): parent is MonsterDefinition => Boolean(parent))) {
+      if (result.whiteStars <= Math.max(...parents.map((parent) => parent.whiteStars))) {
+        errors.push(`${recipe.id} must raise white stars above both parents`);
+      }
+    }
   }
   for (const monster of data.standaloneMonsters) {
     const skillIdsForMonster = [...monster.intrinsicSkillIds, monster.defaultSkillId];
@@ -268,15 +271,6 @@ export function validateGameData(data: GameData): string[] {
     if (!traitIds.has(monster.traitId)) errors.push(`${monster.id} references unknown trait "${monster.traitId}"`);
     if (monster.hatch) {
       if (monster.hatch.afterHeldCycles < 1) errors.push(`${monster.id} must be held for at least one cycle`);
-      if (monster.hatch.maximumWhiteStars < monster.whiteStars) {
-        errors.push(`${monster.id} hatch maximum cannot be below its egg rank`);
-      }
-      if (monster.hatch.maximumWhiteStars > Math.min(data.rules.maxWhiteStars, monster.whiteStars + 1)) {
-        errors.push(`${monster.id} hatch maximum can be at most one rank above its egg rank`);
-      }
-      if (monster.hatch.upgradeChance < 0 || monster.hatch.upgradeChance > 1) {
-        errors.push(`${monster.id} has an invalid hatch upgrade chance`);
-      }
     }
   }
   for (const skill of data.skills) {

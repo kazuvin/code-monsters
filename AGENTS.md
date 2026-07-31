@@ -22,14 +22,14 @@
 
 ## Game invariants
 
-- MVP validation content is exactly 27 grid species: 3 lineages × 3 attributes × white stars 1–3.
+- MVP validation content is exactly 45 grid species: 3 lineages × 3 attributes × white stars 1–5.
 - Attributes have no damage, resistance, accuracy, or type-advantage rules.
 - A party has 3 active and up to 4 bench monsters.
 - A casual run lasts at most 12 cycles and ends early at 5 losses.
 - A monster owns exactly 3 skills: 2 intrinsic slots and 1 default/inherited slot. Normal attack is separate.
 - A gambit starts with 3 ordered `condition -> action including target` rules, can be edited between 2 and 6 rules, and falls back to normal attack.
 - Breeding consumes both parents, starts the child at level 1, unequips parent gear, grants 1 coin, and may inherit one parent skill.
-- White and color stars remain separate in state. Effective stars are their sum.
+- White and color stars remain separate in state. Only special breeding may raise white stars; color stars affect growth, traits, and inheritance without raising white stars.
 - Battle is deterministic ATB with MP and environment-collapse damage beginning at 45 seconds.
 
 ## Test-driven development

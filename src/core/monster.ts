@@ -67,9 +67,6 @@ export const levelForXp = (data: GameData, definition: MonsterDefinition, xp: nu
   return Math.min(data.rules.maxLevel, level);
 };
 
-export const effectiveStarsFor = (data: GameData, monster: MonsterInstance) =>
-  definitionFor(data, monster).whiteStars + monster.colorStars;
-
 const defaultTargetForSkill = (data: GameData, skillId: string) =>
   targetRulesForSkill(data, skillId)[0] ?? 'random-enemy';
 

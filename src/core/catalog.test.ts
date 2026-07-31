@@ -12,15 +12,16 @@ import {
   normalizeDiscoveredSkillIds,
   skillCatalogEntries,
   skillHolderRelationsFor,
+  specialRecipeSignalsForShopOffer,
   specialRecipeRelationsFor,
 } from './catalog';
 import { createMonster, skillIdsFor } from './monster';
 
 describe('monster catalog discovery', () => {
-  it('lists all 34 MVP monsters without exposing locked details', () => {
+  it('lists all 52 validation monsters without exposing locked details', () => {
     const entries = monsterCatalogEntries(GAME_DATA, new Set());
 
-    expect(entries).toHaveLength(34);
+    expect(entries).toHaveLength(52);
     expect(entries.filter((entry) => entry.id === 'buried-mole-1')).toHaveLength(1);
     expect(entries.every((entry) => entry.state === 'locked')).toBe(true);
     expect(entries.every((entry) => entry.details === undefined)).toBe(true);
@@ -65,16 +66,16 @@ describe('monster catalog discovery', () => {
   it('finds only special recipes that create or consume a selected species', () => {
     const resultRelations = specialRecipeRelationsFor(GAME_DATA, 'fire-spirit-3');
     const parentRelations = specialRecipeRelationsFor(GAME_DATA, 'light-dragon-2');
-    const unrelatedRelations = specialRecipeRelationsFor(GAME_DATA, 'fire-dragon-1');
+    const unrelatedRelations = specialRecipeRelationsFor(GAME_DATA, 'buried-mole-1');
 
-    expect(resultRelations.createdBy.map((recipe) => recipe.id)).toEqual(['dawn-chimera']);
-    expect(resultRelations.usedBy).toEqual([]);
-    expect(parentRelations.createdBy).toEqual([]);
-    expect(parentRelations.usedBy.map((recipe) => recipe.id)).toEqual([
-      'dawn-chimera',
-      'cinder-contract',
-      'umbral-grove',
+    expect(resultRelations.createdBy.map((recipe) => recipe.id)).toEqual([
+      'fire-spirit-3-route-1',
+      'fire-spirit-3-route-2',
+      'fire-spirit-3-route-3',
     ]);
+    expect(resultRelations.usedBy).toHaveLength(3);
+    expect(parentRelations.createdBy).toHaveLength(4);
+    expect(parentRelations.usedBy).toHaveLength(5);
     expect(unrelatedRelations).toEqual({ createdBy: [], usedBy: [] });
   });
 
@@ -83,10 +84,38 @@ describe('monster catalog discovery', () => {
       createdBy: [],
       usedBy: [],
     });
-    expect(specialRecipeRelationsFor(GAME_DATA, 'mystery-egg-2')).toEqual({
+    expect(specialRecipeRelationsFor(GAME_DATA, 'prismatic-egg-1')).toEqual({
       createdBy: [],
       usedBy: [],
     });
+  });
+});
+
+describe('shop special-recipe signals', () => {
+  it('prefers an owned partner and also detects a partner on the same shelf', () => {
+    const owned = specialRecipeSignalsForShopOffer(GAME_DATA, 'light-dragon-1', ['dark-dragon-1'], ['fire-dragon-1']);
+    const shelfOnly = specialRecipeSignalsForShopOffer(GAME_DATA, 'light-dragon-1', [], ['fire-dragon-1']);
+
+    expect(owned).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          recipeId: 'light-dragon-2-route-2',
+          partnerDefinitionId: 'dark-dragon-1',
+          resultDefinitionId: 'light-dragon-2',
+          source: 'roster',
+        }),
+      ]),
+    );
+    expect(shelfOnly).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          recipeId: 'light-dragon-2-route-3',
+          partnerDefinitionId: 'fire-dragon-1',
+          resultDefinitionId: 'light-dragon-2',
+          source: 'shelf',
+        }),
+      ]),
+    );
   });
 });
 

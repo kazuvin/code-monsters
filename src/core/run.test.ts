@@ -73,7 +73,7 @@ describe('casual run', () => {
   it('starts with three free monsters and cycle-one income', () => {
     const run = finishDraft();
 
-    expect(run.schemaVersion).toBe(4);
+    expect(run.schemaVersion).toBe(5);
     expect(run.contentVersion).toBe(GAME_DATA.rules.contentVersion);
     expect(run.commandLogVersion).toBe(1);
     expect(run.phase).toBe('prepare');
@@ -290,20 +290,20 @@ describe('casual run', () => {
     expect(result.roster.map((monster) => monster.xp)).toEqual([7, 4, 4]);
   });
 
-  it('hatches eggs deterministically after one held battle within their rank cap', () => {
+  it('hatches eggs deterministically after one held battle without raising white stars', () => {
     const run = finishDraft();
     const rankOneEgg = createMonster(GAME_DATA, 'mystery-egg-1', 'rank-one-egg', {
       cyclesHeld: 1,
       journeySeed: 7,
     });
-    const rankTwoEgg = createMonster(GAME_DATA, 'mystery-egg-2', 'rank-two-egg', {
+    const prismaticEgg = createMonster(GAME_DATA, 'prismatic-egg-1', 'prismatic-egg', {
       cyclesHeld: 1,
       journeySeed: 7,
     });
     const prepared = {
       ...run,
       phase: 'result' as const,
-      roster: [run.roster[0] as (typeof run.roster)[number], rankOneEgg, rankTwoEgg],
+      roster: [run.roster[0] as (typeof run.roster)[number], rankOneEgg, prismaticEgg],
       activeIds: [run.roster[0]?.id as string],
       completedCycles: 1,
     };
@@ -311,26 +311,22 @@ describe('casual run', () => {
     const first = continueRun(GAME_DATA, prepared);
     const second = continueRun(GAME_DATA, prepared);
     const rankOneResult = first.roster.find((monster) => monster.id === rankOneEgg.id);
-    const rankTwoResult = first.roster.find((monster) => monster.id === rankTwoEgg.id);
+    const prismaticResult = first.roster.find((monster) => monster.id === prismaticEgg.id);
 
     expect(first).toEqual(second);
     expect(rankOneResult?.definitionId).not.toBe(rankOneEgg.definitionId);
-    expect(rankTwoResult?.definitionId).not.toBe(rankTwoEgg.definitionId);
-    expect(
-      GAME_DATA.monsters.find((monster) => monster.id === rankOneResult?.definitionId)?.whiteStars,
-    ).toBeLessThanOrEqual(2);
-    expect(
-      GAME_DATA.monsters.find((monster) => monster.id === rankTwoResult?.definitionId)?.whiteStars,
-    ).toBeLessThanOrEqual(3);
+    expect(prismaticResult?.definitionId).not.toBe(prismaticEgg.definitionId);
+    expect(GAME_DATA.monsters.find((monster) => monster.id === rankOneResult?.definitionId)?.whiteStars).toBe(1);
+    expect(GAME_DATA.monsters.find((monster) => monster.id === prismaticResult?.definitionId)?.whiteStars).toBe(1);
     expect(first.lastHatches).toEqual([
       expect.objectContaining({ eggId: rankOneEgg.id, fromWhiteStars: 1 }),
-      expect.objectContaining({ eggId: rankTwoEgg.id, fromWhiteStars: 2 }),
+      expect.objectContaining({ eggId: prismaticEgg.id, fromWhiteStars: 1, toWhiteStars: 1 }),
     ]);
   });
 
-  it('hatches each egg directly into a base-catalog monster with a fifty-percent rank-up chance', () => {
+  it('hatches each egg directly into a same-rank base-catalog monster', () => {
     const run = finishDraft();
-    const hatchResults = (definitionId: 'mystery-egg-1' | 'mystery-egg-2') =>
+    const hatchResults = (definitionId: 'mystery-egg-1' | 'prismatic-egg-1') =>
       [1, 8192].map((journeySeed, index) => {
         const egg = createMonster(GAME_DATA, definitionId, `egg-${index}`, {
           cyclesHeld: 1,
@@ -349,17 +345,15 @@ describe('casual run', () => {
         return GAME_DATA.monsters.find((monster) => monster.id === hatched.definitionId);
       });
 
-    const rankOneResults = hatchResults('mystery-egg-1');
-    const rankTwoResults = hatchResults('mystery-egg-2');
+    const mottledResults = hatchResults('mystery-egg-1');
+    const prismaticResults = hatchResults('prismatic-egg-1');
 
-    expect(GAME_DATA.monsters.find((monster) => monster.id === 'mystery-egg-1')?.hatch?.upgradeChance).toBe(0.5);
-    expect(GAME_DATA.monsters.find((monster) => monster.id === 'mystery-egg-2')?.hatch?.upgradeChance).toBe(0.5);
-    expect([...new Set(rankOneResults.map((definition) => definition?.whiteStars))].sort()).toEqual([1, 2]);
-    expect([...new Set(rankTwoResults.map((definition) => definition?.whiteStars))].sort()).toEqual([2, 3]);
-    expect([...rankOneResults, ...rankTwoResults].every((definition) => definition && !definition.hatch)).toBe(true);
+    expect([...new Set(mottledResults.map((definition) => definition?.whiteStars))]).toEqual([1]);
+    expect([...new Set(prismaticResults.map((definition) => definition?.whiteStars))]).toEqual([1]);
+    expect([...mottledResults, ...prismaticResults].every((definition) => definition && !definition.hatch)).toBe(true);
   });
 
-  it('does not allow two level-one rank-one eggs to breed into the rank-two egg', () => {
+  it('requires level two before two rank-one eggs can breed', () => {
     const run = finishDraft();
     const first = createMonster(GAME_DATA, 'mystery-egg-1', 'first-egg');
     const second = createMonster(GAME_DATA, 'mystery-egg-1', 'second-egg');
@@ -367,16 +361,28 @@ describe('casual run', () => {
       ...run,
       roster: [...run.roster, first, second],
     };
-    const candidate = GAME_DATA.monsters.find((monster) => monster.id === 'mystery-egg-2');
-    if (!candidate) throw new Error('Expected a rank-two egg definition');
-
-    const result = breedInRun(GAME_DATA, prepared, first.id, second.id, 'egg-upgrade:mystery-egg-2:0');
+    const result = breedInRun(GAME_DATA, prepared, first.id, second.id, 'same-name:mystery-egg-1:1');
 
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('Expected breeding to fail');
-    expect(result.error).toBe('配合先候補が見つかりません');
+    expect(result.error).toBe('配合にはレベル2が必要です');
     expect(result.state.roster).toContainEqual(first);
     expect(result.state.roster).toContainEqual(second);
+  });
+
+  it('allows breeding as soon as both parents reach level two', () => {
+    const run = finishDraft();
+    const first = createMonster(GAME_DATA, 'mystery-egg-1', 'first-ready-egg', { xp: 2 });
+    const second = createMonster(GAME_DATA, 'mystery-egg-1', 'second-ready-egg', { xp: 2 });
+    const prepared = {
+      ...run,
+      roster: [...run.roster, first, second],
+    };
+    const result = breedInRun(GAME_DATA, prepared, first.id, second.id, 'same-name:mystery-egg-1:1');
+
+    expect(result.ok).toBe(true);
+    expect(result.state.roster.some((monster) => monster.id === first.id || monster.id === second.id)).toBe(false);
+    expect(result.state.roster.at(-1)).toMatchObject({ definitionId: 'mystery-egg-1', level: 1 });
   });
 
   it('adds three gambits, reorders them, and keeps at least two rules', () => {
@@ -526,7 +532,7 @@ describe('casual run', () => {
     expect(continueEvent(run).phase).toBe('prepare');
   });
 
-  it('applies persistent shop luck and resolves gambling deterministically', () => {
+  it('applies a persistent rare-offer bonus and resolves gambling deterministically', () => {
     const base = finishDraft();
     const shopRun = chooseEvent(
       GAME_DATA,
@@ -537,7 +543,7 @@ describe('casual run', () => {
     const first = chooseEvent(GAME_DATA, wager, 'coin-wager');
     const second = chooseEvent(GAME_DATA, wager, 'coin-wager');
 
-    expect(shopRun.shopLuckBonus).toBeCloseTo(0.08);
+    expect(shopRun.rareOfferBonus).toBeCloseTo(0.08);
     expect(first).toEqual(second);
     expect(first.phase).toBe('event-result');
     expect(first.coins === 7 || first.coins === 17).toBe(true);

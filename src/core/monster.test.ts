@@ -59,11 +59,13 @@ describe('monster stat breakdown', () => {
 });
 
 describe('monster growth profiles', () => {
-  it('lets every white-star-one monster reach level three after one active loss', () => {
-    for (const definition of GAME_DATA.monsters.filter((monster) => monster.whiteStars === 1)) {
-      const monster = createMonster(GAME_DATA, definition.id, `growth-${definition.id}`, { xp: 4 });
+  it('lets every monster reach level three as active or level two on the bench after one loss', () => {
+    for (const definition of GAME_DATA.monsters) {
+      const active = createMonster(GAME_DATA, definition.id, `active-growth-${definition.id}`, { xp: 4 });
+      const bench = createMonster(GAME_DATA, definition.id, `bench-growth-${definition.id}`, { xp: 2 });
 
-      expect(monster.level, definition.id).toBe(3);
+      expect(active.level, definition.id).toBe(3);
+      expect(bench.level, definition.id).toBe(2);
       expect(experienceThresholdsFor(GAME_DATA, definition).slice(0, 3), definition.id).toEqual([0, 2, 4]);
     }
   });

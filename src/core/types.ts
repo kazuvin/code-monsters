@@ -228,8 +228,6 @@ export type MonsterDefinition = {
   sellPrice: number;
   hatch?: {
     afterHeldCycles: number;
-    upgradeChance: number;
-    maximumWhiteStars: WhiteStars;
   };
 };
 
@@ -261,7 +259,7 @@ export type EventDefinition = {
     | { kind: 'roster-xp'; amount: number }
     | { kind: 'active-xp'; amount: number }
     | { kind: 'monster-xp'; amount: number }
-    | { kind: 'shop-luck'; amount: number }
+    | { kind: 'rare-offer'; amount: number }
     | { kind: 'free-rerolls'; amount: number }
     | { kind: 'equipment-gift' }
     | { kind: 'gamble-coins'; stake: number; reward: number; winChance: number }
@@ -300,13 +298,11 @@ export type GameRules = {
     monsterSlots: number;
     equipmentSlots: number;
     rerollCost: number;
-    luckyUpgradeChance: number;
     rareOfferChance: number;
     equipmentRarityWeights: Record<Rarity, number>;
   };
   breeding: {
     minimumLevel: number;
-    minimumResultWhiteStars: WhiteStars;
     inheritanceRatesByTotalColorStars: [number, number, number, number, number];
     colorGrowthBonus: [number, number, number];
   };
@@ -375,7 +371,6 @@ export type BreedingCandidate = {
 export type ShopMonsterOffer = {
   id: string;
   definitionId: string;
-  lucky: boolean;
 };
 
 export type ShopEquipmentOffer = {
@@ -463,7 +458,7 @@ export type RunCommandPayload =
 export type RunCommand = RunCommandBase & RunCommandPayload;
 
 export type CasualRunState = {
-  schemaVersion: 4;
+  schemaVersion: 5;
   mode: 'casual' | 'online';
   contentVersion: string;
   commandLogVersion: 1;
@@ -483,7 +478,7 @@ export type CasualRunState = {
   draftRound: number;
   draftChoices: string[];
   eventChoices: string[];
-  shopLuckBonus: number;
+  rareOfferBonus: number;
   freeRerolls: number;
   eventResolution?: EventResolution;
   lastBattle?: BattleResult;

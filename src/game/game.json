@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "rules": {
-    "contentVersion": "casual-prototype-11",
+    "contentVersion": "casual-prototype-12",
     "maxCycles": 12,
     "maxLosses": 5,
-    "maxWhiteStars": 3,
+    "maxWhiteStars": 5,
     "rosterLimit": 7,
     "activeLimit": 3,
     "benchLimit": 4,
@@ -24,13 +24,11 @@
       "monsterSlots": 3,
       "equipmentSlots": 2,
       "rerollCost": 1,
-      "luckyUpgradeChance": 0.02,
       "rareOfferChance": 0.12,
       "equipmentRarityWeights": { "common": 55, "rare": 28, "epic": 13, "legendary": 4 }
     },
     "breeding": {
-      "minimumLevel": 3,
-      "minimumResultWhiteStars": 2,
+      "minimumLevel": 2,
       "inheritanceRatesByTotalColorStars": [0.25, 0.3, 0.35, 0.4, 0.45],
       "colorGrowthBonus": [1, 1.1, 1.2]
     },
@@ -145,17 +143,33 @@
           "name": "白耀竜レグナ",
           "glyph": "⬡",
           "appearance": { "body": "🐲", "attire": "▣", "form": "armored" },
-          "intrinsicSkillIds": ["wing-gale", "aegis-dust"],
-          "defaultSkillId": "halo-bite",
-          "traitId": "ancient-carapace"
+          "intrinsicSkillIds": ["regna-aegis", "scale-wall"],
+          "defaultSkillId": "wing-gale",
+          "traitId": "regna-white-scale",
+          "statMultipliers": { "defense": 1.35, "speed": 0.8 },
+          "identity": {
+            "signatureSkillId": "regna-aegis",
+            "winCondition": "白耀の障壁を味方全体へ重ね、守備力を攻撃へ変える時間を作る。",
+            "weakness": "素早さが低く、障壁を張る前の集中攻撃には間に合わない。",
+            "gambitHint": "味方の盾が25%以下なら白耀結界。",
+            "recommendedCondition": { "kind": "ally-shield-below", "threshold": 25 }
+          }
         },
         {
           "name": "光冠竜アステリオン",
           "glyph": "♔",
           "appearance": { "body": "🐉", "attire": "♛", "form": "sovereign" },
-          "intrinsicSkillIds": ["solar-breath", "ward-roar"],
-          "defaultSkillId": "wing-gale",
-          "traitId": "dragon-sovereignty"
+          "intrinsicSkillIds": ["asterion-corona", "wing-gale"],
+          "defaultSkillId": "scale-wall",
+          "traitId": "asterion-crown-law",
+          "statMultipliers": { "maxHp": 1.25, "speed": 0.8 },
+          "identity": {
+            "signatureSkillId": "asterion-corona",
+            "winCondition": "王冠光で敵全体を焼きながら味方を守り、長期戦の主導権を握る。",
+            "weakness": "素早さが低く、重いMP消費を連発すると王冠光を維持できない。",
+            "gambitHint": "敵が2体以上なら王冠光輪。",
+            "recommendedCondition": { "kind": "living-count-at-least", "team": "enemy", "count": 2 }
+          }
         }
       ]
     },
@@ -219,17 +233,33 @@
           "name": "冥鱗竜ノクス",
           "glyph": "⬢",
           "appearance": { "body": "🐉", "attire": "▣", "form": "armored" },
-          "intrinsicSkillIds": ["night-claw", "wing-gale"],
-          "defaultSkillId": "silence-mark",
-          "traitId": "ancient-carapace"
+          "intrinsicSkillIds": ["nox-moonfang", "wing-gale"],
+          "defaultSkillId": "tail-swipe",
+          "traitId": "nox-eclipse-armor",
+          "statMultipliers": { "attack": 1.3, "defense": 0.78, "crit": 1.25 },
+          "identity": {
+            "signatureSkillId": "nox-moonfang",
+            "winCondition": "守備を裂く月牙で高HPの標的を処刑圏へ運び、会心で仕留める。",
+            "weakness": "守備力が低く、月牙で先に人数差を作れないと反撃を受け止められない。",
+            "gambitHint": "守備低下がない高HPの敵へ冥月牙。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "defense-down" }
+          }
         },
         {
           "name": "深淵竜ヴェスパー",
           "glyph": "♚",
           "appearance": { "body": "🐉", "attire": "♚", "form": "sovereign" },
-          "intrinsicSkillIds": ["eclipse-dive", "blood-focus"],
+          "intrinsicSkillIds": ["vesper-abyssfall", "veil-step"],
           "defaultSkillId": "wing-gale",
-          "traitId": "dragon-sovereignty"
+          "traitId": "vesper-depth-sovereignty",
+          "statMultipliers": { "maxHp": 0.78, "attack": 1.35, "speed": 1.2 },
+          "identity": {
+            "signatureSkillId": "vesper-abyssfall",
+            "winCondition": "深淵落としで敵全体を削り、瀕死の相手から連続処刑を始める。",
+            "weakness": "HPが低く、全体攻撃を撃つ前に狙われると王としての圧力を出せない。",
+            "gambitHint": "敵が2体以上なら深淵落とし。",
+            "recommendedCondition": { "kind": "living-count-at-least", "team": "enemy", "count": 2 }
+          }
         }
       ]
     },
@@ -293,17 +323,33 @@
           "name": "爆鱗竜イグナ",
           "glyph": "⬟",
           "appearance": { "body": "🐲", "attire": "▣", "form": "armored" },
-          "intrinsicSkillIds": ["ember-drive", "wing-gale"],
-          "defaultSkillId": "battle-chant",
-          "traitId": "ancient-carapace"
+          "intrinsicSkillIds": ["igna-burstscale", "wing-gale"],
+          "defaultSkillId": "tail-swipe",
+          "traitId": "igna-blast-carapace",
+          "statMultipliers": { "attack": 1.35, "defense": 0.78 },
+          "identity": {
+            "signatureSkillId": "igna-burstscale",
+            "winCondition": "爆鱗を敵全体へ撃ち込み、自傷と引き換えに攻撃力を加速させる。",
+            "weakness": "守備力が低く、自傷後に集中攻撃を受けると二射目へ届かない。",
+            "gambitHint": "HP50%以上かつ敵が2体以上なら爆鱗散華。",
+            "recommendedCondition": { "kind": "self-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "劫火竜ヴォルカ",
           "glyph": "♛",
           "appearance": { "body": "🐉", "attire": "♛", "form": "sovereign" },
-          "intrinsicSkillIds": ["volcanic-roar", "ember-drive"],
+          "intrinsicSkillIds": ["volca-worldfire", "scale-wall"],
           "defaultSkillId": "wing-gale",
-          "traitId": "dragon-sovereignty"
+          "traitId": "volca-cataclysm-aura",
+          "statMultipliers": { "attack": 1.4, "wisdom": 0.75 },
+          "identity": {
+            "signatureSkillId": "volca-worldfire",
+            "winCondition": "劫火で敵全体へ火傷を刻み、残った敵を高攻撃力で押し切る。",
+            "weakness": "賢さが低く、魔法防御を持たないため敵の術式に焼き返されやすい。",
+            "gambitHint": "火傷していない敵がいる時に劫火界。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "damage-over-time" }
+          }
         }
       ]
     },
@@ -367,17 +413,33 @@
           "name": "戒光魔ラディウス",
           "glyph": "⛨",
           "appearance": { "body": "👹", "attire": "♜", "form": "armored" },
-          "intrinsicSkillIds": ["lumen-bolt", "pact-flow"],
-          "defaultSkillId": "aegis-dust",
-          "traitId": "archfiend-pressure"
+          "intrinsicSkillIds": ["radius-commandment", "pact-flow"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "radius-sacred-pressure",
+          "statMultipliers": { "maxHp": 0.8, "wisdom": 1.35 },
+          "identity": {
+            "signatureSkillId": "radius-commandment",
+            "winCondition": "戒律で敵の賢さとMPを奪い、味方の魔法だけが通る盤面を作る。",
+            "weakness": "HPが低く、物理主体の敵には戒律の弱体価値が下がる。",
+            "gambitHint": "賢さ低下がない敵へ戒光律。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "wisdom-down" }
+          }
         },
         {
           "name": "審判魔セフィラ",
           "glyph": "♕",
           "appearance": { "body": "😇", "attire": "♛", "form": "sovereign" },
-          "intrinsicSkillIds": ["seraphic-verdict", "mend"],
+          "intrinsicSkillIds": ["sephira-judgment", "mischief-bolt"],
           "defaultSkillId": "pact-flow",
-          "traitId": "demon-sovereignty"
+          "traitId": "sephira-final-edict",
+          "statMultipliers": { "defense": 0.78, "wisdom": 1.4 },
+          "identity": {
+            "signatureSkillId": "sephira-judgment",
+            "winCondition": "敵全体への審判と味方全体回復を一手にまとめ、交換を常に有利にする。",
+            "weakness": "守備力が低く、重い審判を連発するとMPが尽きて回復役を失う。",
+            "gambitHint": "味方HP75%以下かつ敵が複数なら終審。",
+            "recommendedCondition": { "kind": "ally-hp-below", "threshold": 75 }
+          }
         }
       ]
     },
@@ -442,17 +504,33 @@
           "name": "禁呪魔アビス",
           "glyph": "☗",
           "appearance": { "body": "👹", "attire": "♜", "form": "armored" },
-          "intrinsicSkillIds": ["void-needle", "pact-flow"],
-          "defaultSkillId": "dusk-pulse",
-          "traitId": "archfiend-pressure"
+          "intrinsicSkillIds": ["abyss-nullscript", "pact-flow"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "abyss-null-pressure",
+          "statMultipliers": { "defense": 0.75, "wisdom": 1.3, "speed": 1.2 },
+          "identity": {
+            "signatureSkillId": "abyss-nullscript",
+            "winCondition": "禁呪で敵全体を沈黙させ、奪ったMPから次の妨害へつなぐ。",
+            "weakness": "守備力が低く、通常攻撃中心の敵には沈黙の価値がほとんどない。",
+            "gambitHint": "沈黙していない敵が2体以上なら無響禁書。",
+            "recommendedCondition": { "kind": "living-count-at-least", "team": "enemy", "count": 2 }
+          }
         },
         {
           "name": "宵王魔メフィスト",
           "glyph": "♜",
           "appearance": { "body": "😈", "attire": "♚", "form": "sovereign" },
-          "intrinsicSkillIds": ["nightmare-court", "silence-mark"],
+          "intrinsicSkillIds": ["mephisto-night-throne", "mischief-bolt"],
           "defaultSkillId": "pact-flow",
-          "traitId": "demon-sovereignty"
+          "traitId": "mephisto-twilight-throne",
+          "statMultipliers": { "maxHp": 0.8, "speed": 1.25, "wisdom": 1.35 },
+          "identity": {
+            "signatureSkillId": "mephisto-night-throne",
+            "winCondition": "夜王の玉座で敵全体を遅らせ、味方全体の行動順を強制的に前へ出す。",
+            "weakness": "HPが低く、速度操作を始める前の先制攻撃に耐えにくい。",
+            "gambitHint": "速度低下がない敵がいる時に夜王座。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "speed-down" }
+          }
         }
       ]
     },
@@ -516,17 +594,33 @@
           "name": "灼契魔フレア",
           "glyph": "☖",
           "appearance": { "body": "👹", "attire": "♜", "form": "armored" },
-          "intrinsicSkillIds": ["fury-orb", "pact-flow"],
-          "defaultSkillId": "quick-flare",
-          "traitId": "archfiend-pressure"
+          "intrinsicSkillIds": ["flare-crimson-contract", "pact-flow"],
+          "defaultSkillId": "arc-shot",
+          "traitId": "flare-burning-covenant",
+          "statMultipliers": { "maxHp": 0.78, "wisdom": 1.35 },
+          "identity": {
+            "signatureSkillId": "flare-crimson-contract",
+            "winCondition": "紅契の大火力を代償込みで叩き込み、賢さ上昇から追撃をつなぐ。",
+            "weakness": "HPが低く反動も受けるため、標的を倒せなければ立て直せない。",
+            "gambitHint": "HP50%以上なら紅契爆。",
+            "recommendedCondition": { "kind": "self-hp-above", "threshold": 50 }
+          }
         },
         {
           "name": "紅蓮魔ベリアル",
           "glyph": "♝",
           "appearance": { "body": "👿", "attire": "♛", "form": "sovereign" },
-          "intrinsicSkillIds": ["hellfire-rite", "battle-chant"],
+          "intrinsicSkillIds": ["belial-inferno-court", "mischief-bolt"],
           "defaultSkillId": "pact-flow",
-          "traitId": "demon-sovereignty"
+          "traitId": "belial-crimson-sovereignty",
+          "statMultipliers": { "defense": 0.75, "wisdom": 1.4 },
+          "identity": {
+            "signatureSkillId": "belial-inferno-court",
+            "winCondition": "紅蓮宮で敵全体を焼き、味方の攻撃力まで高めて短期決着へ導く。",
+            "weakness": "守備力が低く、継続火力が勝敗を決める前に物理攻撃で崩されやすい。",
+            "gambitHint": "火傷していない敵がいる時に紅蓮宮。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "damage-over-time" }
+          }
         }
       ]
     },
@@ -590,17 +684,33 @@
           "name": "光庭精ルーチェ",
           "glyph": "✿",
           "appearance": { "body": "🧝", "attire": "❋", "form": "armored" },
-          "intrinsicSkillIds": ["gentle-ray", "veil-step"],
-          "defaultSkillId": "ward-roar",
-          "traitId": "elemental-domain"
+          "intrinsicSkillIds": ["luce-garden", "veil-step"],
+          "defaultSkillId": "mote-dart",
+          "traitId": "luce-luminous-garden",
+          "statMultipliers": { "defense": 0.78, "wisdom": 1.3 },
+          "identity": {
+            "signatureSkillId": "luce-garden",
+            "winCondition": "光庭で味方全体を回復し、盾とATBを同時に配って反攻を始める。",
+            "weakness": "守備力が低く、回復前に狙われると庭を開けない。",
+            "gambitHint": "味方HP75%以下なら光庭開花。",
+            "recommendedCondition": { "kind": "ally-hp-below", "threshold": 75 }
+          }
         },
         {
           "name": "星祈精エリュシア",
           "glyph": "✺",
           "appearance": { "body": "🧚", "attire": "♕", "form": "sovereign" },
-          "intrinsicSkillIds": ["starlight-bloom", "aegis-dust"],
+          "intrinsicSkillIds": ["elysia-star-prayer", "mote-dart"],
           "defaultSkillId": "veil-step",
-          "traitId": "world-song"
+          "traitId": "elysia-constellation-song",
+          "statMultipliers": { "defense": 0.75, "wisdom": 1.4 },
+          "identity": {
+            "signatureSkillId": "elysia-star-prayer",
+            "winCondition": "星祈りで回復・再生・MPを一度に供給し、味方の高コスト技を循環させる。",
+            "weakness": "守備力が低く、自身のMPも重く消費するため連続攻撃に弱い。",
+            "gambitHint": "味方HP50%以下なら星座祈。",
+            "recommendedCondition": { "kind": "ally-hp-below", "threshold": 50 }
+          }
         }
       ]
     },
@@ -664,17 +774,33 @@
           "name": "月庭精ウンブラ",
           "glyph": "❉",
           "appearance": { "body": "👻", "attire": "❋", "form": "armored" },
-          "intrinsicSkillIds": ["dusk-pulse", "veil-step"],
-          "defaultSkillId": "silence-mark",
-          "traitId": "elemental-domain"
+          "intrinsicSkillIds": ["umbra-moon-drift", "veil-step"],
+          "defaultSkillId": "mote-dart",
+          "traitId": "umbra-moon-garden",
+          "statMultipliers": { "maxHp": 0.75, "speed": 1.3 },
+          "identity": {
+            "signatureSkillId": "umbra-moon-drift",
+            "winCondition": "月漂いで敵全体を遅らせ、自分のATBを回収して妨害を連鎖させる。",
+            "weakness": "HPが低く、速度低下が効く前の一撃で倒されやすい。",
+            "gambitHint": "速度低下がない敵がいる時に月漂い。",
+            "recommendedCondition": { "kind": "enemy-lacks-status", "statusId": "speed-down" }
+          }
         },
         {
           "name": "夢渡精レヴェリィ",
           "glyph": "☽",
           "appearance": { "body": "🌚", "attire": "☽", "form": "sovereign" },
-          "intrinsicSkillIds": ["dream-tide", "wither"],
+          "intrinsicSkillIds": ["reverie-dream-crossing", "mote-dart"],
           "defaultSkillId": "veil-step",
-          "traitId": "world-song"
+          "traitId": "reverie-oneiric-song",
+          "statMultipliers": { "maxHp": 0.75, "wisdom": 1.3, "speed": 1.25 },
+          "identity": {
+            "signatureSkillId": "reverie-dream-crossing",
+            "winCondition": "夢渡りで敵全体のMPと速度を奪い、術式を封じたまま押し切る。",
+            "weakness": "HPが低く、通常攻撃主体の敵にはMP破壊の価値が下がる。",
+            "gambitHint": "MP50%以上の敵がいる時に夢界渡り。",
+            "recommendedCondition": { "kind": "enemy-mp-above", "threshold": 50 }
+          }
         }
       ]
     },
@@ -739,17 +865,33 @@
           "name": "火庭精エンバー",
           "glyph": "✹",
           "appearance": { "body": "🔥", "attire": "❋", "form": "armored" },
-          "intrinsicSkillIds": ["quick-flare", "veil-step"],
-          "defaultSkillId": "battle-chant",
-          "traitId": "elemental-domain"
+          "intrinsicSkillIds": ["ember-hearth-dance", "veil-step"],
+          "defaultSkillId": "mote-dart",
+          "traitId": "ember-fire-domain",
+          "statMultipliers": { "defense": 0.72, "speed": 1.3 },
+          "identity": {
+            "signatureSkillId": "ember-hearth-dance",
+            "winCondition": "火庭の舞で敵を叩きながら味方へATBと盾を配り、連続行動を作る。",
+            "weakness": "守備力が低く、加速を配る前に集中攻撃を受けると役割を失う。",
+            "gambitHint": "味方の盾が25%以下なら火庭の舞。",
+            "recommendedCondition": { "kind": "ally-shield-below", "threshold": 25 }
+          }
         },
         {
           "name": "日輪精サラマンナ",
           "glyph": "☀",
           "appearance": { "body": "🌞", "attire": "☀", "form": "sovereign" },
-          "intrinsicSkillIds": ["sunwheel-dance", "haste-song"],
+          "intrinsicSkillIds": ["salamanna-solar-festival", "mote-dart"],
           "defaultSkillId": "veil-step",
-          "traitId": "world-song"
+          "traitId": "salamanna-sun-worldsong",
+          "statMultipliers": { "defense": 0.7, "speed": 1.35 },
+          "identity": {
+            "signatureSkillId": "salamanna-solar-festival",
+            "winCondition": "日輪祭で敵全体を焼き、味方全体を加速して行動回数で圧倒する。",
+            "weakness": "守備力が極端に低く、速攻が止まると高い白星を活かせない。",
+            "gambitHint": "敵が2体以上なら日輪祭。",
+            "recommendedCondition": { "kind": "living-count-at-least", "team": "enemy", "count": 2 }
+          }
         }
       ]
     }
@@ -839,35 +981,31 @@
       "price": 3,
       "sellPrice": 1,
       "hatch": {
-        "afterHeldCycles": 1,
-        "upgradeChance": 0.5,
-        "maximumWhiteStars": 2
+        "afterHeldCycles": 1
       }
     },
     {
-      "id": "mystery-egg-2",
-      "archetypeId": "mystery-egg",
+      "id": "prismatic-egg-1",
+      "archetypeId": "prismatic-egg",
       "shopAvailability": "rare",
       "lineageId": "spirit",
-      "attributeId": "light",
-      "name": "星殻の卵",
-      "whiteStars": 2,
-      "glyph": "殻",
-      "appearance": { "body": "🥚", "attire": "✦", "form": "armored" },
-      "baseStats": { "maxHp": 124, "maxMp": 23, "attack": 13, "defense": 40, "speed": 13, "wisdom": 15, "crit": 0 },
-      "growthPerLevel": { "maxHp": 9, "maxMp": 1, "attack": 1, "defense": 4, "speed": 1, "wisdom": 1, "crit": 0 },
-      "experienceProfileId": "standard",
+      "attributeId": "dark",
+      "name": "虹殻の卵",
+      "whiteStars": 1,
+      "glyph": "虹",
+      "appearance": { "body": "🥚", "attire": "◇", "form": "whelp" },
+      "baseStats": { "maxHp": 88, "maxMp": 26, "attack": 11, "defense": 27, "speed": 14, "wisdom": 18, "crit": 0 },
+      "growthPerLevel": { "maxHp": 7, "maxMp": 2, "attack": 1, "defense": 3, "speed": 1, "wisdom": 2, "crit": 0 },
+      "experienceProfileId": "early",
       "statGrowthProfileId": "steady",
-      "roleTagIds": ["hatch", "defense"],
-      "intrinsicSkillIds": ["scale-wall", "aegis-dust"],
-      "defaultSkillId": "tail-swipe",
+      "roleTagIds": ["hatch", "magic"],
+      "intrinsicSkillIds": ["veil-step", "dusk-pulse"],
+      "defaultSkillId": "spirit-spark",
       "traitId": "waiting-shell",
-      "price": 6,
-      "sellPrice": 3,
+      "price": 3,
+      "sellPrice": 1,
       "hatch": {
-        "afterHeldCycles": 1,
-        "upgradeChance": 0.5,
-        "maximumWhiteStars": 3
+        "afterHeldCycles": 1
       }
     },
     {
@@ -1439,9 +1577,747 @@
         { "kind": "atb", "amount": 12, "target": "all-allies" },
         { "kind": "recoil", "maxHpPercent": 9, "target": "self" }
       ]
+    },
+    {
+      "id": "regna-aegis",
+      "rarity": "epic",
+      "name": "白耀結界",
+      "description": "味方全体へ盾を配り、守備力を高める。",
+      "mpCost": 8,
+      "targetScope": "all-allies",
+      "effects": [
+        { "kind": "shield", "maxHpPercent": 13, "target": "all-allies" },
+        { "kind": "status", "statusId": "defense-up", "amount": 12, "durationSeconds": 9, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "asterion-corona",
+      "rarity": "legendary",
+      "name": "王冠光輪",
+      "description": "守備力を光輪へ変えて敵全体を撃ち、味方全体へ盾を配る。",
+      "mpCost": 11,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "defense", "power": 88, "target": "all-enemies" },
+        { "kind": "shield", "maxHpPercent": 10, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "nox-moonfang",
+      "rarity": "epic",
+      "name": "冥月牙",
+      "description": "会心を狙う月牙で敵の守備力を裂く。",
+      "mpCost": 7,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 155, "target": "action-target", "canCrit": true },
+        { "kind": "status", "statusId": "defense-down", "amount": 14, "durationSeconds": 9, "target": "action-target" }
+      ]
+    },
+    {
+      "id": "vesper-abyssfall",
+      "rarity": "legendary",
+      "name": "深淵落とし",
+      "description": "敵全体を深淵へ落とし、自分の行動を早める。",
+      "mpCost": 10,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 92, "target": "all-enemies", "canCrit": true },
+        { "kind": "atb", "amount": 18, "target": "self" }
+      ]
+    },
+    {
+      "id": "igna-burstscale",
+      "rarity": "epic",
+      "name": "爆鱗散華",
+      "description": "自らの鱗を爆ぜさせ、敵全体を攻撃しながら攻撃力を上げる。",
+      "mpCost": 8,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 82, "target": "all-enemies", "canCrit": true },
+        { "kind": "status", "statusId": "attack-up", "amount": 14, "durationSeconds": 8, "target": "self" },
+        { "kind": "recoil", "maxHpPercent": 7, "target": "self" }
+      ]
+    },
+    {
+      "id": "volca-worldfire",
+      "rarity": "legendary",
+      "name": "劫火界",
+      "description": "敵全体を劫火で包み、長い火傷を残す。",
+      "mpCost": 11,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "physical", "power": 96, "target": "all-enemies", "canCrit": true },
+        {
+          "kind": "status",
+          "statusId": "damage-over-time",
+          "amount": 3,
+          "durationSeconds": 12,
+          "target": "all-enemies"
+        }
+      ]
+    },
+    {
+      "id": "radius-commandment",
+      "rarity": "epic",
+      "name": "戒光律",
+      "description": "敵の賢さとMPを奪う戒めの光。",
+      "mpCost": 7,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 135, "target": "action-target" },
+        { "kind": "status", "statusId": "wisdom-down", "amount": 16, "durationSeconds": 9, "target": "action-target" },
+        { "kind": "mp", "amount": -3, "target": "action-target" }
+      ]
+    },
+    {
+      "id": "sephira-judgment",
+      "rarity": "legendary",
+      "name": "終審",
+      "description": "敵全体を裁き、その衝撃を味方全体の回復へ変える。",
+      "mpCost": 12,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 82, "target": "all-enemies" },
+        { "kind": "heal", "power": 78, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "abyss-nullscript",
+      "rarity": "epic",
+      "name": "無響禁書",
+      "description": "禁書を開いて敵全体を短く沈黙させ、MPを回収する。",
+      "mpCost": 9,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 62, "target": "all-enemies" },
+        { "kind": "status", "statusId": "silence", "amount": 1, "durationSeconds": 1.3, "target": "all-enemies" },
+        { "kind": "mp", "amount": 3, "target": "self" }
+      ]
+    },
+    {
+      "id": "mephisto-night-throne",
+      "rarity": "legendary",
+      "name": "夜王座",
+      "description": "敵全体を遅らせ、味方全体の行動ゲージを進める。",
+      "mpCost": 11,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 76, "target": "all-enemies" },
+        { "kind": "status", "statusId": "speed-down", "amount": 16, "durationSeconds": 9, "target": "all-enemies" },
+        { "kind": "atb", "amount": 12, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "flare-crimson-contract",
+      "rarity": "epic",
+      "name": "紅契爆",
+      "description": "反動を代償に高威力の魔弾を撃ち、賢さを上げる。",
+      "mpCost": 8,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 190, "target": "action-target" },
+        { "kind": "status", "statusId": "wisdom-up", "amount": 16, "durationSeconds": 8, "target": "self" },
+        { "kind": "recoil", "maxHpPercent": 10, "target": "self" }
+      ]
+    },
+    {
+      "id": "belial-inferno-court",
+      "rarity": "legendary",
+      "name": "紅蓮宮",
+      "description": "敵全体へ火傷を刻み、味方全体の攻撃力を上げる。",
+      "mpCost": 11,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 86, "target": "all-enemies" },
+        {
+          "kind": "status",
+          "statusId": "damage-over-time",
+          "amount": 2,
+          "durationSeconds": 10,
+          "target": "all-enemies"
+        },
+        { "kind": "status", "statusId": "attack-up", "amount": 12, "durationSeconds": 9, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "luce-garden",
+      "rarity": "epic",
+      "name": "光庭開花",
+      "description": "味方全体を癒し、盾と行動ゲージを配る。",
+      "mpCost": 9,
+      "targetScope": "all-allies",
+      "effects": [
+        { "kind": "heal", "power": 82, "target": "all-allies" },
+        { "kind": "shield", "maxHpPercent": 8, "target": "all-allies" },
+        { "kind": "atb", "amount": 8, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "elysia-star-prayer",
+      "rarity": "legendary",
+      "name": "星座祈",
+      "description": "味方全体を癒し、再生とMPを授ける。",
+      "mpCost": 12,
+      "targetScope": "all-allies",
+      "effects": [
+        { "kind": "heal", "power": 105, "target": "all-allies" },
+        { "kind": "status", "statusId": "regeneration", "amount": 4, "durationSeconds": 10, "target": "all-allies" },
+        { "kind": "mp", "amount": 3, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "umbra-moon-drift",
+      "rarity": "epic",
+      "name": "月漂い",
+      "description": "敵全体を遅らせ、自分の行動ゲージを回収する。",
+      "mpCost": 8,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 70, "target": "all-enemies" },
+        { "kind": "status", "statusId": "speed-down", "amount": 14, "durationSeconds": 8, "target": "all-enemies" },
+        { "kind": "atb", "amount": 20, "target": "self" }
+      ]
+    },
+    {
+      "id": "reverie-dream-crossing",
+      "rarity": "legendary",
+      "name": "夢界渡り",
+      "description": "敵全体のMPと速度を奪い、夢の底へ沈める。",
+      "mpCost": 11,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "magic", "power": 78, "target": "all-enemies" },
+        { "kind": "status", "statusId": "speed-down", "amount": 17, "durationSeconds": 10, "target": "all-enemies" },
+        { "kind": "mp", "amount": -4, "target": "all-enemies" }
+      ]
+    },
+    {
+      "id": "ember-hearth-dance",
+      "rarity": "epic",
+      "name": "火庭の舞",
+      "description": "敵を打ちながら、味方全体へ盾と行動ゲージを配る。",
+      "mpCost": 8,
+      "targetScope": "single-enemy",
+      "effects": [
+        { "kind": "damage", "scaling": "speed", "power": 128, "target": "action-target" },
+        { "kind": "shield", "maxHpPercent": 7, "target": "all-allies" },
+        { "kind": "atb", "amount": 10, "target": "all-allies" }
+      ]
+    },
+    {
+      "id": "salamanna-solar-festival",
+      "rarity": "legendary",
+      "name": "日輪祭",
+      "description": "敵全体を焼きながら、味方全体を加速する。",
+      "mpCost": 11,
+      "targetScope": "all-enemies",
+      "effects": [
+        { "kind": "damage", "scaling": "speed", "power": 92, "target": "all-enemies" },
+        { "kind": "status", "statusId": "speed-up", "amount": 15, "durationSeconds": 9, "target": "all-allies" },
+        { "kind": "atb", "amount": 14, "target": "all-allies" }
+      ]
     }
   ],
   "traits": [
+    {
+      "id": "regna-white-scale",
+      "name": "白耀鱗",
+      "stages": [
+        {
+          "description": "開戦時、厚い盾を得る。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 16, "target": "self" }]
+        },
+        {
+          "description": "厚い盾と守備力上昇を得る。",
+          "battleStartEffects": [
+            { "kind": "shield", "maxHpPercent": 18, "target": "self" },
+            { "kind": "status", "statusId": "defense-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "白耀鱗が味方全体を覆う。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 10, "target": "all-allies" }]
+        }
+      ]
+    },
+    {
+      "id": "asterion-crown-law",
+      "name": "光冠律",
+      "stages": [
+        {
+          "description": "味方全体の守備力を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "defense-up", "amount": 9, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "味方全体の攻撃力と守備力を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "defense-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "光冠が味方全体を強く統べる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 12, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "defense-up", "amount": 12, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nox-eclipse-armor",
+      "name": "冥蝕装",
+      "stages": [
+        {
+          "description": "開戦時、会心率を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 10, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "会心率と行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 12, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "味方全体の会心率を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "crit-up", "amount": 8, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vesper-depth-sovereignty",
+      "name": "深淵竜威",
+      "stages": [
+        {
+          "description": "敵全体の守備力を下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "defense-down",
+              "amount": 8,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            }
+          ]
+        },
+        {
+          "description": "敵全体の守備力と素早さを下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "defense-down",
+              "amount": 9,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "status", "statusId": "speed-down", "amount": 8, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "深淵の威圧で敵全体の守備力を大きく下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "defense-down",
+              "amount": 13,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "igna-blast-carapace",
+      "name": "爆鱗装",
+      "stages": [
+        {
+          "description": "開戦時、攻撃力を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 12, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "攻撃力上昇と盾を得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 14, "durationSeconds": 60, "target": "self" },
+            { "kind": "shield", "maxHpPercent": 10, "target": "self" }
+          ]
+        },
+        {
+          "description": "爆鱗の熱が味方全体の攻撃力を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "volca-cataclysm-aura",
+      "name": "劫火竜威",
+      "stages": [
+        {
+          "description": "味方全体の攻撃力を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "味方全体の攻撃力と会心率を上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 11, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "crit-up", "amount": 7, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "劫火の威光が味方全体を猛らせる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 15, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "radius-sacred-pressure",
+      "name": "戒光魔圧",
+      "stages": [
+        {
+          "description": "敵全体の賢さを下げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-down", "amount": 9, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "敵全体の賢さとMPを削る。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "mp", "amount": -1, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "戒光が敵全体の賢さを大きく下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "wisdom-down",
+              "amount": 14,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sephira-final-edict",
+      "name": "終審令",
+      "stages": [
+        {
+          "description": "味方全体の賢さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "味方全体の賢さを上げ、盾を配る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 11, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "shield", "maxHpPercent": 7, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "終審令が味方全体の賢さと守りを高める。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 14, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "shield", "maxHpPercent": 9, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "abyss-null-pressure",
+      "name": "無響魔圧",
+      "stages": [
+        {
+          "description": "敵全体のMPを削る。",
+          "battleStartEffects": [{ "kind": "mp", "amount": -1, "target": "all-enemies" }]
+        },
+        {
+          "description": "敵全体のMPと賢さを削る。",
+          "battleStartEffects": [
+            { "kind": "mp", "amount": -2, "target": "all-enemies" },
+            { "kind": "status", "statusId": "wisdom-down", "amount": 8, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "無響の圧力で敵全体のMPを大きく削る。",
+          "battleStartEffects": [{ "kind": "mp", "amount": -3, "target": "all-enemies" }]
+        }
+      ]
+    },
+    {
+      "id": "mephisto-twilight-throne",
+      "name": "宵王威",
+      "stages": [
+        {
+          "description": "敵全体の素早さを下げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-down", "amount": 9, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "敵全体を遅らせ、味方へ行動ゲージを配る。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "atb", "amount": 7, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "宵王の威圧で敵全体を大きく遅らせる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-down", "amount": 14, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flare-burning-covenant",
+      "name": "灼契",
+      "stages": [
+        {
+          "description": "開戦時、賢さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 12, "durationSeconds": 60, "target": "self" }
+          ]
+        },
+        {
+          "description": "賢さと行動ゲージを得る。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 14, "durationSeconds": 60, "target": "self" },
+            { "kind": "atb", "amount": 12, "target": "self" }
+          ]
+        },
+        {
+          "description": "灼契が味方全体の賢さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "belial-crimson-sovereignty",
+      "name": "紅蓮魔威",
+      "stages": [
+        {
+          "description": "味方全体の賢さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "wisdom-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "味方全体の攻撃力と賢さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 9, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "wisdom-up", "amount": 11, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "紅蓮魔威が味方全体の火力を高める。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-up", "amount": 12, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "wisdom-up", "amount": 13, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "luce-luminous-garden",
+      "name": "光庭域",
+      "stages": [
+        {
+          "description": "味方全体へ薄い盾を配る。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 7, "target": "all-allies" }]
+        },
+        {
+          "description": "味方全体へ盾と再生を配る。",
+          "battleStartEffects": [
+            { "kind": "shield", "maxHpPercent": 8, "target": "all-allies" },
+            { "kind": "status", "statusId": "regeneration", "amount": 2, "durationSeconds": 9, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "光庭が味方全体を厚く守る。",
+          "battleStartEffects": [{ "kind": "shield", "maxHpPercent": 11, "target": "all-allies" }]
+        }
+      ]
+    },
+    {
+      "id": "elysia-constellation-song",
+      "name": "星座歌",
+      "stages": [
+        {
+          "description": "味方全体へMPを配る。",
+          "battleStartEffects": [{ "kind": "mp", "amount": 2, "target": "all-allies" }]
+        },
+        {
+          "description": "味方全体へMPと再生を配る。",
+          "battleStartEffects": [
+            { "kind": "mp", "amount": 2, "target": "all-allies" },
+            { "kind": "status", "statusId": "regeneration", "amount": 2, "durationSeconds": 9, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "星座歌が味方全体のMPと命を満たす。",
+          "battleStartEffects": [
+            { "kind": "mp", "amount": 4, "target": "all-allies" },
+            { "kind": "status", "statusId": "regeneration", "amount": 3, "durationSeconds": 10, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "umbra-moon-garden",
+      "name": "月庭域",
+      "stages": [
+        {
+          "description": "敵全体の攻撃力を下げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "attack-down", "amount": 8, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "敵全体の攻撃力と素早さを下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 9,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "status", "statusId": "speed-down", "amount": 8, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "月庭が敵全体の攻撃力を大きく下げる。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "attack-down",
+              "amount": 13,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reverie-oneiric-song",
+      "name": "夢界歌",
+      "stages": [
+        {
+          "description": "敵全体の素早さを下げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-down", "amount": 9, "durationSeconds": 12, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "敵全体の素早さとMPを削る。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 10,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "mp", "amount": -1, "target": "all-enemies" }
+          ]
+        },
+        {
+          "description": "夢界歌が敵全体の行動を深く沈める。",
+          "battleStartEffects": [
+            {
+              "kind": "status",
+              "statusId": "speed-down",
+              "amount": 14,
+              "durationSeconds": 12,
+              "target": "all-enemies"
+            },
+            { "kind": "mp", "amount": -2, "target": "all-enemies" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ember-fire-domain",
+      "name": "火庭域",
+      "stages": [
+        {
+          "description": "味方全体へ行動ゲージを配る。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 8, "target": "all-allies" }]
+        },
+        {
+          "description": "味方全体へ行動ゲージと盾を配る。",
+          "battleStartEffects": [
+            { "kind": "atb", "amount": 10, "target": "all-allies" },
+            { "kind": "shield", "maxHpPercent": 6, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "火庭が味方全体の初動を大きく早める。",
+          "battleStartEffects": [{ "kind": "atb", "amount": 15, "target": "all-allies" }]
+        }
+      ]
+    },
+    {
+      "id": "salamanna-sun-worldsong",
+      "name": "日輪世界歌",
+      "stages": [
+        {
+          "description": "味方全体の素早さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 10, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "味方全体の素早さと賢さを上げる。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 11, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "wisdom-up", "amount": 9, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        },
+        {
+          "description": "日輪世界歌が味方全体の速度と知恵を満たす。",
+          "battleStartEffects": [
+            { "kind": "status", "statusId": "speed-up", "amount": 14, "durationSeconds": 60, "target": "all-allies" },
+            { "kind": "status", "statusId": "wisdom-up", "amount": 12, "durationSeconds": 60, "target": "all-allies" }
+          ]
+        }
+      ]
+    },
     {
       "id": "buried-treasury",
       "name": "埋蔵勘",
@@ -2778,49 +3654,454 @@
   ],
   "specialRecipes": [
     {
-      "id": "dawn-chimera",
-      "parentDefinitionIds": ["light-dragon-2", "dark-demon-2"],
-      "resultDefinitionId": "fire-spirit-3"
+      "id": "light-dragon-2-route-1",
+      "parentDefinitionIds": ["light-dragon-1", "light-dragon-1"],
+      "resultDefinitionId": "light-dragon-2"
     },
     {
-      "id": "night-oracle",
-      "parentDefinitionIds": ["dark-spirit-2", "light-demon-2"],
-      "resultDefinitionId": "dark-demon-3"
+      "id": "light-dragon-2-route-2",
+      "parentDefinitionIds": ["light-dragon-1", "dark-dragon-1"],
+      "resultDefinitionId": "light-dragon-2"
     },
     {
-      "id": "flare-guardian",
-      "parentDefinitionIds": ["fire-dragon-2", "light-spirit-2"],
+      "id": "light-dragon-2-route-3",
+      "parentDefinitionIds": ["light-dragon-1", "fire-dragon-1"],
+      "resultDefinitionId": "light-dragon-2"
+    },
+    {
+      "id": "light-dragon-2-route-4",
+      "parentDefinitionIds": ["light-dragon-1", "light-demon-1"],
+      "resultDefinitionId": "light-dragon-2"
+    },
+    {
+      "id": "light-dragon-3-route-1",
+      "parentDefinitionIds": ["light-dragon-2", "light-dragon-1"],
       "resultDefinitionId": "light-dragon-3"
     },
     {
-      "id": "void-hatch",
-      "parentDefinitionIds": ["light-demon-2", "fire-spirit-2"],
+      "id": "light-dragon-3-route-2",
+      "parentDefinitionIds": ["light-dragon-2", "light-demon-1"],
+      "resultDefinitionId": "light-dragon-3"
+    },
+    {
+      "id": "light-dragon-3-route-3",
+      "parentDefinitionIds": ["light-dragon-2", "light-spirit-1"],
+      "resultDefinitionId": "light-dragon-3"
+    },
+    {
+      "id": "light-dragon-4-route-1",
+      "parentDefinitionIds": ["light-dragon-3", "dark-dragon-2"],
+      "resultDefinitionId": "light-dragon-4"
+    },
+    {
+      "id": "light-dragon-4-route-2",
+      "parentDefinitionIds": ["light-dragon-3", "fire-demon-2"],
+      "resultDefinitionId": "light-dragon-4"
+    },
+    {
+      "id": "light-dragon-5-route-1",
+      "parentDefinitionIds": ["light-dragon-4", "dark-demon-3"],
+      "resultDefinitionId": "light-dragon-5"
+    },
+    {
+      "id": "dark-dragon-2-route-1",
+      "parentDefinitionIds": ["dark-dragon-1", "dark-dragon-1"],
+      "resultDefinitionId": "dark-dragon-2"
+    },
+    {
+      "id": "dark-dragon-2-route-2",
+      "parentDefinitionIds": ["dark-dragon-1", "fire-dragon-1"],
+      "resultDefinitionId": "dark-dragon-2"
+    },
+    {
+      "id": "dark-dragon-2-route-3",
+      "parentDefinitionIds": ["dark-dragon-1", "light-demon-1"],
+      "resultDefinitionId": "dark-dragon-2"
+    },
+    {
+      "id": "dark-dragon-2-route-4",
+      "parentDefinitionIds": ["dark-dragon-1", "dark-demon-1"],
+      "resultDefinitionId": "dark-dragon-2"
+    },
+    {
+      "id": "dark-dragon-3-route-1",
+      "parentDefinitionIds": ["dark-dragon-2", "dark-dragon-1"],
       "resultDefinitionId": "dark-dragon-3"
     },
     {
-      "id": "ash-crown",
-      "parentDefinitionIds": ["light-demon-2", "dark-spirit-2"],
+      "id": "dark-dragon-3-route-2",
+      "parentDefinitionIds": ["dark-dragon-2", "dark-demon-1"],
+      "resultDefinitionId": "dark-dragon-3"
+    },
+    {
+      "id": "dark-dragon-3-route-3",
+      "parentDefinitionIds": ["dark-dragon-2", "dark-spirit-1"],
+      "resultDefinitionId": "dark-dragon-3"
+    },
+    {
+      "id": "dark-dragon-4-route-1",
+      "parentDefinitionIds": ["dark-dragon-3", "fire-dragon-2"],
+      "resultDefinitionId": "dark-dragon-4"
+    },
+    {
+      "id": "dark-dragon-4-route-2",
+      "parentDefinitionIds": ["dark-dragon-3", "light-spirit-2"],
+      "resultDefinitionId": "dark-dragon-4"
+    },
+    {
+      "id": "dark-dragon-5-route-1",
+      "parentDefinitionIds": ["dark-dragon-4", "fire-demon-3"],
+      "resultDefinitionId": "dark-dragon-5"
+    },
+    {
+      "id": "fire-dragon-2-route-1",
+      "parentDefinitionIds": ["fire-dragon-1", "fire-dragon-1"],
+      "resultDefinitionId": "fire-dragon-2"
+    },
+    {
+      "id": "fire-dragon-2-route-2",
+      "parentDefinitionIds": ["fire-dragon-1", "light-demon-1"],
+      "resultDefinitionId": "fire-dragon-2"
+    },
+    {
+      "id": "fire-dragon-2-route-3",
+      "parentDefinitionIds": ["fire-dragon-1", "dark-demon-1"],
+      "resultDefinitionId": "fire-dragon-2"
+    },
+    {
+      "id": "fire-dragon-2-route-4",
+      "parentDefinitionIds": ["fire-dragon-1", "fire-demon-1"],
+      "resultDefinitionId": "fire-dragon-2"
+    },
+    {
+      "id": "fire-dragon-3-route-1",
+      "parentDefinitionIds": ["fire-dragon-2", "fire-dragon-1"],
       "resultDefinitionId": "fire-dragon-3"
     },
     {
-      "id": "lantern-pact",
-      "parentDefinitionIds": ["dark-dragon-2", "fire-spirit-2"],
+      "id": "fire-dragon-3-route-2",
+      "parentDefinitionIds": ["fire-dragon-2", "fire-demon-1"],
+      "resultDefinitionId": "fire-dragon-3"
+    },
+    {
+      "id": "fire-dragon-3-route-3",
+      "parentDefinitionIds": ["fire-dragon-2", "fire-spirit-1"],
+      "resultDefinitionId": "fire-dragon-3"
+    },
+    {
+      "id": "fire-dragon-4-route-1",
+      "parentDefinitionIds": ["fire-dragon-3", "light-demon-2"],
+      "resultDefinitionId": "fire-dragon-4"
+    },
+    {
+      "id": "fire-dragon-4-route-2",
+      "parentDefinitionIds": ["fire-dragon-3", "dark-spirit-2"],
+      "resultDefinitionId": "fire-dragon-4"
+    },
+    {
+      "id": "fire-dragon-5-route-1",
+      "parentDefinitionIds": ["fire-dragon-4", "light-spirit-3"],
+      "resultDefinitionId": "fire-dragon-5"
+    },
+    {
+      "id": "light-demon-2-route-1",
+      "parentDefinitionIds": ["light-demon-1", "light-demon-1"],
+      "resultDefinitionId": "light-demon-2"
+    },
+    {
+      "id": "light-demon-2-route-2",
+      "parentDefinitionIds": ["light-demon-1", "dark-demon-1"],
+      "resultDefinitionId": "light-demon-2"
+    },
+    {
+      "id": "light-demon-2-route-3",
+      "parentDefinitionIds": ["light-demon-1", "fire-demon-1"],
+      "resultDefinitionId": "light-demon-2"
+    },
+    {
+      "id": "light-demon-2-route-4",
+      "parentDefinitionIds": ["light-demon-1", "light-spirit-1"],
+      "resultDefinitionId": "light-demon-2"
+    },
+    {
+      "id": "light-demon-3-route-1",
+      "parentDefinitionIds": ["light-demon-2", "light-demon-1"],
       "resultDefinitionId": "light-demon-3"
     },
     {
-      "id": "cinder-contract",
-      "parentDefinitionIds": ["light-dragon-2", "dark-spirit-2"],
+      "id": "light-demon-3-route-2",
+      "parentDefinitionIds": ["light-demon-2", "light-spirit-1"],
+      "resultDefinitionId": "light-demon-3"
+    },
+    {
+      "id": "light-demon-3-route-3",
+      "parentDefinitionIds": ["light-demon-2", "light-dragon-1"],
+      "resultDefinitionId": "light-demon-3"
+    },
+    {
+      "id": "light-demon-4-route-1",
+      "parentDefinitionIds": ["light-demon-3", "dark-demon-2"],
+      "resultDefinitionId": "light-demon-4"
+    },
+    {
+      "id": "light-demon-4-route-2",
+      "parentDefinitionIds": ["light-demon-3", "fire-spirit-2"],
+      "resultDefinitionId": "light-demon-4"
+    },
+    {
+      "id": "light-demon-5-route-1",
+      "parentDefinitionIds": ["light-demon-4", "dark-spirit-3"],
+      "resultDefinitionId": "light-demon-5"
+    },
+    {
+      "id": "dark-demon-2-route-1",
+      "parentDefinitionIds": ["dark-demon-1", "dark-demon-1"],
+      "resultDefinitionId": "dark-demon-2"
+    },
+    {
+      "id": "dark-demon-2-route-2",
+      "parentDefinitionIds": ["dark-demon-1", "fire-demon-1"],
+      "resultDefinitionId": "dark-demon-2"
+    },
+    {
+      "id": "dark-demon-2-route-3",
+      "parentDefinitionIds": ["dark-demon-1", "light-spirit-1"],
+      "resultDefinitionId": "dark-demon-2"
+    },
+    {
+      "id": "dark-demon-2-route-4",
+      "parentDefinitionIds": ["dark-demon-1", "dark-spirit-1"],
+      "resultDefinitionId": "dark-demon-2"
+    },
+    {
+      "id": "dark-demon-3-route-1",
+      "parentDefinitionIds": ["dark-demon-2", "dark-demon-1"],
+      "resultDefinitionId": "dark-demon-3"
+    },
+    {
+      "id": "dark-demon-3-route-2",
+      "parentDefinitionIds": ["dark-demon-2", "dark-spirit-1"],
+      "resultDefinitionId": "dark-demon-3"
+    },
+    {
+      "id": "dark-demon-3-route-3",
+      "parentDefinitionIds": ["dark-demon-2", "dark-dragon-1"],
+      "resultDefinitionId": "dark-demon-3"
+    },
+    {
+      "id": "dark-demon-4-route-1",
+      "parentDefinitionIds": ["dark-demon-3", "fire-demon-2"],
+      "resultDefinitionId": "dark-demon-4"
+    },
+    {
+      "id": "dark-demon-4-route-2",
+      "parentDefinitionIds": ["dark-demon-3", "light-dragon-2"],
+      "resultDefinitionId": "dark-demon-4"
+    },
+    {
+      "id": "dark-demon-5-route-1",
+      "parentDefinitionIds": ["dark-demon-4", "fire-spirit-3"],
+      "resultDefinitionId": "dark-demon-5"
+    },
+    {
+      "id": "fire-demon-2-route-1",
+      "parentDefinitionIds": ["fire-demon-1", "fire-demon-1"],
+      "resultDefinitionId": "fire-demon-2"
+    },
+    {
+      "id": "fire-demon-2-route-2",
+      "parentDefinitionIds": ["fire-demon-1", "light-spirit-1"],
+      "resultDefinitionId": "fire-demon-2"
+    },
+    {
+      "id": "fire-demon-2-route-3",
+      "parentDefinitionIds": ["fire-demon-1", "dark-spirit-1"],
+      "resultDefinitionId": "fire-demon-2"
+    },
+    {
+      "id": "fire-demon-2-route-4",
+      "parentDefinitionIds": ["fire-demon-1", "fire-spirit-1"],
+      "resultDefinitionId": "fire-demon-2"
+    },
+    {
+      "id": "fire-demon-3-route-1",
+      "parentDefinitionIds": ["fire-demon-2", "fire-demon-1"],
       "resultDefinitionId": "fire-demon-3"
     },
     {
-      "id": "prism-grove",
-      "parentDefinitionIds": ["dark-dragon-2", "fire-demon-2"],
+      "id": "fire-demon-3-route-2",
+      "parentDefinitionIds": ["fire-demon-2", "fire-spirit-1"],
+      "resultDefinitionId": "fire-demon-3"
+    },
+    {
+      "id": "fire-demon-3-route-3",
+      "parentDefinitionIds": ["fire-demon-2", "fire-dragon-1"],
+      "resultDefinitionId": "fire-demon-3"
+    },
+    {
+      "id": "fire-demon-4-route-1",
+      "parentDefinitionIds": ["fire-demon-3", "light-spirit-2"],
+      "resultDefinitionId": "fire-demon-4"
+    },
+    {
+      "id": "fire-demon-4-route-2",
+      "parentDefinitionIds": ["fire-demon-3", "dark-dragon-2"],
+      "resultDefinitionId": "fire-demon-4"
+    },
+    {
+      "id": "fire-demon-5-route-1",
+      "parentDefinitionIds": ["fire-demon-4", "light-dragon-3"],
+      "resultDefinitionId": "fire-demon-5"
+    },
+    {
+      "id": "light-spirit-2-route-1",
+      "parentDefinitionIds": ["light-spirit-1", "light-spirit-1"],
+      "resultDefinitionId": "light-spirit-2"
+    },
+    {
+      "id": "light-spirit-2-route-2",
+      "parentDefinitionIds": ["light-spirit-1", "dark-spirit-1"],
+      "resultDefinitionId": "light-spirit-2"
+    },
+    {
+      "id": "light-spirit-2-route-3",
+      "parentDefinitionIds": ["light-spirit-1", "fire-spirit-1"],
+      "resultDefinitionId": "light-spirit-2"
+    },
+    {
+      "id": "light-spirit-2-route-4",
+      "parentDefinitionIds": ["light-spirit-1", "light-dragon-1"],
+      "resultDefinitionId": "light-spirit-2"
+    },
+    {
+      "id": "light-spirit-3-route-1",
+      "parentDefinitionIds": ["light-spirit-2", "light-spirit-1"],
       "resultDefinitionId": "light-spirit-3"
     },
     {
-      "id": "umbral-grove",
-      "parentDefinitionIds": ["light-dragon-2", "fire-demon-2"],
+      "id": "light-spirit-3-route-2",
+      "parentDefinitionIds": ["light-spirit-2", "light-dragon-1"],
+      "resultDefinitionId": "light-spirit-3"
+    },
+    {
+      "id": "light-spirit-3-route-3",
+      "parentDefinitionIds": ["light-spirit-2", "light-demon-1"],
+      "resultDefinitionId": "light-spirit-3"
+    },
+    {
+      "id": "light-spirit-4-route-1",
+      "parentDefinitionIds": ["light-spirit-3", "dark-spirit-2"],
+      "resultDefinitionId": "light-spirit-4"
+    },
+    {
+      "id": "light-spirit-4-route-2",
+      "parentDefinitionIds": ["light-spirit-3", "fire-dragon-2"],
+      "resultDefinitionId": "light-spirit-4"
+    },
+    {
+      "id": "light-spirit-5-route-1",
+      "parentDefinitionIds": ["light-spirit-4", "dark-dragon-3"],
+      "resultDefinitionId": "light-spirit-5"
+    },
+    {
+      "id": "dark-spirit-2-route-1",
+      "parentDefinitionIds": ["dark-spirit-1", "dark-spirit-1"],
+      "resultDefinitionId": "dark-spirit-2"
+    },
+    {
+      "id": "dark-spirit-2-route-2",
+      "parentDefinitionIds": ["dark-spirit-1", "fire-spirit-1"],
+      "resultDefinitionId": "dark-spirit-2"
+    },
+    {
+      "id": "dark-spirit-2-route-3",
+      "parentDefinitionIds": ["dark-spirit-1", "light-dragon-1"],
+      "resultDefinitionId": "dark-spirit-2"
+    },
+    {
+      "id": "dark-spirit-2-route-4",
+      "parentDefinitionIds": ["dark-spirit-1", "dark-dragon-1"],
+      "resultDefinitionId": "dark-spirit-2"
+    },
+    {
+      "id": "dark-spirit-3-route-1",
+      "parentDefinitionIds": ["dark-spirit-2", "dark-spirit-1"],
       "resultDefinitionId": "dark-spirit-3"
+    },
+    {
+      "id": "dark-spirit-3-route-2",
+      "parentDefinitionIds": ["dark-spirit-2", "dark-dragon-1"],
+      "resultDefinitionId": "dark-spirit-3"
+    },
+    {
+      "id": "dark-spirit-3-route-3",
+      "parentDefinitionIds": ["dark-spirit-2", "dark-demon-1"],
+      "resultDefinitionId": "dark-spirit-3"
+    },
+    {
+      "id": "dark-spirit-4-route-1",
+      "parentDefinitionIds": ["dark-spirit-3", "fire-spirit-2"],
+      "resultDefinitionId": "dark-spirit-4"
+    },
+    {
+      "id": "dark-spirit-4-route-2",
+      "parentDefinitionIds": ["dark-spirit-3", "light-demon-2"],
+      "resultDefinitionId": "dark-spirit-4"
+    },
+    {
+      "id": "dark-spirit-5-route-1",
+      "parentDefinitionIds": ["dark-spirit-4", "fire-dragon-3"],
+      "resultDefinitionId": "dark-spirit-5"
+    },
+    {
+      "id": "fire-spirit-2-route-1",
+      "parentDefinitionIds": ["fire-spirit-1", "fire-spirit-1"],
+      "resultDefinitionId": "fire-spirit-2"
+    },
+    {
+      "id": "fire-spirit-2-route-2",
+      "parentDefinitionIds": ["fire-spirit-1", "light-dragon-1"],
+      "resultDefinitionId": "fire-spirit-2"
+    },
+    {
+      "id": "fire-spirit-2-route-3",
+      "parentDefinitionIds": ["fire-spirit-1", "dark-dragon-1"],
+      "resultDefinitionId": "fire-spirit-2"
+    },
+    {
+      "id": "fire-spirit-2-route-4",
+      "parentDefinitionIds": ["fire-spirit-1", "fire-dragon-1"],
+      "resultDefinitionId": "fire-spirit-2"
+    },
+    {
+      "id": "fire-spirit-3-route-1",
+      "parentDefinitionIds": ["fire-spirit-2", "fire-spirit-1"],
+      "resultDefinitionId": "fire-spirit-3"
+    },
+    {
+      "id": "fire-spirit-3-route-2",
+      "parentDefinitionIds": ["fire-spirit-2", "fire-dragon-1"],
+      "resultDefinitionId": "fire-spirit-3"
+    },
+    {
+      "id": "fire-spirit-3-route-3",
+      "parentDefinitionIds": ["fire-spirit-2", "fire-demon-1"],
+      "resultDefinitionId": "fire-spirit-3"
+    },
+    {
+      "id": "fire-spirit-4-route-1",
+      "parentDefinitionIds": ["fire-spirit-3", "light-dragon-2"],
+      "resultDefinitionId": "fire-spirit-4"
+    },
+    {
+      "id": "fire-spirit-4-route-2",
+      "parentDefinitionIds": ["fire-spirit-3", "dark-demon-2"],
+      "resultDefinitionId": "fire-spirit-4"
+    },
+    {
+      "id": "fire-spirit-5-route-1",
+      "parentDefinitionIds": ["fire-spirit-4", "light-demon-3"],
+      "resultDefinitionId": "fire-spirit-5"
     }
   ],
   "events": [
@@ -2855,9 +4136,9 @@
     {
       "id": "star-observatory",
       "name": "星見の観測所",
-      "description": "このラン中、ショップの⭐2出現率が8ポイント上がる。",
+      "description": "このラン中、ショップの希少入荷率が8ポイント上がる。",
       "glyph": "星",
-      "effect": { "kind": "shop-luck", "amount": 0.08 }
+      "effect": { "kind": "rare-offer", "amount": 0.08 }
     },
     {
       "id": "merchant-pass",

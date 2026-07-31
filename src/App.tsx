@@ -24,6 +24,7 @@ import {
   skillCatalogEntries,
   skillHolderRelationsFor,
   specialRecipeRelationsFor,
+  specialRecipeSignalsForShopOffer,
   type EventCatalogEntry,
   type MonsterCatalogEntry,
   type SkillCatalogEntry,
@@ -903,7 +904,7 @@ function MonsterDetailCard({
         <section className="hatch-status detail-card">
           <span>HATCH STATUS</span>
           <h3>あと{Math.max(0, definition.hatch.afterHeldCycles - monster.cyclesHeld)}戦で孵化</h3>
-          <small>孵化先は最大 {starText(definition.hatch.maximumWhiteStars)}</small>
+          <small>{starText(definition.whiteStars)}の仲間へ孵化</small>
         </section>
       )}
       <section className="skill-list">
@@ -1872,10 +1873,12 @@ function TeamPanel({
 
 function ShopView({
   run,
+  discoveredMonsterIds,
   onCommand,
   onFreeze,
 }: {
   run: CasualRunState;
+  discoveredMonsterIds: ReadonlySet<string>;
   onCommand: (result: CommandResult<CasualRunState>, successMessage: string) => void;
   onFreeze: () => void;
 }) {
@@ -1892,9 +1895,9 @@ function ShopView({
         <div>
           <span className="section-index">MONSTER EXCHANGE</span>
           <h2>旅商人の棚</h2>
-          <small className="shop-luck-readout">
-            ⭐2 出現率 {Math.round((GAME_DATA.rules.shop.luckyUpgradeChance + run.shopLuckBonus) * 100)}% · 希少入荷
-            {Math.round(GAME_DATA.rules.shop.rareOfferChance * 100)}%
+          <small className="shop-stock-readout">
+            白星上昇は特殊配合のみ · 希少入荷{' '}
+            {Math.round((GAME_DATA.rules.shop.rareOfferChance + run.rareOfferBonus) * 100)}%
           </small>
         </div>
         <div className="shop-actions">
@@ -1919,16 +1922,33 @@ function ShopView({
               </div>
             );
           const definition = definitionById(GAME_DATA, offer.definitionId);
-          const eyebrow = offer.lucky
-            ? '星が多い'
-            : definition.shopAvailability === 'rare'
-              ? '珍しい旅仲間'
-              : attributeName(GAME_DATA, definition);
+          const signals = specialRecipeSignalsForShopOffer(
+            GAME_DATA,
+            definition.id,
+            run.roster.map((monster) => monster.definitionId),
+            run.shop?.monsters.flatMap((otherOffer, otherIndex) =>
+              otherOffer && otherIndex !== index ? [otherOffer.definitionId] : [],
+            ) ?? [],
+          );
+          const signal = signals[0];
+          const signalPartner = signal ? definitionById(GAME_DATA, signal.partnerDefinitionId) : undefined;
+          const signalResult = signal ? definitionById(GAME_DATA, signal.resultDefinitionId) : undefined;
+          const signalKnown = Boolean(
+            signalPartner &&
+              signalResult &&
+              discoveredMonsterIds.has(signalPartner.id) &&
+              discoveredMonsterIds.has(signalResult.id),
+          );
+          const eyebrow =
+            definition.shopAvailability === 'rare' ? '珍しい旅仲間' : attributeName(GAME_DATA, definition);
           return (
             <article
-              className="definition-card shop-offer-card"
+              className={`definition-card shop-offer-card${signal ? ' is-special-resonance' : ''}${
+                signal?.source === 'shelf' ? ' is-shelf-resonance' : ''
+              }`}
               style={monsterStyle(GAME_DATA, definition)}
               key={offer.id}
+              data-special-recipe-signal={signal ? signal.source : undefined}
             >
               <button
                 type="button"
@@ -1944,6 +1964,22 @@ function ShopView({
                   <small>{lineageName(GAME_DATA, definition)}</small>
                 </span>
               </button>
+              {signal && signalPartner && signalResult && (
+                <aside className="shop-recipe-signal" aria-label="白星が上がる特殊配合の予兆">
+                  <span>★ 配合予兆</span>
+                  <strong>
+                    {signalKnown
+                      ? `${signalPartner.name} → ${starText(signalResult.whiteStars)}`
+                      : signal.source === 'roster'
+                        ? '手持ちと未知反応'
+                        : '同じ棚に未知の対'}
+                  </strong>
+                  <small>
+                    {signal.source === 'roster' ? '迎えて1戦で配合' : '2体を迎えて1戦で配合'}
+                    {signals.length > 1 ? ` · ほか${signals.length - 1}` : ''}
+                  </small>
+                </aside>
+              )}
               <div className="monster-card-footer shop-card-footer">
                 <div className="shop-card-actions">
                   <button
@@ -2351,7 +2387,6 @@ function EggHatchRevealSequence({
   if (!hatch) return null;
   const eggDefinition = definitionById(GAME_DATA, hatch.eggDefinitionId);
   const resultDefinition = definitionById(GAME_DATA, hatch.resultDefinitionId);
-  const rankUp = hatch.toWhiteStars > hatch.fromWhiteStars;
   const finalHatch = index === hatches.length - 1;
   const continueReveal = () => {
     if (!finalHatch) {
@@ -2364,7 +2399,7 @@ function EggHatchRevealSequence({
   return (
     <dialog
       ref={dialogRef}
-      className={`hatch-reveal-dialog hatch-stage-${stage}${rankUp ? ' is-rank-up' : ''}`}
+      className={`hatch-reveal-dialog hatch-stage-${stage}`}
       onCancel={(event) => event.preventDefault()}
       aria-label={`${resultDefinition.name}の孵化 ${index + 1}/${hatches.length}`}
     >
@@ -2376,7 +2411,7 @@ function EggHatchRevealSequence({
               HATCH {String(index + 1).padStart(2, '0')} / {String(hatches.length).padStart(2, '0')}
             </strong>
           </div>
-          <b>{rankUp ? 'RANK SIGNAL DETECTED' : `${eggDefinition.name} / READY`}</b>
+          <b>{eggDefinition.name} / READY</b>
         </header>
         <div className="hatch-chamber" aria-live="polite">
           <div className="hatch-aura" aria-hidden="true">
@@ -2400,7 +2435,7 @@ function EggHatchRevealSequence({
             <div className="hatched-sigil">
               <MonsterSigil data={GAME_DATA} definition={resultDefinition} colorStars={0} size="large" />
             </div>
-            <span>{rankUp ? 'LUCKY RANK UP' : 'SHELL OPENED'}</span>
+            <span>SHELL OPENED</span>
             <h2>{resultDefinition.name}</h2>
             <strong>{starText(resultDefinition.whiteStars, 0)}</strong>
           </div>
@@ -2411,7 +2446,7 @@ function EggHatchRevealSequence({
             <strong>
               {'★'.repeat(hatch.fromWhiteStars)} <i>→</i> {'★'.repeat(hatch.toWhiteStars)}
             </strong>
-            <small>{rankUp ? '50%の昇格を引き当てました' : '卵と同じ白星で孵化しました'}</small>
+            <small>卵と同じ白星で孵化しました</small>
           </div>
           <button type="button" className="primary-button" disabled={stage < 3} onClick={continueReveal}>
             {finalHatch ? '旅へ戻る' : '次の卵を孵す'}
@@ -2609,7 +2644,7 @@ function BreedingView({
                           : parentIds.includes(monster.id)
                             ? '選択中'
                             : '選ぶ'
-                        : 'Lv.3必要'}
+                        : 'Lv.2必要'}
                     </b>
                   </button>
                 );
@@ -2632,7 +2667,7 @@ function BreedingView({
                 {candidates.length === 0 && (
                   <div className="loom-placeholder">
                     <span>?</span>
-                    <p>レベル3以上の親を2体選ぶと、系統×属性×実効星から候補を算出します。</p>
+                    <p>レベル2以上の親を2体選ぶと、系統×属性×低い方の白星から候補を算出します。</p>
                   </div>
                 )}
                 {candidates.map((entry) => {
@@ -2671,7 +2706,7 @@ function BreedingView({
                             ? '特殊配合'
                             : entry.kind === 'same-name'
                               ? '色星強化'
-                              : '位階配合'}
+                              : '通常配合'}
                       </span>
                     </div>
                   );
@@ -2685,7 +2720,7 @@ function BreedingView({
                       <b>
                         {starText(parentWhiteStars)} → {starText(previewDefinition.whiteStars)}
                       </b>
-                      <small>選んだ2体の実効星が、次の位階へ届いています</small>
+                      <small>この組み合わせだけが白星を上げる特殊配合です</small>
                     </div>
                   )}
                   <BreedingOutcome
@@ -4127,7 +4162,12 @@ function WorkshopScreen({
           }}
         />
         <section className="workbench panel">
-          <ShopView run={run} onCommand={onCommand} onFreeze={() => setRun(toggleShopFreeze(run))} />
+          <ShopView
+            run={run}
+            discoveredMonsterIds={discoveredMonsterIds}
+            onCommand={onCommand}
+            onFreeze={() => setRun(toggleShopFreeze(run))}
+          />
         </section>
       </div>
       <BreedingView
@@ -5515,7 +5555,7 @@ export function App() {
       if (
         saved?.mode === 'online' &&
         saved.contentVersion === GAME_DATA.rules.contentVersion &&
-        saved.schemaVersion === 4
+        saved.schemaVersion === 5
       ) {
         setRun(saved);
       } else {

@@ -35,7 +35,8 @@ const draftChoicesFor = (data: GameData, seed: number, round: number) => {
 };
 
 const nextShopSeed = (run: CasualRunState) => deriveSeed(run.seed, 1000 + run.commandIndex + run.cycle * 31);
-const shopChanceFor = (data: GameData, run: CasualRunState) => data.rules.shop.luckyUpgradeChance + run.shopLuckBonus;
+const rareOfferChanceFor = (data: GameData, run: CasualRunState) =>
+  data.rules.shop.rareOfferChance + run.rareOfferBonus;
 const commandUpdate = (run: CasualRunState, index: number, command: RunCommandPayload) => ({
   commandIndex: index,
   commandLog: [
@@ -52,7 +53,7 @@ const commandUpdate = (run: CasualRunState, index: number, command: RunCommandPa
 
 export function createCasualRun(data: GameData, seed: number): CasualRunState {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     mode: 'casual',
     contentVersion: data.rules.contentVersion,
     commandLogVersion: 1,
@@ -72,7 +73,7 @@ export function createCasualRun(data: GameData, seed: number): CasualRunState {
     draftRound: 1,
     draftChoices: draftChoicesFor(data, seed, 1),
     eventChoices: [],
-    shopLuckBonus: 0,
+    rareOfferBonus: 0,
     freeRerolls: 0,
   };
 }
@@ -113,7 +114,7 @@ export function chooseDraftMonster(data: GameData, run: CasualRunState, definiti
     phase: 'prepare' as const,
     coins: data.rules.initialCoins,
   };
-  return { ...prepared, shop: createShop(data, nextShopSeed(prepared), shopChanceFor(data, prepared)) };
+  return { ...prepared, shop: createShop(data, nextShopSeed(prepared), rareOfferChanceFor(data, prepared)) };
 }
 
 const failure = <T>(state: T, error: string): CommandResult<T> => ({ ok: false, state, error });
@@ -133,7 +134,7 @@ export function rerollShop(data: GameData, run: CasualRunState): CommandResult<C
   };
   return success({
     ...updated,
-    shop: createShop(data, nextShopSeed(updated), shopChanceFor(data, updated)),
+    shop: createShop(data, nextShopSeed(updated), rareOfferChanceFor(data, updated)),
   });
 }
 
@@ -578,11 +579,7 @@ const hatchMonster = (
   const hatchRule = eggDefinition.hatch;
   if (!hatchRule || egg.cyclesHeld < hatchRule.afterHeldCycles) return undefined;
   const random = createSeededRandom(egg.journeySeed);
-  const upgraded = random.next() < hatchRule.upgradeChance;
-  const targetWhiteStars = Math.min(
-    hatchRule.maximumWhiteStars,
-    eggDefinition.whiteStars + (upgraded ? 1 : 0),
-  ) as WhiteStars;
+  const targetWhiteStars = eggDefinition.whiteStars;
   const lineageGridIds = new Set(data.archetypes.map((archetype) => archetype.id));
   const candidates = data.monsters.filter(
     (monster) => lineageGridIds.has(monster.archetypeId) && monster.whiteStars === targetWhiteStars,
@@ -608,7 +605,7 @@ const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
   const commandIndex = run.commandIndex + 1;
   const retainedShop = run.shop?.frozen
     ? { ...run.shop, frozen: false }
-    : createShop(data, deriveSeed(run.seed, 1000 + commandIndex + (run.cycle + 1) * 31), shopChanceFor(data, run));
+    : createShop(data, deriveSeed(run.seed, 1000 + commandIndex + (run.cycle + 1) * 31), rareOfferChanceFor(data, run));
   const nextCycle = run.cycle + 1;
   const eventCycle = data.rules.eventCycles.includes(nextCycle);
   const eventChoices = eventCycle
@@ -737,14 +734,14 @@ export function chooseEvent(
         `${target ? definitionFor(data, target).name : '選んだ仲間'}が経験値を${amount}獲得した。`,
       );
     }
-    case 'shop-luck': {
-      const shopLuckBonus = Math.min(0.48, run.shopLuckBonus + event.effect.amount);
+    case 'rare-offer': {
+      const rareOfferBonus = Math.min(0.48, run.rareOfferBonus + event.effect.amount);
       const next = {
         ...run,
-        shopLuckBonus,
-        shop: run.shop ? createShop(data, run.shop.seed, data.rules.shop.luckyUpgradeChance + shopLuckBonus) : run.shop,
+        rareOfferBonus,
+        shop: run.shop ? createShop(data, run.shop.seed, data.rules.shop.rareOfferChance + rareOfferBonus) : run.shop,
       };
-      return finish(next, `このランの⭐2出現率が${Math.round(event.effect.amount * 100)}ポイント上昇した。`);
+      return finish(next, `このランの希少入荷率が${Math.round(event.effect.amount * 100)}ポイント上昇した。`);
     }
     case 'free-rerolls':
       return finish(

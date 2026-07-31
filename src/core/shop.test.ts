@@ -4,28 +4,28 @@ import { createShop } from './shop';
 
 describe('rare shop offers', () => {
   it('can place economy and experience monsters in the normal three-slot shop', () => {
-    const offerIds = createShop(GAME_DATA, 24).monsters.map((offer) => offer?.definitionId);
+    const offerIds = createShop(GAME_DATA, 8).monsters.map((offer) => offer?.definitionId);
 
     expect(offerIds).toContain('buried-mole-1');
     expect(offerIds).toContain('study-owl-1');
   });
 
-  it('stocks the rank-two egg directly in the rare shop pool', () => {
+  it('stocks both rank-one eggs in the rare shop pool without selling higher white stars', () => {
     const eggOnlyRare = structuredClone(GAME_DATA);
     for (const monster of eggOnlyRare.monsters) {
       if (monster.shopAvailability === 'rare') monster.shopAvailability = 'upgrade-only';
     }
-    const rankTwoEgg = eggOnlyRare.monsters.find((monster) => monster.id === 'mystery-egg-2');
-    if (!rankTwoEgg) throw new Error('Expected the rank-two egg definition');
-    rankTwoEgg.shopAvailability = 'rare';
+    const prismaticEgg = eggOnlyRare.monsters.find((monster) => monster.id === 'prismatic-egg-1');
+    if (!prismaticEgg) throw new Error('Expected the prismatic egg definition');
+    prismaticEgg.shopAvailability = 'rare';
     eggOnlyRare.rules.shop.rareOfferChance = 1;
 
-    const offers = createShop(eggOnlyRare, 1, 0).monsters.filter((offer): offer is NonNullable<typeof offer> =>
+    const offers = createShop(eggOnlyRare, 1, 1).monsters.filter((offer): offer is NonNullable<typeof offer> =>
       Boolean(offer),
     );
 
-    expect(GAME_DATA.monsters.find((monster) => monster.id === 'mystery-egg-2')?.shopAvailability).toBe('rare');
-    expect(offers.every((offer) => offer.definitionId === 'mystery-egg-2')).toBe(true);
+    expect(GAME_DATA.monsters.find((monster) => monster.id === 'prismatic-egg-1')?.whiteStars).toBe(1);
+    expect(offers.every((offer) => offer.definitionId === 'prismatic-egg-1')).toBe(true);
   });
 
   it('uses the configured rarity weights when stocking equipment', () => {

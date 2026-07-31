@@ -171,3 +171,45 @@ export function specialRecipeRelationsFor(data: GameData, definitionId: string):
     usedBy: data.specialRecipes.filter((recipe) => recipe.parentDefinitionIds.includes(definitionId)),
   };
 }
+
+export type ShopSpecialRecipeSignal = {
+  recipeId: string;
+  partnerDefinitionId: string;
+  resultDefinitionId: string;
+  source: 'roster' | 'shelf';
+};
+
+export function specialRecipeSignalsForShopOffer(
+  data: GameData,
+  offerDefinitionId: string,
+  rosterDefinitionIds: readonly string[],
+  shelfDefinitionIds: readonly string[],
+): ShopSpecialRecipeSignal[] {
+  const rosterIds = new Set(rosterDefinitionIds);
+  const shelfIds = new Set(shelfDefinitionIds);
+  const signals: ShopSpecialRecipeSignal[] = [];
+  for (const recipe of data.specialRecipes) {
+    const [left, right] = recipe.parentDefinitionIds;
+    let partnerDefinitionId: string | undefined;
+    if (left === offerDefinitionId) partnerDefinitionId = right;
+    else if (right === offerDefinitionId) partnerDefinitionId = left;
+    if (!partnerDefinitionId) continue;
+    const source = rosterIds.has(partnerDefinitionId)
+      ? ('roster' as const)
+      : shelfIds.has(partnerDefinitionId)
+        ? ('shelf' as const)
+        : undefined;
+    if (!source) continue;
+    signals.push({
+      recipeId: recipe.id,
+      partnerDefinitionId,
+      resultDefinitionId: recipe.resultDefinitionId,
+      source,
+    });
+  }
+  return signals.sort(
+    (left, right) =>
+      Number(right.source === 'roster') - Number(left.source === 'roster') ||
+      left.recipeId.localeCompare(right.recipeId),
+  );
+}

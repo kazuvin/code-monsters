@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { GAME_DATA, validateGameData } from './game-data';
 
 describe('DQM run game data', () => {
-  it('keeps the 27 MVP lineage-grid species and seven ordinary standalone species without a monster-kind category', () => {
+  it('keeps the 45 lineage-grid species and seven ordinary standalone species without a monster-kind category', () => {
     const lineageGridIds = new Set(GAME_DATA.archetypes.map((archetype) => archetype.id));
     const lineageGridMonsters = GAME_DATA.monsters.filter((monster) => lineageGridIds.has(monster.archetypeId));
 
-    expect(GAME_DATA.rules.maxWhiteStars).toBe(3);
-    expect(lineageGridMonsters).toHaveLength(27);
+    expect(GAME_DATA.rules.maxWhiteStars).toBe(5);
+    expect(lineageGridMonsters).toHaveLength(45);
     expect(GAME_DATA.standaloneMonsters).toHaveLength(7);
-    expect(new Set(GAME_DATA.monsters.map((monster) => monster.id)).size).toBe(34);
-    expect(new Set(GAME_DATA.monsters.map((monster) => monster.name)).size).toBe(34);
+    expect(new Set(GAME_DATA.monsters.map((monster) => monster.id)).size).toBe(52);
+    expect(new Set(GAME_DATA.monsters.map((monster) => monster.name)).size).toBe(52);
     expect(GAME_DATA.monsters.every((monster) => monster.whiteStars <= GAME_DATA.rules.maxWhiteStars)).toBe(true);
     expect(GAME_DATA.monsters.every((monster) => !('kind' in monster) && !('breedingMode' in monster))).toBe(true);
     expect(GAME_DATA.monsters.find((monster) => monster.id === 'slumbering-grove-1')?.roleTagIds).toContain(
@@ -153,10 +153,12 @@ describe('DQM run game data', () => {
     expect(GAME_DATA.equipment.every((equipment) => /\p{Extended_Pictographic}/u.test(equipment.icon))).toBe(true);
   });
 
-  it('rejects an invalid minimum breeding rank', () => {
+  it('rejects a special recipe that does not raise white stars', () => {
     const invalid = structuredClone(GAME_DATA);
-    invalid.rules.breeding.minimumResultWhiteStars = 0 as typeof invalid.rules.breeding.minimumResultWhiteStars;
+    const recipe = invalid.specialRecipes[0];
+    if (!recipe) throw new Error('Expected a special recipe');
+    recipe.resultDefinitionId = recipe.parentDefinitionIds[0];
 
-    expect(validateGameData(invalid)).toContain('breeding.minimumResultWhiteStars must be between 1 and maxWhiteStars');
+    expect(validateGameData(invalid)).toContain(`${recipe.id} must raise white stars above both parents`);
   });
 });

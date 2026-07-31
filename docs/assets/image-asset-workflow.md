@@ -239,7 +239,7 @@ cargo run -p pixel-cli -- sprite export-unity \
   --palette ../code-monsters/designs/ui-kit/code-monsters-ui.palette.json
 ```
 
-MVPの基本27種を独立した画風で作らない。系統はsilhouette、属性はpaletteとmotif、白星は形態の複雑さ、色星はUnity UIのbadge・overlayとして分担する。
+MVPの基本45種を独立した画風で作らない。系統はsilhouette、属性はpaletteとmotif、白星は形態の複雑さ、色星はUnity UIのbadge・overlayとして分担する。
 
 ### 10. Unityでコンポーネント化する
 
