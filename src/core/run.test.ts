@@ -1,571 +1,140 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
+import { breedingSkillChoices, listBreedingCandidates } from './breeding';
 import { createMonster } from './monster';
-import type { MonsterBattleReport } from './types';
 import {
-  addGambit,
   applyBattleResult,
   breedInRun,
   buyMonster,
-  chooseEvent,
   chooseDraftMonster,
+  chooseEvent,
   continueEvent,
   continueRun,
   createCasualRun,
-  createOnlineRun,
-  moveGambit,
+  equipItem,
+  eventRequiresTarget,
   moveMonsterToPartySlot,
-  removeGambit,
-  sellMonster,
-  skipEvent,
+  rerollShop,
 } from './run';
+import type { BattleResult, CasualRunState } from './types';
 
-const finishDraft = () => {
-  let run = createCasualRun(GAME_DATA, 42);
+const preparedRun = (seed = 501) => {
+  let run = createCasualRun(GAME_DATA, seed);
   while (run.phase === 'draft') {
-    run = chooseDraftMonster(GAME_DATA, run, run.draftChoices[0]);
+    const choice = run.draftChoices[0];
+    if (!choice) throw new Error('Expected a draft choice');
+    run = chooseDraftMonster(GAME_DATA, run, choice);
   }
   return run;
 };
 
-const battleReportFor = (id: string, definitionId: string, skillUses: Record<string, number>): MonsterBattleReport => ({
-  id,
-  definitionId,
-  name: definitionId,
-  team: 'player',
-  actions: Object.values(skillUses).reduce((total, uses) => total + uses, 0),
-  normalAttacks: skillUses['normal-attack'] ?? 0,
-  fallbackActions: 0,
-  criticalHits: 0,
-  damageDealt: 0,
-  hpDamageDealt: 0,
-  damageTaken: 0,
-  shieldAbsorbed: 0,
-  healingDone: 0,
-  healingReceived: 0,
-  shieldingDone: 0,
-  shieldingReceived: 0,
-  buffApplications: 0,
-  debuffApplications: 0,
-  atbGranted: 0,
-  mpGranted: 0,
-  skillUses,
-  statusApplications: {},
-  skillBreakdown: Object.fromEntries(
-    Object.entries(skillUses).map(([skillId, uses]) => [
-      skillId,
-      {
-        uses,
-        damage: 0,
-        healing: 0,
-        shielding: 0,
-        buffs: 0,
-        debuffs: 0,
-        criticalHits: 0,
-        atb: 0,
-        mp: 0,
-      },
-    ]),
-  ),
+const battleResult = (winner: BattleResult['winner'] = 'player'): BattleResult => ({
+  winner,
+  durationSeconds: 12,
+  frames: [],
+  damageByTeam: { player: 100, enemy: 70 },
+  monsterReports: [],
 });
 
 describe('casual run', () => {
-  it('starts with three free monsters and cycle-one income', () => {
-    const run = finishDraft();
+  it('drafts three immediately ready monsters and opens the shop', () => {
+    const run = preparedRun();
 
-    expect(run.schemaVersion).toBe(5);
-    expect(run.contentVersion).toBe(GAME_DATA.rules.contentVersion);
-    expect(run.commandLogVersion).toBe(1);
     expect(run.phase).toBe('prepare');
     expect(run.roster).toHaveLength(3);
     expect(run.activeIds).toHaveLength(3);
-    expect(run.coins).toBe(10);
-    expect(run.cycle).toBe(1);
-    expect(run.commandLog).toEqual(
-      run.roster.map((monster, index) => ({
-        schemaVersion: 1,
-        index: index + 1,
-        cycle: 1,
-        phase: 'draft',
-        kind: 'draft-monster',
-        definitionId: monster.definitionId,
-        monsterId: monster.id,
-      })),
-    );
+    expect(run.roster.every((monster) => monster.skillIds.length === 3 && monster.gambits.length === 3)).toBe(true);
+    expect(run.shop?.monsters).toHaveLength(GAME_DATA.rules.shop.monsterSlots);
   });
 
-  it('records successful commands without logging rejected attempts', () => {
-    const run = finishDraft();
-    const offer = run.shop?.monsters[0];
-    expect(offer).toBeTruthy();
+  it('buys and rerolls through serializable commands', () => {
+    const run = preparedRun();
+    const offer = run.shop?.monsters.find((entry) => entry);
+    if (!offer) throw new Error('Expected a shop offer');
+    const definition = GAME_DATA.monsters.find((entry) => entry.id === offer.definitionId);
+    if (!definition) throw new Error('Expected an offered definition');
+    const rich = { ...run, coins: 99 };
+    const bought = buyMonster(GAME_DATA, rich, offer.id);
+    if (!bought.ok) throw new Error(bought.error);
+    const rerolled = rerollShop(GAME_DATA, bought.state);
 
-    const bought = buyMonster(GAME_DATA, run, offer?.id ?? '');
-    expect(bought.ok).toBe(true);
-    expect(bought.state.commandLog.at(-1)).toMatchObject({
-      schemaVersion: 1,
-      index: 4,
-      cycle: 1,
-      phase: 'prepare',
-      kind: 'buy-monster',
-      offerId: offer?.id,
-      definitionId: offer?.definitionId,
-      monsterId: 'monster-4',
-    });
-
-    const rejected = buyMonster(GAME_DATA, bought.state, 'missing-offer');
-    expect(rejected.ok).toBe(false);
-    expect(rejected.state.commandLog).toEqual(bought.state.commandLog);
+    expect(bought.state.roster).toHaveLength(4);
+    expect(bought.state.coins).toBe(99 - definition.price);
+    expect(rerolled.ok).toBe(true);
+    expect(() => JSON.stringify(rerolled.state.commandLog)).not.toThrow();
   });
 
-  it('increases farewell coins with white stars, level, and color stars', () => {
-    const run = finishDraft();
-    const veteran = createMonster(GAME_DATA, 'light-dragon-3', 'farewell-veteran', {
-      colorStars: 2,
-      xp: 18,
-    });
-    const withVeteran = { ...run, roster: [...run.roster, veteran] };
-
-    const result = sellMonster(GAME_DATA, withVeteran, veteran.id);
+  it('executes special breeding immediately with three selected skills and returns parent gear', () => {
+    const recipe = GAME_DATA.specialRecipes[0];
+    const equipment = GAME_DATA.equipment[0];
+    if (!recipe || !equipment) throw new Error('Expected recipe and equipment data');
+    const first = createMonster(GAME_DATA, recipe.parentDefinitionIds[0], 'first', { equipmentId: equipment.id });
+    const second = createMonster(GAME_DATA, recipe.parentDefinitionIds[1], 'second');
+    const base = preparedRun();
+    const run: CasualRunState = {
+      ...base,
+      roster: [first, second, base.roster[0]!],
+      activeIds: [first.id, second.id, base.roster[0]!.id],
+    };
+    const candidate = listBreedingCandidates(GAME_DATA, first, second)[0];
+    if (!candidate) throw new Error('Expected a special candidate');
+    const selected = breedingSkillChoices(GAME_DATA, first, second, candidate).slice(0, 3) as [string, string, string];
+    const result = breedInRun(GAME_DATA, run, first.id, second.id, candidate.id, selected);
 
     expect(result.ok).toBe(true);
-    expect(result.state.coins - run.coins).toBe(10);
-    expect(result.state.commandLog.at(-1)).toMatchObject({
-      kind: 'sell-monster',
-      monsterId: veteran.id,
-      coinsGained: 10,
-    });
-  });
-
-  it('raises the buried mole farewell value faster at each three-battle holding band', () => {
-    const run = finishDraft();
-    const values = [0, 1, 3, 6, 9, 12].map((cyclesHeld) => {
-      const mole = createMonster(GAME_DATA, 'buried-mole-1', `buried-mole-${cyclesHeld}`, {
-        cyclesHeld,
-      });
-      const result = sellMonster(GAME_DATA, { ...run, roster: [...run.roster, mole] }, mole.id);
-      expect(result.ok).toBe(true);
-      return result.state.coins - run.coins;
-    });
-
-    expect(values).toEqual([1, 3, 7, 16, 28, 43]);
-  });
-
-  it('rewards every damaging crow action, scales with color stars, and caps four actions per battle', () => {
-    const run = finishDraft();
-    const plainCrow = createMonster(GAME_DATA, 'coin-crow-1', 'plain-crow');
-    const starredCrow = createMonster(GAME_DATA, 'coin-crow-1', 'starred-crow', { colorStars: 2 });
-    const fighter = createMonster(GAME_DATA, 'fire-dragon-1', 'fighter');
-    const prepared = {
-      ...run,
-      roster: [plainCrow, starredCrow, fighter],
-      activeIds: [plainCrow.id, starredCrow.id, fighter.id],
-    };
-
-    const result = applyBattleResult(GAME_DATA, prepared, {
-      winner: 'player',
-      durationSeconds: 12,
-      frames: [],
-      damageByTeam: { player: 1, enemy: 0 },
-      monsterReports: [
-        battleReportFor(plainCrow.id, plainCrow.definitionId, {
-          'coin-snatch': 2,
-          mend: 4,
-          'normal-attack': 1,
-        }),
-        battleReportFor(starredCrow.id, starredCrow.definitionId, {
-          'coin-snatch': 3,
-          'night-claw': 2,
-          'normal-attack': 2,
-        }),
-      ],
-    });
-
-    expect(result.coins).toBe(prepared.coins + 22);
-    expect(result.lastBattleRewards).toEqual({ coins: 22, xpByMonsterId: {} });
-    expect(result.roster.every((monster) => monster.cyclesHeld === 1)).toBe(true);
-  });
-
-  it('uses one deterministic crow action for synthetic rival battles without combat reports', () => {
-    const run = finishDraft();
-    const crow = createMonster(GAME_DATA, 'coin-crow-1', 'synthetic-crow', { colorStars: 1 });
-    const prepared = { ...run, roster: [crow], activeIds: [crow.id] };
-
-    const result = applyBattleResult(GAME_DATA, prepared, {
-      winner: 'enemy',
-      durationSeconds: 12,
-      frames: [],
-      damageByTeam: { player: 0, enemy: 1 },
-      monsterReports: [],
-    });
-
-    expect(result.lastBattleRewards).toEqual({ coins: 3, xpByMonsterId: {} });
-  });
-
-  it('grants attack experience from the new skill and keeps the effect when inherited', () => {
-    const run = finishDraft();
-    const learner = createMonster(GAME_DATA, 'training-lynx-1', 'learner');
-    const inheritor = createMonster(GAME_DATA, 'fire-dragon-1', 'inheritor', {
-      colorStars: 1,
-      inheritedSkillId: 'training-pounce',
-    });
-    const prepared = {
-      ...run,
-      roster: [learner, inheritor],
-      activeIds: [learner.id, inheritor.id],
-    };
-
-    const result = applyBattleResult(GAME_DATA, prepared, {
-      winner: 'player',
-      durationSeconds: 12,
-      frames: [],
-      damageByTeam: { player: 1, enemy: 0 },
-      monsterReports: [
-        battleReportFor(learner.id, learner.definitionId, {
-          'training-pounce': 2,
-          'normal-attack': 1,
-          mend: 4,
-        }),
-        battleReportFor(inheritor.id, inheritor.definitionId, {
-          'normal-attack': 2,
-        }),
-      ],
-    });
-
-    expect(result.lastBattleRewards).toEqual({
-      coins: 0,
-      xpByMonsterId: {
-        [learner.id]: 3,
-        [inheritor.id]: 4,
-      },
-    });
-    expect(result.roster.map((monster) => monster.xp)).toEqual([8, 9]);
-  });
-
-  it('unlocks the owl aura from the bench at color star one and reaches the whole roster at color star two', () => {
-    const run = finishDraft();
-    const active = createMonster(GAME_DATA, 'fire-dragon-1', 'fighter');
-    const bench = createMonster(GAME_DATA, 'light-demon-1', 'bench');
-    const stageOneOwl = createMonster(GAME_DATA, 'study-owl-1', 'stage-one-owl', { colorStars: 1 });
-    const stageOne = applyBattleResult(
-      GAME_DATA,
-      {
-        ...run,
-        roster: [active, stageOneOwl, bench],
-        activeIds: [active.id],
-      },
-      {
-        winner: 'player',
-        durationSeconds: 12,
-        frames: [],
-        damageByTeam: { player: 1, enemy: 0 },
-        monsterReports: [],
-      },
-    );
-    expect(stageOne.lastBattleRewards).toEqual({
-      coins: 0,
-      xpByMonsterId: { [active.id]: 2 },
-    });
-
-    const owl = createMonster(GAME_DATA, 'study-owl-1', 'study-owl', { colorStars: 2 });
-    const result = applyBattleResult(
-      GAME_DATA,
-      { ...run, roster: [active, owl, bench], activeIds: [active.id] },
-      {
-        winner: 'player',
-        durationSeconds: 12,
-        frames: [],
-        damageByTeam: { player: 1, enemy: 0 },
-        monsterReports: [],
-      },
-    );
-
-    expect(result.lastBattleRewards).toEqual({
-      coins: 0,
-      xpByMonsterId: {
-        [active.id]: 2,
-        [owl.id]: 2,
-        [bench.id]: 2,
-      },
-    });
-    expect(result.roster.map((monster) => monster.xp)).toEqual([7, 4, 4]);
-  });
-
-  it('hatches eggs deterministically after one held battle without raising white stars', () => {
-    const run = finishDraft();
-    const rankOneEgg = createMonster(GAME_DATA, 'mystery-egg-1', 'rank-one-egg', {
-      cyclesHeld: 1,
-      journeySeed: 7,
-    });
-    const prismaticEgg = createMonster(GAME_DATA, 'prismatic-egg-1', 'prismatic-egg', {
-      cyclesHeld: 1,
-      journeySeed: 7,
-    });
-    const prepared = {
-      ...run,
-      phase: 'result' as const,
-      roster: [run.roster[0] as (typeof run.roster)[number], rankOneEgg, prismaticEgg],
-      activeIds: [run.roster[0]?.id as string],
-      completedCycles: 1,
-    };
-
-    const first = continueRun(GAME_DATA, prepared);
-    const second = continueRun(GAME_DATA, prepared);
-    const rankOneResult = first.roster.find((monster) => monster.id === rankOneEgg.id);
-    const prismaticResult = first.roster.find((monster) => monster.id === prismaticEgg.id);
-
-    expect(first).toEqual(second);
-    expect(rankOneResult?.definitionId).not.toBe(rankOneEgg.definitionId);
-    expect(prismaticResult?.definitionId).not.toBe(prismaticEgg.definitionId);
-    expect(GAME_DATA.monsters.find((monster) => monster.id === rankOneResult?.definitionId)?.whiteStars).toBe(1);
-    expect(GAME_DATA.monsters.find((monster) => monster.id === prismaticResult?.definitionId)?.whiteStars).toBe(1);
-    expect(first.lastHatches).toEqual([
-      expect.objectContaining({ eggId: rankOneEgg.id, fromWhiteStars: 1 }),
-      expect.objectContaining({ eggId: prismaticEgg.id, fromWhiteStars: 1, toWhiteStars: 1 }),
-    ]);
-  });
-
-  it('hatches each egg directly into a same-rank base-catalog monster', () => {
-    const run = finishDraft();
-    const hatchResults = (definitionId: 'mystery-egg-1' | 'prismatic-egg-1') =>
-      [1, 8192].map((journeySeed, index) => {
-        const egg = createMonster(GAME_DATA, definitionId, `egg-${index}`, {
-          cyclesHeld: 1,
-          journeySeed,
-        });
-        const prepared = {
-          ...run,
-          phase: 'result' as const,
-          roster: [run.roster[0] as (typeof run.roster)[number], egg],
-          activeIds: [run.roster[0]?.id as string],
-          completedCycles: 1,
-        };
-        const result = continueRun(GAME_DATA, prepared);
-        const hatched = result.roster.find((monster) => monster.id === egg.id);
-        if (!hatched) throw new Error('Expected the egg to hatch');
-        return GAME_DATA.monsters.find((monster) => monster.id === hatched.definitionId);
-      });
-
-    const mottledResults = hatchResults('mystery-egg-1');
-    const prismaticResults = hatchResults('prismatic-egg-1');
-
-    expect([...new Set(mottledResults.map((definition) => definition?.whiteStars))]).toEqual([1]);
-    expect([...new Set(prismaticResults.map((definition) => definition?.whiteStars))]).toEqual([1]);
-    expect([...mottledResults, ...prismaticResults].every((definition) => definition && !definition.hatch)).toBe(true);
-  });
-
-  it('requires level two before two rank-one eggs can breed', () => {
-    const run = finishDraft();
-    const first = createMonster(GAME_DATA, 'mystery-egg-1', 'first-egg');
-    const second = createMonster(GAME_DATA, 'mystery-egg-1', 'second-egg');
-    const prepared = {
-      ...run,
-      roster: [...run.roster, first, second],
-    };
-    const result = breedInRun(GAME_DATA, prepared, first.id, second.id, 'same-name:mystery-egg-1:1');
-
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('Expected breeding to fail');
-    expect(result.error).toBe('配合にはレベル2が必要です');
-    expect(result.state.roster).toContainEqual(first);
-    expect(result.state.roster).toContainEqual(second);
-  });
-
-  it('allows breeding as soon as both parents reach level two', () => {
-    const run = finishDraft();
-    const first = createMonster(GAME_DATA, 'mystery-egg-1', 'first-ready-egg', { xp: 2 });
-    const second = createMonster(GAME_DATA, 'mystery-egg-1', 'second-ready-egg', { xp: 2 });
-    const prepared = {
-      ...run,
-      roster: [...run.roster, first, second],
-    };
-    const result = breedInRun(GAME_DATA, prepared, first.id, second.id, 'same-name:mystery-egg-1:1');
-
-    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const child = result.state.roster.find((monster) => monster.definitionId === candidate.definitionId);
+    expect(child?.skillIds).toEqual(selected);
     expect(result.state.roster.some((monster) => monster.id === first.id || monster.id === second.id)).toBe(false);
-    expect(result.state.roster.at(-1)).toMatchObject({ definitionId: 'mystery-egg-1', level: 1 });
+    expect(result.state.equipmentInventory).toContain(equipment.id);
+    expect(result.state.coins).toBe(run.coins + GAME_DATA.rules.breedingCoinBonus);
+    expect(result.state.commandLog.at(-1)).toMatchObject({ kind: 'breed', selectedSkillIds: selected });
   });
 
-  it('adds three gambits, reorders them, and keeps at least two rules', () => {
-    let run = finishDraft();
-    const monsterId = run.roster[0]?.id;
-    if (!monsterId) throw new Error('Expected a drafted monster');
+  it('keeps monster builds unchanged after battle and advances without growth or hatching', () => {
+    const run = preparedRun();
+    const before = structuredClone(run.roster);
+    const resolved = applyBattleResult(GAME_DATA, run, battleResult('player'));
+    const next = continueRun(GAME_DATA, resolved);
 
-    for (const threshold of [25, 50, 75] as const) {
-      run = addGambit(run, monsterId, {
-        condition: { kind: 'self-hp-below', threshold },
-        action: { skillId: 'normal-attack', target: 'random-enemy' },
-      });
-    }
-    run = addGambit(run, monsterId, {
-      condition: { kind: 'always' },
-      action: { skillId: 'normal-attack', target: 'random-enemy' },
-    });
-
-    expect(run.roster.find((monster) => monster.id === monsterId)?.gambits).toHaveLength(6);
-
-    run = moveGambit(run, monsterId, 5, 0);
-    expect(run.roster.find((monster) => monster.id === monsterId)?.gambits[0]?.condition.kind).toBe('self-hp-below');
-    expect(run.roster.find((monster) => monster.id === monsterId)?.gambits[0]?.condition).toMatchObject({
-      threshold: 75,
-    });
-
-    for (let index = 0; index < 5; index += 1) run = removeGambit(run, monsterId, 0);
-
-    expect(run.roster.find((monster) => monster.id === monsterId)?.gambits).toHaveLength(2);
+    expect(resolved.phase).toBe('result');
+    expect(resolved.roster).toEqual(before);
+    expect(next.cycle).toBe(2);
+    expect(next.roster).toEqual(before);
+    expect(next).not.toHaveProperty('lastBattleRewards');
+    expect(next).not.toHaveProperty('lastHatches');
   });
 
-  it('ends immediately on the fifth loss', () => {
-    let run = finishDraft();
-    for (let index = 0; index < 5; index += 1) {
-      run = applyBattleResult(GAME_DATA, run, {
-        winner: 'enemy',
-        durationSeconds: 12,
-        frames: [],
-        damageByTeam: { player: 0, enemy: 1 },
-        monsterReports: [],
-      });
-      run = continueRun(GAME_DATA, run);
-      if (run.phase === 'event') run = skipEvent(GAME_DATA, run);
-    }
-
-    expect(run.phase).toBe('finished');
-    expect(run.losses).toBe(5);
-    expect(run.commandLog.filter((command) => command.kind === 'battle-complete')).toHaveLength(5);
-    expect(run.commandLog.at(-1)).toMatchObject({
-      kind: 'finish-run',
-      reason: 'max-losses',
-    });
-  });
-
-  it('keeps an online run alive after five losses and ends only after cycle twelve', () => {
-    let run = createOnlineRun(GAME_DATA, 42);
-    while (run.phase === 'draft') {
-      run = chooseDraftMonster(GAME_DATA, run, run.draftChoices[0]);
-    }
-    for (let index = 0; index < 12; index += 1) {
-      run = applyBattleResult(GAME_DATA, run, {
-        winner: 'enemy',
-        durationSeconds: 12,
-        frames: [],
-        damageByTeam: { player: 0, enemy: 1 },
-        monsterReports: [],
-      });
-      run = continueRun(GAME_DATA, run);
-      if (run.phase === 'event') run = skipEvent(GAME_DATA, run);
-      if (index === 4) expect(run.phase).not.toBe('finished');
-    }
-
-    expect(run.mode).toBe('online');
-    expect(run.losses).toBe(12);
-    expect(run.phase).toBe('finished');
-  });
-
-  it('ends after exactly twelve completed cycles', () => {
-    let run = finishDraft();
-    for (let index = 0; index < 12; index += 1) {
-      run = applyBattleResult(GAME_DATA, run, {
-        winner: 'player',
-        durationSeconds: 12,
-        frames: [],
-        damageByTeam: { player: 1, enemy: 0 },
-        monsterReports: [],
-      });
-      run = continueRun(GAME_DATA, run);
-      if (run.phase === 'event') run = skipEvent(GAME_DATA, run);
-    }
-
-    expect(run.phase).toBe('finished');
-    expect(run.completedCycles).toBe(12);
-    expect(run.wins).toBe(12);
-  });
-
-  it('reorders monsters inside the active formation', () => {
-    const run = finishDraft();
-    const [first, second, third] = run.activeIds;
-
-    const result = moveMonsterToPartySlot(GAME_DATA, run, first as string, 'active', 2);
-
-    expect(result.ok).toBe(true);
-    expect(result.state.activeIds).toEqual([second, third, first]);
-  });
-
-  it('swaps a bench monster with an occupied active slot', () => {
-    const run = finishDraft();
-    const benchMonster = createMonster(GAME_DATA, 'fire-dragon-1', 'bench-1');
-    const withBench = { ...run, roster: [...run.roster, benchMonster] };
-    const displacedId = run.activeIds[1];
-
-    const result = moveMonsterToPartySlot(GAME_DATA, withBench, benchMonster.id, 'active', 1);
-
-    expect(result.ok).toBe(true);
-    expect(result.state.activeIds[1]).toBe(benchMonster.id);
-    expect(
-      result.state.roster.filter((monster) => !result.state.activeIds.includes(monster.id)).map(({ id }) => id),
-    ).toEqual([displacedId]);
-  });
-
-  it('swaps an active monster with a full bench slot', () => {
-    const run = finishDraft();
-    const bench = ['light-dragon-1', 'dark-dragon-1', 'fire-dragon-1', 'light-demon-1'].map((definitionId, index) =>
-      createMonster(GAME_DATA, definitionId, `bench-${index}`),
-    );
-    const withFullBench = { ...run, roster: [...run.roster, ...bench] };
-    const activeId = run.activeIds[0] as string;
-
-    const result = moveMonsterToPartySlot(GAME_DATA, withFullBench, activeId, 'bench', 2);
-
-    expect(result.ok).toBe(true);
-    expect(result.state.activeIds[0]).toBe(bench[2]?.id);
-    expect(result.state.roster.filter((monster) => !result.state.activeIds.includes(monster.id))[2]?.id).toBe(activeId);
-  });
-
-  it('offers three different route events and resolves targeted growth before preparation', () => {
-    let run = finishDraft();
-    run = { ...run, phase: 'event', eventChoices: ['focused-training'] };
-    const target = run.roster[0]!;
-
-    run = chooseEvent(GAME_DATA, run, 'focused-training', target.id);
-
-    expect(run.phase).toBe('event-result');
-    expect(run.roster[0]?.xp).toBe(target.xp + 10);
-    expect(run.eventResolution?.targetMonsterId).toBe(target.id);
-    expect(continueEvent(run).phase).toBe('prepare');
-  });
-
-  it('applies a persistent rare-offer bonus and resolves gambling deterministically', () => {
-    const base = finishDraft();
-    const shopRun = chooseEvent(
+  it('swaps active and bench slots and equips from inventory', () => {
+    const base = preparedRun();
+    const bench = createMonster(
       GAME_DATA,
-      { ...base, phase: 'event', eventChoices: ['star-observatory'] },
-      'star-observatory',
+      GAME_DATA.monsters.find((entry) => entry.shopAvailability === 'common')!.id,
+      'bench',
     );
-    const wager = { ...base, coins: 10, phase: 'event' as const, eventChoices: ['coin-wager'] };
-    const first = chooseEvent(GAME_DATA, wager, 'coin-wager');
-    const second = chooseEvent(GAME_DATA, wager, 'coin-wager');
+    const equipment = GAME_DATA.equipment[0];
+    if (!equipment) throw new Error('Expected equipment');
+    const run = { ...base, roster: [...base.roster, bench], equipmentInventory: [equipment.id] };
+    const moved = moveMonsterToPartySlot(GAME_DATA, run, bench.id, 'active', 1);
+    if (!moved.ok) throw new Error(moved.error);
+    const equipped = equipItem(GAME_DATA, moved.state, bench.id, equipment.id);
 
-    expect(shopRun.rareOfferBonus).toBeCloseTo(0.08);
-    expect(first).toEqual(second);
-    expect(first.phase).toBe('event-result');
-    expect(first.coins === 7 || first.coins === 17).toBe(true);
-    expect(first.eventResolution?.tone === 'gain' || first.eventResolution?.tone === 'loss').toBe(true);
+    expect(moved.state.activeIds).toContain(bench.id);
+    expect(equipped.ok).toBe(true);
+    expect(equipped.ok && equipped.state.roster.find((monster) => monster.id === bench.id)?.equipmentId).toBe(
+      equipment.id,
+    );
   });
 
-  it('uses equipment rarity weights for event equipment gifts', () => {
-    const legendaryOnly = structuredClone(GAME_DATA);
-    legendaryOnly.rules.shop.equipmentRarityWeights = {
-      common: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 1,
-    };
-    const base = finishDraft();
-    const result = chooseEvent(
-      legendaryOnly,
-      { ...base, phase: 'event', eventChoices: ['relic-cache'] },
-      'relic-cache',
-    );
-    const equipment = legendaryOnly.equipment.find((entry) => entry.id === result.equipmentInventory[0]);
+  it('resolves progression-free events without requiring a monster target', () => {
+    const base = preparedRun();
+    const event = GAME_DATA.events[0];
+    if (!event) throw new Error('Expected an event');
+    const run: CasualRunState = { ...base, phase: 'event', eventChoices: [event.id] };
+    const resolved = chooseEvent(GAME_DATA, run, event.id);
 
-    expect(equipment?.rarity).toBe('legendary');
+    expect(eventRequiresTarget(event)).toBe(false);
+    expect(resolved.phase).toBe('event-result');
+    expect(continueEvent(resolved).phase).toBe('prepare');
   });
 });

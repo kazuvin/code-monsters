@@ -1,148 +1,46 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
-import { breedMonsters, listBreedingCandidates } from './breeding';
-import { createMonster, permanentStatsFor } from './monster';
+import { breedingSkillChoices, breedMonsters, listBreedingCandidates } from './breeding';
+import { createMonster } from './monster';
 
-describe('breeding', () => {
-  it('keeps two base white-star-one parents at white-star one in generic candidates', () => {
-    const dragon = createMonster(GAME_DATA, 'light-dragon-1', 'dragon', { xp: 10 });
-    const demon = createMonster(GAME_DATA, 'fire-demon-1', 'demon', { xp: 10 });
+const recipeFixture = () => {
+  const recipe = GAME_DATA.specialRecipes[0];
+  if (!recipe) throw new Error('Expected at least one special recipe');
+  const first = createMonster(GAME_DATA, recipe.parentDefinitionIds[0], 'first');
+  const second = createMonster(GAME_DATA, recipe.parentDefinitionIds[1], 'second');
+  const candidate = listBreedingCandidates(GAME_DATA, first, second).find((entry) => entry.recipeId === recipe.id);
+  if (!candidate) throw new Error('Expected the authored special candidate');
+  return { recipe, first, second, candidate };
+};
 
-    const candidates = listBreedingCandidates(GAME_DATA, dragon, demon);
+describe('special breeding', () => {
+  it('offers only recipes authored for the exact unordered parent pair', () => {
+    const { recipe, first, second } = recipeFixture();
+    const forward = listBreedingCandidates(GAME_DATA, first, second);
+    const reverse = listBreedingCandidates(GAME_DATA, second, first);
 
-    expect(
-      candidates.filter((candidate) => candidate.kind === 'generic').map((candidate) => candidate.definitionId),
-    ).toEqual(expect.arrayContaining(['fire-dragon-1', 'light-demon-1']));
+    expect(forward).toEqual(reverse);
+    expect(forward).toContainEqual(expect.objectContaining({ id: `special:${recipe.id}`, kind: 'special' }));
+    expect(forward.every((candidate) => candidate.recipeId && candidate.kind === 'special')).toBe(true);
   });
 
-  it('offers both special rank promotion and color-star growth for matching white-star-one parents', () => {
-    const first = createMonster(GAME_DATA, 'light-dragon-1', 'first', { xp: 10 });
-    const second = createMonster(GAME_DATA, 'light-dragon-1', 'second', { xp: 10 });
+  it('builds the choice pool from both parents and the child native skills', () => {
+    const { first, second, candidate } = recipeFixture();
+    const child = GAME_DATA.monsters.find((entry) => entry.id === candidate.definitionId);
+    const choices = breedingSkillChoices(GAME_DATA, first, second, candidate);
 
-    const candidates = listBreedingCandidates(GAME_DATA, first, second);
-
-    expect(candidates).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'light-dragon-2', colorStars: 0, kind: 'special' }),
-        expect.objectContaining({ definitionId: 'light-dragon-1', colorStars: 1, kind: 'same-name' }),
-      ]),
-    );
+    expect(choices).toEqual(expect.arrayContaining([...first.skillIds, ...second.skillIds]));
+    expect(choices).toEqual(expect.arrayContaining([...(child?.intrinsicSkillIds ?? []), child?.defaultSkillId]));
+    expect(new Set(choices).size).toBe(choices.length);
   });
 
-  it('does not combine two rank-one eggs into a rank-two egg', () => {
-    const first = createMonster(GAME_DATA, 'mystery-egg-1', 'first-egg');
-    const second = createMonster(GAME_DATA, 'mystery-egg-1', 'second-egg');
+  it('consumes no progression state and gives the child exactly the chosen three skills', () => {
+    const { first, second, candidate } = recipeFixture();
+    const choices = breedingSkillChoices(GAME_DATA, first, second, candidate).slice(0, 3) as [string, string, string];
+    const child = breedMonsters(GAME_DATA, first, second, candidate, choices, 'child');
 
-    expect(listBreedingCandidates(GAME_DATA, first, second)).not.toContainEqual(
-      expect.objectContaining({ definitionId: 'mystery-egg-2' }),
-    );
-  });
-
-  it('keeps color-star and special white-star routes separate', () => {
-    const colored = createMonster(GAME_DATA, 'light-dragon-1', 'colored', {
-      colorStars: 1,
-      xp: 10,
-    });
-    const plain = createMonster(GAME_DATA, 'light-dragon-1', 'plain', { xp: 10 });
-
-    const candidates = listBreedingCandidates(GAME_DATA, colored, plain);
-
-    expect(candidates).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'light-dragon-1', colorStars: 2, kind: 'same-name' }),
-        expect.objectContaining({ definitionId: 'light-dragon-2', colorStars: 0, kind: 'special' }),
-      ]),
-    );
-  });
-
-  it('caps generic breeding results at the MVP maximum white stars', () => {
-    const first = createMonster(GAME_DATA, 'light-dragon-3', 'first', {
-      colorStars: 2,
-      xp: 10,
-    });
-    const second = createMonster(GAME_DATA, 'fire-demon-3', 'second', {
-      colorStars: 2,
-      xp: 10,
-    });
-
-    const candidates = listBreedingCandidates(GAME_DATA, first, second);
-
-    expect(candidates.length).toBeGreaterThan(0);
-    expect(
-      candidates.every((candidate) => {
-        const definition = GAME_DATA.monsters.find((monster) => monster.id === candidate.definitionId);
-        return definition && definition.whiteStars <= GAME_DATA.rules.maxWhiteStars;
-      }),
-    ).toBe(true);
-  });
-
-  it('lets every standalone monster use ordinary lineage and attribute breeding', () => {
-    const firstCrow = createMonster(GAME_DATA, 'coin-crow-1', 'crow-1', { xp: 4 });
-    const secondCrow = createMonster(GAME_DATA, 'coin-crow-1', 'crow-2', { xp: 4 });
-    const owl = createMonster(GAME_DATA, 'study-owl-1', 'owl', { xp: 4 });
-    const mole = createMonster(GAME_DATA, 'buried-mole-1', 'mole', { xp: 4 });
-    const fireDragon = createMonster(GAME_DATA, 'fire-dragon-1', 'dragon', { xp: 4 });
-    const egg = createMonster(GAME_DATA, 'mystery-egg-1', 'egg', { xp: 4 });
-
-    expect(listBreedingCandidates(GAME_DATA, firstCrow, secondCrow)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'coin-crow-1', colorStars: 1, kind: 'same-name' }),
-        expect.objectContaining({ definitionId: 'dark-demon-1', kind: 'generic' }),
-      ]),
-    );
-    expect(listBreedingCandidates(GAME_DATA, firstCrow, owl)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'dark-spirit-1', kind: 'generic' }),
-        expect.objectContaining({ definitionId: 'light-demon-1', kind: 'generic' }),
-      ]),
-    );
-    expect(listBreedingCandidates(GAME_DATA, mole, fireDragon)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'fire-spirit-1', kind: 'generic' }),
-        expect.objectContaining({ definitionId: 'dark-dragon-1', kind: 'generic' }),
-      ]),
-    );
-    expect(listBreedingCandidates(GAME_DATA, egg, firstCrow)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ definitionId: 'dark-spirit-1', kind: 'generic' }),
-        expect.objectContaining({ definitionId: 'light-demon-1', kind: 'generic' }),
-      ]),
-    );
-  });
-
-  it('inherits permanent stats at the color-star rate and only one selected skill', () => {
-    const first = createMonster(GAME_DATA, 'light-dragon-1', 'first', {
-      colorStars: 1,
-      inheritedStats: {
-        maxHp: 10,
-        maxMp: 2,
-        attack: 3,
-        defense: 1,
-        speed: 2,
-        wisdom: 0,
-        crit: 1,
-      },
-      inheritedSkillId: 'mend',
-      xp: 18,
-    });
-    const second = createMonster(GAME_DATA, 'fire-demon-1', 'second', { xp: 10 });
-    const candidate = listBreedingCandidates(GAME_DATA, first, second).find(
-      (entry) => entry.definitionId === 'fire-dragon-1' && entry.kind === 'generic',
-    );
-    if (!candidate) throw new Error('Expected generic breeding candidate');
-
-    const child = breedMonsters(GAME_DATA, first, second, candidate, 'mend', 'child');
-    const childDefinition = GAME_DATA.monsters.find((monster) => monster.id === candidate.definitionId);
-    if (!childDefinition) throw new Error('Expected child definition');
-    const firstStats = permanentStatsFor(GAME_DATA, first);
-    const secondStats = permanentStatsFor(GAME_DATA, second);
-
-    expect(child.inheritedSkillId).toBe('mend');
-    expect(child.level).toBe(1);
-    expect(child.xp).toBe(0);
-    expect(child.inheritedStats.attack).toBe(Math.floor(((firstStats.attack + secondStats.attack) / 2) * 0.3));
-    expect(permanentStatsFor(GAME_DATA, child).attack).toBe(
-      childDefinition.baseStats.attack + child.inheritedStats.attack,
-    );
+    expect(child.skillIds).toEqual(choices);
+    expect(Object.keys(child)).not.toEqual(expect.arrayContaining(['level', 'xp', 'colorStars', 'inheritedStats']));
+    expect(child.gambits.map((gambit) => gambit.action.skillId)).toEqual(choices);
   });
 });

@@ -22,14 +22,14 @@
 
 ## Game invariants
 
-- MVP validation content is exactly 45 grid species: 3 lineages × 3 attributes × white stars 1–5.
+- MVP validation content is exactly 45 grid species: 3 lineages × 3 attributes × 5 distinct species forms. Forms are not ranks.
 - Attributes have no damage, resistance, accuracy, or type-advantage rules.
 - A party has 3 active and up to 4 bench monsters.
 - A casual run lasts at most 12 cycles and ends early at 5 losses.
-- A monster owns exactly 3 skills: 2 intrinsic slots and 1 default/inherited slot. Normal attack is separate.
+- A monster owns exactly 3 selected skills. Shop and draft monsters start with their 3 native skills; a bred child selects 3 unique skills from both parents and its native set. Normal attack is separate.
 - A gambit starts with 3 ordered `condition -> action including target` rules, can be edited between 2 and 6 rules, and falls back to normal attack.
-- Breeding consumes both parents, starts the child at level 1, unequips parent gear, grants 1 coin, and may inherit one parent skill.
-- White and color stars remain separate in state. Only special breeding may raise white stars; color stars affect growth, traits, and inheritance without raising white stars.
+- Only authored special breeding exists. It consumes both parents, creates an immediately ready child, unequips parent gear, and grants 1 coin.
+- Traits are fixed to species and never inherited. Stars, levels, experience, stat growth, maturation, and hatching do not exist.
 - Battle is deterministic ATB with MP and environment-collapse damage beginning at 45 seconds.
 
 ## Test-driven development
@@ -44,7 +44,7 @@
 ## Product and presentation
 
 - Use short verbs and direct manipulation. Prefer visible state over tutorial modals.
-- Keep lineage, attribute, white stars, color stars, level, equipment, and active/bench position visible where decisions are made.
+- Keep lineage, attribute, fixed trait, selected skills, equipment, and active/bench position visible where decisions are made.
 - Treat attribute colors as taxonomy and visual identity, never as a hidden combat advantage.
 - Keep the current field-journal visual language: hard-edged panels, restrained motion, plum/ivory/coral/mint/gold palette, and two-axis monster sigils.
 - Prefer CSS and data already in `game.json`. Do not duplicate gameplay data in presentation code.

@@ -27,6 +27,807 @@
   --pixel-shadow: 4px 5px 0 var(--void-deep);
 }
 
+/* Synergy-first field journal */
+.synergy-shell {
+  width: min(1480px, 100%);
+  height: 100dvh;
+  margin: 0 auto;
+  overflow: auto;
+  padding: 22px clamp(16px, 3vw, 42px) 112px;
+  color: var(--paper);
+  background:
+    linear-gradient(90deg, transparent 0 49.8%, rgba(236, 205, 157, 0.08) 50%, transparent 50.2%),
+    linear-gradient(145deg, rgba(74, 48, 40, 0.96), rgba(35, 22, 19, 0.98));
+}
+
+.synergy-shell button,
+.synergy-shell select {
+  border: 2px solid var(--line);
+  border-radius: 0;
+  color: var(--paper);
+  background: var(--deck);
+}
+
+.synergy-shell button {
+  min-height: 40px;
+  padding: 8px 13px;
+  cursor: pointer;
+}
+
+.synergy-shell button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.synergy-primary {
+  border-color: var(--gold) !important;
+  color: var(--ink) !important;
+  background: var(--gold) !important;
+  box-shadow: 3px 3px 0 var(--void-deep);
+  font-weight: 800;
+}
+
+.synergy-title {
+  max-width: 760px;
+  margin: 7vh auto 32px;
+  text-align: center;
+}
+
+.synergy-title small,
+.synergy-result > small,
+.synergy-breeding-dialog > small {
+  color: var(--mint);
+  letter-spacing: 0.16em;
+}
+
+.synergy-title h1,
+.synergy-result h1 {
+  margin: 8px 0;
+  color: var(--parchment-high);
+  font-size: clamp(2.5rem, 7vw, 5.8rem);
+  line-height: 0.95;
+  text-shadow: 5px 5px 0 var(--void-deep);
+}
+
+.synergy-title p,
+.synergy-result > p {
+  color: var(--muted);
+  font-size: 1.04rem;
+  line-height: 1.8;
+}
+
+.synergy-draft-grid,
+.synergy-card-grid,
+.synergy-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.synergy-monster-card {
+  position: relative;
+  min-width: 0;
+  border: 2px solid var(--line);
+  background: linear-gradient(150deg, var(--panel-high), var(--deck));
+  box-shadow: var(--pixel-shadow);
+}
+
+.synergy-monster-card > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.synergy-monster-card > header > span:not(.synergy-sigil) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.synergy-monster-card header strong {
+  overflow-wrap: anywhere;
+  color: var(--parchment-high);
+  font-size: 1.15rem;
+}
+
+.synergy-monster-card header small {
+  color: var(--muted);
+}
+
+.synergy-monster-card header em {
+  margin-left: auto;
+  padding: 3px 6px;
+  color: var(--gold);
+  font-size: 0.7rem;
+  font-style: normal;
+  border: 1px solid currentColor;
+}
+
+.synergy-sigil {
+  --sigil-color: var(--pink);
+  position: relative;
+  display: grid;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  color: var(--paper);
+  border: 3px solid var(--sigil-color);
+  background: var(--void-deep);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--sigil-color) 25%, transparent);
+}
+
+.synergy-sigil > span {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.synergy-sigil > small {
+  position: absolute;
+  right: -5px;
+  bottom: -7px;
+  padding: 0 3px;
+  color: var(--ink);
+  background: var(--sigil-color);
+}
+
+.synergy-trait {
+  min-height: 122px;
+  margin: 12px;
+  padding: 10px;
+  color: var(--ink);
+  border-left: 6px solid var(--pink);
+  background: var(--parchment);
+}
+
+.synergy-trait.compact {
+  min-height: 106px;
+}
+
+.synergy-trait small,
+.synergy-trait b {
+  display: block;
+}
+
+.synergy-trait small {
+  color: var(--pink-deep);
+}
+
+.synergy-trait p {
+  margin: 5px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.synergy-skill-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+
+.synergy-skill-chip {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  background: var(--void-deep);
+}
+
+.synergy-skill-chip small {
+  color: var(--mint);
+}
+
+.synergy-skill-chip b {
+  overflow-wrap: anywhere;
+  font-size: 0.76rem;
+}
+
+.synergy-skill-chip span {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.synergy-monster-card > .synergy-primary {
+  width: calc(100% - 24px);
+  margin: 0 12px 12px;
+}
+
+.synergy-monster-card > footer {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+
+.synergy-monster-card > footer button {
+  flex: 1;
+}
+
+.synergy-monster-card.instance.is-active {
+  border-color: var(--mint);
+}
+
+.synergy-equip-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 12px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.synergy-equip-select select {
+  min-width: 0;
+  flex: 1;
+  padding: 6px;
+}
+
+.synergy-run-header {
+  position: sticky;
+  z-index: 20;
+  top: -22px;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  margin: -22px 0 18px;
+  padding-top: 22px;
+  border-bottom: 3px solid var(--line);
+  background: rgba(21, 12, 10, 0.96);
+}
+
+.synergy-run-header > span {
+  display: grid;
+  min-width: 108px;
+  padding: 8px 12px;
+  border-right: 1px solid var(--line-soft);
+}
+
+.synergy-run-header small {
+  color: var(--mint);
+}
+
+.synergy-run-header button {
+  margin-left: auto;
+  border: 0;
+}
+
+.synergy-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.synergy-tabs button.is-active {
+  color: var(--ink);
+  border-color: var(--mint);
+  background: var(--mint);
+}
+
+.synergy-workspace {
+  min-height: 70vh;
+}
+
+.synergy-section-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0 14px;
+}
+
+.synergy-section-title > span {
+  display: grid;
+  width: 54px;
+  height: 42px;
+  place-items: center;
+  color: var(--ink);
+  background: var(--gold);
+}
+
+.synergy-section-title h2,
+.synergy-section-title p {
+  margin: 0;
+}
+
+.synergy-section-title p {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.synergy-two-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 22px;
+}
+
+.synergy-card-grid.active-grid,
+.synergy-card-grid.bench-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.synergy-board {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+  padding: 16px;
+  color: var(--ink);
+  border: 4px double var(--timber);
+  background: var(--parchment);
+  box-shadow: var(--pixel-shadow);
+}
+
+.synergy-board h2 {
+  margin: 3px 0 14px;
+}
+
+.synergy-board > div > small {
+  color: var(--pink-deep);
+}
+
+.synergy-board > p {
+  margin-bottom: 0;
+  color: #6b4a3c;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.synergy-coverage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.synergy-coverage span {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px;
+  border: 1px solid var(--timber);
+}
+
+.synergy-coverage .is-covered {
+  background: rgba(59, 161, 154, 0.25);
+}
+
+.synergy-coverage .is-gap {
+  color: #8b6655;
+  border-style: dashed;
+}
+
+.synergy-empty {
+  padding: 22px;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+}
+
+.synergy-shop-actions,
+.synergy-equipment-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.synergy-shop-signal {
+  position: relative;
+  padding: 5px;
+  border: 2px solid var(--gold);
+  background: rgba(221, 169, 58, 0.14);
+  animation: synergy-signal 1.7s steps(2, end) infinite;
+}
+
+@keyframes synergy-signal {
+  50% {
+    box-shadow: 0 0 0 5px rgba(221, 169, 58, 0.17);
+  }
+}
+
+.synergy-signal-label {
+  padding: 6px 8px;
+  color: var(--gold);
+  font-size: 0.72rem;
+}
+
+.synergy-sold {
+  display: grid;
+  min-height: 250px;
+  place-items: center;
+  color: var(--line);
+  border: 2px dashed var(--line-soft);
+}
+
+.synergy-equipment-row > button {
+  display: grid;
+  width: min(240px, 100%);
+  gap: 3px;
+  text-align: left;
+}
+
+.synergy-equipment-row small {
+  color: var(--muted);
+}
+
+.synergy-equipment-row em {
+  color: var(--gold);
+  font-style: normal;
+}
+
+.synergy-ready-recipes {
+  padding: 14px;
+  border: 2px solid var(--mint);
+  background: rgba(59, 161, 154, 0.1);
+}
+
+.synergy-ready-recipes h3 {
+  margin-top: 0;
+}
+
+.synergy-ready-recipes > button {
+  display: inline-grid;
+  gap: 3px;
+  margin: 0 7px 7px 0;
+  text-align: left;
+}
+
+.synergy-ready-recipes button b,
+.synergy-ready-recipes button small {
+  color: var(--mint);
+}
+
+.synergy-recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.synergy-recipe-grid > article {
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--deck);
+}
+
+.synergy-recipe-grid > article.is-ready {
+  border: 2px solid var(--gold);
+}
+
+.synergy-recipe-grid header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.synergy-recipe-grid header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.synergy-recipe-grid header em {
+  color: var(--mint);
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+.synergy-recipe-grid p {
+  display: grid;
+  grid-template-columns: 1fr 18px 1fr;
+  margin: 8px 0 0;
+  padding: 7px;
+  color: var(--muted);
+  border: 1px dashed var(--line-soft);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.synergy-recipe-grid p.is-ready {
+  color: var(--ink);
+  background: var(--gold);
+}
+
+.synergy-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  overflow: auto;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 8, 7, 0.88);
+}
+
+.synergy-breeding-dialog {
+  position: relative;
+  width: min(980px, 100%);
+  padding: clamp(18px, 4vw, 36px);
+  border: 4px double var(--gold);
+  background: var(--deck);
+  box-shadow: 8px 9px 0 var(--void-deep);
+}
+
+.synergy-breeding-dialog h2 {
+  margin: 5px 0 14px;
+}
+
+.synergy-breeding-dialog > small {
+  display: block;
+  padding-right: 86px;
+}
+
+.synergy-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.synergy-child-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px;
+  color: var(--ink);
+  background: var(--parchment);
+}
+
+.synergy-child-preview h3,
+.synergy-child-preview p {
+  margin: 2px 0;
+}
+
+.synergy-gene-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.synergy-gene-slots > span {
+  display: grid;
+  min-height: 66px;
+  place-content: center;
+  color: var(--line);
+  border: 2px dashed var(--line);
+  text-align: center;
+}
+
+.synergy-gene-slots > span.is-filled {
+  color: var(--ink);
+  border-style: solid;
+  border-color: var(--mint);
+  background: var(--mint);
+}
+
+.synergy-instruction {
+  color: var(--muted);
+}
+
+.synergy-skill-pool {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.synergy-skill-pool > button {
+  text-align: left;
+}
+
+.synergy-skill-pool > button.is-selected {
+  border-color: var(--mint);
+  background: rgba(59, 161, 154, 0.18);
+}
+
+.synergy-skill-pool .synergy-skill-chip {
+  border: 0;
+  background: transparent;
+}
+
+.synergy-skill-pool p {
+  margin: 5px 7px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.synergy-breed-submit {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.synergy-monster-select {
+  min-width: 260px;
+  padding: 9px;
+}
+
+.synergy-gambits {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0;
+}
+
+.synergy-gambits article {
+  display: grid;
+  grid-template-columns: 76px 1.2fr auto 1fr 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  background: var(--deck);
+}
+
+.synergy-gambits select {
+  min-width: 0;
+  padding: 7px;
+}
+
+.synergy-guide-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.synergy-event-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.synergy-event-grid button {
+  min-height: 220px;
+  padding: 20px;
+  text-align: left;
+}
+
+.synergy-event-grid button > span {
+  display: block;
+  font-size: 2rem;
+}
+
+.synergy-message {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  color: var(--paper);
+  border-left: 5px solid var(--danger);
+  background: var(--pink-deep);
+}
+
+.synergy-battle-dock {
+  position: fixed;
+  z-index: 40;
+  right: max(16px, calc((100vw - 1480px) / 2 + 42px));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px;
+  border: 2px solid var(--gold);
+  background: var(--void-deep);
+  box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.55);
+}
+
+.synergy-battle-dock > span {
+  display: grid;
+}
+
+.synergy-battle-dock small {
+  color: var(--mint);
+}
+
+.synergy-result {
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.synergy-result .synergy-run-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+}
+
+.synergy-damage {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.synergy-damage span {
+  display: grid;
+  min-width: 150px;
+  padding: 12px;
+  border: 1px solid var(--line);
+}
+
+.synergy-damage b {
+  font-size: 1.7rem;
+}
+
+@media (max-width: 980px) {
+  .synergy-draft-grid,
+  .synergy-card-grid,
+  .synergy-guide-grid,
+  .synergy-recipe-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .synergy-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .synergy-board {
+    position: static;
+    order: -1;
+  }
+
+  .synergy-gambits article {
+    grid-template-columns: 62px 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .synergy-shell {
+    padding: 12px 10px 100px;
+  }
+
+  .synergy-title {
+    margin-top: 20px;
+  }
+
+  .synergy-draft-grid,
+  .synergy-card-grid,
+  .synergy-guide-grid,
+  .synergy-recipe-grid,
+  .synergy-event-grid,
+  .synergy-skill-pool {
+    grid-template-columns: 1fr;
+  }
+
+  .synergy-card-grid.active-grid,
+  .synergy-card-grid.bench-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .synergy-run-header {
+    top: -12px;
+    margin: -12px -10px 12px;
+    padding-top: 12px;
+  }
+
+  .synergy-run-header > span {
+    min-width: 0;
+    flex: 1;
+    padding: 6px;
+    font-size: 0.72rem;
+  }
+
+  .synergy-run-header button {
+    display: none;
+  }
+
+  .synergy-tabs {
+    overflow-x: auto;
+    grid-template-columns: repeat(5, minmax(92px, 1fr));
+  }
+
+  .synergy-gene-slots {
+    gap: 4px;
+  }
+
+  .synergy-gene-slots > span {
+    min-width: 0;
+    padding: 4px;
+    font-size: 0.68rem;
+  }
+
+  .synergy-battle-dock {
+    right: 10px;
+    bottom: 8px;
+    left: 10px;
+    justify-content: space-between;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

@@ -3,12 +3,8 @@ import { GAME_DATA } from '../game/game-data';
 import { simulateBattle } from './battle';
 import { createMonster } from './monster';
 
-const team = (prefix: string, definitions: string[], xp = 18) =>
-  definitions.map((definitionId, index) =>
-    createMonster(GAME_DATA, definitionId, `${prefix}-${index}`, {
-      xp,
-    }),
-  );
+const team = (prefix: string, definitions: string[], _legacy = 0) =>
+  definitions.map((definitionId, index) => createMonster(GAME_DATA, definitionId, `${prefix}-${index}`));
 
 describe('deterministic 3v3 battle', () => {
   it('replays the same battle exactly from the same seed and inputs', () => {
@@ -145,7 +141,7 @@ describe('deterministic 3v3 battle', () => {
       monster.baseStats.speed = speeds[index] as number;
       const trait = startData.traits.find((entry) => entry.id === monster.traitId);
       if (!trait) throw new Error(`Expected ${monster.traitId}`);
-      trait.stages[0].battleStartEffects = [{ kind: 'shield', maxHpPercent: 5, target: 'self' }];
+      trait.battleStartEffects = [{ kind: 'shield', maxHpPercent: 5, target: 'self' }];
     }
     const result = simulateBattle(startData, {
       player: team('p', playerIds, 0).map((monster) => ({ ...monster, equipmentId: 'opening-drum' })),
@@ -230,7 +226,7 @@ describe('deterministic 3v3 battle', () => {
       { kind: 'shield-burst', power: 160, target: 'action-target' },
       { kind: 'recoil', maxHpPercent: 10, target: 'self' },
     ] as typeof haloBite.effects;
-    trait.stages[0].battleStartEffects = [{ kind: 'shield', maxHpPercent: 30, target: 'self' }];
+    trait.battleStartEffects = [{ kind: 'shield', maxHpPercent: 30, target: 'self' }];
     haku.baseStats.speed = 200;
     const caster = createMonster(peakData, haku.id, 'peak-caster', {
       gambits: [

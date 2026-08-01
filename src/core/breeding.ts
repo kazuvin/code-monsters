@@ -1,91 +1,32 @@
-import { createMonster, definitionFor, permanentStatsFor, skillIdsFor } from './monster';
-import type { BreedingCandidate, ColorStars, GameData, MonsterInstance, StatBlock, StatId, WhiteStars } from './types';
+import { createMonster, skillIdsFor } from './monster';
+import type { BreedingCandidate, GameData, MonsterInstance } from './types';
 
-const STAT_IDS: StatId[] = ['maxHp', 'maxMp', 'attack', 'defense', 'speed', 'wisdom', 'crit'];
-
-const candidateId = (kind: BreedingCandidate['kind'], definitionId: string, colorStars: ColorStars) =>
-  `${kind}:${definitionId}:${colorStars}`;
-
-const pushUnique = (candidates: BreedingCandidate[], candidate: BreedingCandidate) => {
-  if (!candidates.some((entry) => entry.id === candidate.id)) candidates.push(candidate);
-};
+const matchesRecipe = (firstDefinitionId: string, secondDefinitionId: string, parents: readonly string[]) =>
+  (firstDefinitionId === parents[0] && secondDefinitionId === parents[1]) ||
+  (firstDefinitionId === parents[1] && secondDefinitionId === parents[0]);
 
 export function listBreedingCandidates(
   data: GameData,
   first: MonsterInstance,
   second: MonsterInstance,
 ): BreedingCandidate[] {
-  const firstDefinition = definitionFor(data, first);
-  const secondDefinition = definitionFor(data, second);
-  const candidates: BreedingCandidate[] = [];
-  const resultWhiteStars = Math.min(firstDefinition.whiteStars, secondDefinition.whiteStars) as WhiteStars;
-
-  const genericPairs = [
-    { lineageId: firstDefinition.lineageId, attributeId: secondDefinition.attributeId },
-    { lineageId: secondDefinition.lineageId, attributeId: firstDefinition.attributeId },
-  ];
-  for (const pair of genericPairs) {
-    const archetype = data.archetypes.find(
-      (entry) => entry.lineageId === pair.lineageId && entry.attributeId === pair.attributeId,
-    );
-    if (!archetype) continue;
-    const definition = data.monsters.find(
-      (entry) => entry.archetypeId === archetype.id && entry.whiteStars === resultWhiteStars,
-    );
-    if (!definition) continue;
-    if (
-      first.definitionId === second.definitionId &&
-      definition.id === first.definitionId &&
-      Math.max(first.colorStars, second.colorStars) < 2
-    ) {
-      continue;
-    }
-    pushUnique(candidates, {
-      id: candidateId('generic', definition.id, 0),
-      kind: 'generic',
-      definitionId: definition.id,
-      colorStars: 0,
-      label: `系譜配合 → ${definition.name}`,
-    });
-  }
-
-  if (first.definitionId === second.definitionId) {
-    const nextColor = Math.min(2, Math.max(first.colorStars, second.colorStars) + 1) as ColorStars;
-    if (nextColor > Math.max(first.colorStars, second.colorStars)) {
-      pushUnique(candidates, {
-        id: candidateId('same-name', firstDefinition.id, nextColor),
-        kind: 'same-name',
-        definitionId: firstDefinition.id,
-        colorStars: nextColor,
-        label: `同名配合 → 色星${nextColor}`,
-      });
-    }
-  }
-
-  for (const recipe of data.specialRecipes) {
-    const [left, right] = recipe.parentDefinitionIds;
-    const matches =
-      (first.definitionId === left && second.definitionId === right) ||
-      (first.definitionId === right && second.definitionId === left);
-    if (!matches) continue;
-    const result = data.monsters.find((entry) => entry.id === recipe.resultDefinitionId);
-    if (!result) continue;
-    pushUnique(candidates, {
-      id: candidateId('special', result.id, 0),
-      kind: 'special',
-      definitionId: result.id,
-      colorStars: 0,
-      label: `特殊配合 → ${result.name}`,
-    });
-  }
-
-  return candidates.sort((left, right) => {
-    const order = { special: 0, 'same-name': 1, generic: 2 };
-    return order[left.kind] - order[right.kind] || left.definitionId.localeCompare(right.definitionId);
-  });
+  return data.specialRecipes
+    .filter((recipe) => matchesRecipe(first.definitionId, second.definitionId, recipe.parentDefinitionIds))
+    .map((recipe) => {
+      const result = data.monsters.find((entry) => entry.id === recipe.resultDefinitionId);
+      if (!result) throw new Error(`Unknown breeding result: ${recipe.resultDefinitionId}`);
+      return {
+        id: `special:${recipe.id}`,
+        kind: 'special' as const,
+        recipeId: recipe.id,
+        definitionId: result.id,
+        label: `特殊配合 → ${result.name}`,
+      };
+    })
+    .sort((left, right) => left.definitionId.localeCompare(right.definitionId));
 }
 
-export function inheritanceSkillChoices(
+export function breedingSkillChoices(
   data: GameData,
   first: MonsterInstance,
   second: MonsterInstance,
@@ -94,11 +35,12 @@ export function inheritanceSkillChoices(
   const childDefinition = data.monsters.find((entry) => entry.id === candidate.definitionId);
   if (!childDefinition) return [];
   return [
-    ...new Set(
-      [...skillIdsFor(data, first), ...skillIdsFor(data, second)].filter(
-        (skillId) => !childDefinition.intrinsicSkillIds.includes(skillId),
-      ),
-    ),
+    ...new Set([
+      ...skillIdsFor(data, first),
+      ...skillIdsFor(data, second),
+      ...childDefinition.intrinsicSkillIds,
+      childDefinition.defaultSkillId,
+    ]),
   ];
 }
 
@@ -107,27 +49,22 @@ export function breedMonsters(
   first: MonsterInstance,
   second: MonsterInstance,
   candidate: BreedingCandidate,
-  inheritedSkillId: string | undefined,
+  selectedSkillIds: readonly string[],
   childId: string,
 ): MonsterInstance {
-  const definition = data.monsters.find((entry) => entry.id === candidate.definitionId);
-  if (!definition) throw new Error(`Unknown breeding result: ${candidate.definitionId}`);
-  const allowedSkills = inheritanceSkillChoices(data, first, second, candidate);
-  if (inheritedSkillId && !allowedSkills.includes(inheritedSkillId)) {
-    throw new Error(`Skill "${inheritedSkillId}" cannot be inherited by ${definition.name}`);
+  const recipe = data.specialRecipes.find((entry) => entry.id === candidate.recipeId);
+  if (
+    !recipe ||
+    recipe.resultDefinitionId !== candidate.definitionId ||
+    !matchesRecipe(first.definitionId, second.definitionId, recipe.parentDefinitionIds)
+  ) {
+    throw new Error('この親の組み合わせでは選んだ特殊配合を実行できません');
   }
+  if (selectedSkillIds.length !== 3) throw new Error('継承するスキルを3つ選んでください');
+  if (new Set(selectedSkillIds).size !== 3) throw new Error('同じスキルは重複して選べません');
+  const allowedSkills = breedingSkillChoices(data, first, second, candidate);
+  const invalidSkillId = selectedSkillIds.find((skillId) => !allowedSkills.includes(skillId));
+  if (invalidSkillId) throw new Error(`スキル「${invalidSkillId}」はこの配合では選べません`);
 
-  const firstStats = permanentStatsFor(data, first);
-  const secondStats = permanentStatsFor(data, second);
-  const totalColorStars = first.colorStars + second.colorStars;
-  const rate = data.rules.breeding.inheritanceRatesByTotalColorStars[totalColorStars] ?? 0.25;
-  const inheritedStats = Object.fromEntries(
-    STAT_IDS.map((statId) => [statId, Math.floor(((firstStats[statId] + secondStats[statId]) / 2) * rate)]),
-  ) as StatBlock;
-
-  return createMonster(data, candidate.definitionId, childId, {
-    colorStars: candidate.colorStars,
-    inheritedStats,
-    inheritedSkillId,
-  });
+  return createMonster(data, candidate.definitionId, childId, { skillIds: selectedSkillIds });
 }

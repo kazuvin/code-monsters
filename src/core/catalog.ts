@@ -6,7 +6,6 @@ import type {
   MonsterInstance,
   SkillDefinition,
   SpecialRecipeDefinition,
-  WhiteStars,
 } from './types';
 import { skillIdsFor } from './monster';
 
@@ -17,7 +16,6 @@ export type MonsterCatalogEntry = {
   silhouette: {
     lineageId: LineageId;
     attributeId: AttributeId;
-    whiteStars: WhiteStars;
     glyph: string;
   };
   details?: MonsterDefinition;
@@ -54,7 +52,6 @@ export function monsterCatalogEntries(
     silhouette: {
       lineageId: definition.lineageId,
       attributeId: definition.attributeId,
-      whiteStars: definition.whiteStars,
       glyph: definition.glyph,
     },
     details: revealAll || discoveredIds.has(definition.id) ? definition : undefined,

@@ -9,12 +9,10 @@ import {
   type OnlineBuild,
 } from './online-match';
 
-const build = (seat: 'a' | 'b'): OnlineBuild => ({
+const build = (_seat: 'a' | 'b'): OnlineBuild => ({
   contentVersion: GAME_DATA.rules.contentVersion,
   active: ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1'].map((definitionId, index) =>
-    createMonster(GAME_DATA, definitionId, `monster-${index + 1}`, {
-      xp: seat === 'a' ? 12 : 18,
-    }),
+    createMonster(GAME_DATA, definitionId, `monster-${index + 1}`),
   ),
 });
 
@@ -44,9 +42,9 @@ describe('online match state machine', () => {
     const duplicate = build('a');
     duplicate.active[1] = duplicate.active[0]!;
     const malformed = submitOnlineBuild(GAME_DATA, initial, 'a', duplicate, 7);
-    const invalidStats = build('a');
-    invalidStats.active[0] = { ...invalidStats.active[0]!, journeySeed: -1 };
-    const unsafe = submitOnlineBuild(GAME_DATA, initial, 'a', invalidStats, 7);
+    const invalidSkills = build('a');
+    invalidSkills.active[0] = { ...invalidSkills.active[0]!, skillIds: ['missing', 'missing', 'missing'] };
+    const unsafe = submitOnlineBuild(GAME_DATA, initial, 'a', invalidSkills, 7);
 
     expect(stale.ok).toBe(false);
     expect(stale.error).toContain('更新');

@@ -2,7 +2,6 @@ import { breedMonsters, listBreedingCandidates } from './breeding';
 import {
   definitionFor,
   farewellCoinsFor,
-  gainMonsterXp,
   MAX_GAMBIT_RULES,
   MIN_GAMBIT_RULES,
   replaceMonsterGambits,
@@ -13,23 +12,20 @@ import { deriveSeed, createSeededRandom } from './rng';
 import { createShop, pickEquipmentByRarity } from './shop';
 import type {
   BattleResult,
-  BattleRunRewards,
   BreedingCandidate,
   CasualRunState,
   CommandResult,
-  EggHatchResult,
   GameData,
   GambitRule,
   MonsterInstance,
   RunCommandPayload,
-  WhiteStars,
 } from './types';
 import { createMonster } from './monster';
 
 const draftChoicesFor = (data: GameData, seed: number, round: number) => {
   const random = createSeededRandom(deriveSeed(seed, round + 1));
   return random
-    .shuffle(data.monsters.filter((monster) => monster.shopAvailability === 'common' && monster.whiteStars === 1))
+    .shuffle(data.monsters.filter((monster) => monster.shopAvailability === 'common'))
     .slice(0, 3)
     .map((monster) => monster.id);
 };
@@ -53,7 +49,7 @@ const commandUpdate = (run: CasualRunState, index: number, command: RunCommandPa
 
 export function createCasualRun(data: GameData, seed: number): CasualRunState {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     mode: 'casual',
     contentVersion: data.rules.contentVersion,
     commandLogVersion: 1,
@@ -159,9 +155,7 @@ export function buyMonster(data: GameData, run: CasualRunState, offerId: string)
   if (!definition) return failure(run, 'モンスターデータが見つかりません');
   if (run.coins < definition.price) return failure(run, 'コインが足りません');
   const commandIndex = run.commandIndex + 1;
-  const monster = createMonster(data, definition.id, `monster-${commandIndex}`, {
-    journeySeed: deriveSeed(run.seed, run.cycle * 10_000 + commandIndex),
-  });
+  const monster = createMonster(data, definition.id, `monster-${commandIndex}`);
   const monsters = [...run.shop.monsters];
   monsters[offerIndex] = null;
   return success({
@@ -427,7 +421,7 @@ export function breedInRun(
   firstId: string,
   secondId: string,
   candidateId: string,
-  inheritedSkillId?: string,
+  selectedSkillIds: [string, string, string],
 ): CommandResult<CasualRunState> {
   if (run.phase !== 'prepare') return failure(run, '今は配合できません');
   if (firstId === secondId) return failure(run, '異なる2体を選んでください');
@@ -436,13 +430,10 @@ export function breedInRun(
   if (!first || !second) return failure(run, '親モンスターが見つかりません');
   const candidate = listBreedingCandidates(data, first, second).find((entry) => entry.id === candidateId);
   if (!candidate) return failure(run, '配合先候補が見つかりません');
-  if (first.level < data.rules.breeding.minimumLevel || second.level < data.rules.breeding.minimumLevel) {
-    return failure(run, `配合にはレベル${data.rules.breeding.minimumLevel}が必要です`);
-  }
   const commandIndex = run.commandIndex + 1;
   let child;
   try {
-    child = breedMonsters(data, first, second, candidate, inheritedSkillId, `monster-${commandIndex}`);
+    child = breedMonsters(data, first, second, candidate, selectedSkillIds, `monster-${commandIndex}`);
   } catch (error) {
     return failure(run, error instanceof Error ? error.message : '配合に失敗しました');
   }
@@ -463,7 +454,7 @@ export function breedInRun(
       candidateId,
       resultDefinitionId: child.definitionId,
       childId: child.id,
-      inheritedSkillId,
+      selectedSkillIds,
     }),
     coins: run.coins + data.rules.breedingCoinBonus,
     roster: [...run.roster.filter((monster) => !parentIds.has(monster.id)), child],
@@ -472,20 +463,8 @@ export function breedInRun(
   });
 }
 
-const xpForCycle = (data: GameData, cycle: number, won: boolean) => {
-  const band = Math.min(3, Math.floor((cycle - 1) / 3));
-  return (data.rules.activeXpByCycleBand[band] ?? 4) + (won ? data.rules.battleWinXp : 0);
-};
-
-const battleRunRewardsFor = (
-  data: GameData,
-  run: CasualRunState,
-  result: BattleResult,
-  activeXp: number,
-  benchXp: number,
-): BattleRunRewards => {
+const battleRunRewardsFor = (data: GameData, run: CasualRunState, result: BattleResult): { coins: number } => {
   let coins = 0;
-  const rawXpByMonsterId: Record<string, number> = {};
   const damagingSkillIds = new Set([
     'normal-attack',
     ...data.skills.filter((skill) => skill.effects.some((effect) => effect.kind === 'damage')).map((skill) => skill.id),
@@ -502,45 +481,19 @@ const battleRunRewardsFor = (
     for (const skillId of new Set(skillIdsFor(data, monster))) {
       const reward = data.skills.find((skill) => skill.id === skillId)?.runReward;
       if (!reward) continue;
-      if (reward.kind === 'coins-per-damage-action' && active) {
+      if (active) {
         const triggers = Math.min(reward.maximumTriggersPerBattle, damageActions);
-        coins += triggers * (reward.amountsByColorStars[monster.colorStars] ?? 0);
-      }
-      if (reward.kind === 'xp-per-damage-action' && active) {
-        const triggers = Math.min(reward.maximumTriggersPerBattle, damageActions);
-        const amount = triggers * (reward.amountsByColorStars[monster.colorStars] ?? 0);
-        rawXpByMonsterId[monster.id] = (rawXpByMonsterId[monster.id] ?? 0) + amount;
-      }
-    }
-    const definition = definitionFor(data, monster);
-    const trait = data.traits.find((entry) => entry.id === definition.traitId);
-    const aura = trait?.stages[monster.colorStars].postBattleXpAura;
-    if (aura && (active || aura.activatesFromBench)) {
-      const targetIds = aura.targets === 'roster' ? run.roster.map((entry) => entry.id) : run.activeIds;
-      for (const targetId of targetIds) {
-        rawXpByMonsterId[targetId] = (rawXpByMonsterId[targetId] ?? 0) + aura.amount;
+        coins += triggers * reward.amount;
       }
     }
   }
-  return {
-    coins,
-    xpByMonsterId: Object.fromEntries(
-      Object.entries(rawXpByMonsterId).flatMap(([monsterId, amount]) => {
-        const baseXp = run.activeIds.includes(monsterId) ? activeXp : benchXp;
-        const applied = Math.min(baseXp, amount);
-        return applied > 0 ? [[monsterId, applied]] : [];
-      }),
-    ),
-  };
+  return { coins };
 };
 
 export function applyBattleResult(data: GameData, run: CasualRunState, result: BattleResult): CasualRunState {
   if (run.phase !== 'prepare') return run;
   const won = result.winner === 'player';
-  const activeXp = xpForCycle(data, run.cycle, won);
-  const benchXp = Math.floor(activeXp * data.rules.benchXpRate);
-  const rewards = battleRunRewardsFor(data, run, result, activeXp, benchXp);
-  const rewardXp = Object.values(rewards.xpByMonsterId).reduce((total, amount) => total + amount, 0);
+  const rewards = battleRunRewardsFor(data, run, result);
   const commandIndex = run.commandIndex + 1;
   return {
     ...run,
@@ -551,55 +504,15 @@ export function applyBattleResult(data: GameData, run: CasualRunState, result: B
       playerDamage: result.damageByTeam.player,
       enemyDamage: result.damageByTeam.enemy,
       rewardCoins: rewards.coins,
-      rewardXp,
     }),
     phase: 'result',
     completedCycles: run.completedCycles + 1,
     wins: run.wins + (won ? 1 : 0),
     losses: run.losses + (result.winner === 'enemy' ? 1 : 0),
     coins: run.coins + rewards.coins,
-    roster: run.roster.map((monster) =>
-      gainMonsterXp(
-        data,
-        { ...monster, cyclesHeld: monster.cyclesHeld + 1 },
-        (run.activeIds.includes(monster.id) ? activeXp : benchXp) + (rewards.xpByMonsterId[monster.id] ?? 0),
-      ),
-    ),
     lastBattle: result,
-    lastBattleRewards: rewards,
-    lastHatches: undefined,
   };
 }
-
-const hatchMonster = (
-  data: GameData,
-  egg: MonsterInstance,
-): { monster: MonsterInstance; hatch: EggHatchResult } | undefined => {
-  const eggDefinition = definitionFor(data, egg);
-  const hatchRule = eggDefinition.hatch;
-  if (!hatchRule || egg.cyclesHeld < hatchRule.afterHeldCycles) return undefined;
-  const random = createSeededRandom(egg.journeySeed);
-  const targetWhiteStars = eggDefinition.whiteStars;
-  const lineageGridIds = new Set(data.archetypes.map((archetype) => archetype.id));
-  const candidates = data.monsters.filter(
-    (monster) => lineageGridIds.has(monster.archetypeId) && monster.whiteStars === targetWhiteStars,
-  );
-  const resultDefinition = random.pick(candidates);
-  return {
-    monster: createMonster(data, resultDefinition.id, egg.id, {
-      xp: egg.xp,
-      equipmentId: egg.equipmentId,
-      journeySeed: egg.journeySeed,
-    }),
-    hatch: {
-      eggId: egg.id,
-      eggDefinitionId: eggDefinition.id,
-      resultDefinitionId: resultDefinition.id,
-      fromWhiteStars: eggDefinition.whiteStars,
-      toWhiteStars: resultDefinition.whiteStars,
-    },
-  };
-};
 
 const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
   const commandIndex = run.commandIndex + 1;
@@ -614,25 +527,15 @@ const newCycleState = (data: GameData, run: CasualRunState): CasualRunState => {
         .slice(0, 3)
         .map((event) => event.id)
     : [];
-  const hatches: EggHatchResult[] = [];
-  const roster = run.roster.map((monster) => {
-    const result = hatchMonster(data, monster);
-    if (!result) return monster;
-    hatches.push(result.hatch);
-    return result.monster;
-  });
   return {
     ...run,
-    ...commandUpdate(run, commandIndex, { kind: 'continue-cycle', nextCycle, hatches }),
+    ...commandUpdate(run, commandIndex, { kind: 'continue-cycle', nextCycle }),
     phase: eventCycle ? 'event' : 'prepare',
     cycle: nextCycle,
     coins: run.coins + data.rules.cycleIncome,
-    roster,
     shop: retainedShop,
     eventChoices,
     eventResolution: undefined,
-    lastBattleRewards: undefined,
-    lastHatches: hatches,
   };
 };
 
@@ -653,8 +556,7 @@ export function continueRun(data: GameData, run: CasualRunState): CasualRunState
   return newCycleState(data, run);
 }
 
-export const eventRequiresTarget = (event: GameData['events'][number]) =>
-  event.effect.kind === 'monster-xp' || event.effect.kind === 'gamble-monster-xp';
+export const eventRequiresTarget = (_event: GameData['events'][number]) => false;
 
 export const eventIsAvailable = (event: GameData['events'][number], run: CasualRunState) =>
   event.effect.kind !== 'gamble-coins' || run.coins >= event.effect.stake;
@@ -703,37 +605,6 @@ export function chooseEvent(
   switch (event.effect.kind) {
     case 'coins':
       return finish({ ...run, coins: run.coins + event.effect.amount }, `${event.effect.amount}コインを獲得した。`);
-    case 'roster-xp': {
-      const amount = event.effect.amount;
-      return finish(
-        { ...run, roster: run.roster.map((monster) => gainMonsterXp(data, monster, amount)) },
-        `仲間全員が経験値を${amount}獲得した。`,
-      );
-    }
-    case 'active-xp': {
-      const amount = event.effect.amount;
-      return finish(
-        {
-          ...run,
-          roster: run.roster.map((monster) =>
-            run.activeIds.includes(monster.id) ? gainMonsterXp(data, monster, amount) : monster,
-          ),
-        },
-        `主力3体が経験値を${amount}獲得した。`,
-      );
-    }
-    case 'monster-xp': {
-      const amount = event.effect.amount;
-      return finish(
-        {
-          ...run,
-          roster: run.roster.map((monster) =>
-            monster.id === target?.id ? gainMonsterXp(data, monster, amount) : monster,
-          ),
-        },
-        `${target ? definitionFor(data, target).name : '選んだ仲間'}が経験値を${amount}獲得した。`,
-      );
-    }
     case 'rare-offer': {
       const rareOfferBonus = Math.min(0.48, run.rareOfferBonus + event.effect.amount);
       const next = {
@@ -776,23 +647,6 @@ export function chooseEvent(
         won ? 'gain' : 'loss',
       );
     }
-    case 'gamble-monster-xp': {
-      const random = createSeededRandom(
-        deriveSeed(run.seed, run.commandIndex * 107 + run.cycle * 1013 + data.events.indexOf(event)),
-      );
-      const won = random.next() < event.effect.winChance;
-      const amount = won ? event.effect.successAmount : event.effect.consolationAmount;
-      return finish(
-        {
-          ...run,
-          roster: run.roster.map((monster) =>
-            monster.id === target?.id ? gainMonsterXp(data, monster, amount) : monster,
-          ),
-        },
-        `${target ? definitionFor(data, target).name : '選んだ仲間'}は経験値を${amount}獲得した。`,
-        won ? 'gain' : 'risk',
-      );
-    }
   }
 }
 
@@ -830,8 +684,5 @@ export const breedingCandidatesForRun = (
   const first = run.roster.find((monster) => monster.id === firstId);
   const second = run.roster.find((monster) => monster.id === secondId);
   if (!first || !second) return [];
-  const candidates = listBreedingCandidates(data, first, second);
-  const bothMeetMinimum =
-    first.level >= data.rules.breeding.minimumLevel && second.level >= data.rules.breeding.minimumLevel;
-  return bothMeetMinimum ? candidates : [];
+  return listBreedingCandidates(data, first, second);
 };

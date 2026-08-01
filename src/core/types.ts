@@ -2,11 +2,9 @@ export type Team = 'player' | 'enemy';
 export type BattleWinner = Team | 'draw';
 export type LineageId = 'dragon' | 'demon' | 'spirit';
 export type AttributeId = 'light' | 'dark' | 'fire';
-export type WhiteStars = 1 | 2 | 3 | 4 | 5;
-export type ColorStars = 0 | 1 | 2;
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type StatId = 'maxHp' | 'maxMp' | 'attack' | 'defense' | 'speed' | 'wisdom' | 'crit';
-export type ShopAvailability = 'common' | 'rare' | 'upgrade-only';
+export type ShopAvailability = 'common' | 'rare' | 'breeding-only';
 
 export type StatBlock = Record<StatId, number>;
 
@@ -99,29 +97,11 @@ export type SkillDefinition = {
   mpCost: number;
   targetScope: 'single-enemy' | 'single-ally' | 'self' | 'all-enemies' | 'all-allies';
   effects: EffectDefinition[];
-  runReward?:
-    | {
-        kind: 'coins-per-damage-action';
-        amountsByColorStars: [number, number, number];
-        maximumTriggersPerBattle: number;
-      }
-    | {
-        kind: 'xp-per-damage-action';
-        amountsByColorStars: [number, number, number];
-        maximumTriggersPerBattle: number;
-      };
-};
-
-export type ExperienceProfileDefinition = {
-  id: string;
-  name: string;
-  thresholds: number[];
-};
-
-export type StatGrowthProfileDefinition = {
-  id: string;
-  name: string;
-  incrementsByLevel: number[];
+  runReward?: {
+    kind: 'coins-per-damage-action';
+    amount: number;
+    maximumTriggersPerBattle: number;
+  };
 };
 
 export type RoleTagDefinition = {
@@ -129,23 +109,11 @@ export type RoleTagDefinition = {
   label: string;
 };
 
-export type TraitStageDefinition = {
-  description: string;
-  battleStartEffects: EffectDefinition[];
-  farewellCoinsPerHeldCycle?: number;
-  farewellCoinGrowthEveryHeldCycles?: number;
-  farewellCoinGrowthAmount?: number;
-  postBattleXpAura?: {
-    amount: number;
-    activatesFromBench: boolean;
-    targets: 'active' | 'roster';
-  };
-};
-
 export type TraitDefinition = {
   id: string;
   name: string;
-  stages: [TraitStageDefinition, TraitStageDefinition, TraitStageDefinition];
+  description: string;
+  battleStartEffects: EffectDefinition[];
 };
 
 export type LineageDefinition = {
@@ -181,10 +149,12 @@ export type MonsterFormDefinition = {
   name: string;
   glyph: string;
   appearance: MonsterAppearance;
+  shopAvailability: ShopAvailability;
+  price: number;
+  sellPrice: number;
   intrinsicSkillIds: [string, string];
   defaultSkillId: string;
   traitId: string;
-  statGrowthProfileId?: string;
   statMultipliers?: Partial<StatBlock>;
   identity?: MonsterIdentityDefinition;
 };
@@ -194,7 +164,6 @@ export type MonsterArchetypeDefinition = {
   lineageId: LineageId;
   attributeId: AttributeId;
   baseStats: StatBlock;
-  growthPerLevel: StatBlock;
   roleTagIds: string[];
   forms: [
     MonsterFormDefinition,
@@ -212,13 +181,9 @@ export type MonsterDefinition = {
   lineageId: LineageId;
   attributeId: AttributeId;
   name: string;
-  whiteStars: WhiteStars;
   glyph: string;
   appearance: MonsterAppearance;
   baseStats: StatBlock;
-  growthPerLevel: StatBlock;
-  experienceProfileId: string;
-  statGrowthProfileId: string;
   roleTagIds: string[];
   intrinsicSkillIds: [string, string];
   defaultSkillId: string;
@@ -226,9 +191,6 @@ export type MonsterDefinition = {
   identity?: MonsterIdentityDefinition;
   price: number;
   sellPrice: number;
-  hatch?: {
-    afterHeldCycles: number;
-  };
 };
 
 export type EquipmentDefinition = {
@@ -256,14 +218,10 @@ export type EventDefinition = {
   glyph: string;
   effect:
     | { kind: 'coins'; amount: number }
-    | { kind: 'roster-xp'; amount: number }
-    | { kind: 'active-xp'; amount: number }
-    | { kind: 'monster-xp'; amount: number }
     | { kind: 'rare-offer'; amount: number }
     | { kind: 'free-rerolls'; amount: number }
     | { kind: 'equipment-gift' }
-    | { kind: 'gamble-coins'; stake: number; reward: number; winChance: number }
-    | { kind: 'gamble-monster-xp'; successAmount: number; consolationAmount: number; winChance: number };
+    | { kind: 'gamble-coins'; stake: number; reward: number; winChance: number };
 };
 
 export type EventResolution = {
@@ -278,33 +236,18 @@ export type GameRules = {
   contentVersion: string;
   maxCycles: number;
   maxLosses: number;
-  maxWhiteStars: WhiteStars;
   rosterLimit: number;
   activeLimit: number;
   benchLimit: number;
   initialCoins: number;
   cycleIncome: number;
   breedingCoinBonus: number;
-  experienceProfileIdsByWhiteStars: [string, string, string, string, string];
-  maxLevel: number;
-  activeXpByCycleBand: [number, number, number, number];
-  battleWinXp: number;
-  benchXpRate: number;
-  farewell: {
-    levelCoinPerLevel: number;
-    colorStarCoinBonus: number;
-  };
   shop: {
     monsterSlots: number;
     equipmentSlots: number;
     rerollCost: number;
     rareOfferChance: number;
     equipmentRarityWeights: Record<Rarity, number>;
-  };
-  breeding: {
-    minimumLevel: number;
-    inheritanceRatesByTotalColorStars: [number, number, number, number, number];
-    colorGrowthBonus: [number, number, number];
   };
   battle: {
     tickSeconds: number;
@@ -327,9 +270,6 @@ export type RawGameData = {
   rules: GameRules;
   lineages: LineageDefinition[];
   attributes: AttributeDefinition[];
-  rankStatMultipliers: [number, number, number, number, number];
-  experienceProfiles: ExperienceProfileDefinition[];
-  statGrowthProfiles: StatGrowthProfileDefinition[];
   roleTags: RoleTagDefinition[];
   archetypes: MonsterArchetypeDefinition[];
   standaloneMonsters: MonsterDefinition[];
@@ -347,24 +287,16 @@ export type GameData = RawGameData & {
 export type MonsterInstance = {
   id: string;
   definitionId: string;
-  colorStars: ColorStars;
-  level: number;
-  xp: number;
-  cyclesHeld: number;
-  journeySeed: number;
-  inheritedStats: StatBlock;
-  inheritedSkillId?: string;
+  skillIds: [string, string, string];
   gambits: GambitRule[];
   equipmentId?: string;
 };
 
-export type BreedingCandidateKind = 'generic' | 'same-name' | 'special';
-
 export type BreedingCandidate = {
   id: string;
-  kind: BreedingCandidateKind;
+  kind: 'special';
+  recipeId: string;
   definitionId: string;
-  colorStars: ColorStars;
   label: string;
 };
 
@@ -386,19 +318,6 @@ export type ShopState = {
 };
 
 export type RunPhase = 'draft' | 'event' | 'event-result' | 'prepare' | 'result' | 'finished';
-
-export type EggHatchResult = {
-  eggId: string;
-  eggDefinitionId: string;
-  resultDefinitionId: string;
-  fromWhiteStars: WhiteStars;
-  toWhiteStars: WhiteStars;
-};
-
-export type BattleRunRewards = {
-  coins: number;
-  xpByMonsterId: Record<string, number>;
-};
 
 type RunCommandBase = {
   schemaVersion: 1;
@@ -438,7 +357,7 @@ export type RunCommandPayload =
       candidateId: string;
       resultDefinitionId: string;
       childId: string;
-      inheritedSkillId?: string;
+      selectedSkillIds: [string, string, string];
     }
   | {
       kind: 'battle-complete';
@@ -447,9 +366,8 @@ export type RunCommandPayload =
       playerDamage: number;
       enemyDamage: number;
       rewardCoins: number;
-      rewardXp: number;
     }
-  | { kind: 'continue-cycle'; nextCycle: number; hatches: EggHatchResult[] }
+  | { kind: 'continue-cycle'; nextCycle: number }
   | { kind: 'finish-run'; reason: 'max-losses' | 'max-cycles' }
   | { kind: 'choose-event'; eventId: string; targetMonsterId?: string; tone: EventResolution['tone'] }
   | { kind: 'skip-event' }
@@ -458,7 +376,7 @@ export type RunCommandPayload =
 export type RunCommand = RunCommandBase & RunCommandPayload;
 
 export type CasualRunState = {
-  schemaVersion: 5;
+  schemaVersion: 6;
   mode: 'casual' | 'online';
   contentVersion: string;
   commandLogVersion: 1;
@@ -482,8 +400,6 @@ export type CasualRunState = {
   freeRerolls: number;
   eventResolution?: EventResolution;
   lastBattle?: BattleResult;
-  lastBattleRewards?: BattleRunRewards;
-  lastHatches?: EggHatchResult[];
 };
 
 export type TimedStatus = {
@@ -499,8 +415,6 @@ export type FighterSnapshot = {
   team: Team;
   name: string;
   definitionId: string;
-  colorStars: ColorStars;
-  whiteStars: WhiteStars;
   hp: number;
   maxHp: number;
   mp: number;

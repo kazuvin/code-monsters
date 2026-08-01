@@ -47,7 +47,7 @@ const cloneBuild = (build: OnlineBuild): OnlineBuild => ({
   contentVersion: build.contentVersion,
   active: build.active.map((monster) => ({
     ...monster,
-    inheritedStats: { ...monster.inheritedStats },
+    skillIds: [...monster.skillIds] as [string, string, string],
     gambits: monster.gambits.map((gambit) => ({
       condition: { ...gambit.condition },
       action: { ...gambit.action },
@@ -93,7 +93,6 @@ const conditionKinds = new Set([
   'living-count-at-most',
   'living-count-at-least',
 ]);
-const statIds = ['maxHp', 'maxMp', 'attack', 'defense', 'speed', 'wisdom', 'crit'] as const;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
@@ -106,29 +105,11 @@ const monsterShapeIsValid = (data: GameData, value: unknown): value is MonsterIn
   ) {
     return false;
   }
-  if (!Number.isInteger(value.colorStars) || Number(value.colorStars) < 0 || Number(value.colorStars) > 2) return false;
-  if (!Number.isInteger(value.level) || Number(value.level) < 1 || Number(value.level) > data.rules.maxLevel)
-    return false;
-  for (const field of ['xp', 'cyclesHeld', 'journeySeed'] as const) {
-    if (!Number.isInteger(value[field]) || Number(value[field]) < 0 || Number(value[field]) > 0xffff_ffff) {
-      return false;
-    }
-  }
-  if (!isRecord(value.inheritedStats)) return false;
-  const inheritedStats = value.inheritedStats;
   if (
-    statIds.some(
-      (statId) =>
-        typeof inheritedStats[statId] !== 'number' ||
-        !Number.isFinite(inheritedStats[statId]) ||
-        Math.abs(inheritedStats[statId]) > 100_000,
-    )
-  ) {
-    return false;
-  }
-  if (
-    value.inheritedSkillId !== undefined &&
-    (typeof value.inheritedSkillId !== 'string' || !data.skills.some((skill) => skill.id === value.inheritedSkillId))
+    !Array.isArray(value.skillIds) ||
+    value.skillIds.length !== 3 ||
+    new Set(value.skillIds).size !== 3 ||
+    !value.skillIds.every((skillId) => typeof skillId === 'string' && data.skills.some((skill) => skill.id === skillId))
   ) {
     return false;
   }

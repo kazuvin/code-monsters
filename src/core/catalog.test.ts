@@ -18,10 +18,10 @@ import {
 import { createMonster, skillIdsFor } from './monster';
 
 describe('monster catalog discovery', () => {
-  it('lists all 52 validation monsters without exposing locked details', () => {
+  it('lists all validation monsters without exposing locked details', () => {
     const entries = monsterCatalogEntries(GAME_DATA, new Set());
 
-    expect(entries).toHaveLength(52);
+    expect(entries).toHaveLength(GAME_DATA.monsters.length);
     expect(entries.filter((entry) => entry.id === 'buried-mole-1')).toHaveLength(1);
     expect(entries.every((entry) => entry.state === 'locked')).toBe(true);
     expect(entries.every((entry) => entry.details === undefined)).toBe(true);
@@ -64,18 +64,15 @@ describe('monster catalog discovery', () => {
   });
 
   it('finds only special recipes that create or consume a selected species', () => {
-    const resultRelations = specialRecipeRelationsFor(GAME_DATA, 'fire-spirit-3');
-    const parentRelations = specialRecipeRelationsFor(GAME_DATA, 'light-dragon-2');
+    const recipe = GAME_DATA.specialRecipes[0];
+    if (!recipe) throw new Error('Expected a special recipe');
+    const resultRelations = specialRecipeRelationsFor(GAME_DATA, recipe.resultDefinitionId);
+    const parentRelations = specialRecipeRelationsFor(GAME_DATA, recipe.parentDefinitionIds[0]);
     const unrelatedRelations = specialRecipeRelationsFor(GAME_DATA, 'buried-mole-1');
 
-    expect(resultRelations.createdBy.map((recipe) => recipe.id)).toEqual([
-      'fire-spirit-3-route-1',
-      'fire-spirit-3-route-2',
-      'fire-spirit-3-route-3',
-    ]);
-    expect(resultRelations.usedBy).toHaveLength(3);
-    expect(parentRelations.createdBy).toHaveLength(4);
-    expect(parentRelations.usedBy).toHaveLength(5);
+    expect(resultRelations.createdBy).toContainEqual(recipe);
+    expect(resultRelations.createdBy).toHaveLength(2);
+    expect(parentRelations.usedBy).toContainEqual(recipe);
     expect(unrelatedRelations).toEqual({ createdBy: [], usedBy: [] });
   });
 
@@ -84,7 +81,7 @@ describe('monster catalog discovery', () => {
       createdBy: [],
       usedBy: [],
     });
-    expect(specialRecipeRelationsFor(GAME_DATA, 'prismatic-egg-1')).toEqual({
+    expect(specialRecipeRelationsFor(GAME_DATA, 'coin-crow-1')).toEqual({
       createdBy: [],
       usedBy: [],
     });
@@ -93,15 +90,18 @@ describe('monster catalog discovery', () => {
 
 describe('shop special-recipe signals', () => {
   it('prefers an owned partner and also detects a partner on the same shelf', () => {
-    const owned = specialRecipeSignalsForShopOffer(GAME_DATA, 'light-dragon-1', ['dark-dragon-1'], ['fire-dragon-1']);
-    const shelfOnly = specialRecipeSignalsForShopOffer(GAME_DATA, 'light-dragon-1', [], ['fire-dragon-1']);
+    const recipe = GAME_DATA.specialRecipes[0];
+    if (!recipe) throw new Error('Expected a special recipe');
+    const [offered, partner] = recipe.parentDefinitionIds;
+    const owned = specialRecipeSignalsForShopOffer(GAME_DATA, offered, [partner], []);
+    const shelfOnly = specialRecipeSignalsForShopOffer(GAME_DATA, offered, [], [partner]);
 
     expect(owned).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          recipeId: 'light-dragon-2-route-2',
-          partnerDefinitionId: 'dark-dragon-1',
-          resultDefinitionId: 'light-dragon-2',
+          recipeId: recipe.id,
+          partnerDefinitionId: partner,
+          resultDefinitionId: recipe.resultDefinitionId,
           source: 'roster',
         }),
       ]),
@@ -109,9 +109,9 @@ describe('shop special-recipe signals', () => {
     expect(shelfOnly).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          recipeId: 'light-dragon-2-route-3',
-          partnerDefinitionId: 'fire-dragon-1',
-          resultDefinitionId: 'light-dragon-2',
+          recipeId: recipe.id,
+          partnerDefinitionId: partner,
+          resultDefinitionId: recipe.resultDefinitionId,
           source: 'shelf',
         }),
       ]),
@@ -121,9 +121,8 @@ describe('shop special-recipe signals', () => {
 
 describe('skill catalog discovery', () => {
   it('unlocks the skills actually held by welcomed monsters and ignores stale ids', () => {
-    const monster = createMonster(GAME_DATA, 'light-dragon-1', 'skill-catalog-monster', {
-      inheritedSkillId: 'mend',
-    });
+    const selected = GAME_DATA.skills.slice(0, 3).map((skill) => skill.id) as [string, string, string];
+    const monster = createMonster(GAME_DATA, 'light-dragon-1', 'skill-catalog-monster', { skillIds: selected });
     const restored = normalizeDiscoveredSkillIds(GAME_DATA, ['missing-skill']);
     const discovered = mergeDiscoveredSkillIds(GAME_DATA, restored, [monster]);
     const expectedSkillIds = skillIdsFor(GAME_DATA, monster);

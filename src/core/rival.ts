@@ -1,4 +1,4 @@
-import { inheritanceSkillChoices } from './breeding';
+import { breedingSkillChoices } from './breeding';
 import { battleStatsFor, definitionFor, targetRulesForSkill } from './monster';
 import { createSeededRandom, deriveSeed } from './rng';
 import {
@@ -50,7 +50,6 @@ const emptyAudit = (): RivalAudit => ({
 });
 
 const monsterPower = (data: GameData, monster: MonsterInstance) => {
-  const definition = definitionFor(data, monster);
   const stats = battleStatsFor(data, monster);
   return (
     stats.maxHp * 0.3 +
@@ -59,9 +58,7 @@ const monsterPower = (data: GameData, monster: MonsterInstance) => {
     stats.defense * 1.5 +
     stats.speed * 1.8 +
     stats.wisdom * 2 +
-    stats.crit +
-    definition.whiteStars * 35 +
-    monster.colorStars * 25
+    stats.crit
   );
 };
 
@@ -89,10 +86,7 @@ const bestBreedingPlan = (data: GameData, run: CasualRunState) => {
         first,
         second,
         candidate,
-        score:
-          ({ special: 400, 'same-name': 320, generic: 200 }[candidate.kind] ?? 0) +
-          (data.monsters.find((monster) => monster.id === candidate.definitionId)?.whiteStars ?? 1) * 45 +
-          candidate.colorStars * 30,
+        score: 400 + monsterPower(data, { ...first, definitionId: candidate.definitionId }),
       })),
     ),
   );
@@ -104,9 +98,9 @@ type BreedingPreference = 'rank' | 'color' | 'discovery';
 const breedOnce = (data: GameData, run: CasualRunState, audit: RivalAudit, preference: BreedingPreference) => {
   const plans = bestBreedingPlan(data, run);
   const preferenceScore: Record<BreedingPreference, Record<string, number>> = {
-    rank: { special: 650, generic: 520, 'same-name': 180 },
-    color: { special: 620, generic: 240, 'same-name': 560 },
-    discovery: { special: 800, generic: 440, 'same-name': 300 },
+    rank: { special: 650 },
+    color: { special: 620 },
+    discovery: { special: 800 },
   };
   const plan = plans?.sort(
     (left, right) =>
@@ -115,15 +109,17 @@ const breedOnce = (data: GameData, run: CasualRunState, audit: RivalAudit, prefe
       (left.score + (preferenceScore[preference][left.candidate.kind] ?? 0)),
   )[0];
   if (!plan) return run;
-  const skillId = inheritanceSkillChoices(data, plan.first, plan.second, plan.candidate).sort((left, right) => {
-    const leftSkill = data.skills.find((skill) => skill.id === left);
-    const rightSkill = data.skills.find((skill) => skill.id === right);
-    const value = (skill: typeof leftSkill) =>
-      (skill?.effects.some((effect) => effect.kind === 'heal' || effect.kind === 'shield') ? 10 : 0) -
-      (skill?.mpCost ?? 0) * 0.1;
-    return value(rightSkill) - value(leftSkill);
-  })[0];
-  const result = breedInRun(data, run, plan.first.id, plan.second.id, plan.candidate.id, skillId);
+  const selectedSkillIds = breedingSkillChoices(data, plan.first, plan.second, plan.candidate)
+    .sort((left, right) => {
+      const leftSkill = data.skills.find((skill) => skill.id === left);
+      const rightSkill = data.skills.find((skill) => skill.id === right);
+      const value = (skill: typeof leftSkill) =>
+        (skill?.effects.some((effect) => effect.kind === 'heal' || effect.kind === 'shield') ? 10 : 0) -
+        (skill?.mpCost ?? 0) * 0.1;
+      return value(rightSkill) - value(leftSkill);
+    })
+    .slice(0, 3) as [string, string, string];
+  const result = breedInRun(data, run, plan.first.id, plan.second.id, plan.candidate.id, selectedSkillIds);
   if (!result.ok) return run;
   audit.breeds += 1;
   audit.breedKinds[plan.candidate.kind] = (audit.breedKinds[plan.candidate.kind] ?? 0) + 1;
@@ -138,8 +134,7 @@ const offerScore = (data: GameData, run: CasualRunState, definitionId: string) =
     (ownedDefinitions.some((owned) => owned.id === definition.id) ? 90 : 0) +
     ownedDefinitions.filter((owned) => owned.archetypeId === definition.archetypeId).length * 22 +
     ownedDefinitions.filter((owned) => owned.lineageId === definition.lineageId).length * 7 +
-    ownedDefinitions.filter((owned) => owned.attributeId === definition.attributeId).length * 5 +
-    definition.whiteStars * 15
+    ownedDefinitions.filter((owned) => owned.attributeId === definition.attributeId).length * 5
   );
 };
 
@@ -244,12 +239,13 @@ const equipAndProgram = (data: GameData, run: CasualRunState) => {
       if (equipped.ok) next = equipped.state;
     }
     const current = next.roster.find((entry) => entry.id === monsterId);
-    if (!current?.inheritedSkillId) continue;
+    const selectedSkillId = current?.skillIds[2];
+    if (!current || !selectedSkillId) continue;
     next = updateGambit(next, current.id, 2, {
-      condition: conditionForSkill(data, current.inheritedSkillId),
+      condition: conditionForSkill(data, selectedSkillId),
       action: {
-        skillId: current.inheritedSkillId,
-        target: targetForSkill(data, current.inheritedSkillId),
+        skillId: selectedSkillId,
+        target: targetForSkill(data, selectedSkillId),
       },
     });
   }

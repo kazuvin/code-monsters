@@ -1,121 +1,51 @@
 import { describe, expect, it } from 'vitest';
 import { GAME_DATA } from '../game/game-data';
-import {
-  createMonster,
-  definitionFor,
-  experienceThresholdsFor,
-  statBreakdownFor,
-  statGrowthUnitsForLevel,
-  targetRulesForSkill,
-} from './monster';
+import { battleStatsFor, createMonster, farewellCoinsFor, skillIdsFor, statBreakdownFor } from './monster';
 
-const inheritedStats = {
-  maxHp: 12,
-  maxMp: 3,
-  attack: 7,
-  defense: 4,
-  speed: 2,
-  wisdom: 1,
-  crit: 2,
-};
+describe('immediate monster builds', () => {
+  it('creates a battle-ready monster with three native skills and default gambits', () => {
+    const definition = GAME_DATA.monsters[0];
+    if (!definition) throw new Error('Expected a monster definition');
+    const monster = createMonster(GAME_DATA, definition.id, 'instant');
 
-describe('monster stat breakdown', () => {
-  it('separates species base, level growth, individual value, and equipment in the final stat', () => {
-    const monster = createMonster(GAME_DATA, 'light-dragon-1', 'breakdown', {
-      colorStars: 1,
-      equipmentId: 'iron-fang',
-      inheritedStats,
-      xp: 18,
-    });
-    const definition = definitionFor(GAME_DATA, monster);
-    const growth = Math.floor(
-      definition.growthPerLevel.attack *
-        statGrowthUnitsForLevel(GAME_DATA, definition, monster.level) *
-        GAME_DATA.rules.breeding.colorGrowthBonus[monster.colorStars],
-    );
+    expect(monster.skillIds).toEqual([...definition.intrinsicSkillIds, definition.defaultSkillId]);
+    expect(monster.gambits).toHaveLength(3);
+    expect(monster.gambits.map((gambit) => gambit.action.skillId)).toEqual(monster.skillIds);
+    expect(monster).not.toHaveProperty('level');
+    expect(monster).not.toHaveProperty('xp');
+  });
 
-    expect(statBreakdownFor(GAME_DATA, monster).attack).toEqual({
+  it('uses species stats plus equipment without growth or inherited stat layers', () => {
+    const definition = GAME_DATA.monsters.find((entry) => entry.id === 'light-dragon-1');
+    if (!definition) throw new Error('Expected light-dragon-1');
+    const equipment = GAME_DATA.equipment.find((entry) => entry.statBonus.attack);
+    const monster = createMonster(GAME_DATA, definition.id, 'equipped', { equipmentId: equipment?.id });
+    const breakdown = statBreakdownFor(GAME_DATA, monster);
+
+    expect(breakdown.attack).toEqual({
       base: definition.baseStats.attack,
-      growth,
-      individual: inheritedStats.attack,
-      equipment: 5,
-      total: definition.baseStats.attack + growth + inheritedStats.attack + 5,
+      equipment: equipment?.statBonus.attack ?? 0,
+      total: Math.min(Number.POSITIVE_INFINITY, definition.baseStats.attack + (equipment?.statBonus.attack ?? 0)),
       capped: false,
     });
+    expect(battleStatsFor(GAME_DATA, monster).attack).toBe(breakdown.attack.total);
   });
 
-  it('reports the raw bonuses while marking a critical-rate total capped by the battle rule', () => {
-    const monster = createMonster(GAME_DATA, 'light-dragon-1', 'critical-cap', {
-      equipmentId: 'red-lens',
-      inheritedStats: { ...inheritedStats, crit: 100 },
-    });
-    const crit = statBreakdownFor(GAME_DATA, monster).crit;
+  it('accepts any three unique known skills for a bred child and rejects invalid sets', () => {
+    const definition = GAME_DATA.monsters[0];
+    if (!definition) throw new Error('Expected a monster definition');
+    const selected = GAME_DATA.skills.slice(0, 3).map((skill) => skill.id) as [string, string, string];
+    const monster = createMonster(GAME_DATA, definition.id, 'custom', { skillIds: selected });
 
-    expect(crit.individual).toBe(100);
-    expect(crit.equipment).toBe(8);
-    expect(crit.total).toBe(GAME_DATA.rules.battle.criticalCap);
-    expect(crit.capped).toBe(true);
-  });
-});
-
-describe('monster growth profiles', () => {
-  it('lets every monster reach level three as active or level two on the bench after one loss', () => {
-    for (const definition of GAME_DATA.monsters) {
-      const active = createMonster(GAME_DATA, definition.id, `active-growth-${definition.id}`, { xp: 4 });
-      const bench = createMonster(GAME_DATA, definition.id, `bench-growth-${definition.id}`, { xp: 2 });
-
-      expect(active.level, definition.id).toBe(3);
-      expect(bench.level, definition.id).toBe(2);
-      expect(experienceThresholdsFor(GAME_DATA, definition).slice(0, 3), definition.id).toEqual([0, 2, 4]);
-    }
+    expect(skillIdsFor(GAME_DATA, monster)).toEqual(selected);
+    expect(() =>
+      createMonster(GAME_DATA, definition.id, 'duplicate', { skillIds: [selected[0], selected[0], selected[1]] }),
+    ).toThrow('重複');
   });
 
-  it('keeps late bloom near the normal level pace while back-loading stat growth', () => {
-    const late = GAME_DATA.monsters.find((monster) => monster.id === 'slumbering-grove-1');
-    const standard = GAME_DATA.monsters.find((monster) => monster.id === 'light-dragon-2');
-    if (!late || !standard) throw new Error('Expected late and standard growth specimens');
-
-    expect(experienceThresholdsFor(GAME_DATA, late)).toEqual([0, 2, 4, 12, 24, 39, 57, 78, 102, 129]);
-    expect(statGrowthUnitsForLevel(GAME_DATA, late, 3)).toBeLessThan(statGrowthUnitsForLevel(GAME_DATA, standard, 3));
-    expect(statGrowthUnitsForLevel(GAME_DATA, late, 3)).toBeGreaterThanOrEqual(1.5);
-    expect(statGrowthUnitsForLevel(GAME_DATA, late, 10)).toBeGreaterThan(
-      statGrowthUnitsForLevel(GAME_DATA, standard, 10),
-    );
-  });
-
-  it('adds late stat growth to existing rank-one monsters without slowing their early experience', () => {
-    for (const definitionId of ['light-dragon-1', 'dark-demon-1', 'fire-spirit-1']) {
-      const definition = GAME_DATA.monsters.find((monster) => monster.id === definitionId);
-      if (!definition) throw new Error(`Expected ${definitionId}`);
-
-      expect(definition.experienceProfileId, definitionId).toBe('early');
-      expect(definition.statGrowthProfileId, definitionId).toBe('late-surge');
-      expect(definition.roleTagIds, definitionId).toContain('late-bloom');
-    }
-  });
-});
-
-describe('default gambits', () => {
-  it('configures all three owned skills before relying on the automatic normal-attack fallback', () => {
-    const base = createMonster(GAME_DATA, 'light-spirit-1', 'base-gambits');
-    const inherited = createMonster(GAME_DATA, 'light-spirit-1', 'inherited-gambits', {
-      inheritedSkillId: 'arc-shot',
-    });
-
-    expect(base.gambits.map((rule) => rule.action.skillId)).toEqual(['gentle-ray', 'veil-step', 'spirit-spark']);
-    expect(inherited.gambits.map((rule) => rule.action.skillId)).toEqual(['gentle-ray', 'veil-step', 'arc-shot']);
-  });
-
-  it('gives every species executable target rules for all configured skills', () => {
-    for (const definition of GAME_DATA.monsters) {
-      const monster = createMonster(GAME_DATA, definition.id, `default-gambit-${definition.id}`);
-
-      for (const [index, rule] of monster.gambits.entries()) {
-        expect(
-          targetRulesForSkill(GAME_DATA, rule.action.skillId),
-          `${definition.id} gambit ${index + 1}: ${rule.action.skillId} -> ${rule.action.target}`,
-        ).toContain(rule.action.target);
-      }
-    }
+  it('uses the species sell value with no time-based farewell bonus', () => {
+    const definition = GAME_DATA.monsters[0];
+    if (!definition) throw new Error('Expected a monster definition');
+    expect(farewellCoinsFor(GAME_DATA, createMonster(GAME_DATA, definition.id, 'farewell'))).toBe(definition.sellPrice);
   });
 });

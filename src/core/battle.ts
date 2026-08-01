@@ -84,8 +84,6 @@ const snapshots = (data: GameData, fighters: BattleFighter[]): FighterSnapshot[]
       team: fighter.team,
       name: fighter.name,
       definitionId: definition.id,
-      colorStars: fighter.monster.colorStars,
-      whiteStars: definition.whiteStars,
       hp: Math.max(0, fighter.hp),
       maxHp: fighter.stats.maxHp,
       mp: Math.max(0, fighter.mp),
@@ -375,11 +373,11 @@ const startActivationsFor = (data: GameData, fighter: BattleFighter) => {
   const trait = data.traits.find((entry) => entry.id === definition.traitId);
   const equipment = data.equipment.find((entry) => entry.id === fighter.monster.equipmentId);
   return [
-    ...(trait && trait.stages[fighter.monster.colorStars].battleStartEffects.length > 0
+    ...(trait && trait.battleStartEffects.length > 0
       ? [
           {
             source: { kind: 'trait' as const, id: trait.id, name: trait.name, speed: fighter.stats.speed },
-            effects: trait.stages[fighter.monster.colorStars].battleStartEffects,
+            effects: trait.battleStartEffects,
           },
         ]
       : []),
